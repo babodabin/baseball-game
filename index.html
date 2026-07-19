@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.9.1</title>
-<!-- v0.9 — 오프시즌 FA 영입 + 신인 드래프트 -->
+<title>우리팀을 만들자 v0.10</title>
+<!-- v0.10 — 훈련 확인 시트, 레전드(골든글러브) 영입 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -225,7 +225,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.9.1</span>
+    <span class="ver">v0.10</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -406,6 +406,35 @@ function ageOf(realName){
   return 26 + (nameHash(nm) % 8);   // 미등록 선수(외국인 등): 26~33 추정
 }
 
+
+/* ───────────── 레전드 선수 풀 (골든글러브·명예의전당급, 커리어 명성 기반 추정) ───────────── */
+// [가명, 실제모델, 포지션, 손, ...능력치] + 전성기 나이대로 편입
+const LEGENDS_BAT = [
+  ['이성협','이승엽','1B','좌',86,96,55,72,84],
+  ['양준현','양준혁','LF','좌',88,86,60,70,90],
+  ['이종벌','이종범','SS','우',90,74,96,88,82],
+  ['이대오','이대호','1B','우',88,94,45,68,86],
+  ['장종훈','장종훈','1B','우',80,92,58,68,80],
+  ['한대화','한대화','3B','우',82,84,60,80,80],
+  ['김기택','김기태','LF','좌',82,88,52,66,82],
+  ['박경완','박경완','C','우',72,80,50,88,74],
+  ['홍성헌','홍성흔','C','우',84,78,58,80,78],
+];
+const LEGENDS_PIT = [
+  ['최동언','최동원','선발','우',152,88,90,94],
+  ['선동열','선동열','선발','우',154,92,94,90],
+  ['정민철','정민철','선발','우',148,86,84,86],
+  ['임창영','임창용','마무리','우',156,82,86,80],
+  ['구대성','구대성','선발','좌',149,88,86,84],
+  ['송진욱','송진우','선발','좌',146,86,82,88],
+];
+function legendPool(){
+  const pool = [];
+  LEGENDS_BAT.forEach(p=>pool.push({kind:'bat', data:[...p,'legend'], age:29}));
+  LEGENDS_PIT.forEach(p=>pool.push({kind:'pit', data:[...p,'legend'], age:29}));
+  return pool;
+}
+
 /* ───────────── 살아있는 선수단 ───────────── */
 // 시즌 시작 시 TEAMS를 저장 데이터로 복사. 이후 모든 참조는 getTeam() 사용.
 const SURNAMES = ['김','이','박','최','정','강','조','윤','장','임','한','신','서','권','황','안','송','류','전','고','문','손','배','백','허','노','심','곽','성','차'];
@@ -544,6 +573,9 @@ function flagOf(p, isBat){ return (isBat ? p[9] : p[8]) || ''; }
 function bonusOf(p, teamId, isBat){
   const f = flagOf(p, isBat);
   if(f === 'fa') return 0;                     // FA 이적: 보정 제외
+  if(f === 'legend'){                          // 레전드: 내 팀 보정만 (규칙 ④)
+    return isMine(teamId) ? BOOST_MY : 0;
+  }
   let bo = BOOST_CUR;                          // 올해 로스터 기본 보정
   if(f === 'new') bo += BOOST_NEW;             // 신규 영입/신인
   if(isMine(teamId)){
@@ -1272,6 +1304,19 @@ function settleSeasonSalary(){
   save();
   return pay;
 }
+function seasonBonus(){
+  // 순위 분배금 + 포스트시즌/우승 보너스 → 성적 좋으면 흑자 전환 가능
+  if(!ecoOn()) return {rankMoney:0, psMoney:0};
+  const rank = rankOrder().findIndex(id=>id===state.myTeam)+1;
+  const rankMoney = Math.max(0, (11-rank)) * 5;   // 1위 50억 ~ 10위 5억
+  let psMoney = 0;
+  const champ = state.season.post && state.season.post.champion===state.myTeam;
+  if(rank<=5) psMoney += 20;                       // 포스트시즌 진출
+  if(champ) psMoney += 60;                          // 우승 보너스
+  state.money += rankMoney + psMoney;
+  save();
+  return {rankMoney, psMoney};
+}
 
 /* ═══════════ 포스트시즌 & 다년 시즌 (v0.6) ═══════════ */
 function playSeries(hiId, loId, need){
@@ -1312,6 +1357,7 @@ function renderSeasonDone(){
   const box = document.getElementById('seasonDoneText');
   if(!state.season.post){
     state.season.post = runPostseason();
+    state.season.bonus = seasonBonus();
     state.season.salaryPaid = settleSeasonSalary();
     refreshHeader();
     if(!state.history) state.history = [];
@@ -1324,7 +1370,7 @@ function renderSeasonDone(){
     `정규시즌 ${rank}위 (${rec.w}승 ${rec.l}패 ${rec.t}무)<br><br>` +
     p.log.join('<br>') + '<br><br>' +
     (isChamp ? '🎉 우리 팀이 우승했습니다!<br>' : '') +
-    (ecoOn() ? `💰 시즌 연봉 정산: -${(state.season.salaryPaid||0).toFixed(1)}억 → 잔고 ${fmtMoney()}${state.bankrupt?'<br>💸 연봉을 지급하지 못해 구단 파산!':''}<br>` : '') +
+    (ecoOn() ? `💰 순위 분배금 +${(state.season.bonus?.rankMoney||0)}억, 포스트시즌 보너스 +${(state.season.bonus?.psMoney||0)}억<br>연봉 정산 -${(state.season.salaryPaid||0).toFixed(1)}억 → 잔고 ${fmtMoney()}${state.bankrupt?'<br>💸 연봉을 지급하지 못해 구단 파산!':''}<br>` : '') +
     (state.mode==='sim' ? '<br>다음 시즌으로 넘어가면 선수들이 성장/노쇠합니다.' : '');
   document.getElementById('newSeasonBtn').textContent = '구단운영 · 오프시즌으로';
 }
@@ -1405,6 +1451,20 @@ function renderOffseason(t){
         <button class="signbtn">${cost}</button></div>`;
     });
   }
+  // 레전드 시장
+  h += `<h2 class="sec" style="margin-top:16px">🏅 레전드 영입 <small>${ecoOn()?'거액 필요':'명예 영입'}</small></h2>`;
+  if(!m.legends || m.legends.length===0){ h += `<div class="hint">올해 영입 가능한 레전드가 없습니다.</div>`; }
+  else{
+    h += `<div class="hint">역대 골든글러브·명예의전당급 선수입니다. 내 구단 보정만 받습니다.</div>`;
+    m.legends.forEach((lg,idx)=>{
+      const cost = ecoOn()? `${legendCost(lg.ovr).toFixed(0)}억` : '영입';
+      h += `<div class="prow" style="cursor:pointer;border-color:var(--amber)" data-legend="${idx}">
+        <div class="pos">${lg.kind==='bat'?lg.data[2]:(lg.data[2]==='선발'?'SP':lg.data[2]==='마무리'?'CL':'RP')}</div>
+        <div class="mid"><div class="nm">${lg.data[0]} <span style="font-size:11px;color:var(--amber)">🏅 레전드</span></div>
+        <div class="hand">OVR ${lg.ovr} · 터치해 상세</div></div>
+        <button class="signbtn">${cost}</button></div>`;
+    });
+  }
   // 신인 드래프트
   h += `<h2 class="sec" style="margin-top:16px">신인 드래프트 <small>${m.drafted?'지명 완료':'1명 지명 가능'}</small></h2>`;
   h += `<div class="hint">별(★)이 많을수록 성장 잠재력이 큽니다. 어리지만 처음엔 약합니다.</div>`;
@@ -1451,24 +1511,16 @@ function bindOffseason(){
     el.onclick = ()=> openCutSheet(el.dataset.cutrow==='bat', +el.dataset.cri);
   });
   document.querySelectorAll('[data-train]').forEach(el=>{
-    el.onclick = ()=>{
-      if(!state.season.trained) state.season.trained=[];
-      const key = el.dataset.train;
-      if(state.season.trained.includes(key)){ return; }
-      if(state.season.trained.length>=3){ alert('시즌당 최대 3명까지 훈련할 수 있습니다.'); return; }
-      if(ecoOn()){
-        if(state.money < 5){ alert('훈련 비용(5억)이 부족합니다.'); return; }
-        state.money -= 5;
-      }
-      state.season.trained.push(key);
-      save(); refreshHeader(); renderFront();
-    };
+    el.onclick = ()=> openTrainSheet(el.dataset.train);
   });
   document.querySelectorAll('[data-fa]').forEach(el=>{
     el.onclick = ()=> openFaSheet(+el.dataset.fa);
   });
   document.querySelectorAll('[data-draft]').forEach(el=>{
     el.onclick = ()=> openDraftSheet(+el.dataset.draft);
+  });
+  document.querySelectorAll('[data-legend]').forEach(el=>{
+    el.onclick = ()=> openLegendSheet(+el.dataset.legend);
   });
   const sb = document.getElementById('startNextBtn');
   if(sb) sb.onclick = ()=>{ doOffseasonEnd(); };
@@ -1510,6 +1562,15 @@ function buildOffseasonMarket(){
     });
   });
   market.fa = market.fa.sort((a,b)=>b.ovr-a.ovr).slice(0,6);
+  // 레전드 시장: 매 시즌 풀에서 2명 랜덤 (아직 영입 안 된 것만)
+  const owned = state.legendsOwned || [];
+  const pool = legendPool().filter(l=>!owned.includes(l.data[0]));
+  market.legends = [];
+  for(let i=0;i<2 && pool.length;i++){
+    const pick = pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    pick.ovr = pick.kind==='bat'? batOvr(pick.data, state.myTeam) : pitOvr(pick.data, state.myTeam);
+    market.legends.push(pick);
+  }
   // 신인 드래프트 8명 생성
   const posPool=['C','1B','2B','3B','SS','LF','CF','RF'];
   for(let i=0;i<8;i++){
@@ -1565,6 +1626,24 @@ function openFaSheet(idx){
     <button class="btn ghost" onclick="closeSheet()">취소</button>`;
   document.getElementById('mask').classList.add('on');
 }
+function openLegendSheet(idx){
+  const lg = state.season.market.legends[idx]; if(!lg) return;
+  const isBat = lg.kind==='bat';
+  const sheet = document.getElementById('sheet');
+  const cost = ecoOn()? legendCost(lg.ovr).toFixed(0)+'억' : '';
+  sheet.innerHTML = `
+    <div class="top"><div class="pname">${lg.data[0]}</div>
+      <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">${lg.data[2]} · ${lg.data[3]}${isBat?'타':'투'} · OVR ${lg.ovr}</div>
+    <div class="reveal" style="border-color:var(--amber)"><div class="lbl">🏅 레전드 · 골든글러브급</div>
+      실제 모델: <b>${lg.data[1]}</b><br>
+      역대 최고 선수 중 한 명입니다. 내 구단 보정만 적용됩니다.<br>
+      ${ecoOn()? '영입가 <b>'+cost+'</b> (현재 잔고 '+fmtMoney()+')':'명예 영입'}</div>
+    ${playerStatsHtml(lg.data, isBat, state.myTeam)}
+    <button class="btn" onclick="closeSheet(); signLegend(${idx})">${ecoOn()? cost+' 영입':'영입하기'}</button>
+    <button class="btn ghost" onclick="closeSheet()">취소</button>`;
+  document.getElementById('mask').classList.add('on');
+}
 function openDraftSheet(idx){
   const d = state.season.market.draft[idx]; if(!d) return;
   const isBat = d.kind==='bat';
@@ -1581,6 +1660,42 @@ function openDraftSheet(idx){
     ${state.season.market.drafted? '' : `<button class="btn" onclick="closeSheet(); draftPick(${idx})">이 선수 지명</button>`}
     <button class="btn ghost" onclick="closeSheet()">${state.season.market.drafted?'닫기':'취소'}</button>`;
   document.getElementById('mask').classList.add('on');
+}
+function openTrainSheet(key){
+  const isBat = key[0]==='b';
+  const i = +key.slice(1);
+  const t = getTeam(state.myTeam);
+  const p = (isBat?t.bat:t.pit)[i]; if(!p) return;
+  const age = isBat?t.age.bat[i]:t.age.pit[i];
+  const ovr = isBat?batOvr(p,t.id):pitOvr(p,t.id);
+  const already = (state.season.trained||[]).includes(key);
+  const effect = age<=23?'매우 큼':age<=26?'큼':age<=31?'보통':'작음';
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="top"><div class="pname">${p[0]}</div>
+      <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">${p[2]} · ${p[3]}${isBat?'타':'투'} · ${age}세 · OVR ${ovr}</div>
+    <div class="reveal"><div class="lbl">훈련 배정</div>
+      ${already? '✅ 이미 훈련 배정된 선수입니다.' :
+        `이 선수를 집중 훈련시켜 다음 시즌 성장 확률을 높입니다.<br>
+         나이 ${age}세 → 성장 기대 효과: <b>${effect}</b><br>
+         ${ecoOn()? '훈련 비용 <b>5억</b> (현재 잔고 '+fmtMoney()+')':'비용 없음'}<br>
+         현재 배정 ${(state.season.trained||[]).length}/3명`}</div>
+    ${playerStatsHtml(p, isBat, t.id)}
+    ${already? '' : `<button class="btn" onclick="closeSheet(); doTrain('${key}')">훈련 배정 확정</button>`}
+    <button class="btn ghost" onclick="closeSheet()">${already?'닫기':'취소'}</button>`;
+  document.getElementById('mask').classList.add('on');
+}
+function doTrain(key){
+  if(!state.season.trained) state.season.trained=[];
+  if(state.season.trained.includes(key)) return;
+  if(state.season.trained.length>=3){ alert('시즌당 최대 3명까지 훈련할 수 있습니다.'); return; }
+  if(ecoOn()){
+    if(state.money < 5){ alert('훈련 비용(5억)이 부족합니다.'); return; }
+    state.money -= 5;
+  }
+  state.season.trained.push(key);
+  save(); refreshHeader(); renderFront();
 }
 function openCutSheet(isBat, i){
   const t = getTeam(state.myTeam);
@@ -1612,6 +1727,24 @@ function doCut(kind, i){
 }
 
 function faCost(ovr){ return Math.max(8, (ovr-60)*2.2); }   // 억
+function legendCost(ovr){ return Math.max(60, (ovr-60)*6); }   // 레전드는 매우 비쌈(억)
+function signLegend(idx){
+  const m = state.season.market;
+  const lg = m.legends[idx]; if(!lg) return;
+  if(ecoOn()){
+    const cost = legendCost(lg.ovr);
+    if(state.money < cost){ alert(`영입가 ${cost.toFixed(0)}억이 부족합니다. (잔고 ${fmtMoney()})`); return; }
+    state.money -= cost;
+  }
+  const my = state.players[state.myTeam];
+  if(lg.kind==='bat'){ my.bat.push([...lg.data]); my.age.bat.push(lg.age); }
+  else{ my.pit.push([...lg.data]); my.age.pit.push(lg.age); }
+  if(!state.legendsOwned) state.legendsOwned=[];
+  state.legendsOwned.push(lg.data[0]);
+  m.legends.splice(idx,1);
+  state.lineups[state.myTeam]=null;
+  save(); refreshHeader(); renderFront();
+}
 function signFA(idx){
   const m = state.season.market;
   const fa = m.fa[idx]; if(!fa) return;
