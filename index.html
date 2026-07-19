@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.5</title>
-<!-- v0.5 — 고정 레이아웃(하단 내비 항상 표시), 타석별 구종 중계, 내 팀 응원 문구(창작), 팀 선택 화면 슬롯 표시 -->
+<title>우리팀을 만들자 v0.6</title>
+<!-- v0.6 — 실황/시뮬레이션 2모드, 살아있는 선수 데이터(나이·성장·노쇠), 포스트시즌(WC/준PO/PO/KS), 다년 시즌, 선발 3경기 휴식 규칙 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -215,7 +215,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.5</span>
+    <span class="ver">v0.6</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -318,7 +318,7 @@ nav button.lock{opacity:.38}
 <script>
 'use strict';
 const SAVE_KEY = 'ourteam_slots_v1';
-const EMPTY = ()=>({myTeam:null, lineups:{}, season:null, rot:{}});
+const EMPTY = ()=>({myTeam:null, mode:null, year:1, players:null, lineups:{}, season:null, rot:{}, spLast:{}, history:[]});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -367,6 +367,76 @@ const BOOST_MY = 3;   // 내 구단 보정
 const BOOST_CUR = 2;  // 올해(2026) 시즌 보정
 const BOOST_NEW = 1;  // 신규 영입/신인 추가 보정
 // FA 이적 선수('fa')는 모든 보정 제외
+
+/* ───────────── 나이 데이터 (2026 기준, 실제 모델 참고 추정) ───────────── */
+const AGES = {'김도영':23,'문동주':23,'김택연':21,'문현빈':22,'김건희':22,'이재현':23,'김영웅':23,'박영현':23,
+'정해영':25,'김지찬':25,'이주형':25,'소형준':25,'조병현':24,'김주원':24,'윤동희':23,'나승엽':24,'전민재':27,
+'노시환':26,'원태인':26,'안우진':27,'곽빈':27,'한준수':27,'박성한':28,'고승민':26,'황성빈':29,'손주영':28,
+'문보경':26,'신민재':30,'문성주':29,'홍창기':33,'구자욱':33,'송성문':30,'박찬호':31,'김선빈':37,'나성범':37,
+'최형우':43,'양의지':39,'강민호':41,'최정':39,'김광현':38,'양현종':38,'류현진':39,'박해민':36,'김현수':38,
+'전준우':40,'채은성':36,'오지환':36,'박동원':36,'임찬규':34,'박건우':36,'박민우':33,'권희동':36,'최재훈':37,
+'유강남':34,'장성우':36,'김상수':36,'허경민':36,'황재균':39,'최주환':38,'박세웅':31,'김원중':33,'주현상':34,
+'고영표':35,'유영찬':29,'김재환':38,'양석환':35,'정수빈':36,'강승호':32,'류지혁':32,'윤영철':22,'하영민':31,
+'신민혁':27,'구창모':29,'류진욱':30,'주승우':26,'심우준':31,'이진영':29,'김태연':29,'안현민':23,'천성호':29,
+'문상철':35,'배정대':31,'최지훈':29,'한유섬':37,'고명준':24,'이지영':40,'정준재':22,'오태곤':35,'서호철':30,
+'김형준':27,'김성욱':33,'오영수':27,'박정우':26,'최원준':29,'김규성':29,'김호령':32,'이우성':32,'이성귀':33};
+function ageOf(realName){
+  const nm = realName.replace(/ \(.*\)$/,'');
+  if(AGES[nm]) return AGES[nm];
+  return 26 + (nameHash(nm) % 8);   // 미등록 선수(외국인 등): 26~33 추정
+}
+
+/* ───────────── 살아있는 선수단 ───────────── */
+// 시즌 시작 시 TEAMS를 저장 데이터로 복사. 이후 모든 참조는 getTeam() 사용.
+function snapshotTeams(){
+  const snap = {};
+  TEAMS.forEach(t=>{
+    snap[t.id] = {
+      bat: t.bat.map(p=>[...p]),
+      pit: t.pit.map(p=>[...p]),
+      age: { bat: t.bat.map(p=>ageOf(p[1])), pit: t.pit.map(p=>ageOf(p[1])) }
+    };
+  });
+  return snap;
+}
+function getTeam(id){
+  const base = TEAMS.find(t=>t.id===id);
+  if(state.players && state.players[id]){
+    const s = state.players[id];
+    return {id:base.id, name:base.name, real:base.real, c:base.c, bat:s.bat, pit:s.pit, age:s.age};
+  }
+  return base;
+}
+
+/* ───────────── 오프시즌 성장/노쇠 (시뮬레이션 모드) ───────────── */
+function growVal(v, age, isVelo){
+  let d;
+  if(age<=23)      d = [0,1,1,2,2,3,4][Math.floor(Math.random()*7)];
+  else if(age<=26) d = [0,0,1,1,2,3][Math.floor(Math.random()*6)];
+  else if(age<=31) d = [-1,0,0,0,1,2][Math.floor(Math.random()*6)];
+  else if(age<=35) d = [-3,-2,-1,-1,0,1][Math.floor(Math.random()*6)];
+  else             d = [-5,-4,-3,-2,-1][Math.floor(Math.random()*5)];
+  if(isVelo) d = Math.round(d/2);
+  return Math.max(isVelo?128:30, Math.min(isVelo?160:99, v+d));
+}
+function offseasonGrowth(){
+  if(!state.players) return;
+  Object.keys(state.players).forEach(id=>{
+    const s = state.players[id];
+    s.bat.forEach((p,i)=>{
+      const age = s.age.bat[i];
+      for(let k=4;k<=8;k++) p[k] = growVal(p[k], age, false);
+      s.age.bat[i]++;
+    });
+    s.pit.forEach((p,i)=>{
+      const age = s.age.pit[i];
+      p[4] = growVal(p[4], age, true);
+      for(let k=5;k<=7;k++) p[k] = growVal(p[k], age, false);
+      s.age.pit[i]++;
+    });
+  });
+}
+
 
 
 /* ───────────── 상태 (슬롯 3개) ───────────── */
@@ -445,7 +515,8 @@ function refreshHeader(){
   const r = document.getElementById('subRight');
   if(state.myTeam){
     const t = TEAMS.find(t=>t.id===state.myTeam);
-    l.textContent = `내 구단 · 슬롯 ${store.active+1}`;
+    const md = state.mode==='sim' ? `시뮬 ${state.year}년차` : state.mode==='live' ? '실황' : '';
+    l.textContent = `슬롯 ${store.active+1}${md?' · '+md:''}`;
     r.textContent = t.name;
   }else{
     l.textContent = '구단을 선택하세요';
@@ -463,10 +534,14 @@ function renderTeamGrid(){
     d.innerHTML = `<div class="stripe" style="background:${t.c}"></div>
       <div class="tname">${t.name}</div><div class="treal">${t.real}</div>`;
     d.onclick = ()=>{
-      if(confirm(`${t.name}(${t.real})을(를) 내 구단으로 선택할까요?\n소속 선수에게 내 구단 보정 +${BOOST_MY}이 적용됩니다.`)){
-        state.myTeam = t.id; save();
-        refreshHeader(); renderSlots(); renderRoster('bat'); show('team');
-      }
+      if(!confirm(`${t.name}(${t.real})을(를) 내 구단으로 선택할까요?\n소속 선수에게 내 구단 보정 +${BOOST_MY}이 적용됩니다.`)) return;
+      const sim = confirm('게임 모드를 선택하세요.\n\n[확인] 시뮬레이션 모드 — 다년 운영, 선수 성장/노쇠, 포스트시즌\n[취소] 실황 모드 — 2026 현재 선수단으로 한 시즌 집중');
+      state.myTeam = t.id;
+      state.mode = sim ? 'sim' : 'live';
+      state.year = 1;
+      state.players = snapshotTeams();   // 시작 시점 선수단 복사 (두 모드 공통)
+      save();
+      refreshHeader(); renderSlots(); renderRoster('bat'); show('team');
     };
     g.appendChild(d);
   });
@@ -478,7 +553,7 @@ function renderRoster(tab){
   rosterTab = tab;
   document.getElementById('tabBat').classList.toggle('on', tab==='bat');
   document.getElementById('tabPit').classList.toggle('on', tab==='pit');
-  const t = TEAMS.find(t=>t.id===state.myTeam);
+  const t = getTeam(state.myTeam);
   document.getElementById('rosterTitle').innerHTML =
     `${t.name} 로스터 <small>선수를 터치하면 모델 선수 공개</small>`;
   const list = document.getElementById('plist');
@@ -490,7 +565,8 @@ function renderRoster(tab){
     const pos = tab==='bat' ? p[2] : p[2];
     const ovr = tab==='bat' ? batOvr(p,t.id) : pitOvr(p,t.id);
     const isBat = tab==='bat';
-    const hand = isBat ? `${p[3]}타` : `${p[3]}투 · ${p[2]}`;
+    const age = t.age ? (isBat?t.age.bat[i]:t.age.pit[i]) : ageOf(p[1]);
+    const hand = (isBat ? `${p[3]}타` : `${p[3]}투 · ${p[2]}`) + ` · ${age}세`;
     const f = flagOf(p, isBat);
     const bo = bonusOf(p, t.id, isBat);
     let tag = '';
@@ -581,7 +657,7 @@ document.getElementById('resetBtn').onclick = ()=>{
 
 /* ═══════════ 라인업 ═══════════ */
 function getLineup(teamId){
-  const t = TEAMS.find(t=>t.id===teamId);
+  const t = getTeam(teamId);
   let lu = state.lineups[teamId];
   if(!lu || lu.order.length !== t.bat.length){
     lu = { order: t.bat.map((_,i)=>i), sp: 0 };
@@ -591,7 +667,7 @@ function getLineup(teamId){
 }
 let luSel = -1; // 교환 대기 중인 타순 index
 function renderLineup(){
-  const t = TEAMS.find(t=>t.id===state.myTeam);
+  const t = getTeam(state.myTeam);
   const lu = getLineup(t.id);
   const list = document.getElementById('lineupList');
   list.innerHTML = '';
@@ -618,11 +694,14 @@ function renderLineup(){
   const nxt = nextSpIdx(t.id);
   t.pit.forEach((p,i)=>{
     if(p[2]!=='선발') return;
+    const rest = state.season ? restOk(t.id, i) : true;
     const b = document.createElement('button');
-    b.textContent = `${p[0]} ${pitOvr(p,t.id)}${i===nxt?' · 다음 등판':''}`;
+    b.textContent = `${p[0]} ${pitOvr(p,t.id)}${i===nxt?' · 다음 등판':rest?'':' · 휴식중'}`;
     b.className = i===nxt?'on':'';
+    if(!rest && i!==nxt){ b.style.opacity='.4'; }
     b.onclick = ()=>{
-      state.rot[t.id] = spl.indexOf(i);   // 다음 경기 선발 지정, 이후 로테이션 이어짐
+      if(!rest && i!==nxt){ return; }   // 등판 후 3경기 휴식 필요
+      state.rot[t.id] = spl.indexOf(i);
       save(); renderLineup();
     };
     spBox.appendChild(b);
@@ -709,7 +788,7 @@ function chantFor(batter, team){
 }
 
 function simGame(myId, oppId, mySp, oppSp){
-  const home = TEAMS.find(t=>t.id===myId), away = TEAMS.find(t=>t.id===oppId);
+  const home = getTeam(myId), away = getTeam(oppId);
   const homeLu = getLineup(myId), awayLu = getLineup(oppId);
   const ev = [];   // {inn, half, text, cls}
   const line = {away:[], home:[]};
@@ -813,12 +892,22 @@ function simGame(myId, oppId, mySp, oppSp){
 /* ═══════════ 시즌 / 로테이션 ═══════════ */
 function spIdxList(team){ return team.pit.map((p,i)=>p[2]==='선발'?i:-1).filter(i=>i>=0); }
 function nextSpIdx(teamId){
-  const t = TEAMS.find(t=>t.id===teamId);
+  const t = getTeam(teamId);
   const list = spIdxList(t);
   const r = (state.rot[teamId]||0) % list.length;
   return list[r];
 }
 function advanceRot(teamId){ state.rot[teamId] = ((state.rot[teamId]||0)+1); }
+function markStart(teamId, pitIdx){
+  if(!state.spLast) state.spLast = {};
+  if(!state.spLast[teamId]) state.spLast[teamId] = {};
+  state.spLast[teamId][pitIdx] = state.season ? state.season.day : 0;
+}
+function restOk(teamId, pitIdx){
+  const last = state.spLast && state.spLast[teamId] ? state.spLast[teamId][pitIdx] : undefined;
+  if(last===undefined) return true;
+  return (state.season.day - last) >= 4;   // 등판 후 3경기 휴식
+}
 
 function genSchedule(){
   // 10팀 라운드로빈(서클법) 9라운드 × 4사이클 = 팀당 36경기
@@ -863,7 +952,9 @@ function playOtherGames(){
   const results = [];
   rd.forEach(m=>{
     if(m.home===state.myTeam || m.away===state.myTeam) return;
-    const g = simGame(m.home, m.away, nextSpIdx(m.home), nextSpIdx(m.away));
+    const hs = nextSpIdx(m.home), as = nextSpIdx(m.away);
+    const g = simGame(m.home, m.away, hs, as);
+    markStart(m.home, hs); markStart(m.away, as);
     advanceRot(m.home); advanceRot(m.away);
     recordResult(m.home, m.away, g.sc);
     results.push(`${g.away.name} ${g.sc.away} : ${g.sc.home} ${g.home.name}`);
@@ -882,22 +973,19 @@ function renderGameSetup(){
   if(!state.season) newSeason();
   document.getElementById('gameLive').style.display='none';
   if(gTimer){ clearInterval(gTimer); gTimer=null; }
-  const my = TEAMS.find(t=>t.id===state.myTeam);
+  const my = getTeam(state.myTeam);
   document.getElementById('gameTitle').textContent = `경기 — ${my.name}`;
   if(seasonOver()){
     document.getElementById('gameSetup').style.display='none';
     document.getElementById('seasonDone').style.display='';
-    const rec = state.season.rec[state.myTeam];
-    const rank = rankOrder().findIndex(id=>id===state.myTeam)+1;
-    document.getElementById('seasonDoneText').textContent =
-      `시즌 종료! 최종 ${rank}위 (${rec.w}승 ${rec.l}패 ${rec.t}무)`;
+    renderSeasonDone();
     return;
   }
   document.getElementById('seasonDone').style.display='none';
   document.getElementById('gameSetup').style.display='';
   const m = myMatchToday();
   const oppId = m.home===state.myTeam ? m.away : m.home;
-  const opp = TEAMS.find(t=>t.id===oppId);
+  const opp = getTeam(oppId);
   const isHome = m.home===state.myTeam;
   const mySp = my.pit[nextSpIdx(my.id)];
   const oppSp = opp.pit[nextSpIdx(opp.id)];
@@ -933,6 +1021,7 @@ function playMyGame(){
   const m = myMatchToday();
   const homeSp = nextSpIdx(m.home), awaySp = nextSpIdx(m.away);
   curGame = simGame(m.home, m.away, homeSp, awaySp);
+  markStart(m.home, homeSp); markStart(m.away, awaySp);
   advanceRot(m.home); advanceRot(m.away);
   recordResult(m.home, m.away, curGame.sc);
   const others = playOtherGames();
@@ -988,7 +1077,73 @@ document.getElementById('skip5Btn').onclick = ()=>{
   while(done<5 && !seasonOver()){ playMyGame(); done++; }
   renderGameSetup();   // 확인창 없이 즉시 갱신 — 연타로 시즌 빠르게 소화 가능
 };
-document.getElementById('newSeasonBtn').onclick = ()=>{ newSeason(); renderGameSetup(); };
+document.getElementById('newSeasonBtn').onclick = ()=>{ nextSeason(); renderGameSetup(); };
+
+
+/* ═══════════ 포스트시즌 & 다년 시즌 (v0.6) ═══════════ */
+function playSeries(hiId, loId, need){
+  // need승 선승제, 홈 어드밴티지: 상위팀 홈
+  let hw=0, lw=0;
+  const scores=[];
+  let guard=0;
+  while(hw<need && lw<need && guard<need*2+3){
+    guard++;
+    const hs=nextSpIdx(hiId), ls=nextSpIdx(loId);
+    const g=simGame(hiId, loId, hs, ls);
+    advanceRot(hiId); advanceRot(loId);
+    if(g.sc.home>g.sc.away) hw++;
+    else if(g.sc.home<g.sc.away) lw++;
+    else continue;   // 무승부 재경기
+    scores.push(`${g.sc.away}:${g.sc.home}`);
+  }
+  return {winner: hw>lw?hiId:loId, hw, lw, scores};
+}
+function runPostseason(){
+  const order = rankOrder();
+  const [t1,t2,t3,t4,t5] = order;
+  const log = [];
+  const nm = id=>getTeam(id).name;
+  const wc = playSeries(t4, t5, 1);
+  log.push(`와일드카드: ${nm(t4)} vs ${nm(t5)} → ${nm(wc.winner)} 승`);
+  const spo = playSeries(t3, wc.winner, 2);
+  log.push(`준플레이오프: ${nm(t3)} vs ${nm(wc.winner)} → ${nm(spo.winner)} 승 (${spo.hw}-${spo.lw})`);
+  const po = playSeries(t2, spo.winner, 2);
+  log.push(`플레이오프: ${nm(t2)} vs ${nm(spo.winner)} → ${nm(po.winner)} 승 (${po.hw}-${po.lw})`);
+  const ks = playSeries(t1, po.winner, 3);
+  log.push(`한국시리즈: ${nm(t1)} vs ${nm(po.winner)} → 🏆 ${nm(ks.winner)} 우승! (${ks.hw}-${ks.lw})`);
+  return {champion: ks.winner, log};
+}
+function renderSeasonDone(){
+  const rec = state.season.rec[state.myTeam];
+  const rank = rankOrder().findIndex(id=>id===state.myTeam)+1;
+  const box = document.getElementById('seasonDoneText');
+  if(!state.season.post){
+    state.season.post = runPostseason();
+    if(!state.history) state.history = [];
+    state.history.push({year: state.year, rank, rec:{...rec}, champion: state.season.post.champion});
+    save();
+  }
+  const p = state.season.post;
+  const isChamp = p.champion === state.myTeam;
+  box.innerHTML =
+    `정규시즌 ${rank}위 (${rec.w}승 ${rec.l}패 ${rec.t}무)<br><br>` +
+    p.log.join('<br>') + '<br><br>' +
+    (isChamp ? '🎉 우리 팀이 우승했습니다!' : '') +
+    (state.mode==='sim' ? '<br>다음 시즌으로 넘어가면 선수들이 성장/노쇠합니다.' : '');
+  document.getElementById('newSeasonBtn').textContent =
+    state.mode==='sim' ? `${state.year+1}년차 시즌 시작` : '시즌 다시 시작';
+}
+function nextSeason(){
+  if(state.mode==='sim'){
+    offseasonGrowth();
+    state.year++;
+  }
+  state.season = null;
+  state.rot = {};
+  state.spLast = {};
+  newSeason();
+  save();
+}
 
 /* ═══════════ 순위표 ═══════════ */
 function rankOrder(){
@@ -1015,7 +1170,7 @@ function renderRank(){
       <td>${gp}</td><td>${r.w}</td><td>${r.l}</td><td>${r.t}</td><td>${pct}</td><td>${gb}</td></tr>`;
   });
   document.getElementById('rankTable').innerHTML = html;
-  document.getElementById('rankTitle').textContent = `순위표 — ${state.season.day}/36경기 소화`;
+  document.getElementById('rankTitle').textContent = `${state.mode==='sim'? state.year+'년차 ':''}순위표 — ${state.season.day}/36경기`;
   document.getElementById('lastResults').innerHTML =
     state.season.last.length ? '<b>최근 경기 결과</b><br>'+state.season.last.join('<br>') : '아직 치른 경기가 없습니다.';
 }
