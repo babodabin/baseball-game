@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.4.1</title>
-<!-- v0.4.1 — 저장 슬롯 3개(팀별 별도 시즌), 하단 여백 수정, 5경기 자동 진행 확인창 제거 -->
+<title>우리팀을 만들자 v0.5</title>
+<!-- v0.5 — 고정 레이아웃(하단 내비 항상 표시), 타석별 구종 중계, 내 팀 응원 문구(창작), 팀 선택 화면 슬롯 표시 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -16,18 +16,19 @@
   --red:#E4573D;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
+html,body{height:100%;overflow:hidden}
 body{
   background:var(--bg); color:var(--chalk);
   font-family:'IBM Plex Sans KR',sans-serif; font-size:15px;
-  padding-bottom:calc(88px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column;
   overscroll-behavior:none;
 }
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .num{font-family:'IBM Plex Mono',monospace}
 
 /* ── 전광판 헤더 ── */
 header{
-  position:sticky; top:0; z-index:20;
+  flex:none; z-index:20;
   background:linear-gradient(#0A130D,#0D1811);
   border-bottom:2px solid var(--amber2);
   padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
@@ -45,7 +46,7 @@ header{
 .subline .myteam{color:var(--chalk);font-weight:700}
 
 /* ── 화면 공통 ── */
-.screen{display:none;padding:16px 16px 32px}
+.screen{display:none;padding:16px 16px 40px}
 .screen.on{display:block}
 h2.sec{
   font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:17px;
@@ -128,7 +129,7 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
 
 /* ── 하단 내비 ── */
 nav{
-  position:fixed;bottom:0;left:0;right:0;z-index:30;
+  flex:none;z-index:30;
   background:#0A130D;border-top:1px solid var(--line);
   display:flex;padding-bottom:env(safe-area-inset-bottom);
 }
@@ -174,6 +175,10 @@ nav button.lock{opacity:.38}
 .gamelog .inn{color:var(--amber);font-weight:700;margin-top:8px;font-family:'IBM Plex Mono',monospace}
 .gamelog .scoreev{color:var(--amber)}
 .gamelog .final{font-weight:700;color:var(--chalk);border-top:1px dashed var(--line);margin-top:8px;padding-top:8px}
+
+.gamelog .pitch{color:var(--dim);font-size:12px;padding-left:14px}
+.gamelog .chant{color:var(--amber);font-size:12.5px;padding-left:2px}
+
 .speedbar{display:flex;gap:8px;margin:10px 0}
 .speedbar button{flex:1;padding:9px 0;border-radius:9px;border:1px solid var(--line);
   background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
@@ -190,7 +195,7 @@ nav button.lock{opacity:.38}
 .rank-table td.tm{text-align:left;font-family:'IBM Plex Sans KR';font-weight:700;font-size:13px;padding-left:10px}
 .rank-table tr.me td{background:#23361F;color:var(--amber)}
 .rank-table td.rk{color:var(--amber);font-weight:700}
-.season-info{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;line-height:1.7;margin-bottom:12px}
+.season-info{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;line-height:1.7;margin-bottom:12px;min-height:104px}
 .season-info b{color:var(--amber)}
 
 /* ── 저장 슬롯 ── */
@@ -210,7 +215,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.4.1</span>
+    <span class="ver">v0.5</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -218,6 +223,7 @@ nav button.lock{opacity:.38}
   </div>
 </header>
 
+<main>
 <!-- 팀 선택 -->
 <section class="screen" id="scr-select">
   <div class="notice">
@@ -226,6 +232,8 @@ nav button.lock{opacity:.38}
     선수를 터치하면 실제 모델 선수를 확인할 수 있습니다.
   </div>
   <div class="team-grid" id="teamGrid"></div>
+  <h2 class="sec" style="margin-top:18px">저장 슬롯</h2>
+  <div class="slot-row" id="slotRow2"></div>
 </section>
 
 <!-- 구단(로스터) -->
@@ -293,6 +301,7 @@ nav button.lock{opacity:.38}
     <span id="lockText">다음 업데이트에서 열립니다</span>
   </div>
 </section>
+</main>
 
 <nav>
   <button data-nav="team" class="on"><span class="ic">⚾️</span>구단</button>
@@ -384,17 +393,19 @@ function switchSlot(i){
   else show('select');
 }
 function renderSlots(){
-  const row = document.getElementById('slotRow');
-  if(!row) return;
-  row.innerHTML='';
-  store.slots.forEach((s,i)=>{
-    const t = s && s.myTeam ? TEAMS.find(t=>t.id===s.myTeam) : null;
-    const gp = s && s.season ? s.season.day : 0;
-    const b = document.createElement('button');
-    b.className = store.active===i?'on':'';
-    b.innerHTML = `<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b>${t? t.name+'<br>'+gp+'경기' : '비어있음'}`;
-    b.onclick = ()=>{ if(store.active!==i) switchSlot(i); };
-    row.appendChild(b);
+  ['slotRow','slotRow2'].forEach(rid=>{
+    const row = document.getElementById(rid);
+    if(!row) return;
+    row.innerHTML='';
+    store.slots.forEach((s,i)=>{
+      const t = s && s.myTeam ? TEAMS.find(t=>t.id===s.myTeam) : null;
+      const gp = s && s.season ? s.season.day : 0;
+      const b = document.createElement('button');
+      b.className = store.active===i?'on':'';
+      b.innerHTML = `<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b>${t? t.name+'<br>'+gp+'경기' : '비어있음'}`;
+      b.onclick = ()=>{ if(store.active!==i) switchSlot(i); };
+      row.appendChild(b);
+    });
   });
 }
 
@@ -644,6 +655,59 @@ function paResult(bat, batTid, pit, pitTid){
   const go = Math.random() < .55;
   return {t: go ? 'GO' : 'FO'};
 }
+
+/* ═══════════ 구종/응원 (v0.5) ═══════════ */
+const PITCH_POOL = ['슬라이더','커브','체인지업','포크볼','투심','커터','스플리터'];
+function nameHash(s){ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))>>>0; return h; }
+function repertoire(pit){
+  const h = nameHash(pit[0]);
+  const n = pit[6] >= 82 ? 3 : 2;           // 변화구 수치 높으면 3개
+  const arr = [];
+  for(let i=0;i<n;i++) arr.push(PITCH_POOL[(h+i*3)%PITCH_POOL.length]);
+  return ['직구', ...new Set(arr)];
+}
+function pitchLines(pit, pitTid, res){
+  const rep = repertoire(pit);
+  const v0 = bv(pit[4], pit, pitTid);
+  const pick = ()=> rep[Math.floor(Math.random()*rep.length)];
+  const veloOf = tp => tp==='직구' ? v0 - Math.floor(Math.random()*4)
+                                   : v0 - 10 - Math.floor(Math.random()*15);
+  const lines = [];
+  const nPrev = res.t==='BB' ? 3 : Math.floor(Math.random()*3)+1; // 결과 전 투구 수
+  const mid = ['스트라이크','볼','파울','헛스윙 스트라이크'];
+  for(let i=1;i<=nPrev;i++){
+    const tp = pick();
+    const call = res.t==='BB' ? (Math.random()<.75?'볼':mid[Math.floor(Math.random()*3)])
+                              : mid[Math.floor(Math.random()*mid.length)];
+    lines.push(`${i}구 ${tp} ${veloOf(tp)}km — ${call}`);
+  }
+  const tp = pick(), n = nPrev+1;
+  const last = {
+    'K': `${n}구 ${tp} ${veloOf(tp)}km — ${Math.random()<.6?'헛스윙':'루킹'} 삼진!`,
+    'BB': `${n}구 ${tp} ${veloOf(tp)}km — 볼, 볼넷`,
+    'HR': `${n}구 ${tp} ${veloOf(tp)}km — 통타!`,
+    '3B': `${n}구 ${tp} ${veloOf(tp)}km — 통타!`,
+    '2B': `${n}구 ${tp} ${veloOf(tp)}km — 강한 타구!`,
+    '1B': `${n}구 ${tp} ${veloOf(tp)}km — 받아쳤습니다`,
+    'GO': `${n}구 ${tp} ${veloOf(tp)}km — 타격, 땅볼`,
+    'FO': `${n}구 ${tp} ${veloOf(tp)}km — 타격, 떴습니다`
+  }[res.t];
+  lines.push(last);
+  return lines;
+}
+// 창작 응원 문구 (실제 응원가 가사 아님)
+const CHANTS = [
+  '📣 안! 타! {N}! 안! 타! {N}!',
+  '📣 날려버려라 {N}! 시원하게 {N}!',
+  '📣 {N}! {N}! 승리를 위해 {N}!',
+  '📣 최강 {T}의 {N}! 가자 {N}!',
+  '📣 짝짝 짝짝짝 {N}! 짝짝 짝짝짝 {N}!'
+];
+function chantFor(batter, team){
+  const h = nameHash(batter[0]);
+  return CHANTS[h % CHANTS.length].replaceAll('{N}', batter[0]).replaceAll('{T}', team.name);
+}
+
 function simGame(myId, oppId, mySp, oppSp){
   const home = TEAMS.find(t=>t.id===myId), away = TEAMS.find(t=>t.id===oppId);
   const homeLu = getLineup(myId), awayLu = getLineup(oppId);
@@ -677,6 +741,10 @@ function simGame(myId, oppId, mySp, oppSp){
       const pit = pitcherFor(defSide);
       st[defSide].pitPa++;
       const res = paResult(batter, atk.team.id, pit, st[defSide].team.id);
+      if(atk.team.id === state.myTeam)
+        ev.push({inn, half, text: chantFor(batter, atk.team), cls:'chant'});
+      pitchLines(pit, st[defSide].team.id, res).forEach(t=>
+        ev.push({inn, half, text:t, cls:'pitch'}));
       let text='', scored=0;
       const runnersAdv = n=>{
         for(let i=2;i>=0;i--){
@@ -879,11 +947,12 @@ document.getElementById('playBtn').onclick = ()=>{
   document.getElementById('skipBtn').style.display='';
   const log = document.getElementById('gamelog');
   log.innerHTML='';
+  const evs = spdSel==='pa' ? g.ev : g.ev.filter(e=>e.cls!=='pitch' && e.cls!=='chant');
   let i=0;
   const innDone = {a:0,h:0};
   function push(n){
-    for(let k=0;k<n && i<g.ev.length;k++,i++){
-      const e=g.ev[i];
+    for(let k=0;k<n && i<evs.length;k++,i++){
+      const e=evs[i];
       const d=document.createElement('div');
       if(e.cls) d.className=e.cls;
       d.textContent=e.text;
@@ -896,7 +965,7 @@ document.getElementById('playBtn').onclick = ()=>{
     }
     drawScore(g, innDone);
     log.scrollTop = log.scrollHeight;
-    if(i>=g.ev.length) finish();
+    if(i>=evs.length) finish();
   }
   function finish(){
     if(gTimer){ clearInterval(gTimer); gTimer=null; }
@@ -904,14 +973,14 @@ document.getElementById('playBtn').onclick = ()=>{
     document.getElementById('skipBtn').style.display='none';
     document.getElementById('newGameBtn').style.display='';
   }
-  if(spdSel==='fast'){ push(g.ev.length); }
+  if(spdSel==='fast'){ push(evs.length); }
   else{
-    const step = spdSel==='pa' ? 1 : 8;
-    const ms = spdSel==='pa' ? 900 : 700;
+    const step = spdSel==='pa' ? 2 : 8;
+    const ms = spdSel==='pa' ? 750 : 700;
     push(step);
     gTimer = setInterval(()=>push(step), ms);
   }
-  document.getElementById('skipBtn').onclick = ()=>push(g.ev.length);
+  document.getElementById('skipBtn').onclick = ()=>push(evs.length);
   document.getElementById('newGameBtn').onclick = ()=>renderGameSetup();
 };
 document.getElementById('skip5Btn').onclick = ()=>{
