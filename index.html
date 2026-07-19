@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.3</title>
-<!-- v0.3 — 라인업 편성 + 경기 자동 시뮬레이션(타석별/이닝별/결과만 속도), 12회 연장 무승부, 선발→마무리 교체 -->
+<title>우리팀을 만들자 v0.4</title>
+<!-- v0.4 — 36경기 시즌 진행 + 순위표 + 선발 로테이션(내팀/상대팀 자동 순환, 다음 경기 선발 지정 가능) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -183,6 +183,18 @@ nav button.lock{opacity:.38}
   color:var(--chalk);font-family:inherit;font-size:12px;font-weight:700}
 .opp-grid button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
 
+/* ── 순위표 ── */
+.rank-table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:12px;overflow:hidden}
+.rank-table th{font-size:11px;color:var(--dim);padding:8px 4px;border-bottom:1px solid var(--line);font-weight:400}
+.rank-table td{padding:9px 4px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;border-bottom:1px solid #1E2F24}
+.rank-table td.tm{text-align:left;font-family:'IBM Plex Sans KR';font-weight:700;font-size:13px;padding-left:10px}
+.rank-table tr.me td{background:#23361F;color:var(--amber)}
+.rank-table td.rk{color:var(--amber);font-weight:700}
+.season-info{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;line-height:1.7;margin-bottom:12px}
+.season-info b{color:var(--amber)}
+.other-results{font-size:12px;color:var(--dim);line-height:1.8;margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+
+
 </style>
 </head>
 <body>
@@ -190,7 +202,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.3</span>
+    <span class="ver">v0.4</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -225,7 +237,8 @@ nav button.lock{opacity:.38}
   <h2 class="sec">라인업 편성</h2>
   <div class="hint">타순 변경: 선수 하나를 터치한 뒤, 바꿀 선수를 터치하면 자리가 교환됩니다.</div>
   <div id="lineupList"></div>
-  <h2 class="sec" style="margin-top:16px">선발 투수</h2>
+  <h2 class="sec" style="margin-top:16px">선발 로테이션</h2>
+  <div class="hint">선발은 경기마다 자동으로 순환합니다. 투수를 터치하면 다음 경기 선발로 지정되고, 이후 그 순서부터 로테이션이 이어집니다.</div>
   <div class="sel-sp" id="spList"></div>
 </section>
 
@@ -233,21 +246,33 @@ nav button.lock{opacity:.38}
 <section class="screen" id="scr-game">
   <h2 class="sec" id="gameTitle">경기</h2>
   <div id="gameSetup">
-    <div class="hint">상대 팀을 고른 뒤 경기를 시작하세요. 내 라인업은 라인업 탭 설정을 따릅니다.</div>
-    <div class="opp-grid" id="oppGrid"></div>
+    <div class="season-info" id="seasonInfo"></div>
     <div class="speedbar">
       <button data-spd="pa" class="on">타석별</button>
       <button data-spd="inn">이닝별</button>
       <button data-spd="fast">결과만</button>
     </div>
     <button class="btn" id="playBtn">경기 시작</button>
+    <button class="btn ghost" id="skip5Btn">다음 5경기 자동 진행 (결과만)</button>
   </div>
   <div id="gameLive" style="display:none">
     <div class="scorebox" id="scorebox"></div>
     <div class="gamelog" id="gamelog"></div>
     <button class="btn" id="skipBtn">⏭ 남은 경기 결과만 보기</button>
-    <button class="btn ghost" id="newGameBtn" style="display:none">새 경기</button>
+    <button class="btn ghost" id="newGameBtn" style="display:none">계속</button>
   </div>
+  <div id="seasonDone" style="display:none" class="locked-msg">
+    <span class="big">🏆</span><span id="seasonDoneText"></span>
+    <button class="btn" id="newSeasonBtn" style="margin-top:20px">새 시즌 시작</button>
+  </div>
+</section>
+
+<!-- 순위 -->
+<section class="screen" id="scr-rank">
+  <h2 class="sec" id="rankTitle">순위표</h2>
+  <table class="rank-table" id="rankTable"></table>
+  <div class="other-results" id="lastResults"></div>
+  <button class="btn ghost" id="resetSeasonBtn" style="margin-top:14px">시즌 초기화</button>
 </section>
 
 <!-- 잠금 화면 -->
@@ -262,7 +287,7 @@ nav button.lock{opacity:.38}
   <button data-nav="team" class="on"><span class="ic">⚾️</span>구단</button>
   <button data-nav="lineup"><span class="ic">📋</span>라인업</button>
   <button data-nav="game"><span class="ic">📺</span>경기</button>
-  <button data-nav="rank" class="lock"><span class="ic">🏆</span>순위</button>
+  <button data-nav="rank"><span class="ic">🏆</span>순위</button>
 </nav>
 
 <!-- 선수 상세 시트 -->
@@ -272,7 +297,7 @@ nav button.lock{opacity:.38}
 
 <script>
 'use strict';
-const SAVE_KEY = 'ourteam_v03';
+const SAVE_KEY = 'ourteam_v04';
 
 /* ───────────── 데이터 ─────────────
  * 타자: [가명, 실제모델, 포지션, 타격손, 컨택, 파워, 주루, 수비, 선구]
@@ -329,8 +354,8 @@ const BOOST_NEW = 1;  // 신규 영입/신인 추가 보정
 /* ───────────── 상태 ───────────── */
 let state = load();
 function load(){
-  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; return {myTeam:s.myTeam||null, lineups:s.lineups||{}}; }
-  catch(e){ return {myTeam:null, lineups:{}}; }
+  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; return {myTeam:s.myTeam||null, lineups:s.lineups||{}, season:s.season||null, rot:s.rot||{}}; }
+  catch(e){ return {myTeam:null, lineups:{}, season:null, rot:{}}; }
 }
 function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
 
@@ -360,7 +385,7 @@ function pitOvr(p, tid){
 }
 
 /* ───────────── 화면 전환 ───────────── */
-const screens = {select:'scr-select', team:'scr-team', lineup:'scr-lineup', game:'scr-game', lock:'scr-lock'};
+const screens = {select:'scr-select', team:'scr-team', lineup:'scr-lineup', game:'scr-game', rank:'scr-rank', lock:'scr-lock'};
 function show(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   document.getElementById(screens[name]).classList.add('on');
@@ -489,9 +514,8 @@ document.querySelectorAll('nav button').forEach(btn=>{
       renderLineup(); show('lineup');
     }else if(nv==='game'){
       renderGameSetup(); show('game');
-    }else{
-      document.getElementById('lockText').textContent = '순위 — 다음 업데이트(v0.4)에서 열립니다';
-      show('lock');
+    }else if(nv==='rank'){
+      renderRank(); show('rank');
     }
   };
 });
@@ -500,7 +524,7 @@ document.getElementById('tabBat').onclick = ()=>renderRoster('bat');
 document.getElementById('tabPit').onclick = ()=>renderRoster('pit');
 document.getElementById('resetBtn').onclick = ()=>{
   if(confirm('구단 선택과 저장 데이터를 초기화할까요?')){
-    state = {myTeam:null, lineups:{}}; save(); refreshHeader(); show('select');
+    state = {myTeam:null, lineups:{}, season:null, rot:{}}; save(); refreshHeader(); show('select');
   }
 };
 
@@ -540,12 +564,17 @@ function renderLineup(){
   });
   const spBox = document.getElementById('spList');
   spBox.innerHTML = '';
+  const list = spIdxList(t);
+  const nxt = nextSpIdx(t.id);
   t.pit.forEach((p,i)=>{
     if(p[2]!=='선발') return;
     const b = document.createElement('button');
-    b.textContent = `${p[0]} ${pitOvr(p,t.id)}`;
-    b.className = lu.sp===i?'on':'';
-    b.onclick = ()=>{ lu.sp = i; save(); renderLineup(); };
+    b.textContent = `${p[0]} ${pitOvr(p,t.id)}${i===nxt?' · 다음 등판':''}`;
+    b.className = i===nxt?'on':'';
+    b.onclick = ()=>{
+      state.rot[t.id] = list.indexOf(i);   // 다음 경기 선발 지정, 이후 로테이션 이어짐
+      save(); renderLineup();
+    };
     spBox.appendChild(b);
   });
 }
@@ -674,23 +703,103 @@ function simGame(myId, oppId, mySp, oppSp){
   return {ev, line, sc, home, away};
 }
 
+/* ═══════════ 시즌 / 로테이션 ═══════════ */
+function spIdxList(team){ return team.pit.map((p,i)=>p[2]==='선발'?i:-1).filter(i=>i>=0); }
+function nextSpIdx(teamId){
+  const t = TEAMS.find(t=>t.id===teamId);
+  const list = spIdxList(t);
+  const r = (state.rot[teamId]||0) % list.length;
+  return list[r];
+}
+function advanceRot(teamId){ state.rot[teamId] = ((state.rot[teamId]||0)+1); }
+
+function genSchedule(){
+  // 10팀 라운드로빈(서클법) 9라운드 × 4사이클 = 팀당 36경기
+  const ids = TEAMS.map(t=>t.id);
+  const n = ids.length;
+  const arr = ids.slice(1);
+  const rounds = [];
+  for(let r=0;r<n-1;r++){
+    const pairs = [[ids[0], arr[0]]];
+    for(let i=1;i<n/2;i++) pairs.push([arr[i], arr[n-1-i]]);
+    rounds.push(pairs);
+    arr.unshift(arr.pop());
+  }
+  const sched = [];
+  for(let c=0;c<4;c++){
+    rounds.forEach(rd=>{
+      sched.push(rd.map(([a,b])=> c%2===0 ? {home:a, away:b} : {home:b, away:a}));
+    });
+  }
+  return sched;
+}
+function newSeason(){
+  const rec = {};
+  TEAMS.forEach(t=>rec[t.id]={w:0,l:0,t:0});
+  state.season = { sched: genSchedule(), day:0, rec, last:[] };
+  state.rot = {};
+  save();
+}
+function seasonOver(){ return state.season && state.season.day >= state.season.sched.length; }
+function myMatchToday(){
+  const rd = state.season.sched[state.season.day];
+  return rd.find(m=>m.home===state.myTeam || m.away===state.myTeam);
+}
+function recordResult(homeId, awayId, sc){
+  const rec = state.season.rec;
+  if(sc.home>sc.away){ rec[homeId].w++; rec[awayId].l++; }
+  else if(sc.home<sc.away){ rec[awayId].w++; rec[homeId].l++; }
+  else{ rec[homeId].t++; rec[awayId].t++; }
+}
+function playOtherGames(){
+  const rd = state.season.sched[state.season.day];
+  const results = [];
+  rd.forEach(m=>{
+    if(m.home===state.myTeam || m.away===state.myTeam) return;
+    const g = simGame(m.home, m.away, nextSpIdx(m.home), nextSpIdx(m.away));
+    advanceRot(m.home); advanceRot(m.away);
+    recordResult(m.home, m.away, g.sc);
+    results.push(`${g.away.name} ${g.sc.away} : ${g.sc.home} ${g.home.name}`);
+  });
+  return results;
+}
+function finishDay(myResultText, otherResults){
+  state.season.last = [myResultText, ...otherResults];
+  state.season.day++;
+  save();
+}
+
 /* ═══════════ 경기 화면 ═══════════ */
-let oppSel=null, spdSel='pa', gTimer=null;
+let spdSel='pa', gTimer=null, curGame=null;
 function renderGameSetup(){
-  document.getElementById('gameSetup').style.display='';
+  if(!state.season) newSeason();
   document.getElementById('gameLive').style.display='none';
   if(gTimer){ clearInterval(gTimer); gTimer=null; }
   const my = TEAMS.find(t=>t.id===state.myTeam);
   document.getElementById('gameTitle').textContent = `경기 — ${my.name}`;
-  const g = document.getElementById('oppGrid');
-  g.innerHTML='';
-  TEAMS.forEach(t=>{
-    if(t.id===state.myTeam) return;
-    const b=document.createElement('button');
-    b.textContent=t.name; b.className = oppSel===t.id?'on':'';
-    b.onclick=()=>{ oppSel=t.id; renderGameSetup(); };
-    g.appendChild(b);
-  });
+  if(seasonOver()){
+    document.getElementById('gameSetup').style.display='none';
+    document.getElementById('seasonDone').style.display='';
+    const rec = state.season.rec[state.myTeam];
+    const rank = rankOrder().findIndex(id=>id===state.myTeam)+1;
+    document.getElementById('seasonDoneText').textContent =
+      `시즌 종료! 최종 ${rank}위 (${rec.w}승 ${rec.l}패 ${rec.t}무)`;
+    return;
+  }
+  document.getElementById('seasonDone').style.display='none';
+  document.getElementById('gameSetup').style.display='';
+  const m = myMatchToday();
+  const oppId = m.home===state.myTeam ? m.away : m.home;
+  const opp = TEAMS.find(t=>t.id===oppId);
+  const isHome = m.home===state.myTeam;
+  const mySp = my.pit[nextSpIdx(my.id)];
+  const oppSp = opp.pit[nextSpIdx(opp.id)];
+  const rec = state.season.rec[state.myTeam];
+  document.getElementById('seasonInfo').innerHTML =
+    `<b>${state.season.day+1}차전 / 36경기</b> · 현재 ${rec.w}승 ${rec.l}패 ${rec.t}무<br>
+     ${isHome?'🏠 홈':'✈️ 원정'} vs <b>${opp.name}</b><br>
+     내 선발: <b>${mySp[0]}</b> (${pitOvr(mySp,my.id)}) — 라인업 탭에서 변경 가능<br>
+     상대 선발: ${oppSp[0]} (${pitOvr(oppSp,opp.id)})`;
 }
 document.querySelectorAll('.speedbar button').forEach(btn=>{
   btn.onclick=()=>{
@@ -700,7 +809,6 @@ document.querySelectorAll('.speedbar button').forEach(btn=>{
 });
 function drawScore(g, upto){
   const innMax = Math.max(g.line.away.length, g.line.home.length, 9);
-  let sumA=0,sumH=0;
   let th='<tr><th></th>'; for(let i=1;i<=innMax;i++) th+=`<th>${i}</th>`; th+='<th>R</th></tr>';
   const row=(nm,arr,visible)=>{
     let r=`<tr><td class="tm">${nm}</td>`, sum=0;
@@ -714,19 +822,24 @@ function drawScore(g, upto){
   document.getElementById('scorebox').innerHTML =
     `<table>${th}${row(g.away.name,g.line.away,upto.a)}${row(g.home.name,g.line.home,upto.h)}</table>`;
 }
-let curGame=null;
+function playMyGame(){
+  const m = myMatchToday();
+  const homeSp = nextSpIdx(m.home), awaySp = nextSpIdx(m.away);
+  curGame = simGame(m.home, m.away, homeSp, awaySp);
+  advanceRot(m.home); advanceRot(m.away);
+  recordResult(m.home, m.away, curGame.sc);
+  const others = playOtherGames();
+  finishDay(`${curGame.away.name} ${curGame.sc.away} : ${curGame.sc.home} ${curGame.home.name}`, others);
+  return curGame;
+}
 document.getElementById('playBtn').onclick = ()=>{
-  if(!oppSel){ alert('상대 팀을 골라 주세요.'); return; }
-  const myLu = getLineup(state.myTeam);
-  const oppLu = getLineup(oppSel);
-  curGame = simGame(state.myTeam, oppSel, myLu.sp, oppLu.sp);
+  const g = playMyGame();
   document.getElementById('gameSetup').style.display='none';
   document.getElementById('gameLive').style.display='';
   document.getElementById('newGameBtn').style.display='none';
   document.getElementById('skipBtn').style.display='';
   const log = document.getElementById('gamelog');
   log.innerHTML='';
-  const g=curGame;
   let i=0;
   const innDone = {a:0,h:0};
   function push(n){
@@ -737,13 +850,12 @@ document.getElementById('playBtn').onclick = ()=>{
       d.textContent=e.text;
       log.appendChild(d);
       if(e.cls==='inn'){
-        // 직전 이닝 라인스코어 공개
         if(e.half==='초'){ innDone.a=e.inn-1; innDone.h=e.inn-1; }
         else innDone.a=e.inn;
       }
-      if(e.cls==='final'){ innDone.a=99; innDone.h=99; finish(); }
+      if(e.cls==='final'){ innDone.a=99; innDone.h=99; }
     }
-    drawScore(g, {a:innDone.a===99?99:innDone.a, h:innDone.h===99?99:innDone.h});
+    drawScore(g, innDone);
     log.scrollTop = log.scrollHeight;
     if(i>=g.ev.length) finish();
   }
@@ -762,6 +874,46 @@ document.getElementById('playBtn').onclick = ()=>{
   }
   document.getElementById('skipBtn').onclick = ()=>push(g.ev.length);
   document.getElementById('newGameBtn').onclick = ()=>renderGameSetup();
+};
+document.getElementById('skip5Btn').onclick = ()=>{
+  let done=0;
+  while(done<5 && !seasonOver()){ playMyGame(); done++; }
+  alert(done+'경기 자동 진행 완료. 순위 탭에서 결과를 확인하세요.');
+  renderGameSetup();
+};
+document.getElementById('newSeasonBtn').onclick = ()=>{ newSeason(); renderGameSetup(); };
+
+/* ═══════════ 순위표 ═══════════ */
+function rankOrder(){
+  const rec = state.season.rec;
+  return TEAMS.map(t=>t.id).sort((a,b)=>{
+    const ra=rec[a], rb=rec[b];
+    const pa=ra.w+ra.l? ra.w/(ra.w+ra.l):0, pb=rb.w+rb.l? rb.w/(rb.w+rb.l):0;
+    return pb-pa || rb.w-ra.w;
+  });
+}
+function renderRank(){
+  if(!state.season) newSeason();
+  const rec = state.season.rec;
+  const order = rankOrder();
+  const top = rec[order[0]];
+  let html = '<tr><th>#</th><th style="text-align:left;padding-left:10px">팀</th><th>경기</th><th>승</th><th>패</th><th>무</th><th>승률</th><th>게임차</th></tr>';
+  order.forEach((id,i)=>{
+    const t = TEAMS.find(t=>t.id===id), r = rec[id];
+    const gp = r.w+r.l+r.t;
+    const pct = r.w+r.l ? (r.w/(r.w+r.l)).toFixed(3).replace('0.','.') : '-';
+    const gb = i===0 ? '-' : (((top.w-r.w)+(r.l-top.l))/2).toFixed(1);
+    html += `<tr class="${id===state.myTeam?'me':''}">
+      <td class="rk">${i+1}</td><td class="tm">${t.name}</td>
+      <td>${gp}</td><td>${r.w}</td><td>${r.l}</td><td>${r.t}</td><td>${pct}</td><td>${gb}</td></tr>`;
+  });
+  document.getElementById('rankTable').innerHTML = html;
+  document.getElementById('rankTitle').textContent = `순위표 — ${state.season.day}/36경기 소화`;
+  document.getElementById('lastResults').innerHTML =
+    state.season.last.length ? '<b>최근 경기 결과</b><br>'+state.season.last.join('<br>') : '아직 치른 경기가 없습니다.';
+}
+document.getElementById('resetSeasonBtn').onclick = ()=>{
+  if(confirm('시즌 기록을 초기화하고 새로 시작할까요?')){ newSeason(); renderRank(); }
 };
 
 /* ───────────── 시작 ───────────── */
