@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.6.1</title>
+<title>우리팀을 만들자 v0.6.2</title>
 <!-- v0.6 — 실황/시뮬레이션 2모드, 살아있는 선수 데이터(나이·성장·노쇠), 포스트시즌(WC/준PO/PO/KS), 다년 시즌, 선발 3경기 휴식 규칙 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -223,7 +223,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.6.1</span>
+    <span class="ver">v0.6.2</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -265,8 +265,8 @@ nav button.lock{opacity:.38}
   <div class="hint">타순 변경: 선수 하나를 터치한 뒤, 바꿀 선수를 터치하면 자리가 교환됩니다.</div>
   <div id="lineupList"></div>
   <h2 class="sec" style="margin-top:16px">선발 로테이션</h2>
-  <div class="hint">선발은 경기마다 자동으로 순환합니다. 투수를 터치하면 다음 경기 선발로 지정되고, 이후 그 순서부터 로테이션이 이어집니다.</div>
-  <div class="sel-sp" id="spList"></div>
+  <div class="hint">타순처럼 투수 두 명을 차례로 터치하면 로테이션 자리가 교환됩니다. 등판 후 3경기는 휴식이 필요합니다.</div>
+  <div id="spList"></div>
 </section>
 
 <!-- 경기 -->
@@ -327,7 +327,7 @@ nav button.lock{opacity:.38}
 'use strict';
 const SAVE_KEY = 'ourteam_slots_v1';
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
-const EMPTY = ()=>({myTeam:null, mode:null, year:1, players:null, lineups:{}, season:null, rot:{}, spLast:{}, history:[]});
+const EMPTY = ()=>({myTeam:null, mode:null, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[]});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -694,6 +694,7 @@ function getLineup(teamId){
   return lu;
 }
 let luSel = -1; // 교환 대기 중인 타순 index
+let rotSel = -1; // 교환 대기 중인 로테이션 자리
 function renderLineup(){
   const t = getTeam(state.myTeam);
   const lu = getLineup(t.id);
@@ -718,21 +719,27 @@ function renderLineup(){
   });
   const spBox = document.getElementById('spList');
   spBox.innerHTML = '';
-  const spl = spIdxList(t);
-  const nxt = nextSpIdx(t.id);
-  t.pit.forEach((p,i)=>{
-    if(p[2]!=='선발') return;
-    const rest = state.season ? restOk(t.id, i) : true;
-    const b = document.createElement('button');
-    b.textContent = `${p[0]} ${pitOvr(p,t.id)}${i===nxt?' · 다음 등판':rest?'':' · 휴식중'}`;
-    b.className = i===nxt?'on':'';
-    if(!rest && i!==nxt){ b.style.opacity='.4'; }
-    b.onclick = ()=>{
-      if(!rest && i!==nxt){ return; }   // 등판 후 3경기 휴식 필요
-      state.rot[t.id] = spl.indexOf(i);
-      save(); renderLineup();
+  const ro = rotOrderOf(t.id);
+  const nxtSlot = (state.rot[t.id]||0) % ro.length;
+  ro.forEach((pi, slot)=>{
+    const p = t.pit[pi];
+    const rest = state.season ? restOk(t.id, pi) : true;
+    const d = document.createElement('div');
+    d.className = 'lrow' + (rotSel===slot?' sel':'');
+    if(!rest) d.style.opacity='.45';
+    d.innerHTML = `<div class="ord">${slot+1}</div><div class="lp">선발</div>
+      <div class="ln">${p[0]}${slot===nxtSlot?' <span class="boost">다음 등판</span>':''}${!rest?' <span style="color:#8FA396;font-size:11px">휴식중</span>':''}</div>
+      <div class="lo num">${pitOvr(p,t.id)}</div>`;
+    d.onclick = ()=>{
+      if(rotSel<0){ rotSel = slot; }
+      else if(rotSel===slot){ rotSel = -1; }
+      else{
+        [ro[rotSel], ro[slot]] = [ro[slot], ro[rotSel]];
+        rotSel = -1; save();
+      }
+      renderLineup();
     };
-    spBox.appendChild(b);
+    spBox.appendChild(d);
   });
 }
 
@@ -919,9 +926,18 @@ function simGame(myId, oppId, mySp, oppSp){
 
 /* ═══════════ 시즌 / 로테이션 ═══════════ */
 function spIdxList(team){ return team.pit.map((p,i)=>p[2]==='선발'?i:-1).filter(i=>i>=0); }
-function nextSpIdx(teamId){
+function rotOrderOf(teamId){
   const t = getTeam(teamId);
-  const list = spIdxList(t);
+  const sp = spIdxList(t);
+  if(!state.rotOrder) state.rotOrder = {};
+  let ro = state.rotOrder[teamId];
+  if(!ro || ro.length!==sp.length || !ro.every(i=>sp.includes(i))){
+    ro = [...sp]; state.rotOrder[teamId] = ro;
+  }
+  return ro;
+}
+function nextSpIdx(teamId){
+  const list = rotOrderOf(teamId);
   const r = (state.rot[teamId]||0) % list.length;
   return list[r];
 }
