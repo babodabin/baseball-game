@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.8</title>
-<!-- v0.8 — 로스터 확장(불펜·백업 자동생성), 불펜 등판 연결, 구단운영 탭, 오프시즌(재계약/방출·훈련) -->
+<title>우리팀을 만들자 v0.9</title>
+<!-- v0.9 — 오프시즌 FA 영입 + 신인 드래프트 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -100,6 +100,7 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
 }
 .boost{color:var(--amber2);font-size:10px;font-family:'IBM Plex Mono',monospace}
 .cutbtn{background:var(--red);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;flex:none}
+.signbtn{background:var(--amber);border:none;color:#20180A;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;flex:none}
 
 /* ── 모달 ── */
 .mask{
@@ -224,7 +225,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.8</span>
+    <span class="ver">v0.9</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1386,8 +1387,35 @@ function renderFront(){
 }
 
 function renderOffseason(t){
+  buildOffseasonMarket();
+  const m = state.season.market;
   let h = `<div class="notice" style="border-color:var(--amber)"><b>⚾ 오프시즌 ${state.mode==='sim'?state.year+'년차':''}</b><br>
-    비주전 선수를 방출해 연봉을 줄이거나, 자금을 들여 유망주를 훈련시키세요. 끝나면 아래 버튼으로 다음 시즌을 시작합니다.</div>`;
+    FA 영입·신인 지명·방출·훈련을 진행하고, 끝나면 아래 버튼으로 다음 시즌을 시작합니다.</div>`;
+  // FA 영입
+  h += `<h2 class="sec" style="margin-top:14px">FA 시장 <small>${ecoOn()?'계약금 필요':'자유 영입'}</small></h2>`;
+  if(m.fa.length===0){ h += `<div class="hint">올해 풀린 FA 선수가 없습니다.</div>`; }
+  else{
+    h += `<div class="hint">영입할 선수를 터치하세요. 원 소속팀에서 빠져 내 팀으로 옵니다.</div>`;
+    m.fa.forEach((fa,idx)=>{
+      const cost = ecoOn()? `${faCost(fa.ovr).toFixed(0)}억` : '영입';
+      h += `<div class="prow" style="cursor:pointer" data-fa="${idx}">
+        <div class="pos">${fa.kind==='bat'?fa.data[2]:(fa.data[2]==='선발'?'SP':fa.data[2]==='마무리'?'CL':'RP')}</div>
+        <div class="mid"><div class="nm">${fa.data[0]} <span style="font-size:11px;color:var(--dim)">${fa.age}세 · ${getTeam(fa.from).name}</span></div>
+        <div class="hand">OVR ${fa.ovr}</div></div>
+        <button class="signbtn">${cost}</button></div>`;
+    });
+  }
+  // 신인 드래프트
+  h += `<h2 class="sec" style="margin-top:16px">신인 드래프트 <small>${m.drafted?'지명 완료':'1명 지명 가능'}</small></h2>`;
+  h += `<div class="hint">별(★)이 많을수록 성장 잠재력이 큽니다. 어리지만 처음엔 약합니다.</div>`;
+  m.draft.forEach((d,idx)=>{
+    const ov = d.kind==='bat'?batOvr(d.data,state.myTeam):pitOvr(d.data,state.myTeam);
+    h += `<div class="prow ${m.drafted?'':''}" style="cursor:${m.drafted?'default':'pointer'};${m.drafted?'opacity:.5':''}" data-draft="${idx}">
+      <div class="pos">${d.kind==='bat'?d.data[2]:(d.data[2]==='선발'?'SP':'RP')}</div>
+      <div class="mid"><div class="nm">${d.data[0]} <span style="font-size:11px;color:var(--amber)">${d.pot}</span></div>
+      <div class="hand">${d.age}세 · OVR ${ov}</div></div>
+      <div class="ovr num" style="font-size:14px">${ov}</div></div>`;
+  });
   // 훈련 (시뮬 모드 전용)
   if(state.mode==='sim'){
     const trained = state.season.trained || [];
@@ -1444,6 +1472,12 @@ function bindOffseason(){
       save(); refreshHeader(); renderFront();
     };
   });
+  document.querySelectorAll('[data-fa]').forEach(el=>{
+    el.onclick = ()=> signFA(+el.dataset.fa);
+  });
+  document.querySelectorAll('[data-draft]').forEach(el=>{
+    el.onclick = ()=>{ if(!state.season.market.drafted) draftPick(+el.dataset.draft); };
+  });
   const sb = document.getElementById('startNextBtn');
   if(sb) sb.onclick = ()=>{ doOffseasonEnd(); };
 }
@@ -1460,6 +1494,85 @@ function doOffseasonEnd(){
   newSeason();
   save();
   show('game'); renderGameSetup();
+}
+
+
+/* ═══════════ FA & 드래프트 (v0.9) ═══════════ */
+function buildOffseasonMarket(){
+  // 시즌별 1회 생성 (재진입 시 유지)
+  if(state.season.market) return;
+  const market = { fa: [], draft: [], drafted: false };
+  // FA 풀: 내 팀 제외, 30세 이상 준수한 비주전/주전 일부
+  Object.keys(state.players).forEach(id=>{
+    if(id===state.myTeam) return;
+    const s = state.players[id];
+    s.bat.forEach((p,i)=>{
+      const age=s.age.bat[i], ovr=batOvr(p,id);
+      if(age>=30 && ovr>=68 && Math.random()<0.14)
+        market.fa.push({from:id, kind:'bat', data:[...p], age, ovr});
+    });
+    s.pit.forEach((p,i)=>{
+      const age=s.age.pit[i], ovr=pitOvr(p,id);
+      if(age>=30 && ovr>=68 && Math.random()<0.14)
+        market.fa.push({from:id, kind:'pit', data:[...p], age, ovr});
+    });
+  });
+  market.fa = market.fa.sort((a,b)=>b.ovr-a.ovr).slice(0,6);
+  // 신인 드래프트 8명 생성
+  const posPool=['C','1B','2B','3B','SS','LF','CF','RF'];
+  for(let i=0;i<8;i++){
+    const isBat = Math.random()<0.55;
+    const age = 18 + Math.floor(Math.random()*3);
+    const base = 48 + Math.floor(Math.random()*22);   // 신인은 낮게 시작
+    const pot = ['★','★★','★★★','★★★★','★★★★★'][Math.min(4,Math.floor(Math.random()*3)+ (Math.random()<.2?2:0))];
+    if(isBat){
+      const jit=()=>Math.max(38,Math.min(80, base-6+Math.floor(Math.random()*16)));
+      market.draft.push({kind:'bat', pot, age,
+        data:[genName(9000+i), '신인', posPool[i%posPool.length], Math.random()<.5?'우':'좌', jit(),jit(),jit(),jit(),jit()]});
+    }else{
+      const role = Math.random()<.6?'선발':'불펜';
+      const velo=140+Math.floor(Math.random()*12);
+      const jit=()=>Math.max(38,Math.min(80, base-6+Math.floor(Math.random()*16)));
+      market.draft.push({kind:'pit', pot, age,
+        data:[genName(9100+i), '신인', role, Math.random()<.7?'우':'좌', velo, jit(),jit(), role==='불펜'?45:jit()]});
+    }
+  }
+  state.season.market = market;
+  save();
+}
+function faCost(ovr){ return Math.max(8, (ovr-60)*2.2); }   // 억
+function signFA(idx){
+  const m = state.season.market;
+  const fa = m.fa[idx]; if(!fa) return;
+  if(ecoOn()){
+    const cost = faCost(fa.ovr);
+    if(state.money < cost){ alert(`계약금 ${cost.toFixed(0)}억이 부족합니다. (잔고 ${fmtMoney()})`); return; }
+    if(!confirm(`${fa.data[0]} 영입 — 계약금 ${cost.toFixed(0)}억을 지불할까요?`)) return;
+    state.money -= cost;
+  }else{
+    if(!confirm(`${fa.data[0]}을(를) 영입할까요?`)) return;
+  }
+  // 내 팀에 추가, 원 소속팀에서 제거
+  const my = state.players[state.myTeam];
+  const src = state.players[fa.from];
+  if(fa.kind==='bat'){ my.bat.push([...fa.data]); my.age.bat.push(fa.age);
+    const si = src.bat.findIndex(p=>p[0]===fa.data[0]); if(si>=0){src.bat.splice(si,1); src.age.bat.splice(si,1);} }
+  else{ my.pit.push([...fa.data]); my.age.pit.push(fa.age);
+    const si = src.pit.findIndex(p=>p[0]===fa.data[0]); if(si>=0){src.pit.splice(si,1); src.age.pit.splice(si,1);} }
+  m.fa.splice(idx,1);
+  state.lineups[state.myTeam]=null;
+  save(); refreshHeader(); renderFront();
+}
+function draftPick(idx){
+  const m = state.season.market;
+  if(m.drafted){ alert('이번 시즌 지명은 이미 완료했습니다.'); return; }
+  const d = m.draft[idx]; if(!d) return;
+  if(!confirm(`${d.data[0]} (${d.pot}) 신인을 지명할까요?`)) return;
+  const my = state.players[state.myTeam];
+  if(d.kind==='bat'){ my.bat.push([...d.data]); my.age.bat.push(d.age); }
+  else{ my.pit.push([...d.data]); my.age.pit.push(d.age); }
+  m.drafted = true;
+  save(); renderFront();
 }
 
 /* ═══════════ 순위표 ═══════════ */
