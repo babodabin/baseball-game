@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.12</title>
-<!-- v0.12 — 선수 리더보드(OPS/방어율 포함, 지표 설명), 레전드 연도·사유·특성, 등번호식 연도 표기 -->
+<title>우리팀을 만들자 v0.13</title>
+<!-- v0.13 — 트레이드(선수 대 선수 맞교환, CPU 수락/거절 판정) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -236,7 +236,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.12</span>
+    <span class="ver">v0.13</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1535,6 +1535,9 @@ function renderOffseason(t){
   const m = state.season.market;
   let h = `<div class="notice" style="border-color:var(--amber)"><b>⚾ 오프시즌 ${state.mode==='sim'?state.year+'년차':''}</b><br>
     FA 영입·신인 지명·방출·훈련을 진행하고, 끝나면 아래 버튼으로 다음 시즌을 시작합니다.</div>`;
+  // 트레이드 진입
+  h += `<h2 class="sec" style="margin-top:14px">🔄 트레이드 <span class="lb-help" style="margin-left:8px" onclick="tradeOppId=null;tradeMyPick=null;tradeOppPick=null;openTradeSheet()">선수 맞교환 하기</span></h2>
+    <div class="hint">다른 팀과 선수 1:1 교환. 자금 없이 로스터를 조정할 수 있습니다.</div>`;
   // FA 영입
   h += `<h2 class="sec" style="margin-top:14px">FA 시장 <small>${ecoOn()?'계약금 필요':'자유 영입'}</small></h2>`;
   if(m.fa.length===0){ h += `<div class="hint">올해 풀린 FA 선수가 없습니다.</div>`; }
@@ -1550,7 +1553,8 @@ function renderOffseason(t){
     });
   }
   // 레전드 시장
-  h += `<h2 class="sec" style="margin-top:16px">🏅 레전드 영입 <small>${ecoOn()?'거액 필요':'명예 영입'}</small></h2>`;
+  h += `<h2 class="sec" style="margin-top:16px">🏅 레전드 영입 <small>${ecoOn()?'거액 필요':'명예 영입'}</small>
+    <span class="lb-help" style="margin-left:8px" onclick="openLegendDex()">📖 전체 레전드 보기</span></h2>`;
   if(!m.legends || m.legends.length===0){ h += `<div class="hint">올해 영입 가능한 레전드가 없습니다.</div>`; }
   else{
     h += `<div class="hint">역대 골든글러브·명예의전당급 선수입니다. 내 구단 보정만 받습니다.</div>`;
@@ -1558,8 +1562,8 @@ function renderOffseason(t){
       const cost = ecoOn()? `${legendCost(lg.ovr).toFixed(0)}억` : '영입';
       h += `<div class="prow" style="cursor:pointer;border-color:var(--amber)" data-legend="${idx}">
         <div class="pos">${lg.kind==='bat'?lg.data[2]:(lg.data[2]==='선발'?'SP':lg.data[2]==='마무리'?'CL':'RP')}</div>
-        <div class="mid"><div class="nm">${lg.data[0]}<span style="font-size:11px;color:var(--amber)">'${lg.year}</span> <span style="font-size:11px;color:var(--amber)">🏅 ${lg.trait}</span></div>
-        <div class="hand">OVR ${lg.ovr} · ${lg.why}</div></div>
+        <div class="mid"><div class="nm">${lg.data[0]}${lg.year?`<span style="font-size:11px;color:var(--amber)">'${lg.year}</span>`:''} <span style="font-size:11px;color:var(--amber)">🏅 ${lg.trait||'레전드'}</span></div>
+        <div class="hand">OVR ${lg.ovr} · ${lg.why||'역대 명선수'}</div></div>
         <button class="signbtn">${cost}</button></div>`;
     });
   }
@@ -1639,10 +1643,181 @@ function doOffseasonEnd(){
 }
 
 
+
+/* ═══════════ 트레이드 (v0.13) ═══════════ */
+let tradeOppId = null, tradeMyPick = null, tradeOppPick = null;
+function posOf(teamId, kind, idx){
+  const t = getTeam(teamId);
+  const p = (kind==='bat'?t.bat:t.pit)[idx];
+  return kind==='bat'? p[2] : p[2];   // 타자 포지션 or 투수 역할
+}
+function ageOfEntry(teamId, kind, idx){
+  const t = getTeam(teamId);
+  return kind==='bat'? t.age.bat[idx] : t.age.pit[idx];
+}
+// 팀이 특정 포지션을 얼마나 필요로 하는지 (주전 여유도)
+function positionNeed(teamId, kind, pos){
+  const t = getTeam(teamId);
+  if(kind==='bat'){
+    // 해당 포지션 주전(상위 9명) 보유 수
+    const starters = t.bat.slice(0,9);
+    const cnt = starters.filter(p=>p[2]===pos).length;
+    if(cnt===0) return 1.15;   // 없음 → 니즈 큼
+    if(cnt===1) return 1.0;    // 딱 1명
+    return 0.85;               // 남음 → 니즈 작음
+  }else{
+    // 선발/불펜/마무리 역할별 여유
+    const cnt = t.pit.filter(p=>p[2]===pos).length;
+    if(pos==='선발') return cnt<=3?1.1: cnt>=6?0.85:1.0;
+    if(pos==='마무리') return cnt===0?1.2:0.8;
+    return cnt<=2?1.05:0.9;
+  }
+}
+// 나이 가치 보정 (시뮬 모드는 어린 선수 프리미엄)
+function ageValue(age){
+  if(state.mode==='sim'){
+    if(age<=23) return 1.12;
+    if(age<=27) return 1.05;
+    if(age<=31) return 1.0;
+    if(age<=35) return 0.9;
+    return 0.78;
+  }else{
+    // 실황: 나이 영향 작게
+    if(age>=37) return 0.9;
+    if(age<=25) return 1.03;
+    return 1.0;
+  }
+}
+// 상대(수령) 팀 입장에서 체감 가치
+function perceivedValue(receiverId, kind, ovr, pos, age){
+  return ovr * positionNeed(receiverId, kind, pos) * ageValue(age);
+}
+
+function ovrOfEntry(teamId, kind, idx){
+  const t = getTeam(teamId);
+  const p = (kind==='bat'?t.bat:t.pit)[idx];
+  if(!p) return 0;
+  return kind==='bat'? batOvr(p,teamId) : pitOvr(p,teamId);
+}
+function openTradeSheet(){
+  const sheet = document.getElementById('sheet');
+  let h = `<div class="top"><div class="pname">🔄 트레이드</div>
+    <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">상대 팀을 골라 선수 1:1 교환을 제안합니다.</div>`;
+  h += `<div class="opp-grid" style="margin-top:8px">`;
+  TEAMS.forEach(t=>{ if(t.id===state.myTeam) return;
+    h += `<button class="${tradeOppId===t.id?'on':''}" onclick="selTradeOpp('${t.id}')">${t.name}</button>`;
+  });
+  h += `</div>`;
+  if(tradeOppId){
+    h += tradeColumns();
+  }
+  sheet.innerHTML = h;
+  document.getElementById('mask').classList.add('on');
+}
+function selTradeOpp(id){ tradeOppId=id; tradeMyPick=null; tradeOppPick=null; openTradeSheet(); }
+function tradeColumns(){
+  const my = getTeam(state.myTeam), opp = getTeam(tradeOppId);
+  const col = (teamId, which)=>{
+    const t = getTeam(teamId);
+    const picked = which==='my'? tradeMyPick : tradeOppPick;
+    let s = `<h2 class="sec" style="font-size:14px;margin-top:12px">${t.name}</h2>`;
+    const add = (arr,kind)=> arr.forEach((p,i)=>{
+      const ov = kind==='bat'?batOvr(p,teamId):pitOvr(p,teamId);
+      const on = picked && picked.kind===kind && picked.idx===i;
+      s += `<div class="prow" style="cursor:pointer;${on?'border-color:var(--amber);background:#23361F':''}" onclick="pickTrade('${which}','${kind}',${i})">
+        <div class="pos">${kind==='bat'?p[2]:(p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP')}</div>
+        <div class="mid"><div class="nm">${p[0]}</div><div class="hand">OVR ${ov}</div></div>
+        ${on?'<div class="ovr num" style="font-size:14px;color:var(--amber)">✓</div>':''}</div>`;
+    });
+    add(t.bat,'bat'); add(t.pit,'pit');
+    return s;
+  };
+  let h = `<div class="hint" style="margin-top:10px">내 선수 1명과 상대 선수 1명을 각각 선택하세요.</div>`;
+  h += col(state.myTeam,'my');
+  h += col(tradeOppId,'opp');
+  if(tradeMyPick && tradeOppPick){
+    const ev = evalTrade();
+    h += `<div class="reveal" style="margin-top:12px"><div class="lbl">트레이드 평가 (상대 구단 관점)</div>
+      내가 주는 <b>${ev.myName}</b> (OVR ${ev.myOvr}, ${ev.myAge}세) → 상대 체감가치 ${ev.myPerceived.toFixed(0)}<br>
+      내가 받는 <b>${ev.oppName}</b> (OVR ${ev.oppOvr}, ${ev.oppAge}세) → 상대 체감가치 ${ev.oppPerceived.toFixed(0)}<br>
+      ${ev.reason}</div>
+      <button class="btn" onclick="proposeTrade()">트레이드 제안</button>`;
+  }
+  return h;
+}
+function pickTrade(which, kind, idx){
+  if(which==='my') tradeMyPick={kind,idx}; else tradeOppPick={kind,idx};
+  openTradeSheet();
+}
+function evalTrade(){
+  const my = getTeam(state.myTeam), opp = getTeam(tradeOppId);
+  const myP = (tradeMyPick.kind==='bat'?my.bat:my.pit)[tradeMyPick.idx];
+  const oppP = (tradeOppPick.kind==='bat'?opp.bat:opp.pit)[tradeOppPick.idx];
+  const myOvr = ovrOfEntry(state.myTeam, tradeMyPick.kind, tradeMyPick.idx);
+  const oppOvr = ovrOfEntry(tradeOppId, tradeOppPick.kind, tradeOppPick.idx);
+  const myAge = ageOfEntry(state.myTeam, tradeMyPick.kind, tradeMyPick.idx);
+  const oppAge = ageOfEntry(tradeOppId, tradeOppPick.kind, tradeOppPick.idx);
+  const myPerceived = perceivedValue(tradeOppId, tradeMyPick.kind, myOvr, myP[2], myAge);
+  const oppPerceived = perceivedValue(tradeOppId, tradeOppPick.kind, oppOvr, oppP[2], oppAge);
+  const gain = myPerceived - oppPerceived;
+  let reason;
+  if(gain >= 0) reason = '✅ 상대에게 이득이라 수락할 것입니다.';
+  else if(gain >= -4) reason = '🤝 상대가 약간 손해지만 받아들일 만합니다.';
+  else{
+    const need = positionNeed(tradeOppId, tradeMyPick.kind, myP[2]);
+    if(need<0.9) reason = `❌ 상대는 이미 ${myP[2]} 자원이 충분해 거절할 것입니다.`;
+    else if(state.mode==='sim' && myAge>=35) reason = '❌ 내가 주는 선수가 노쇠해 상대가 꺼립니다.';
+    else reason = '❌ 상대에게 손해가 커 거절할 것입니다.';
+  }
+  return {myName:myP[0], oppName:oppP[0], myOvr, oppOvr, myAge, oppAge, myPerceived, oppPerceived, gain, reason};
+}
+function proposeTrade(){
+  const ev = evalTrade();
+  const accept = ev.gain >= 0 || (ev.gain >= -4 && Math.random()<0.6) || (ev.gain >= -7 && Math.random()<0.2);
+  if(!accept){
+    alert('상대 구단이 트레이드를 거절했습니다.\n' + ev.reason.replace(/^[\u2705\ud83e\udd1d\u274c]\s*/,''));
+    return;
+  }
+  // 성사: 선수 맞교환
+  const myT = state.players[state.myTeam], oppT = state.players[tradeOppId];
+  const myArr = tradeMyPick.kind==='bat'?myT.bat:myT.pit;
+  const myAge = tradeMyPick.kind==='bat'?myT.age.bat:myT.age.pit;
+  const oppArr = tradeOppPick.kind==='bat'?oppT.bat:oppT.pit;
+  const oppAge = tradeOppPick.kind==='bat'?oppT.age.bat:oppT.age.pit;
+  const myPlayer = myArr[tradeMyPick.idx], myPlayerAge = myAge[tradeMyPick.idx];
+  const oppPlayer = oppArr[tradeOppPick.idx], oppPlayerAge = oppAge[tradeOppPick.idx];
+  // 제거
+  myArr.splice(tradeMyPick.idx,1); myAge.splice(tradeMyPick.idx,1);
+  oppArr.splice(tradeOppPick.idx,1); oppAge.splice(tradeOppPick.idx,1);
+  // 추가 (같은 종류 배열로 이동)
+  const myDest = tradeOppPick.kind==='bat'?myT.bat:myT.pit;
+  const myDestAge = tradeOppPick.kind==='bat'?myT.age.bat:myT.age.pit;
+  const oppDest = tradeMyPick.kind==='bat'?oppT.bat:oppT.pit;
+  const oppDestAge = tradeMyPick.kind==='bat'?oppT.age.bat:oppT.age.pit;
+  myDest.push([...oppPlayer]); myDestAge.push(oppPlayerAge);
+  oppDest.push([...myPlayer]); oppDestAge.push(myPlayerAge);
+  state.lineups[state.myTeam]=null; state.rotOrder[state.myTeam]=null;
+  tradeMyPick=null; tradeOppPick=null;
+  save();
+  alert(`트레이드 성사!\n${myPlayer[0]} ⇄ ${oppPlayer[0]}`);
+  closeSheet(); renderFront();
+}
+
 /* ═══════════ FA & 드래프트 (v0.9) ═══════════ */
 function buildOffseasonMarket(){
-  // 시즌별 1회 생성 (재진입 시 유지)
-  if(state.season.market) return;
+  // 시즌별 1회 생성 (재진입 시 유지). 단 구버전 market은 레전드 메타 보강
+  if(state.season.market){
+    const lg = state.season.market.legends;
+    if(lg && lg.length && lg[0].year===undefined){
+      // 구버전: 레전드에 메타 없음 → 이름으로 메타 복구
+      const meta = {};
+      legendPool().forEach(l=>meta[l.data[0]]={year:l.year,why:l.why,trait:l.trait});
+      lg.forEach(l=>{ const m=meta[l.data[0]]; if(m){ l.year=m.year; l.why=m.why; l.trait=m.trait; } });
+      save();
+    }
+    return;
+  }
   const market = { fa: [], draft: [], drafted: false };
   // FA 풀: 내 팀 제외, 30세 이상 준수한 비주전/주전 일부
   Object.keys(state.players).forEach(id=>{
@@ -1690,6 +1865,50 @@ function buildOffseasonMarket(){
   }
   state.season.market = market;
   save();
+}
+
+
+/* ───────────── 레전드 도감 (전체 보기) ───────────── */
+function openLegendDex(){
+  const pool = legendPool();
+  const owned = state.legendsOwned || [];
+  const sheet = document.getElementById('sheet');
+  let h = `<div class="top"><div class="pname">🏅 레전드 도감</div>
+    <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">역대 골든글러브·MVP·대기록 선수 ${pool.length}명 전원</div>`;
+  const section = (title, arr, isBat)=>{
+    let s = `<h2 class="sec" style="margin-top:12px;font-size:14px">${title}</h2>`;
+    arr.forEach(lg=>{
+      const ov = isBat?batOvr(lg.data,state.myTeam):pitOvr(lg.data,state.myTeam);
+      const got = owned.includes(lg.data[0]);
+      s += `<div class="prow" style="cursor:pointer;${got?'border-color:var(--amber)':''}" onclick="closeSheet(); openLegendDexDetail('${lg.data[0]}')">
+        <div class="pos">${isBat?lg.data[2]:(lg.data[2]==='선발'?'SP':lg.data[2]==='마무리'?'CL':'RP')}</div>
+        <div class="mid"><div class="nm">${lg.data[0]}<span style="font-size:11px;color:var(--amber)">'${lg.year}</span> ${got?'<span style="font-size:10px;color:var(--amber)">보유중</span>':''}</div>
+        <div class="hand">🏅 ${lg.trait} · ${lg.data[1]}</div></div>
+        <div class="ovr num" style="font-size:14px">${ov}</div></div>`;
+    });
+    return s;
+  };
+  h += section('타자', pool.filter(l=>l.kind==='bat'), true);
+  h += section('투수', pool.filter(l=>l.kind==='pit'), false);
+  h += `<button class="btn ghost" onclick="closeSheet()" style="margin-top:14px">닫기</button>`;
+  sheet.innerHTML = h;
+  document.getElementById('mask').classList.add('on');
+}
+function openLegendDexDetail(name){
+  const lg = legendPool().find(l=>l.data[0]===name); if(!lg) return;
+  const isBat = lg.kind==='bat';
+  const ov = isBat?batOvr(lg.data,state.myTeam):pitOvr(lg.data,state.myTeam);
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="top"><div class="pname">${lg.data[0]}</div>
+      <button class="close" onclick="openLegendDex()">←</button></div>
+    <div class="meta">${lg.data[2]} · ${lg.data[3]}${isBat?'타':'투'} · OVR ${ov}</div>
+    <div class="reveal" style="border-color:var(--amber)"><div class="lbl">🏅 '${lg.year} · ${lg.trait}</div>
+      실제 모델: <b>${lg.data[1]}</b> ('${lg.year})<br>${lg.why}</div>
+    ${playerStatsHtml(lg.data, isBat, state.myTeam)}
+    <button class="btn ghost" onclick="openLegendDex()">← 도감으로</button>`;
+  document.getElementById('mask').classList.add('on');
 }
 
 /* ───────────── 오프시즌 선수 상세 시트 ───────────── */
