@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.9</title>
+<title>우리팀을 만들자 v0.9.1</title>
 <!-- v0.9 — 오프시즌 FA 영입 + 신인 드래프트 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -225,7 +225,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.9</span>
+    <span class="ver">v0.9.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1352,11 +1352,11 @@ function playerRows(t, isBat){
     const age = t.age ? (isBat?t.age.bat[i]:t.age.pit[i]) : ageOf(p[1]);
     const isStarter = isBat ? i<9 : (p[2]==='선발'||p[2]==='마무리');
     const canCut = isOffseason() && !isStarter;   // 오프시즌에 비주전만 방출 가능
-    html += `<div class="prow" style="cursor:default">
+    html += `<div class="prow" ${canCut?`style="cursor:pointer" data-cutrow="${isBat?'bat':'pit'}" data-cri="${i}"`:'style="cursor:default"'}>
       <div class="pos">${isBat?p[2]:(p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP')}</div>
       <div class="mid"><div class="nm">${p[0]} <span style="font-size:11px;color:var(--dim)">${age}세</span></div>
         <div class="hand">OVR ${ovr} · 연봉 ${sal.toFixed(1)}억</div></div>
-      ${canCut? `<button class="cutbtn" data-t="${isBat?'bat':'pit'}" data-i="${i}">방출</button>`
+      ${canCut? `<button class="cutbtn" data-cut="${isBat?'bat':'pit'}" data-ci="${i}">방출</button>`
               : `<div class="ovr num" style="font-size:15px">${sal.toFixed(1)}</div>`}</div>`;
   });
   return html;
@@ -1401,7 +1401,7 @@ function renderOffseason(t){
       h += `<div class="prow" style="cursor:pointer" data-fa="${idx}">
         <div class="pos">${fa.kind==='bat'?fa.data[2]:(fa.data[2]==='선발'?'SP':fa.data[2]==='마무리'?'CL':'RP')}</div>
         <div class="mid"><div class="nm">${fa.data[0]} <span style="font-size:11px;color:var(--dim)">${fa.age}세 · ${getTeam(fa.from).name}</span></div>
-        <div class="hand">OVR ${fa.ovr}</div></div>
+        <div class="hand">OVR ${fa.ovr} · 터치해 상세</div></div>
         <button class="signbtn">${cost}</button></div>`;
     });
   }
@@ -1444,19 +1444,11 @@ function renderOffseason(t){
   return h;
 }
 function bindOffseason(){
-  document.querySelectorAll('.cutbtn').forEach(b=>{
-    b.onclick = ()=>{
-      const isBat = b.dataset.t==='bat', i=+b.dataset.i;
-      const t = state.players[state.myTeam];
-      const arr = isBat?t.bat:t.pit;
-      if(confirm(`${arr[i][0]} 선수를 방출할까요?`)){
-        arr.splice(i,1);
-        if(isBat) t.age.bat.splice(i,1); else t.age.pit.splice(i,1);
-        // 라인업/로테이션 인덱스 리셋 (안전)
-        state.lineups[state.myTeam]=null; state.rotOrder[state.myTeam]=null;
-        save(); renderFront();
-      }
-    };
+  document.querySelectorAll('[data-cut]').forEach(b=>{
+    b.onclick = (e)=>{ e.stopPropagation(); openCutSheet(b.dataset.cut==='bat', +b.dataset.ci); };
+  });
+  document.querySelectorAll('[data-cutrow]').forEach(el=>{
+    el.onclick = ()=> openCutSheet(el.dataset.cutrow==='bat', +el.dataset.cri);
   });
   document.querySelectorAll('[data-train]').forEach(el=>{
     el.onclick = ()=>{
@@ -1473,10 +1465,10 @@ function bindOffseason(){
     };
   });
   document.querySelectorAll('[data-fa]').forEach(el=>{
-    el.onclick = ()=> signFA(+el.dataset.fa);
+    el.onclick = ()=> openFaSheet(+el.dataset.fa);
   });
   document.querySelectorAll('[data-draft]').forEach(el=>{
-    el.onclick = ()=>{ if(!state.season.market.drafted) draftPick(+el.dataset.draft); };
+    el.onclick = ()=> openDraftSheet(+el.dataset.draft);
   });
   const sb = document.getElementById('startNextBtn');
   if(sb) sb.onclick = ()=>{ doOffseasonEnd(); };
@@ -1540,6 +1532,85 @@ function buildOffseasonMarket(){
   state.season.market = market;
   save();
 }
+
+/* ───────────── 오프시즌 선수 상세 시트 ───────────── */
+function statBar(label, val){
+  return `<div class="stat"><div class="sl"><span>${label}</span><span class="v">${val}</span></div>
+    <div class="bar"><i style="width:${Math.min(100,val)}%"></i></div></div>`;
+}
+function playerStatsHtml(p, isBat, tid){
+  if(isBat){
+    return statBar('컨택',b(p[4],p,tid,true))+statBar('파워',b(p[5],p,tid,true))
+      +statBar('주루',b(p[6],p,tid,true))+statBar('수비',b(p[7],p,tid,true))+statBar('선구',b(p[8],p,tid,true));
+  }
+  return `<div class="stat"><div class="sl"><span>구속</span><span class="v">${bv(p[4],p,tid)} km/h</span></div>
+    <div class="bar"><i style="width:${Math.min(100,(bv(p[4],p,tid)-125)*2.4)}%"></i></div></div>`
+    +statBar('제구',b(p[5],p,tid,false))+statBar('변화구',b(p[6],p,tid,false))+statBar('체력',b(p[7],p,tid,false));
+}
+function openFaSheet(idx){
+  const fa = state.season.market.fa[idx]; if(!fa) return;
+  const isBat = fa.kind==='bat';
+  const sheet = document.getElementById('sheet');
+  const cost = ecoOn()? faCost(fa.ovr).toFixed(0)+'억' : '';
+  const real = fa.data[1] && fa.data[1]!=='가상 선수' && fa.data[1]!=='신인' ? fa.data[1] : null;
+  sheet.innerHTML = `
+    <div class="top"><div class="pname">${fa.data[0]}</div>
+      <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">${fa.data[2]} · ${fa.data[3]}${isBat?'타':'투'} · ${fa.age}세 · OVR ${fa.ovr}</div>
+    <div class="reveal"><div class="lbl">FA · 원 소속 ${getTeam(fa.from).name}</div>
+      ${real? '실제 모델: <b>'+real+'</b><br>':'자동 생성 선수<br>'}
+      ${ecoOn()? '계약금 <b>'+cost+'</b> (현재 잔고 '+fmtMoney()+')':'자유 영입'}</div>
+    ${playerStatsHtml(fa.data, isBat, state.myTeam)}
+    <button class="btn" onclick="closeSheet(); signFA(${idx})">${ecoOn()? cost+' 계약 영입':'영입하기'}</button>
+    <button class="btn ghost" onclick="closeSheet()">취소</button>`;
+  document.getElementById('mask').classList.add('on');
+}
+function openDraftSheet(idx){
+  const d = state.season.market.draft[idx]; if(!d) return;
+  const isBat = d.kind==='bat';
+  const ov = isBat?batOvr(d.data,state.myTeam):pitOvr(d.data,state.myTeam);
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="top"><div class="pname">${d.data[0]}</div>
+      <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">${d.data[2]} · ${d.data[3]}${isBat?'타':'투'} · ${d.age}세 · OVR ${ov}</div>
+    <div class="reveal"><div class="lbl">신인 드래프트 · 잠재력 ${d.pot}</div>
+      갓 데뷔한 신인입니다. 지금은 약하지만 어려서 성장 여지가 큽니다.<br>
+      ${state.season.market.drafted? '⚠️ 이번 시즌 지명은 이미 완료했습니다.':'지명은 시즌당 1명만 가능합니다.'}</div>
+    ${playerStatsHtml(d.data, isBat, state.myTeam)}
+    ${state.season.market.drafted? '' : `<button class="btn" onclick="closeSheet(); draftPick(${idx})">이 선수 지명</button>`}
+    <button class="btn ghost" onclick="closeSheet()">${state.season.market.drafted?'닫기':'취소'}</button>`;
+  document.getElementById('mask').classList.add('on');
+}
+function openCutSheet(isBat, i){
+  const t = getTeam(state.myTeam);
+  const p = (isBat?t.bat:t.pit)[i];
+  const ovr = isBat?batOvr(p,t.id):pitOvr(p,t.id);
+  const age = isBat?t.age.bat[i]:t.age.pit[i];
+  const sheet = document.getElementById('sheet');
+  const real = p[1] && p[1]!=='가상 선수' && p[1]!=='신인' ? p[1] : null;
+  sheet.innerHTML = `
+    <div class="top"><div class="pname">${p[0]}</div>
+      <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">${p[2]} · ${p[3]}${isBat?'타':'투'} · ${age}세 · OVR ${ovr} · 연봉 ${salaryOf(p,isBat).toFixed(1)}억</div>
+    <div class="reveal"><div class="lbl">방출 대상</div>
+      ${real? '실제 모델: <b>'+real+'</b><br>':'자동 생성 선수<br>'}
+      방출하면 다음 시즌부터 연봉 ${salaryOf(p,isBat).toFixed(1)}억이 빠집니다.</div>
+    ${playerStatsHtml(p, isBat, t.id)}
+    <button class="btn" style="background:var(--red);color:#fff" onclick="closeSheet(); doCut('${isBat?'bat':'pit'}',${i})">방출 확정</button>
+    <button class="btn ghost" onclick="closeSheet()">취소</button>`;
+  document.getElementById('mask').classList.add('on');
+}
+function doCut(kind, i){
+  const isBat = kind==='bat';
+  const t = state.players[state.myTeam];
+  const arr = isBat?t.bat:t.pit;
+  arr.splice(i,1);
+  if(isBat) t.age.bat.splice(i,1); else t.age.pit.splice(i,1);
+  state.lineups[state.myTeam]=null; state.rotOrder[state.myTeam]=null;
+  save(); renderFront();
+}
+
 function faCost(ovr){ return Math.max(8, (ovr-60)*2.2); }   // 억
 function signFA(idx){
   const m = state.season.market;
@@ -1547,10 +1618,7 @@ function signFA(idx){
   if(ecoOn()){
     const cost = faCost(fa.ovr);
     if(state.money < cost){ alert(`계약금 ${cost.toFixed(0)}억이 부족합니다. (잔고 ${fmtMoney()})`); return; }
-    if(!confirm(`${fa.data[0]} 영입 — 계약금 ${cost.toFixed(0)}억을 지불할까요?`)) return;
     state.money -= cost;
-  }else{
-    if(!confirm(`${fa.data[0]}을(를) 영입할까요?`)) return;
   }
   // 내 팀에 추가, 원 소속팀에서 제거
   const my = state.players[state.myTeam];
@@ -1567,7 +1635,6 @@ function draftPick(idx){
   const m = state.season.market;
   if(m.drafted){ alert('이번 시즌 지명은 이미 완료했습니다.'); return; }
   const d = m.draft[idx]; if(!d) return;
-  if(!confirm(`${d.data[0]} (${d.pot}) 신인을 지명할까요?`)) return;
   const my = state.players[state.myTeam];
   if(d.kind==='bat'){ my.bat.push([...d.data]); my.age.bat.push(d.age); }
   else{ my.pit.push([...d.data]); my.age.pit.push(d.age); }
