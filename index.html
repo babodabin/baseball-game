@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.2</title>
-<!-- v0.2 — 2026시즌 데이터 반영: FA 이적, 외국인/아시아쿼터 교체, 보정 규칙(내팀/올해/신규/FA) -->
+<title>우리팀을 만들자 v0.3</title>
+<!-- v0.3 — 라인업 편성 + 경기 자동 시뮬레이션(타석별/이닝별/결과만 속도), 12회 연장 무승부, 선발→마무리 교체 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -149,6 +149,40 @@ nav button.lock{opacity:.38}
 .btn.ghost{background:none;border:1px solid var(--line);color:var(--dim);font-weight:400;font-size:13px}
 .locked-msg{padding:60px 20px;text-align:center;color:var(--dim);font-size:14px;line-height:1.8}
 .locked-msg .big{font-size:34px;display:block;margin-bottom:10px}
+
+/* ── 라인업 ── */
+.lrow{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
+  border-radius:11px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.lrow.sel{border-color:var(--amber);background:var(--panel2)}
+.lrow .ord{width:26px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:var(--amber);text-align:center}
+.lrow .lp{width:38px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim)}
+.lrow .ln{flex:1;font-weight:700}
+.lrow .lo{font-family:'IBM Plex Mono',monospace;color:var(--dim);font-size:13px}
+.sel-sp{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px}
+.sel-sp button{flex:none;padding:8px 12px;border-radius:9px;border:1px solid var(--line);
+  background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px}
+.sel-sp button.on{background:var(--amber);border-color:var(--amber);color:#20180A;font-weight:700}
+.hint{font-size:12px;color:var(--dim);margin-bottom:10px;line-height:1.5}
+/* ── 경기 ── */
+.scorebox{background:#0A130D;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;overflow-x:auto}
+.scorebox table{border-collapse:collapse;width:100%;min-width:340px}
+.scorebox th,.scorebox td{font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:center;padding:3px 4px;color:var(--dim)}
+.scorebox td.tm{text-align:left;color:var(--chalk);font-family:'IBM Plex Sans KR';font-weight:700;font-size:13px;white-space:nowrap}
+.scorebox td.rr{color:var(--amber);font-weight:700;font-size:14px}
+.gamelog{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;
+  min-height:180px;max-height:44vh;overflow-y:auto;font-size:13px;line-height:1.7}
+.gamelog .inn{color:var(--amber);font-weight:700;margin-top:8px;font-family:'IBM Plex Mono',monospace}
+.gamelog .scoreev{color:var(--amber)}
+.gamelog .final{font-weight:700;color:var(--chalk);border-top:1px dashed var(--line);margin-top:8px;padding-top:8px}
+.speedbar{display:flex;gap:8px;margin:10px 0}
+.speedbar button{flex:1;padding:9px 0;border-radius:9px;border:1px solid var(--line);
+  background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
+.speedbar button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
+.opp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.opp-grid button{padding:10px 4px;border-radius:9px;border:1px solid var(--line);background:var(--panel);
+  color:var(--chalk);font-family:inherit;font-size:12px;font-weight:700}
+.opp-grid button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
+
 </style>
 </head>
 <body>
@@ -156,7 +190,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.2</span>
+    <span class="ver">v0.3</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -185,6 +219,37 @@ nav button.lock{opacity:.38}
   <button class="btn ghost" id="resetBtn">구단 다시 선택 (데이터 초기화)</button>
 </section>
 
+
+<!-- 라인업 -->
+<section class="screen" id="scr-lineup">
+  <h2 class="sec">라인업 편성</h2>
+  <div class="hint">타순 변경: 선수 하나를 터치한 뒤, 바꿀 선수를 터치하면 자리가 교환됩니다.</div>
+  <div id="lineupList"></div>
+  <h2 class="sec" style="margin-top:16px">선발 투수</h2>
+  <div class="sel-sp" id="spList"></div>
+</section>
+
+<!-- 경기 -->
+<section class="screen" id="scr-game">
+  <h2 class="sec" id="gameTitle">경기</h2>
+  <div id="gameSetup">
+    <div class="hint">상대 팀을 고른 뒤 경기를 시작하세요. 내 라인업은 라인업 탭 설정을 따릅니다.</div>
+    <div class="opp-grid" id="oppGrid"></div>
+    <div class="speedbar">
+      <button data-spd="pa" class="on">타석별</button>
+      <button data-spd="inn">이닝별</button>
+      <button data-spd="fast">결과만</button>
+    </div>
+    <button class="btn" id="playBtn">경기 시작</button>
+  </div>
+  <div id="gameLive" style="display:none">
+    <div class="scorebox" id="scorebox"></div>
+    <div class="gamelog" id="gamelog"></div>
+    <button class="btn" id="skipBtn">⏭ 남은 경기 결과만 보기</button>
+    <button class="btn ghost" id="newGameBtn" style="display:none">새 경기</button>
+  </div>
+</section>
+
 <!-- 잠금 화면 -->
 <section class="screen" id="scr-lock">
   <div class="locked-msg">
@@ -195,8 +260,8 @@ nav button.lock{opacity:.38}
 
 <nav>
   <button data-nav="team" class="on"><span class="ic">⚾️</span>구단</button>
-  <button data-nav="lineup" class="lock"><span class="ic">📋</span>라인업</button>
-  <button data-nav="game" class="lock"><span class="ic">📺</span>경기</button>
+  <button data-nav="lineup"><span class="ic">📋</span>라인업</button>
+  <button data-nav="game"><span class="ic">📺</span>경기</button>
   <button data-nav="rank" class="lock"><span class="ic">🏆</span>순위</button>
 </nav>
 
@@ -207,7 +272,7 @@ nav button.lock{opacity:.38}
 
 <script>
 'use strict';
-const SAVE_KEY = 'ourteam_v02';
+const SAVE_KEY = 'ourteam_v03';
 
 /* ───────────── 데이터 ─────────────
  * 타자: [가명, 실제모델, 포지션, 타격손, 컨택, 파워, 주루, 수비, 선구]
@@ -264,8 +329,8 @@ const BOOST_NEW = 1;  // 신규 영입/신인 추가 보정
 /* ───────────── 상태 ───────────── */
 let state = load();
 function load(){
-  try{ return JSON.parse(localStorage.getItem(SAVE_KEY)) || {myTeam:null}; }
-  catch(e){ return {myTeam:null}; }
+  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; return {myTeam:s.myTeam||null, lineups:s.lineups||{}}; }
+  catch(e){ return {myTeam:null, lineups:{}}; }
 }
 function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
 
@@ -295,7 +360,7 @@ function pitOvr(p, tid){
 }
 
 /* ───────────── 화면 전환 ───────────── */
-const screens = {select:'scr-select', team:'scr-team', lock:'scr-lock'};
+const screens = {select:'scr-select', team:'scr-team', lineup:'scr-lineup', game:'scr-game', lock:'scr-lock'};
 function show(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   document.getElementById(screens[name]).classList.add('on');
@@ -416,13 +481,16 @@ document.querySelectorAll('nav button').forEach(btn=>{
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
     btn.classList.add('on');
     const nv = btn.dataset.nav;
+    if(!state.myTeam && nv!=='team'){ show('select'); return; }
     if(nv==='team'){
       if(state.myTeam){ renderRoster(rosterTab); show('team'); }
       else show('select');
+    }else if(nv==='lineup'){
+      renderLineup(); show('lineup');
+    }else if(nv==='game'){
+      renderGameSetup(); show('game');
     }else{
-      const names = {lineup:'라인업', game:'경기', rank:'순위'};
-      document.getElementById('lockText').textContent =
-        `${names[nv]} — 다음 업데이트(v0.3)에서 열립니다`;
+      document.getElementById('lockText').textContent = '순위 — 다음 업데이트(v0.4)에서 열립니다';
       show('lock');
     }
   };
@@ -432,8 +500,268 @@ document.getElementById('tabBat').onclick = ()=>renderRoster('bat');
 document.getElementById('tabPit').onclick = ()=>renderRoster('pit');
 document.getElementById('resetBtn').onclick = ()=>{
   if(confirm('구단 선택과 저장 데이터를 초기화할까요?')){
-    state = {myTeam:null}; save(); refreshHeader(); show('select');
+    state = {myTeam:null, lineups:{}}; save(); refreshHeader(); show('select');
   }
+};
+
+
+/* ═══════════ 라인업 ═══════════ */
+function getLineup(teamId){
+  const t = TEAMS.find(t=>t.id===teamId);
+  let lu = state.lineups[teamId];
+  if(!lu || lu.order.length !== t.bat.length){
+    lu = { order: t.bat.map((_,i)=>i), sp: 0 };
+    state.lineups[teamId] = lu; save();
+  }
+  return lu;
+}
+let luSel = -1; // 교환 대기 중인 타순 index
+function renderLineup(){
+  const t = TEAMS.find(t=>t.id===state.myTeam);
+  const lu = getLineup(t.id);
+  const list = document.getElementById('lineupList');
+  list.innerHTML = '';
+  lu.order.forEach((bi, pos)=>{
+    const p = t.bat[bi];
+    const d = document.createElement('div');
+    d.className = 'lrow' + (luSel===pos?' sel':'');
+    d.innerHTML = `<div class="ord">${pos+1}</div><div class="lp">${p[2]}</div>
+      <div class="ln">${p[0]}</div><div class="lo num">${batOvr(p,t.id)}</div>`;
+    d.onclick = ()=>{
+      if(luSel<0){ luSel = pos; }
+      else if(luSel===pos){ luSel = -1; }
+      else{
+        [lu.order[luSel], lu.order[pos]] = [lu.order[pos], lu.order[luSel]];
+        luSel = -1; save();
+      }
+      renderLineup();
+    };
+    list.appendChild(d);
+  });
+  const spBox = document.getElementById('spList');
+  spBox.innerHTML = '';
+  t.pit.forEach((p,i)=>{
+    if(p[2]!=='선발') return;
+    const b = document.createElement('button');
+    b.textContent = `${p[0]} ${pitOvr(p,t.id)}`;
+    b.className = lu.sp===i?'on':'';
+    b.onclick = ()=>{ lu.sp = i; save(); renderLineup(); };
+    spBox.appendChild(b);
+  });
+}
+
+/* ═══════════ 시뮬레이션 엔진 ═══════════ */
+function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
+function paResult(bat, batTid, pit, pitTid){
+  const con=b(bat[4],bat,batTid,true), pow=b(bat[5],bat,batTid,true),
+        spd=b(bat[6],bat,batTid,true), eye=b(bat[8],bat,batTid,true);
+  const velo=bv(pit[4],pit,pitTid), ctrl=b(pit[5],pit,pitTid,false), brk=b(pit[6],pit,pitTid,false);
+  const kP  = clamp(.125 + (brk-72)*.004 + (velo-146)*.006 - (con-72)*.004 - (eye-70)*.002, .06, .34);
+  const bbP = clamp(.085 + (eye-70)*.003 - (ctrl-76)*.004, .03, .17);
+  let r = Math.random();
+  if(r < kP) return {t:'K'};
+  r -= kP;
+  if(r < bbP) return {t:'BB'};
+  const hitP = clamp(.365 + (con-72)*.005 - (brk-72)*.003 - (ctrl-76)*.002, .20, .42);
+  if(Math.random() < hitP){
+    const hrP = clamp(.042 + (pow-70)*.0045 - (velo-146)*.002, .004, .16);
+    if(Math.random() < hrP) return {t:'HR'};
+    const r2 = Math.random();
+    const dbl = clamp(.19 + (pow-70)*.003, .12, .30);
+    const trp = clamp(.015 + (spd-75)*.001, .005, .05);
+    if(r2 < trp) return {t:'3B'};
+    if(r2 < trp+dbl) return {t:'2B'};
+    return {t:'1B'};
+  }
+  const go = Math.random() < .55;
+  return {t: go ? 'GO' : 'FO'};
+}
+function simGame(myId, oppId, mySp, oppSp){
+  const home = TEAMS.find(t=>t.id===myId), away = TEAMS.find(t=>t.id===oppId);
+  const homeLu = getLineup(myId), awayLu = getLineup(oppId);
+  const ev = [];   // {inn, half, text, cls}
+  const line = {away:[], home:[]};
+  let sc = {away:0, home:0};
+  const st = {
+    away:{order:awayLu.order, team:away, idx:0, pit:away.pit[oppSp], pitPa:0},
+    home:{order:homeLu.order, team:home, idx:0, pit:home.pit[mySp], pitPa:0}
+  };
+  function pitcherFor(defSide){
+    const s = st[defSide];
+    const sta = s.pit[7];
+    const maxPa = Math.round(22 + (sta-70)*0.35);
+    if(s.pit[2]==='선발' && s.pitPa >= maxPa){
+      const cl = s.team.pit.find(p=>p[2]==='마무리');
+      if(cl){ s.pit = cl; s.pitPa = 0;
+        ev.push({inn:curInn, half:curHalf, text:`🔁 ${s.team.name} 투수 교체 → ${cl[0]}`, cls:''}); }
+    }
+    return s.pit;
+  }
+  let curInn=1, curHalf='초';
+  function halfInning(atkSide, defSide, inn, half){
+    curInn=inn; curHalf=half;
+    const atk = st[atkSide];
+    let outs=0, bases=[null,null,null], runs=0;
+    ev.push({inn, half, text:`── ${inn}회${half} · ${atk.team.name} 공격`, cls:'inn'});
+    while(outs<3){
+      const bi = atk.order[atk.idx % 9];
+      const batter = atk.team.bat[bi];
+      const pit = pitcherFor(defSide);
+      st[defSide].pitPa++;
+      const res = paResult(batter, atk.team.id, pit, st[defSide].team.id);
+      let text='', scored=0;
+      const runnersAdv = n=>{
+        for(let i=2;i>=0;i--){
+          if(!bases[i]) continue;
+          if(i+n>=3){ scored++; bases[i]=null; }
+          else{ bases[i+n]=bases[i]; bases[i]=null; }
+        }
+      };
+      switch(res.t){
+        case 'K': outs++; text=`${batter[0]}, 삼진 아웃 (${outs}아웃)`; break;
+        case 'BB':
+          if(bases[0]&&bases[1]&&bases[2]) scored++;
+          else if(bases[0]&&bases[1]) bases[2]=bases[1], bases[1]=bases[0];
+          else if(bases[0]) bases[1]=bases[0];
+          bases[0]=batter;
+          text=`${batter[0]}, 볼넷 출루`; break;
+        case '1B': runnersAdv(1+(Math.random()<.25?1:0)); bases[0]=batter; text=`${batter[0]}, 안타!`; break;
+        case '2B': runnersAdv(2); bases[1]=batter; text=`${batter[0]}, 2루타!!`; break;
+        case '3B': runnersAdv(3); bases[2]=batter; text=`${batter[0]}, 3루타!!!`; break;
+        case 'HR':{
+          const cnt = 1 + bases.filter(x=>x).length;
+          scored += cnt; bases=[null,null,null];
+          text = `${batter[0]}, ${cnt===1?'솔로':cnt+'점'} 홈런!!! 🎆`;
+          break;
+        }
+        case 'GO':
+          if(bases[0] && outs<2 && Math.random()<.35){
+            outs+=2; bases[0]=null; text=`${batter[0]}, 병살타... (${Math.min(outs,3)}아웃)`;
+          }else{
+            outs++;
+            if(outs<3 && bases[2] && Math.random()<.3){ scored++; bases[2]=null; text=`${batter[0]}, 땅볼 아웃, 그 사이 3루주자 득점 (${outs}아웃)`; }
+            else text=`${batter[0]}, 내야 땅볼 아웃 (${outs}아웃)`;
+          }
+          break;
+        case 'FO':
+          outs++;
+          if(outs<3 && bases[2] && Math.random()<.4){ scored++; bases[2]=null; text=`${batter[0]}, 희생플라이! 3루주자 득점 (${outs}아웃)`; }
+          else text=`${batter[0]}, 외야 뜬공 아웃 (${outs}아웃)`;
+          break;
+      }
+      atk.idx++;
+      if(scored>0){
+        runs+=scored; sc[atkSide]+=scored;
+        text += ` — ${scored}점! (${away.name} ${sc.away} : ${sc.home} ${home.name})`;
+        ev.push({inn, half, text, cls:'scoreev'});
+      }else ev.push({inn, half, text, cls:''});
+    }
+    line[atkSide].push(runs);
+  }
+  let inn=1;
+  while(true){
+    halfInning('away','home',inn,'초');
+    if(inn>=9 && sc.home>sc.away){ line.home.push('-'); break; }
+    halfInning('home','away',inn,'말');
+    if(inn>=9 && sc.home!==sc.away) break;
+    if(inn>=12) break;
+    inn++;
+  }
+  const win = sc.home>sc.away ? home.name : sc.home<sc.away ? away.name : null;
+  ev.push({inn, half:'말', cls:'final',
+    text: win ? `⚾ 경기 종료 — ${win} 승리! 최종 ${away.name} ${sc.away} : ${sc.home} ${home.name}`
+              : `⚾ 경기 종료 — 12회 연장 무승부 (${sc.away} : ${sc.home})`});
+  return {ev, line, sc, home, away};
+}
+
+/* ═══════════ 경기 화면 ═══════════ */
+let oppSel=null, spdSel='pa', gTimer=null;
+function renderGameSetup(){
+  document.getElementById('gameSetup').style.display='';
+  document.getElementById('gameLive').style.display='none';
+  if(gTimer){ clearInterval(gTimer); gTimer=null; }
+  const my = TEAMS.find(t=>t.id===state.myTeam);
+  document.getElementById('gameTitle').textContent = `경기 — ${my.name}`;
+  const g = document.getElementById('oppGrid');
+  g.innerHTML='';
+  TEAMS.forEach(t=>{
+    if(t.id===state.myTeam) return;
+    const b=document.createElement('button');
+    b.textContent=t.name; b.className = oppSel===t.id?'on':'';
+    b.onclick=()=>{ oppSel=t.id; renderGameSetup(); };
+    g.appendChild(b);
+  });
+}
+document.querySelectorAll('.speedbar button').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.speedbar button').forEach(x=>x.classList.remove('on'));
+    btn.classList.add('on'); spdSel=btn.dataset.spd;
+  };
+});
+function drawScore(g, upto){
+  const innMax = Math.max(g.line.away.length, g.line.home.length, 9);
+  let sumA=0,sumH=0;
+  let th='<tr><th></th>'; for(let i=1;i<=innMax;i++) th+=`<th>${i}</th>`; th+='<th>R</th></tr>';
+  const row=(nm,arr,visible)=>{
+    let r=`<tr><td class="tm">${nm}</td>`, sum=0;
+    for(let i=0;i<innMax;i++){
+      const v = i<arr.length && i<visible ? arr[i] : '';
+      if(typeof v==='number') sum+=v;
+      r+=`<td>${v}</td>`;
+    }
+    r+=`<td class="rr">${sum}</td></tr>`; return r;
+  };
+  document.getElementById('scorebox').innerHTML =
+    `<table>${th}${row(g.away.name,g.line.away,upto.a)}${row(g.home.name,g.line.home,upto.h)}</table>`;
+}
+let curGame=null;
+document.getElementById('playBtn').onclick = ()=>{
+  if(!oppSel){ alert('상대 팀을 골라 주세요.'); return; }
+  const myLu = getLineup(state.myTeam);
+  const oppLu = getLineup(oppSel);
+  curGame = simGame(state.myTeam, oppSel, myLu.sp, oppLu.sp);
+  document.getElementById('gameSetup').style.display='none';
+  document.getElementById('gameLive').style.display='';
+  document.getElementById('newGameBtn').style.display='none';
+  document.getElementById('skipBtn').style.display='';
+  const log = document.getElementById('gamelog');
+  log.innerHTML='';
+  const g=curGame;
+  let i=0;
+  const innDone = {a:0,h:0};
+  function push(n){
+    for(let k=0;k<n && i<g.ev.length;k++,i++){
+      const e=g.ev[i];
+      const d=document.createElement('div');
+      if(e.cls) d.className=e.cls;
+      d.textContent=e.text;
+      log.appendChild(d);
+      if(e.cls==='inn'){
+        // 직전 이닝 라인스코어 공개
+        if(e.half==='초'){ innDone.a=e.inn-1; innDone.h=e.inn-1; }
+        else innDone.a=e.inn;
+      }
+      if(e.cls==='final'){ innDone.a=99; innDone.h=99; finish(); }
+    }
+    drawScore(g, {a:innDone.a===99?99:innDone.a, h:innDone.h===99?99:innDone.h});
+    log.scrollTop = log.scrollHeight;
+    if(i>=g.ev.length) finish();
+  }
+  function finish(){
+    if(gTimer){ clearInterval(gTimer); gTimer=null; }
+    drawScore(g,{a:99,h:99});
+    document.getElementById('skipBtn').style.display='none';
+    document.getElementById('newGameBtn').style.display='';
+  }
+  if(spdSel==='fast'){ push(g.ev.length); }
+  else{
+    const step = spdSel==='pa' ? 1 : 8;
+    const ms = spdSel==='pa' ? 900 : 700;
+    push(step);
+    gTimer = setInterval(()=>push(step), ms);
+  }
+  document.getElementById('skipBtn').onclick = ()=>push(g.ev.length);
+  document.getElementById('newGameBtn').onclick = ()=>renderGameSetup();
 };
 
 /* ───────────── 시작 ───────────── */
