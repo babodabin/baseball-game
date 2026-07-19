@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.11</title>
-<!-- v0.11 — 레전드 확장(MVP·대기록), 선수 개인 성적 기록 + 타이틀 시상 -->
+<title>우리팀을 만들자 v0.12</title>
+<!-- v0.12 — 선수 리더보드(OPS/방어율 포함, 지표 설명), 레전드 연도·사유·특성, 등번호식 연도 표기 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -217,6 +217,17 @@ nav button.lock{opacity:.38}
 
 .other-results{font-size:12px;color:var(--dim);line-height:1.8;margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
 
+.lb-cat{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
+.lb-cat button{flex:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
+.lb-cat button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
+.lb-help{font-size:12px;color:var(--amber);text-decoration:underline;cursor:pointer;margin-bottom:8px;display:inline-block}
+.lb-row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px}
+.lb-row.me{border-color:var(--amber);background:#23361F}
+.lb-row .lbrk{width:22px;font-family:'IBM Plex Mono',monospace;color:var(--amber);font-weight:700;text-align:center}
+.lb-row .lbn{flex:1}.lb-row .lbn b{font-weight:700}.lb-row .lbn small{color:var(--dim);font-size:11px}
+.lb-row .lbv{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px}
+
+
 
 </style>
 </head>
@@ -225,7 +236,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.11</span>
+    <span class="ver">v0.12</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -299,9 +310,16 @@ nav button.lock{opacity:.38}
 <!-- 순위 -->
 <section class="screen" id="scr-rank">
   <h2 class="sec" id="rankTitle">순위표</h2>
-  <table class="rank-table" id="rankTable"></table>
-  <div class="other-results" id="lastResults"></div>
-  <button class="btn ghost" id="resetSeasonBtn" style="margin-top:14px">시즌 초기화</button>
+  <div class="tabs">
+    <button id="rtabTeam" class="on">팀 순위</button>
+    <button id="rtabPlayer">선수 기록</button>
+  </div>
+  <div id="rankTeamWrap">
+    <table class="rank-table" id="rankTable"></table>
+    <div class="other-results" id="lastResults"></div>
+    <button class="btn ghost" id="resetSeasonBtn" style="margin-top:14px">시즌 초기화</button>
+  </div>
+  <div id="rankPlayerWrap" style="display:none"></div>
 </section>
 
 
@@ -410,40 +428,47 @@ function ageOf(realName){
 /* ───────────── 레전드 선수 풀 (골든글러브·명예의전당급, 커리어 명성 기반 추정) ───────────── */
 // [가명, 실제모델, 포지션, 손, ...능력치] + 전성기 나이대로 편입
 const LEGENDS_BAT = [
-  ['이성협','이승엽','1B','좌',86,96,55,72,84],
-  ['양준현','양준혁','LF','좌',88,86,60,70,90],
-  ['이종벌','이종범','SS','우',90,74,96,88,82],
-  ['이대오','이대호','1B','우',88,94,45,68,86],
-  ['장종훈','장종훈','1B','우',80,92,58,68,80],
-  ['한대화','한대화','3B','우',82,84,60,80,80],
-  ['김기택','김기태','LF','좌',82,88,52,66,82],
-  ['박경완','박경완','C','우',72,80,50,88,74],
-  ['홍성헌','홍성흔','C','우',84,78,58,80,78],
-  ['테임슨','에릭 테임스','1B','좌',86,94,88,72,84],
-  ['서건찬','서건창','2B','좌',94,60,80,76,84],
-  ['이정후','이정후','CF','좌',96,72,80,82,90],
-  ['박병오','박병호','1B','우',76,96,48,66,78],
-  ['타이론','타이론 우즈','1B','우',78,92,50,64,76],
-  ['장효조','장효조','LF','좌',92,70,66,74,90],
-  ['김도녕','김도영','3B','우',88,90,88,78,80],
+  ['이성협','이승엽','1B','좌',86,96,55,72,84,'03','2003년 아시아 최다 56홈런','국민타자'],
+  ['양준현','양준혁','LF','좌',88,86,60,70,90,'96','통산 최다 안타·출루 머신','양신'],
+  ['이종벌','이종범','SS','우',90,74,96,88,82,'94','1994년 타율.393 84도루 MVP','바람의 아들'],
+  ['이대오','이대호','1B','우',88,94,45,68,86,'10','2010년 타격 7관왕·트리플크라운','조선의 4번타자'],
+  ['장종훈','장종훈','1B','우',80,92,58,68,80,'92','1992년 최초 40홈런 MVP','연습생 신화'],
+  ['한대화','한대화','3B','우',82,84,60,80,80,'89','해결사 3루수·골글 8회','해결사'],
+  ['김기택','김기태','LF','좌',82,88,52,66,82,'91','좌타 거포 홈런왕','타격 기계'],
+  ['박경완','박경완','C','우',72,80,50,88,74,'00','최고의 수비형 포수·투수 리드','안방마님'],
+  ['홍성헌','홍성흔','C','우',84,78,58,80,78,'09','타격 잘하는 포수·지명타자','꽃미남 타자'],
+  ['테임슨','에릭 테임스','1B','좌',86,94,88,72,84,'15','2015년 40-40 클럽 MVP','호타준족'],
+  ['서건찬','서건창','2B','좌',94,60,80,76,84,'14','2014년 최초 201안타 MVP','안타 제조기'],
+  ['이정후','이정후','CF','좌',96,72,80,82,90,'22','2022년 타격 5관왕 MVP','바람의 손자'],
+  ['박병오','박병호','1B','우',76,96,48,66,78,'12','2012·13 연속 MVP 홈런왕','수원 반달곰'],
+  ['타이론','타이론 우즈','1B','우',78,92,50,64,76,'98','1998년 42홈런 MVP','흑곰'],
+  ['장효조','장효조','LF','좌',92,70,66,74,90,'87','1987년 MVP·타율의 달인','타격의 달인'],
+  ['김도녕','김도영','3B','우',88,90,88,78,80,'24','2024년 최초 월간 10-10 MVP','슈퍼스타'],
 ];
 const LEGENDS_PIT = [
-  ['최동언','최동원','선발','우',152,88,90,94],
-  ['선동열','선동열','선발','우',154,92,94,90],
-  ['정민철','정민철','선발','우',148,86,84,86],
-  ['임창영','임창용','마무리','우',156,82,86,80],
-  ['구대성','구대성','선발','좌',149,88,86,84],
-  ['송진욱','송진우','선발','좌',146,86,82,88],
-  ['유현진','류현진','선발','좌',150,90,88,86],
-  ['린드블룸','조쉬 린드블럼','선발','우',149,86,84,88],
-  ['니퍼트','더스틴 니퍼트','선발','우',152,84,82,86],
-  ['윤석민','윤석민','선발','우',149,86,84,82],
-  ['손민한','손민한','선발','우',147,86,82,84],
+  ['최동언','최동원','선발','우',152,88,90,94,'84','1984년 한국시리즈 홀로 4승','무쇠팔'],
+  ['선동열','선동열','선발','우',154,92,94,90,'89','통산 방어율 1.20 국보급','무등산 폭격기'],
+  ['정민철','정민철','선발','우',148,86,84,86,'97','한화 에이스·통산 161승','앙팡테리블'],
+  ['임창영','임창용','마무리','우',156,82,86,80,'98','160km 뱀직구 마무리','애니콜'],
+  ['구대성','구대성','선발','좌',149,88,86,84,'00','2000년 대성불패 좌완','대성불패'],
+  ['송진욱','송진우','선발','좌',146,86,82,88,'92','통산 최다승·이닝 좌완','노송'],
+  ['유현진','류현진','선발','좌',150,90,88,86,'06','2006년 신인왕·MVP 동시석권','코리안 몬스터'],
+  ['린드블룸','조쉬 린드블럼','선발','우',149,86,84,88,'19','2019년 다승·MVP','디트로이트'],
+  ['니퍼트','더스틴 니퍼트','선발','우',152,84,82,86,'16','2016년 22승 MVP','느바트'],
+  ['윤석민','윤석민','선발','우',149,86,84,82,'11','2011년 투수 4관왕 MVP','윤사장'],
+  ['손민한','손민한','선발','우',147,86,82,84,'05','2005년 깜짝 MVP 에이스','작은 거인'],
 ];
 function legendPool(){
   const pool = [];
-  LEGENDS_BAT.forEach(p=>pool.push({kind:'bat', data:[...p,'legend'], age:29}));
-  LEGENDS_PIT.forEach(p=>pool.push({kind:'pit', data:[...p,'legend'], age:29}));
+  // 능력치는 앞 9칸(bat)/8칸(pit)만, 그 뒤 [year,why,trait] 메타 분리, flag 'legend'는 정확한 인덱스에
+  LEGENDS_BAT.forEach(p=>{
+    const data = p.slice(0,9); data.push('legend');   // 인덱스9 = flag
+    pool.push({kind:'bat', data, age:29, year:p[9], why:p[10], trait:p[11]});
+  });
+  LEGENDS_PIT.forEach(p=>{
+    const data = p.slice(0,8); data.push('legend');   // 인덱스8 = flag
+    pool.push({kind:'pit', data, age:29, year:p[8], why:p[9], trait:p[10]});
+  });
   return pool;
 }
 
@@ -1073,8 +1098,13 @@ function simGame(myId, oppId, mySp, oppSp){
           else text=`${batter[0]}, 외야 뜬공 아웃 (${outs}아웃)`;
           break;
       }
-      // 개인 성적 기록 (타자 기준)
+      // 개인 성적 기록 (타자 + 투수 자책/아웃)
       if(typeof STAT_SINK==='function') STAT_SINK(atk.team.id, bi, res, scored, st[defSide].team.id, pit);
+      if(typeof state!=='undefined' && state.season){
+        const outsAdded = (res.t==='K'||res.t==='GO'||res.t==='FO') ? (res.t==='GO'&&text.includes('병살')?2:1) : 0;
+        if(outsAdded) statPitAdd(st[defSide].team.id, pit[0], 'out', outsAdded);
+        if(scored>0) statPitAdd(st[defSide].team.id, pit[0], 'er', scored);
+      }
       atk.idx++;
       if(scored>0){
         runs+=scored; sc[atkSide]+=scored;
@@ -1528,8 +1558,8 @@ function renderOffseason(t){
       const cost = ecoOn()? `${legendCost(lg.ovr).toFixed(0)}억` : '영입';
       h += `<div class="prow" style="cursor:pointer;border-color:var(--amber)" data-legend="${idx}">
         <div class="pos">${lg.kind==='bat'?lg.data[2]:(lg.data[2]==='선발'?'SP':lg.data[2]==='마무리'?'CL':'RP')}</div>
-        <div class="mid"><div class="nm">${lg.data[0]} <span style="font-size:11px;color:var(--amber)">🏅 레전드</span></div>
-        <div class="hand">OVR ${lg.ovr} · 터치해 상세</div></div>
+        <div class="mid"><div class="nm">${lg.data[0]}<span style="font-size:11px;color:var(--amber)">'${lg.year}</span> <span style="font-size:11px;color:var(--amber)">🏅 ${lg.trait}</span></div>
+        <div class="hand">OVR ${lg.ovr} · ${lg.why}</div></div>
         <button class="signbtn">${cost}</button></div>`;
     });
   }
@@ -1703,9 +1733,10 @@ function openLegendSheet(idx){
     <div class="top"><div class="pname">${lg.data[0]}</div>
       <button class="close" onclick="closeSheet()">✕</button></div>
     <div class="meta">${lg.data[2]} · ${lg.data[3]}${isBat?'타':'투'} · OVR ${lg.ovr}</div>
-    <div class="reveal" style="border-color:var(--amber)"><div class="lbl">🏅 레전드 · 골든글러브급</div>
-      실제 모델: <b>${lg.data[1]}</b><br>
-      역대 최고 선수 중 한 명입니다. 내 구단 보정만 적용됩니다.<br>
+    <div class="reveal" style="border-color:var(--amber)"><div class="lbl">🏅 레전드 · '${lg.year} · ${lg.trait}</div>
+      실제 모델: <b>${lg.data[1]}</b> ('${lg.year})<br>
+      ${lg.why}<br>
+      내 구단 보정만 적용됩니다.<br>
       ${ecoOn()? '영입가 <b>'+cost+'</b> (현재 잔고 '+fmtMoney()+')':'명예 영입'}</div>
     ${playerStatsHtml(lg.data, isBat, state.myTeam)}
     <button class="btn" onclick="closeSheet(); signLegend(${idx})">${ecoOn()? cost+' 영입':'영입하기'}</button>
@@ -1809,6 +1840,8 @@ function signLegend(idx){
   else{ my.pit.push([...lg.data]); my.age.pit.push(lg.age); }
   if(!state.legendsOwned) state.legendsOwned=[];
   state.legendsOwned.push(lg.data[0]);
+  if(!state.legendMeta) state.legendMeta={};
+  state.legendMeta[lg.data[0]] = {year:lg.year, why:lg.why, trait:lg.trait};
   m.legends.splice(idx,1);
   state.lineups[state.myTeam]=null;
   save(); refreshHeader(); renderFront();
@@ -1886,6 +1919,91 @@ function titlesHtml(){
     ${line('탈삼진왕', T.soKing, T.soKing? T.soKing.so+'K':'')}</div>`;
 }
 
+
+/* ═══════════ 선수 리더보드 (v0.12) ═══════════ */
+const STAT_INFO = {
+  'AVG':'타율 = 안타 ÷ 타수. 정확히 얼마나 자주 안타를 치는지.',
+  'HR':'홈런 개수.',
+  'RBI':'타점 = 내 타격으로 홈에 불러들인 주자 수.',
+  'OPS':'출루율(OBP) + 장타율(SLG). 타자의 종합 생산력 지표로, 0.900 이상이면 특급입니다.',
+  'W':'투수 승리 수.',
+  'ERA':'평균자책점 = (자책점 × 9) ÷ 던진 이닝. 낮을수록 좋으며, 3점대 미만이면 에이스급.',
+  'SO':'탈삼진 = 투수가 삼진으로 잡은 타자 수.',
+  'SV':'세이브 = 리드를 지키며 경기를 마무리한 횟수.'
+};
+let lbCat = 'AVG';
+function collectBatLeaders(){
+  const arr = [];
+  TEAMS.forEach(t=>{
+    const team = getTeam(t.id);
+    const S = state.season.stats?.[t.id]?.bat || {};
+    Object.keys(S).forEach(idx=>{
+      const st = S[idx]; const p = team.bat[+idx]; if(!p) return;
+      const pa = st.ab + st.bb;
+      const obp = pa>0 ? (st.h+st.bb)/pa : 0;
+      const tb = st.h + st.b2 + 2*st.b3 + 3*st.hr;   // 1루=1,2루=2,3루=3,홈런=4 → 추가분
+      const slg = st.ab>0 ? (st.h + st.b2 + 2*st.b3 + 3*st.hr)/st.ab : 0;
+      const avg = st.ab>0 ? st.h/st.ab : 0;
+      arr.push({name:p[0], teamId:t.id, teamName:team.name, ab:st.ab, avg, hr:st.hr, rbi:st.rbi, ops:obp+slg});
+    });
+  });
+  return arr;
+}
+function collectPitLeaders(){
+  const arr = [];
+  TEAMS.forEach(t=>{
+    const team = getTeam(t.id);
+    const S = state.season.stats?.[t.id]?.pit || {};
+    Object.keys(S).forEach(nm=>{
+      const st = S[nm];
+      const ip = st.out/3;
+      const era = ip>0 ? (st.er*9)/ip : 99;
+      arr.push({name:nm, teamId:t.id, teamName:team.name, w:st.w, era, so:st.so, sv:st.sv, ip});
+    });
+  });
+  return arr;
+}
+function renderLeaderboard(){
+  const wrap = document.getElementById('rankPlayerWrap');
+  const cats = ['AVG','HR','RBI','OPS','W','ERA','SO','SV'];
+  const labels = {AVG:'타율',HR:'홈런',RBI:'타점',OPS:'OPS',W:'다승',ERA:'방어율',SO:'탈삼진',SV:'세이브'};
+  let h = `<div class="lb-cat">`;
+  cats.forEach(c=> h += `<button class="${lbCat===c?'on':''}" data-cat="${c}">${labels[c]}</button>`);
+  h += `</div>`;
+  h += `<span class="lb-help" id="statHelp">${lbCat} 뜻 보기 ⓘ</span>`;
+  let list;
+  const isBat = ['AVG','HR','RBI','OPS'].includes(lbCat);
+  if(isBat){
+    list = collectBatLeaders();
+    if(lbCat==='AVG'||lbCat==='OPS') list = list.filter(x=>x.ab>=30);   // 규정타석 간이
+    const key = {AVG:'avg',HR:'hr',RBI:'rbi',OPS:'ops'}[lbCat];
+    list.sort((a,b)=>b[key]-a[key]);
+  }else{
+    list = collectPitLeaders();
+    if(lbCat==='ERA') list = list.filter(x=>x.ip>=10);
+    if(lbCat==='ERA') list.sort((a,b)=>a.era-b.era);
+    else{ const key={W:'w',SO:'so',SV:'sv'}[lbCat]; list.sort((a,b)=>b[key]-a[key]); }
+  }
+  const fmt = (x)=>{
+    if(lbCat==='AVG') return x.avg.toFixed(3).replace('0.','.');
+    if(lbCat==='OPS') return x.ops.toFixed(3).replace('0.','.');
+    if(lbCat==='ERA') return x.era.toFixed(2);
+    if(lbCat==='HR') return x.hr; if(lbCat==='RBI') return x.rbi;
+    if(lbCat==='W') return x.w; if(lbCat==='SO') return x.so; if(lbCat==='SV') return x.sv;
+  };
+  list.slice(0,15).forEach((x,i)=>{
+    h += `<div class="lb-row ${x.teamId===state.myTeam?'me':''}">
+      <div class="lbrk">${i+1}</div>
+      <div class="lbn"><b>${x.name}</b> <small>${x.teamName}</small></div>
+      <div class="lbv">${fmt(x)}</div></div>`;
+  });
+  if(list.length===0) h += `<div class="hint">아직 기록이 없습니다. 경기를 진행해 주세요.</div>`;
+  wrap.innerHTML = h;
+  wrap.querySelectorAll('[data-cat]').forEach(b=> b.onclick = ()=>{ lbCat=b.dataset.cat; renderLeaderboard(); });
+  const help = document.getElementById('statHelp');
+  if(help) help.onclick = ()=> alert(lbCat + ' — ' + (STAT_INFO[lbCat]||''));
+}
+
 /* ═══════════ 순위표 ═══════════ */
 function rankOrder(){
   const rec = state.season.rec;
@@ -1917,6 +2035,19 @@ function renderRank(){
 }
 document.getElementById('resetSeasonBtn').onclick = ()=>{
   if(confirm('시즌 기록을 초기화하고 새로 시작할까요?')){ newSeason(); renderRank(); }
+};
+document.getElementById('rtabTeam').onclick = ()=>{
+  document.getElementById('rtabTeam').classList.add('on');
+  document.getElementById('rtabPlayer').classList.remove('on');
+  document.getElementById('rankTeamWrap').style.display='';
+  document.getElementById('rankPlayerWrap').style.display='none';
+};
+document.getElementById('rtabPlayer').onclick = ()=>{
+  document.getElementById('rtabPlayer').classList.add('on');
+  document.getElementById('rtabTeam').classList.remove('on');
+  document.getElementById('rankTeamWrap').style.display='none';
+  document.getElementById('rankPlayerWrap').style.display='';
+  renderLeaderboard();
 };
 
 /* ───────────── 시작 ───────────── */
