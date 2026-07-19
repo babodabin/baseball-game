@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.15</title>
-<!-- v0.15 — 슬롯 5개, 구단 화면 개편(로스터→라인업 통합), 정렬 확대, 트레이드 연봉 반영 -->
+<title>우리팀을 만들자 v0.16</title>
+<!-- v0.16 — 선수 등급(S~C-), 트레이드 등급차 제한, 결정버튼 위로, 탭 재터치 맨위로, 시작화면 슬롯 현황 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -236,7 +236,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.15</span>
+    <span class="ver">v0.16</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -247,14 +247,14 @@ nav button.lock{opacity:.38}
 <main>
 <!-- 팀 선택 -->
 <section class="screen" id="scr-select">
-  <div class="notice">
-    응원할 <b>내 구단</b>을 고르세요 (2026시즌 로스터 기준).<br>
-    보정 규칙: 내 구단 <b>+3</b> · 올해 시즌 <b>+2</b> · 신규 영입 <b>+1</b> · FA 이적 선수는 보정 제외.<br>
-    선수를 터치하면 실제 모델 선수를 확인할 수 있습니다.
+  <h2 class="sec" style="margin-top:6px">이어하기 · 저장 슬롯</h2>
+  <div class="hint">진행 중인 슬롯을 누르면 이어서 하고, 빈 슬롯을 고르면 아래에서 새 구단을 선택합니다.</div>
+  <div id="slotStatus"></div>
+  <div class="notice" style="margin-top:16px">
+    <b>새 구단 시작</b> — 응원할 구단을 고르세요 (2026 로스터 기준).<br>
+    보정: 내 구단 <b>+3</b> · 올해 <b>+2</b> · 신규 <b>+1</b> · FA 이적 제외.
   </div>
   <div class="team-grid" id="teamGrid"></div>
-  <h2 class="sec" style="margin-top:18px">저장 슬롯</h2>
-  <div class="slot-row" id="slotRow2"></div>
 </section>
 
 <!-- 구단(로스터) -->
@@ -595,7 +595,55 @@ function switchSlot(i){
   if(state.myTeam){ renderTeamHome(); show('team'); }
   else show('select');
 }
+
+function renderSlotStatus(){
+  const box = document.getElementById('slotStatus');
+  if(!box) return;
+  box.innerHTML = '';
+  store.slots.forEach((s,i)=>{
+    const card = document.createElement('div');
+    card.className = 'prow';
+    card.style.cursor = 'pointer';
+    card.style.marginBottom = '8px';
+    if(s && s.myTeam){
+      const t = getTeam2(s);
+      const md = s.mode==='sim' ? `시뮬 ${s.year||1}년차` : '실황';
+      const eco = s.eco==='normal'?'경영':s.eco==='hard'?'하드':'자유';
+      // 순위 계산 (진행 중 시즌)
+      let rankTxt = '시즌 준비';
+      if(s.season && s.season.rec){
+        const order = Object.keys(s.season.rec).sort((a,b)=>{
+          const ra=s.season.rec[a], rb=s.season.rec[b];
+          const pa=ra.w+ra.l?ra.w/(ra.w+ra.l):0, pb=rb.w+rb.l?rb.w/(rb.w+rb.l):0;
+          return pb-pa;
+        });
+        const rk = order.indexOf(s.myTeam)+1;
+        const r = s.season.rec[s.myTeam];
+        rankTxt = `${s.season.day}/36경기 · ${rk}위 (${r.w}승 ${r.l}패)`;
+      }
+      card.style.borderColor = s.c || 'var(--amber)';
+      card.innerHTML = `<div class="pos" style="background:${t.c};color:#fff">${i+1}</div>
+        <div class="mid"><div class="nm">${t.name} <span style="font-size:11px;color:var(--dim)">${md}·${eco}</span></div>
+        <div class="hand">${rankTxt}${s.eco&&s.eco!=='free'?' · 💰'+(s.money||0).toFixed(0)+'억':''}</div></div>
+        <div class="ovr num" style="font-size:13px;color:var(--amber)">▶</div>`;
+      card.onclick = ()=>{ if(store.active!==i) switchSlot(i); else { renderTeamHome(); document.querySelector('nav button[data-nav="team"]').click(); } };
+    }else{
+      card.style.opacity = '.6';
+      card.innerHTML = `<div class="pos">${i+1}</div>
+        <div class="mid"><div class="nm">빈 슬롯</div><div class="hand">아래에서 새 구단 선택</div></div>`;
+      card.onclick = ()=>{ if(store.active!==i){ switchSlotEmpty(i); } };
+    }
+    box.appendChild(card);
+  });
+}
+function getTeam2(s){ return TEAMS.find(t=>t.id===s.myTeam) || {name:'?',c:'#888',real:''}; }
+function switchSlotEmpty(i){
+  save(); store.active=i; state = store.slots[i] || (store.slots[i]=EMPTY()); save();
+  refreshHeader(); renderSlots(); show('select');
+}
+
 function renderSlots(){
+  renderSlotStatus();
   ['slotRow','slotRow2'].forEach(rid=>{
     const row = document.getElementById(rid);
     if(!row) return;
@@ -759,9 +807,12 @@ document.getElementById('mask').addEventListener('click', e=>{
 /* ───────────── 내비 ───────────── */
 document.querySelectorAll('nav button').forEach(btn=>{
   btn.onclick = ()=>{
+    const nv = btn.dataset.nav;
+    const wasActive = btn.classList.contains('on');
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
     btn.classList.add('on');
-    const nv = btn.dataset.nav;
+    // 이미 보고 있던 탭을 다시 누르면 맨 위로 스크롤
+    if(wasActive){ const mainEl=document.querySelector('main'); if(mainEl) mainEl.scrollTo({top:0,behavior:'smooth'}); }
     if(!state.myTeam && nv!=='team'){ show('select'); return; }
     if(nv==='team'){
       if(state.myTeam){ renderTeamHome(); show('team'); }
@@ -1540,6 +1591,24 @@ function nextSeason(){
 
 
 
+
+/* ═══════════ 선수 등급 (v0.16) ═══════════ */
+// OVR 기준 커트라인 (KBO 로스터 분포상 종형 곡선이 되도록)
+function gradeOf(ovr){
+  if(ovr>=85) return {g:'S',  rank:8, color:'#FFD24A'};
+  if(ovr>=81) return {g:'A+', rank:7, color:'#FFB63B'};
+  if(ovr>=77) return {g:'A',  rank:6, color:'#E89B1C'};
+  if(ovr>=72) return {g:'B+', rank:5, color:'#9BD17A'};
+  if(ovr>=66) return {g:'B',  rank:4, color:'#7FA88F'};
+  if(ovr>=60) return {g:'C+', rank:3, color:'#8FA396'};
+  if(ovr>=54) return {g:'C',  rank:2, color:'#8899A0'};
+  return         {g:'C-', rank:1, color:'#77828A'};
+}
+function gradeBadge(ovr){
+  const gr = gradeOf(ovr);
+  return `<span style="font-family:'IBM Plex Mono';font-weight:700;font-size:12px;color:${gr.color};border:1px solid ${gr.color};border-radius:5px;padding:1px 5px">${gr.g}</span>`;
+}
+
 /* ═══════════ 선수 목록 정렬 (v0.14) ═══════════ */
 const SORT_STATE = {};   // {scope: {key, dir}}
 const SORT_KEYS = [
@@ -1843,7 +1912,7 @@ function tradeColumns(){
         const on = has(kind,i);
         s += `<div class="prow" style="cursor:pointer;${on?'border-color:var(--amber);background:#23361F':''}" onclick="pickTrade('${which}','${kind}',${i})">
           <div class="pos">${kind==='bat'?p[2]:(p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP')}</div>
-          <div class="mid"><div class="nm">${p[0]} <span style="font-size:11px;color:var(--dim)">${age}세</span></div><div class="hand">OVR ${ov}</div></div>
+          <div class="mid"><div class="nm">${p[0]} ${gradeBadge(ov)} <span style="font-size:11px;color:var(--dim)">${age}세</span></div><div class="hand">OVR ${ov}</div></div>
           ${on?'<div class="ovr num" style="font-size:14px;color:var(--amber)">✓</div>':''}</div>`;
       });
     });
@@ -1853,17 +1922,17 @@ function tradeColumns(){
   h += `<div class="reveal"><div class="lbl">선택 현황</div>
     내가 주는: ${tradeMyPicks.length? tradeMyPicks.map(x=>pickName('my',x)).join(', ') : '없음'}<br>
     내가 받는: ${tradeOppPicks.length? tradeOppPicks.map(x=>pickName('opp',x)).join(', ') : '없음'}</div>`;
-  h += col(state.myTeam,'my');
-  h += col(tradeOppId,'opp');
   if(tradeMyPicks.length && tradeOppPicks.length){
     const ev = evalTrade();
     const salLine = ecoOn()? `<br>연봉 변화: 받는 선수 +${(ev.mySalIn||0).toFixed(1)}억 / 보내는 선수 -${(ev.oppSalOut||0).toFixed(1)}억 (내 연봉 ${((ev.mySalIn||0)-(ev.oppSalOut||0)>=0?'+':'')}${((ev.mySalIn||0)-(ev.oppSalOut||0)).toFixed(1)}억)`:'';
-    h += `<div class="reveal" style="margin-top:12px"><div class="lbl">트레이드 평가 (상대 구단 관점)</div>
+    h += `<button class="btn" onclick="proposeTrade()" style="margin:10px 0">트레이드 제안</button>
+      <div class="reveal"><div class="lbl">트레이드 평가 (상대 구단 관점)</div>
       내가 주는 선수 합계 체감가치 ${ev.myPerceived.toFixed(0)} (${tradeMyPicks.length}명)<br>
       내가 받는 선수 합계 체감가치 ${ev.oppPerceived.toFixed(0)} (${tradeOppPicks.length}명)${salLine}<br>
-      ${ev.reason}</div>
-      <button class="btn" onclick="proposeTrade()">트레이드 제안</button>`;
+      ${ev.reason}</div>`;
   }
+  h += col(state.myTeam,'my');
+  h += col(tradeOppId,'opp');
   return h;
 }
 function pickName(which, x){
@@ -1901,6 +1970,11 @@ function evalTrade(){
   // 인원 불균형 페널티
   const countDiff = tradeMyPicks.length - tradeOppPicks.length;
   const rosterAdj = countDiff*1.5;
+  // 등급 판정: 양측에서 가장 높은 등급끼리 비교 (특급↔다수 방지)
+  let myTopRank = 0, oppTopRank = 0, myTopG='', oppTopG='';
+  tradeMyPicks.forEach(x=>{ const g=gradeOf(ovrOfEntry(state.myTeam,x.kind,x.idx)); if(g.rank>myTopRank){myTopRank=g.rank;myTopG=g.g;} });
+  tradeOppPicks.forEach(x=>{ const g=gradeOf(ovrOfEntry(tradeOppId,x.kind,x.idx)); if(g.rank>oppTopRank){oppTopRank=g.rank;oppTopG=g.g;} });
+  const gradeGap = oppTopRank - myTopRank;   // 내가 받는 최고등급 - 내가 주는 최고등급
   // 연봉 반영 (경영 모드): 상대는 비싼 선수를 넘기면 연봉 부담을 덜어 선호
   let salaryAdj = 0, mySalIn = 0, oppSalOut = 0;
   if(ecoOn()){
@@ -1910,19 +1984,22 @@ function evalTrade(){
     salaryAdj = (mySalIn - oppSalOut) * 0.8;
   }
   const gain = myPerceived + rosterAdj + salaryAdj - oppPerceived;
+  // 등급차 2단계 이상이면 무조건 거절 (특급을 다수 하위선수로 못 데려옴)
+  const gradeBlocked = gradeGap >= 2;
   let reason;
-  if(gain >= 0) reason = '✅ 상대에게 이득이라 수락할 것입니다.';
+  if(gradeBlocked) reason = `❌ 등급 격차가 큽니다 (${oppTopG}급을 ${myTopG}급으로는 데려올 수 없습니다).`;
+  else if(gain >= 0) reason = '✅ 상대에게 이득이라 수락할 것입니다.';
   else if(gain >= -5) reason = '🤝 상대가 약간 손해지만 받아들일 만합니다.';
   else{
     if(myFullPos) reason = '❌ 상대는 내가 주는 포지션 자원이 이미 충분합니다.';
     else if(state.mode==='sim' && myOldest>=35) reason = '❌ 내가 주는 선수가 노쇠해 상대가 꺼립니다.';
     else reason = '❌ 상대에게 손해가 커 거절할 것입니다.';
   }
-  return {myPerceived, oppPerceived, gain, reason, mySalIn, oppSalOut};
+  return {myPerceived, oppPerceived, gain, reason, mySalIn, oppSalOut, gradeBlocked, myTopG, oppTopG};
 }
 function proposeTrade(){
   const ev = evalTrade();
-  const accept = ev.gain >= 0 || (ev.gain >= -5 && Math.random()<0.6) || (ev.gain >= -9 && Math.random()<0.2);
+  const accept = !ev.gradeBlocked && (ev.gain >= 0 || (ev.gain >= -5 && Math.random()<0.6) || (ev.gain >= -9 && Math.random()<0.2));
   if(!accept){
     alert('상대 구단이 트레이드를 거절했습니다.\n' + ev.reason.replace(/^[\u2705\u274c\ud83e\udd1d]\s*/,''));
     return;
