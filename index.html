@@ -564,7 +564,7 @@ function renderLineup(){
   });
   const spBox = document.getElementById('spList');
   spBox.innerHTML = '';
-  const list = spIdxList(t);
+  const spl = spIdxList(t);
   const nxt = nextSpIdx(t.id);
   t.pit.forEach((p,i)=>{
     if(p[2]!=='선발') return;
@@ -572,7 +572,7 @@ function renderLineup(){
     b.textContent = `${p[0]} ${pitOvr(p,t.id)}${i===nxt?' · 다음 등판':''}`;
     b.className = i===nxt?'on':'';
     b.onclick = ()=>{
-      state.rot[t.id] = list.indexOf(i);   // 다음 경기 선발 지정, 이후 로테이션 이어짐
+      state.rot[t.id] = spl.indexOf(i);   // 다음 경기 선발 지정, 이후 로테이션 이어짐
       save(); renderLineup();
     };
     spBox.appendChild(b);
