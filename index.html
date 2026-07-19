@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.7</title>
+<title>우리팀을 만들자 v0.7.1</title>
 <!-- v0.7 — 자금/경영 시스템(관중수입·운영비·연봉, 일반/하드/자유), 휴식중 투수 로테이션 자리 고정 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -223,7 +223,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.7</span>
+    <span class="ver">v0.7.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -265,7 +265,7 @@ nav button.lock{opacity:.38}
   <div class="hint">타순 변경: 선수 하나를 터치한 뒤, 바꿀 선수를 터치하면 자리가 교환됩니다.</div>
   <div id="lineupList"></div>
   <h2 class="sec" style="margin-top:16px">선발 로테이션</h2>
-  <div class="hint">휴식이 끝난 투수끼리 두 명을 차례로 터치하면 자리가 교환됩니다. 최근 등판한(휴식중) 투수는 자리가 고정됩니다.</div>
+  <div class="hint">휴식중(최근 등판) 투수끼리 두 명을 차례로 터치하면 자리가 교환됩니다. 등판 준비중인 투수는 자리가 고정됩니다.</div>
   <div id="spList"></div>
 </section>
 
@@ -749,12 +749,12 @@ function renderLineup(){
     const rest = state.season ? restOk(t.id, pi) : true;
     const d = document.createElement('div');
     d.className = 'lrow' + (rotSel===slot?' sel':'');
-    if(!rest) d.style.opacity='.45';
+    if(rest) d.style.opacity='.5';
     d.innerHTML = `<div class="ord">${slot+1}</div><div class="lp">선발</div>
       <div class="ln">${p[0]}${pi===nxtPi?' <span class="boost">다음 등판</span>':''}${!rest?' <span style="color:#8FA396;font-size:11px">휴식중</span>':''}</div>
       <div class="lo num">${pitOvr(p,t.id)}</div>`;
     d.onclick = ()=>{
-      if(!rest){ return; }   // 휴식중(최근 등판) 투수는 자리 고정
+      if(rest){ return; }   // 등판 준비중 투수는 자리 고정
       if(rotSel<0){ rotSel = slot; }
       else if(rotSel===slot){ rotSel = -1; }
       else{
@@ -1107,6 +1107,7 @@ function playMyGame(){
   const isHome = m.home===state.myTeam;
   const myWon = isHome ? curGame.sc.home>curGame.sc.away : curGame.sc.away>curGame.sc.home;
   curGame.settle = settleGame(isHome, myWon);
+  refreshHeader();
   const others = playOtherGames();
   finishDay(`${curGame.away.name} ${curGame.sc.away} : ${curGame.sc.home} ${curGame.home.name}`, others);
   return curGame;
@@ -1158,6 +1159,7 @@ document.getElementById('playBtn').onclick = ()=>{
 document.getElementById('skip5Btn').onclick = ()=>{
   let done=0;
   while(done<5 && !seasonOver()){ playMyGame(); done++; }
+  refreshHeader();
   renderGameSetup();   // 확인창 없이 즉시 갱신 — 연타로 시즌 빠르게 소화 가능
 };
 document.getElementById('newSeasonBtn').onclick = ()=>{
@@ -1241,6 +1243,7 @@ function renderSeasonDone(){
   if(!state.season.post){
     state.season.post = runPostseason();
     state.season.salaryPaid = settleSeasonSalary();
+    refreshHeader();
     if(!state.history) state.history = [];
     state.history.push({year: state.year, rank, rec:{...rec}, champion: state.season.post.champion});
     save();
