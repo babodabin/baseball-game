@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.17</title>
-<!-- v0.17 — 트레이드 타자/투수 혼합정렬, 맨위로 버튼, 시작화면 팀그리드 접기, 팀소개 카드, 연봉협상 -->
+<title>우리팀을 만들자 v0.18</title>
+<!-- v0.18 — 구단홈 버튼 제거, 팀 선택 시 로스터+2025순위 미리보기, 능력치 분해표시, 배경(밝게/낮밤비) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -201,6 +201,25 @@ nav button.lock{opacity:.38}
 .season-info{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;line-height:1.7;margin-bottom:12px;min-height:104px}
 .season-info b{color:var(--amber)}
 
+
+/* ── 배경 테마 ── */
+body.theme-day{--bg:#16241A;--panel:#1E2E22;--panel2:#26382B;--chalk:#F2EFE6;--dim:#A8BBAC}
+body.theme-night{--bg:#0D1811;--panel:#152219;--panel2:#1C2C21;--chalk:#EDEAE0;--dim:#8FA396}
+body.theme-rain{--bg:#151C22;--panel:#1C262E;--panel2:#242F38;--chalk:#E4EAEE;--dim:#8FA0AC}
+/* 야구장 그라운드 느낌: 상단 하늘 그라데이션 + 하단 잔디 */
+main::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5}
+body.theme-day main::before{background:linear-gradient(180deg,#4A82B4 0%,#79A5C9 22%,transparent 42%),linear-gradient(0deg,#2C6B3A 0%,#3C7D48 12%,transparent 30%)}
+body.theme-night main::before{background:linear-gradient(180deg,#1A2740 0%,#243456 20%,transparent 42%),linear-gradient(0deg,#183A22 0%,#1F4A2C 12%,transparent 30%)}
+body.theme-rain main::before{background:linear-gradient(180deg,#2A3742 0%,#3A4854 22%,transparent 44%),linear-gradient(0deg,#22402C 0%,#2A4A34 12%,transparent 30%)}
+/* 비 효과 */
+body.theme-rain main::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:repeating-linear-gradient(105deg,transparent 0 6px,rgba(160,190,210,.14) 6px 7px);
+  animation:rainfall .6s linear infinite;opacity:.5}
+@keyframes rainfall{from{background-position:0 0}to{background-position:-14px 40px}}
+.theme-pick{display:flex;gap:8px;margin-top:10px}
+.theme-pick button{flex:1;padding:9px 0;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
+.theme-pick button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
+
 /* ── 저장 슬롯 ── */
 .slot-row{display:flex;gap:8px;margin:14px 0 4px}
 .slot-row button{flex:1;padding:10px 4px;border-radius:10px;border:1px solid var(--line);
@@ -237,7 +256,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.17</span>
+    <span class="ver">v0.18</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -248,8 +267,8 @@ nav button.lock{opacity:.38}
 <main>
 <!-- 팀 선택 -->
 <section class="screen" id="scr-select">
-  <h2 class="sec" style="margin-top:6px">우리팀을 만들자!</h2>
-  <div class="hint">진행 중인 슬롯을 누르면 이어서 하고, 빈 슬롯을 누르면 새 구단을 선택합니다.</div>
+  <h2 class="sec" style="margin-top:6px" id="selectTitle">우리팀을 만들자!</h2>
+  <div class="hint" id="selectHint">진행 중인 슬롯을 누르면 이어서 하고, 빈 슬롯을 누르면 새 구단을 선택합니다.</div>
   <div id="slotStatus"></div>
   <div id="teamPicker" style="display:none">
     <div class="notice" style="margin-top:16px">
@@ -365,6 +384,7 @@ nav button.lock{opacity:.38}
 <script>
 'use strict';
 const SAVE_KEY = 'ourteam_slots_v1';
+const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
 const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[]});
 
@@ -604,6 +624,10 @@ function switchSlot(i){
 function renderSlotStatus(){
   const box = document.getElementById('slotStatus');
   if(!box) return;
+  box.style.display='';   // 목록 복원
+  const tp=document.getElementById('teamPicker'); if(tp) tp.style.display='none';
+  const hint=document.getElementById('selectHint'); if(hint) hint.style.display='';
+  const title=document.getElementById('selectTitle'); if(title) title.textContent='우리팀을 만들자!';
   box.innerHTML = '';
   store.slots.forEach((s,i)=>{
     const card = document.createElement('div');
@@ -645,9 +669,18 @@ function renderSlotStatus(){
 function getTeam2(s){ return TEAMS.find(t=>t.id===s.myTeam) || {name:'?',c:'#888',real:''}; }
 function switchSlotEmpty(i){
   save(); store.active=i; state = store.slots[i] || (store.slots[i]=EMPTY()); save();
-  refreshHeader(); renderSlots(); show('select');
+  refreshHeader(); show('select');
+  // 슬롯 목록·안내 숨기고 팀 선택만 표시
   const tp = document.getElementById('teamPicker');
-  if(tp){ tp.style.display=''; tp.scrollIntoView({behavior:'smooth'}); }
+  const ss = document.getElementById('slotStatus');
+  const hint = document.getElementById('selectHint');
+  const title = document.getElementById('selectTitle');
+  if(ss) ss.style.display='none';
+  if(hint) hint.style.display='none';
+  if(title) title.textContent='새 구단을 선택하세요';
+  if(tp){ tp.style.display=''; }
+  renderTeamGrid();
+  document.querySelector('main').scrollTo({top:0});
 }
 
 function renderSlots(){
@@ -728,7 +761,7 @@ function renderTeamGrid(){
     d.className = 'tcard';
     d.innerHTML = `<div class="stripe" style="background:${t.c}"></div>
       <div class="tname">${t.name}</div><div class="treal">${t.real}</div>`;
-    d.onclick = ()=>openModeSheet(t);
+    d.onclick = ()=>openTeamPreview(t);
     g.appendChild(d);
   });
 }
@@ -771,25 +804,42 @@ function statRow(label, val){
   return `<div class="stat"><div class="sl"><span>${label}</span><span class="v">${val}</span></div>
     <div class="bar"><i style="width:${Math.min(100,val)}%"></i></div></div>`;
 }
+// 능력치 분해 표시: 85 (80 +2 +3) 형태
+function statRow2(label, base, p, teamId, isBat){
+  const bo = bonusOf(p, teamId, isBat);
+  const total = Math.min(99, base + bo);
+  const f = flagOf(p, isBat);
+  let breakdown = '';
+  if(bo>0){
+    const parts = [];
+    if(f!=='fa' && f!=='legend'){ parts.push('올해+'+BOOST_CUR); if(f==='new') parts.push('신규+'+BOOST_NEW); }
+    if(isMine(teamId)) parts.push('내구단+'+BOOST_MY);
+    breakdown = ` <span style="font-size:10px;color:var(--amber)">(${base} ${parts.map(x=>'+'+x.split('+')[1]).join(' ')})</span>`;
+  }
+  return `<div class="stat"><div class="sl"><span>${label}</span><span class="v">${total}${breakdown}</span></div>
+    <div class="bar"><i style="width:${Math.min(100,total)}%"></i></div></div>`;
+}
 function openSheet(team, tab, idx){
   const isBat = tab==='bat';
   const p = (isBat?team.bat:team.pit)[idx];
   const sheet = document.getElementById('sheet');
   const f = flagOf(p, isBat);
   const bo = bonusOf(p, team.id, isBat);
+  const age = team.age ? (isBat?team.age.bat[idx]:team.age.pit[idx]) : ageOf(p[1]);
   let statsHtml, meta;
   if(isBat){
-    meta = `${p[2]} · ${p[3]}타 · OVR <b class="num">${batOvr(p,team.id)}</b>`;
-    statsHtml = statRow('컨택', b(p[4],p,team.id,true)) + statRow('파워', b(p[5],p,team.id,true))
-      + statRow('주루', b(p[6],p,team.id,true)) + statRow('수비', b(p[7],p,team.id,true)) + statRow('선구', b(p[8],p,team.id,true));
+    meta = `${p[2]} · ${p[3]}타 · ${age}세 · OVR <b class="num">${batOvr(p,team.id)}</b> ${gradeBadge(batOvr(p,team.id))}`;
+    statsHtml = statRow2('컨택', p[4], p, team.id, true) + statRow2('파워', p[5], p, team.id, true)
+      + statRow2('주루', p[6], p, team.id, true) + statRow2('수비', p[7], p, team.id, true) + statRow2('선구', p[8], p, team.id, true);
   }else{
-    meta = `${p[2]} · ${p[3]}투 · OVR <b class="num">${pitOvr(p,team.id)}</b>`;
+    meta = `${p[2]} · ${p[3]}투 · ${age}세 · OVR <b class="num">${pitOvr(p,team.id)}</b> ${gradeBadge(pitOvr(p,team.id))}`;
     statsHtml = `<div class="stat"><div class="sl"><span>구속</span><span class="v">${bv(p[4],p,team.id)} km/h</span></div>
       <div class="bar"><i style="width:${Math.min(100,(bv(p[4],p,team.id)-125)*2.4)}%"></i></div></div>`
-      + statRow('제구', b(p[5],p,team.id,false)) + statRow('변화구', b(p[6],p,team.id,false)) + statRow('체력', b(p[7],p,team.id,false));
+      + statRow2('제구', p[5], p, team.id, false) + statRow2('변화구', p[6], p, team.id, false) + statRow2('체력', p[7], p, team.id, false);
   }
   let bonusLine;
   if(f==='fa') bonusLine = '<span style="color:#8FA396">FA 이적 선수 · 보정 제외</span>';
+  else if(f==='legend') bonusLine = '<span class="boost">🏅 레전드 · 내 구단 보정만</span>';
   else{
     const parts = ['올해 시즌 +'+BOOST_CUR];
     if(f==='new') parts.push('신규 영입 +'+BOOST_NEW);
@@ -803,7 +853,7 @@ function openSheet(team, tab, idx){
     <div class="reveal"><div class="lbl">MODEL PLAYER</div>
       실제 모델: <b>${p[1]}</b> (${team.real})<br>
       ${bonusLine}<br>
-      2026시즌 로스터 기준, 최근 성적 참고 추정 능력치입니다.</div>
+      괄호 안은 기본 능력치와 보정 내역입니다.</div>
     ${statsHtml}`;
   document.getElementById('mask').classList.add('on');
 }
@@ -846,6 +896,36 @@ document.getElementById('ltabRoster').onclick = ()=>showLineupSub('roster');
 
 
 /* ───────────── 모드 선택 시트 ───────────── */
+
+/* ───────────── 팀 미리보기 (로스터+2025순위) ───────────── */
+function openTeamPreview(t){
+  const sheet = document.getElementById('sheet');
+  const bats = [...t.bat].map((p,i)=>({p,ovr:batOvr(p,t.id)})).sort((a,b)=>b.ovr-a.ovr);
+  const pits = [...t.pit].map((p,i)=>({p,ovr:pitOvr(p,t.id)})).sort((a,b)=>b.ovr-a.ovr);
+  const teamOvr = Math.round([...bats.slice(0,9),...pits.slice(0,6)].reduce((s,x)=>s+x.ovr,0)/15);
+  let h = `<div class="top"><div class="pname">${t.name}</div>
+    <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">${t.real} · 2025 실제 순위 <b>${RANK2025[t.id]||'-'}위</b> · 팀 전력 OVR ${teamOvr}</div>
+    <div class="reveal"><div class="lbl">이 구단으로 시작</div>소속 선수 내 구단 보정 +${BOOST_MY}. 아래 로스터를 확인하고 시작하세요.</div>
+    <button class="btn" onclick="openModeSheet(TEAMS.find(x=>x.id==='${t.id}'))">이 구단으로 시작하기</button>
+    <h2 class="sec" style="font-size:14px;margin-top:14px">주요 타자</h2>`;
+  bats.slice(0,9).forEach(({p,ovr})=>{
+    h += `<div class="prow"><div class="pos">${p[2]}</div>
+      <div class="mid"><div class="nm">${p[0]} ${gradeBadge(ovr)}</div><div class="hand">${p[1]}</div></div>
+      <div class="ovr num">${ovr}</div></div>`;
+  });
+  h += `<h2 class="sec" style="font-size:14px;margin-top:14px">주요 투수</h2>`;
+  pits.slice(0,6).forEach(({p,ovr})=>{
+    h += `<div class="prow"><div class="pos">${p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP'}</div>
+      <div class="mid"><div class="nm">${p[0]} ${gradeBadge(ovr)}</div><div class="hand">${p[1]}</div></div>
+      <div class="ovr num">${ovr}</div></div>`;
+  });
+  h += `<button class="btn" onclick="openModeSheet(TEAMS.find(x=>x.id==='${t.id}'))" style="margin-top:14px">이 구단으로 시작하기</button>
+    <button class="btn ghost" onclick="closeSheet()">다른 팀 보기</button>`;
+  sheet.innerHTML = h;
+  document.getElementById('mask').classList.add('on');
+}
+
 function openModeSheet(t){
   const sheet = document.getElementById('sheet');
   sheet.innerHTML = `
@@ -893,7 +973,41 @@ function startWithMode(teamId, mode, eco){
 }
 
 
+
+/* ═══════════ 배경 테마 (v0.18) ═══════════ */
+function applyTheme(){
+  if(!document.body) return;
+  const th = (store && store.theme) || 'night';
+  document.body.classList.remove('theme-day','theme-night','theme-rain');
+  document.body.classList.add('theme-'+th);
+}
+function setTheme(th){
+  store.theme = th;
+  localStorage.setItem(SAVE_KEY, JSON.stringify(store));
+  applyTheme();
+  renderTeamHome();
+}
+
 /* ═══════════ 구단 홈 화면 (v0.15 개편) ═══════════ */
+
+function teamStatusHtml(){
+  const t = getTeam(state.myTeam);
+  let s = `모드: ${state.mode==='sim'?'시뮬레이션 '+state.year+'년차':'실황'} · ${state.eco==='normal'?'경영 일반':state.eco==='hard'?'경영 하드':'자유'}<br>`;
+  s += `2025 실제 순위: ${RANK2025[state.myTeam]||'-'}위<br>`;
+  if(state.season && state.season.rec){
+    const order = rankOrder ? rankOrder() : [];
+    const rk = order.indexOf(state.myTeam)+1;
+    const r = state.season.rec[state.myTeam];
+    s += `현재 시즌: ${state.season.day}/36경기 · ${rk}위 (${r.w}승 ${r.l}패 ${r.t}무)<br>`;
+  }else s += `시즌 준비 중<br>`;
+  // 로스터 요약
+  const topBat = [...t.bat].map((p,i)=>({n:p[0],o:batOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
+  const topPit = [...t.pit].map((p,i)=>({n:p[0],o:pitOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
+  s += `간판 타자: ${topBat.n} (OVR ${topBat.o}) · 에이스: ${topPit.n} (OVR ${topPit.o})`;
+  if(ecoOn()) s += `<br>잔고 ${fmtMoney()} · 연간 총연봉 ${teamSalary().toFixed(1)}억`;
+  return s;
+}
+
 function renderTeamHome(){
   const box = document.getElementById('teamHome');
   const t = getTeam(state.myTeam);
@@ -906,13 +1020,15 @@ function renderTeamHome(){
       <div style="font-size:13px;color:var(--dim);margin-top:4px">${t.real} · ${md} · ${eco}</div>
       ${ecoOn()?`<div style="font-size:14px;color:var(--chalk);margin-top:6px">💰 ${fmtMoney()}</div>`:''}
     </div>
-    <div style="display:flex;flex-direction:column;gap:10px;max-width:340px;margin:8px auto 0">
-      <button class="btn" onclick="gotoNav('lineup')">📋 라인업 · 로스터</button>
-      <button class="btn" onclick="gotoNav('game')">📺 경기 하기</button>
-      <button class="btn" onclick="gotoNav('front')">🏢 구단 운영</button>
-      <button class="btn" onclick="gotoNav('rank')">🏆 순위 · 기록</button>
+    <div class="reveal" style="max-width:360px;margin:0 auto"><div class="lbl">구단 현황</div>${teamStatusHtml()}</div>
+
+    <h2 class="sec" style="margin-top:24px">배경 테마</h2>
+    <div class="theme-pick">
+      <button class="${(store.theme||'night')==='day'?'on':''}" onclick="setTheme('day')">☀️ 낮</button>
+      <button class="${(store.theme||'night')==='night'?'on':''}" onclick="setTheme('night')">🌙 밤</button>
+      <button class="${(store.theme||'night')==='rain'?'on':''}" onclick="setTheme('rain')">🌧 비</button>
     </div>
-    <h2 class="sec" style="margin-top:24px">저장 슬롯</h2>
+    <h2 class="sec" style="margin-top:20px">저장 슬롯</h2>
     <div class="slot-row" id="slotRow"></div>
     <div style="text-align:center;margin-top:12px">
       <span class="lb-help" onclick="resetCurrentSlot()">이 슬롯 초기화</span>
@@ -2618,6 +2734,7 @@ document.getElementById('rtabPlayer').onclick = ()=>{
   const mainEl=document.querySelector('main'), btn=document.getElementById('scrollTopBtn');
   if(mainEl&&btn) mainEl.addEventListener('scroll',()=>{ btn.style.display = mainEl.scrollTop>400?'block':'none'; });
 })();
+applyTheme();
 renderTeamGrid();
 refreshHeader();
 renderSlots();
