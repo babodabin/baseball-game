@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.4</title>
-<!-- v0.4 — 36경기 시즌 진행 + 순위표 + 선발 로테이션(내팀/상대팀 자동 순환, 다음 경기 선발 지정 가능) -->
+<title>우리팀을 만들자 v0.4.1</title>
+<!-- v0.4.1 — 저장 슬롯 3개(팀별 별도 시즌), 하단 여백 수정, 5경기 자동 진행 확인창 제거 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -20,7 +20,7 @@ html,body{height:100%}
 body{
   background:var(--bg); color:var(--chalk);
   font-family:'IBM Plex Sans KR',sans-serif; font-size:15px;
-  padding-bottom:calc(64px + env(safe-area-inset-bottom));
+  padding-bottom:calc(88px + env(safe-area-inset-bottom));
   overscroll-behavior:none;
 }
 .num{font-family:'IBM Plex Mono',monospace}
@@ -45,7 +45,7 @@ header{
 .subline .myteam{color:var(--chalk);font-weight:700}
 
 /* ── 화면 공통 ── */
-.screen{display:none;padding:16px}
+.screen{display:none;padding:16px 16px 32px}
 .screen.on{display:block}
 h2.sec{
   font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:17px;
@@ -192,6 +192,14 @@ nav button.lock{opacity:.38}
 .rank-table td.rk{color:var(--amber);font-weight:700}
 .season-info{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;line-height:1.7;margin-bottom:12px}
 .season-info b{color:var(--amber)}
+
+/* ── 저장 슬롯 ── */
+.slot-row{display:flex;gap:8px;margin:14px 0 4px}
+.slot-row button{flex:1;padding:10px 4px;border-radius:10px;border:1px solid var(--line);
+  background:var(--panel);color:var(--dim);font-family:inherit;font-size:12px;line-height:1.4}
+.slot-row button.on{border-color:var(--amber);color:var(--chalk)}
+.slot-row button b{display:block;color:var(--amber);font-size:11px;font-family:'IBM Plex Mono',monospace}
+
 .other-results{font-size:12px;color:var(--dim);line-height:1.8;margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
 
 
@@ -202,7 +210,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.4</span>
+    <span class="ver">v0.4.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -228,7 +236,10 @@ nav button.lock{opacity:.38}
     <button id="tabPit">투수</button>
   </div>
   <div class="plist" id="plist"></div>
-  <button class="btn ghost" id="resetBtn">구단 다시 선택 (데이터 초기화)</button>
+  <h2 class="sec" style="margin-top:18px">저장 슬롯</h2>
+  <div class="hint">슬롯마다 다른 팀으로 별도의 시즌을 진행할 수 있습니다.</div>
+  <div class="slot-row" id="slotRow"></div>
+  <button class="btn ghost" id="resetBtn">이 슬롯 초기화 (구단 다시 선택)</button>
 </section>
 
 
@@ -297,13 +308,10 @@ nav button.lock{opacity:.38}
 
 <script>
 'use strict';
-const SAVE_KEY = 'ourteam_v04';
+const SAVE_KEY = 'ourteam_slots_v1';
+const EMPTY = ()=>({myTeam:null, lineups:{}, season:null, rot:{}});
 
-/* ───────────── 데이터 ─────────────
- * 타자: [가명, 실제모델, 포지션, 타격손, 컨택, 파워, 주루, 수비, 선구]
- * 투수: [가명, 실제모델, 역할, 투구손, 구속(km), 제구, 변화구, 체력]
- * 능력치는 2025시즌 성적 기반 추정치 (조정 가능)
- */
+/* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
 {id:'LG', name:'엘즈 트윈즈', real:'LG 트윈스', c:'#C30452',
  bat:[['홍창규','홍창기','RF','좌',82,62,70,74,90],['신민제','신민재','2B','좌',74,45,88,78,72],['어스틴','오스틴 딘','1B','우',78,85,60,70,70],['문보겸','문보경','3B','좌',80,76,62,74,76],['오지완','오지환','SS','좌',68,70,72,86,74],['박동언','박동원','C','우',66,80,40,78,64],['박해빈','박해민','CF','좌',72,48,92,88,70],['문성진','문성주','LF','좌',78,58,68,70,78],['김범섭','김범석','DH','우',70,74,40,60,62,'new']],
@@ -351,13 +359,44 @@ const BOOST_CUR = 2;  // 올해(2026) 시즌 보정
 const BOOST_NEW = 1;  // 신규 영입/신인 추가 보정
 // FA 이적 선수('fa')는 모든 보정 제외
 
-/* ───────────── 상태 ───────────── */
-let state = load();
-function load(){
-  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; return {myTeam:s.myTeam||null, lineups:s.lineups||{}, season:s.season||null, rot:s.rot||{}}; }
-  catch(e){ return {myTeam:null, lineups:{}, season:null, rot:{}}; }
+
+/* ───────────── 상태 (슬롯 3개) ───────────── */
+let store = loadStore();
+let state = store.slots[store.active] || (store.slots[store.active] = EMPTY());
+function loadStore(){
+  try{
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if(s && Array.isArray(s.slots)) return s;
+  }catch(e){}
+  // v0.4 단일 저장 → 슬롯 1로 이전
+  let mig = null;
+  try{ mig = JSON.parse(localStorage.getItem('ourteam_v04')); }catch(e){}
+  return { active:0, slots:[ mig||EMPTY(), EMPTY(), EMPTY() ] };
 }
-function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+function save(){ store.slots[store.active] = state; localStorage.setItem(SAVE_KEY, JSON.stringify(store)); }
+function switchSlot(i){
+  save();
+  store.active = i;
+  state = store.slots[i] || (store.slots[i] = EMPTY());
+  save();
+  refreshHeader(); renderSlots();
+  if(state.myTeam){ renderRoster('bat'); show('team'); }
+  else show('select');
+}
+function renderSlots(){
+  const row = document.getElementById('slotRow');
+  if(!row) return;
+  row.innerHTML='';
+  store.slots.forEach((s,i)=>{
+    const t = s && s.myTeam ? TEAMS.find(t=>t.id===s.myTeam) : null;
+    const gp = s && s.season ? s.season.day : 0;
+    const b = document.createElement('button');
+    b.className = store.active===i?'on':'';
+    b.innerHTML = `<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b>${t? t.name+'<br>'+gp+'경기' : '비어있음'}`;
+    b.onclick = ()=>{ if(store.active!==i) switchSlot(i); };
+    row.appendChild(b);
+  });
+}
 
 /* ───────────── 능력치 계산 ───────────── */
 function isMine(teamId){ return state.myTeam === teamId; }
@@ -395,7 +434,7 @@ function refreshHeader(){
   const r = document.getElementById('subRight');
   if(state.myTeam){
     const t = TEAMS.find(t=>t.id===state.myTeam);
-    l.textContent = '내 구단';
+    l.textContent = `내 구단 · 슬롯 ${store.active+1}`;
     r.textContent = t.name;
   }else{
     l.textContent = '구단을 선택하세요';
@@ -415,7 +454,7 @@ function renderTeamGrid(){
     d.onclick = ()=>{
       if(confirm(`${t.name}(${t.real})을(를) 내 구단으로 선택할까요?\n소속 선수에게 내 구단 보정 +${BOOST_MY}이 적용됩니다.`)){
         state.myTeam = t.id; save();
-        refreshHeader(); renderRoster('bat'); show('team');
+        refreshHeader(); renderSlots(); renderRoster('bat'); show('team');
       }
     };
     g.appendChild(d);
@@ -523,8 +562,8 @@ document.querySelectorAll('nav button').forEach(btn=>{
 document.getElementById('tabBat').onclick = ()=>renderRoster('bat');
 document.getElementById('tabPit').onclick = ()=>renderRoster('pit');
 document.getElementById('resetBtn').onclick = ()=>{
-  if(confirm('구단 선택과 저장 데이터를 초기화할까요?')){
-    state = {myTeam:null, lineups:{}, season:null, rot:{}}; save(); refreshHeader(); show('select');
+  if(confirm('현재 슬롯의 구단과 시즌 기록을 초기화할까요?')){
+    state = EMPTY(); save(); refreshHeader(); renderSlots(); show('select');
   }
 };
 
@@ -878,8 +917,7 @@ document.getElementById('playBtn').onclick = ()=>{
 document.getElementById('skip5Btn').onclick = ()=>{
   let done=0;
   while(done<5 && !seasonOver()){ playMyGame(); done++; }
-  alert(done+'경기 자동 진행 완료. 순위 탭에서 결과를 확인하세요.');
-  renderGameSetup();
+  renderGameSetup();   // 확인창 없이 즉시 갱신 — 연타로 시즌 빠르게 소화 가능
 };
 document.getElementById('newSeasonBtn').onclick = ()=>{ newSeason(); renderGameSetup(); };
 
@@ -919,6 +957,7 @@ document.getElementById('resetSeasonBtn').onclick = ()=>{
 /* ───────────── 시작 ───────────── */
 renderTeamGrid();
 refreshHeader();
+renderSlots();
 if(state.myTeam){ renderRoster('bat'); show('team'); }
 else show('select');
 </script>
