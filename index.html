@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.6</title>
+<title>우리팀을 만들자 v0.6.1</title>
 <!-- v0.6 — 실황/시뮬레이션 2모드, 살아있는 선수 데이터(나이·성장·노쇠), 포스트시즌(WC/준PO/PO/KS), 다년 시즌, 선발 3경기 휴식 규칙 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -205,6 +205,14 @@ nav button.lock{opacity:.38}
 .slot-row button.on{border-color:var(--amber);color:var(--chalk)}
 .slot-row button b{display:block;color:var(--amber);font-size:11px;font-family:'IBM Plex Mono',monospace}
 
+.mode-btns{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.mode-btns button{padding:14px;border-radius:11px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--chalk);font-family:inherit;font-size:14px;font-weight:700;text-align:left;line-height:1.5}
+.mode-btns button small{display:block;font-weight:400;font-size:12px;color:var(--dim)}
+.mode-btns button.primary{background:var(--amber);border-color:var(--amber);color:#20180A}
+.mode-btns button.primary small{color:#5A4415}
+
+
 .other-results{font-size:12px;color:var(--dim);line-height:1.8;margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
 
 
@@ -215,7 +223,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.6</span>
+    <span class="ver">v0.6.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -318,6 +326,7 @@ nav button.lock{opacity:.38}
 <script>
 'use strict';
 const SAVE_KEY = 'ourteam_slots_v1';
+const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
 const EMPTY = ()=>({myTeam:null, mode:null, year:1, players:null, lineups:{}, season:null, rot:{}, spLast:{}, history:[]});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
@@ -472,7 +481,7 @@ function renderSlots(){
       const gp = s && s.season ? s.season.day : 0;
       const b = document.createElement('button');
       b.className = store.active===i?'on':'';
-      b.innerHTML = `<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b>${t? t.name+'<br>'+gp+'경기' : '비어있음'}`;
+      b.innerHTML = `<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b>${t? t.name+'<br>'+(s.mode==='sim'?'시뮬 '+(s.year||1)+'년차':'실황')+' · '+gp+'경기' : '비어있음'}`;
       b.onclick = ()=>{ if(store.active!==i) switchSlot(i); };
       row.appendChild(b);
     });
@@ -515,7 +524,7 @@ function refreshHeader(){
   const r = document.getElementById('subRight');
   if(state.myTeam){
     const t = TEAMS.find(t=>t.id===state.myTeam);
-    const md = state.mode==='sim' ? `시뮬 ${state.year}년차` : state.mode==='live' ? '실황' : '';
+    const md = state.mode==='sim' ? `시뮬 ${state.year}년차` : state.mode==='live' ? `실황 ${DATA_DATE}` : '';
     l.textContent = `슬롯 ${store.active+1}${md?' · '+md:''}`;
     r.textContent = t.name;
   }else{
@@ -533,16 +542,7 @@ function renderTeamGrid(){
     d.className = 'tcard';
     d.innerHTML = `<div class="stripe" style="background:${t.c}"></div>
       <div class="tname">${t.name}</div><div class="treal">${t.real}</div>`;
-    d.onclick = ()=>{
-      if(!confirm(`${t.name}(${t.real})을(를) 내 구단으로 선택할까요?\n소속 선수에게 내 구단 보정 +${BOOST_MY}이 적용됩니다.`)) return;
-      const sim = confirm('게임 모드를 선택하세요.\n\n[확인] 시뮬레이션 모드 — 다년 운영, 선수 성장/노쇠, 포스트시즌\n[취소] 실황 모드 — 2026 현재 선수단으로 한 시즌 집중');
-      state.myTeam = t.id;
-      state.mode = sim ? 'sim' : 'live';
-      state.year = 1;
-      state.players = snapshotTeams();   // 시작 시점 선수단 복사 (두 모드 공통)
-      save();
-      refreshHeader(); renderSlots(); renderRoster('bat'); show('team');
-    };
+    d.onclick = ()=>openModeSheet(t);
     g.appendChild(d);
   });
 }
@@ -654,6 +654,34 @@ document.getElementById('resetBtn').onclick = ()=>{
   }
 };
 
+
+
+/* ───────────── 모드 선택 시트 ───────────── */
+function openModeSheet(t){
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="top"><div class="pname">${t.name}</div>
+      <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">${t.real} · 소속 선수 내 구단 보정 +${BOOST_MY}</div>
+    <div class="mode-btns">
+      <button class="primary" onclick="startWithMode('${t.id}','live')">📡 실황 모드
+        <small>데이터 기준 ${DATA_DATE} 선수단 · 한 시즌 집중 · 성장/노쇠 없음</small></button>
+      <button onclick="startWithMode('${t.id}','sim')">🎮 시뮬레이션 모드
+        <small>다년 운영 · 선수 성장/노쇠 · 포스트시즌 후 다음 시즌</small></button>
+      <button onclick="closeSheet()">취소</button>
+    </div>`;
+  document.getElementById('mask').classList.add('on');
+}
+function startWithMode(teamId, mode){
+  closeSheet();
+  state.myTeam = teamId;
+  state.mode = mode;
+  state.year = 1;
+  state.startedAt = new Date().toISOString().slice(0,10).replaceAll('-','.');
+  state.players = snapshotTeams();
+  save();
+  refreshHeader(); renderSlots(); renderRoster('bat'); show('team');
+}
 
 /* ═══════════ 라인업 ═══════════ */
 function getLineup(teamId){
@@ -991,7 +1019,7 @@ function renderGameSetup(){
   const oppSp = opp.pit[nextSpIdx(opp.id)];
   const rec = state.season.rec[state.myTeam];
   document.getElementById('seasonInfo').innerHTML =
-    `<b>${state.season.day+1}차전 / 36경기</b> · 현재 ${rec.w}승 ${rec.l}패 ${rec.t}무<br>
+    `<b>${state.season.day+1}차전 / 36경기</b> · ${rec.w}승 ${rec.l}패 ${rec.t}무${state.mode==='live'?' · 데이터 '+DATA_DATE:''}<br>
      ${isHome?'🏠 홈':'✈️ 원정'} vs <b>${opp.name}</b><br>
      내 선발: <b>${mySp[0]}</b> (${pitOvr(mySp,my.id)}) — 라인업 탭에서 변경 가능<br>
      상대 선발: ${oppSp[0]} (${pitOvr(oppSp,opp.id)})`;
