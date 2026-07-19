@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.13</title>
-<!-- v0.13 — 트레이드(선수 대 선수 맞교환, CPU 수락/거절 판정) -->
+<title>우리팀을 만들자 v0.14</title>
+<!-- v0.14 — 선수 목록 정렬(이름/OVR/나이/연봉/포지션), 다중 선택 트레이드(N:M) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -236,7 +236,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.13</span>
+    <span class="ver">v0.14</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1485,12 +1485,69 @@ function nextSeason(){
 }
 
 
+
+/* ═══════════ 선수 목록 정렬 (v0.14) ═══════════ */
+const SORT_STATE = {};   // {scope: {key, dir}}
+const SORT_KEYS = [
+  {k:'ovr', label:'능력'},
+  {k:'age', label:'나이'},
+  {k:'name', label:'이름'},
+  {k:'sal', label:'연봉'},
+  {k:'pos', label:'포지션'},
+];
+const POS_ORDER = {'C':1,'1B':2,'2B':3,'3B':4,'SS':5,'LF':6,'CF':7,'RF':8,'DH':9,'선발':10,'마무리':11,'불펜':12};
+function sortBar(scope){
+  const st = SORT_STATE[scope] || {key:'ovr', dir:'desc'};
+  let h = '<div class="lb-cat" style="margin-bottom:8px">';
+  SORT_KEYS.forEach(s=>{
+    const on = st.key===s.k;
+    const arrow = on ? (st.dir==='desc'?' ↓':' ↑') : '';
+    h += `<button class="${on?'on':''}" onclick="toggleSort('${scope}','${s.k}')">${s.label}${arrow}</button>`;
+  });
+  return h + '</div>';
+}
+function toggleSort(scope, key){
+  const st = SORT_STATE[scope] || {key:'ovr', dir:'desc'};
+  if(st.key===key) st.dir = st.dir==='desc'?'asc':'desc';
+  else{ st.key=key; st.dir = (key==='name'||key==='pos'||key==='age')?'asc':'desc'; }
+  SORT_STATE[scope] = st;
+  // 화면 갱신
+  if(scope.startsWith('front')) renderFront();
+  else if(scope.startsWith('lineup')) renderLineup();
+  else if(scope.startsWith('trade')) openTradeSheet();
+}
+// 선수 목록에 정렬 적용 → [원본인덱스, 선수] 배열 반환
+function sortedEntries(teamId, kind, scope){
+  const t = getTeam(teamId);
+  const arr = kind==='bat'? t.bat : t.pit;
+  const ageArr = kind==='bat'? (t.age?t.age.bat:[]) : (t.age?t.age.pit:[]);
+  const st = SORT_STATE[scope] || {key:'ovr', dir:'desc'};
+  const idxs = arr.map((p,i)=>i);
+  const val = (i)=>{
+    const p = arr[i];
+    switch(st.key){
+      case 'ovr': return kind==='bat'?batOvr(p,teamId):pitOvr(p,teamId);
+      case 'age': return ageArr[i]||ageOf(p[1]);
+      case 'name': return p[0];
+      case 'sal': return salaryOf(p, kind==='bat');
+      case 'pos': return POS_ORDER[p[2]]||99;
+      default: return 0;
+    }
+  };
+  idxs.sort((a,b)=>{
+    const va=val(a), vb=val(b);
+    let c = (typeof va==='string') ? va.localeCompare(vb) : va-vb;
+    return st.dir==='desc'? -c : c;
+  });
+  return idxs.map(i=>[i, arr[i]]);
+}
+
 /* ═══════════ 구단운영 & 오프시즌 (v0.8) ═══════════ */
 function isOffseason(){ return state.season && state.season.post && !state.season.offDone; }
 function playerRows(t, isBat){
-  const arr = isBat ? t.bat : t.pit;
-  let html = '';
-  arr.forEach((p,i)=>{
+  const scope = 'front-'+(isBat?'bat':'pit');
+  let html = sortBar(scope);
+  sortedEntries(t.id, isBat?'bat':'pit', scope).forEach(([i,p])=>{
     const ovr = isBat ? batOvr(p,t.id) : pitOvr(p,t.id);
     const sal = salaryOf(p, isBat);
     const age = t.age ? (isBat?t.age.bat[i]:t.age.pit[i]) : ageOf(p[1]);
@@ -1645,7 +1702,7 @@ function doOffseasonEnd(){
 
 
 /* ═══════════ 트레이드 (v0.13) ═══════════ */
-let tradeOppId = null, tradeMyPick = null, tradeOppPick = null;
+let tradeOppId = null, tradeMyPicks = [], tradeOppPicks = [];   // 다중 선택 (N:M)
 function posOf(teamId, kind, idx){
   const t = getTeam(teamId);
   const p = (kind==='bat'?t.bat:t.pit)[idx];
@@ -1715,95 +1772,133 @@ function openTradeSheet(){
   sheet.innerHTML = h;
   document.getElementById('mask').classList.add('on');
 }
-function selTradeOpp(id){ tradeOppId=id; tradeMyPick=null; tradeOppPick=null; openTradeSheet(); }
+function selTradeOpp(id){ tradeOppId=id; tradeMyPicks=[]; tradeOppPicks=[]; openTradeSheet(); }
 function tradeColumns(){
   const my = getTeam(state.myTeam), opp = getTeam(tradeOppId);
   const col = (teamId, which)=>{
     const t = getTeam(teamId);
-    const picked = which==='my'? tradeMyPick : tradeOppPick;
+    const picks = which==='my'? tradeMyPicks : tradeOppPicks;
+    const has = (kind,i)=> picks.some(x=>x.kind===kind && x.idx===i);
     let s = `<h2 class="sec" style="font-size:14px;margin-top:12px">${t.name}</h2>`;
-    const add = (arr,kind)=> arr.forEach((p,i)=>{
-      const ov = kind==='bat'?batOvr(p,teamId):pitOvr(p,teamId);
-      const on = picked && picked.kind===kind && picked.idx===i;
-      s += `<div class="prow" style="cursor:pointer;${on?'border-color:var(--amber);background:#23361F':''}" onclick="pickTrade('${which}','${kind}',${i})">
-        <div class="pos">${kind==='bat'?p[2]:(p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP')}</div>
-        <div class="mid"><div class="nm">${p[0]}</div><div class="hand">OVR ${ov}</div></div>
-        ${on?'<div class="ovr num" style="font-size:14px;color:var(--amber)">✓</div>':''}</div>`;
+    s += sortBar('trade-'+which);
+    ['bat','pit'].forEach(kind=>{
+      sortedEntries(teamId, kind, 'trade-'+which).forEach(([i,p])=>{
+        const ov = kind==='bat'?batOvr(p,teamId):pitOvr(p,teamId);
+        const age = kind==='bat'? t.age.bat[i] : t.age.pit[i];
+        const on = has(kind,i);
+        s += `<div class="prow" style="cursor:pointer;${on?'border-color:var(--amber);background:#23361F':''}" onclick="pickTrade('${which}','${kind}',${i})">
+          <div class="pos">${kind==='bat'?p[2]:(p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP')}</div>
+          <div class="mid"><div class="nm">${p[0]} <span style="font-size:11px;color:var(--dim)">${age}세</span></div><div class="hand">OVR ${ov}</div></div>
+          ${on?'<div class="ovr num" style="font-size:14px;color:var(--amber)">✓</div>':''}</div>`;
+      });
     });
-    add(t.bat,'bat'); add(t.pit,'pit');
     return s;
   };
-  let h = `<div class="hint" style="margin-top:10px">내 선수 1명과 상대 선수 1명을 각각 선택하세요.</div>`;
+  let h = `<div class="hint" style="margin-top:10px">양팀에서 각각 원하는 만큼 선택하세요 (1:1, 1:2, 2:2 등 가능).</div>`;
+  h += `<div class="reveal"><div class="lbl">선택 현황</div>
+    내가 주는: ${tradeMyPicks.length? tradeMyPicks.map(x=>pickName('my',x)).join(', ') : '없음'}<br>
+    내가 받는: ${tradeOppPicks.length? tradeOppPicks.map(x=>pickName('opp',x)).join(', ') : '없음'}</div>`;
   h += col(state.myTeam,'my');
   h += col(tradeOppId,'opp');
-  if(tradeMyPick && tradeOppPick){
+  if(tradeMyPicks.length && tradeOppPicks.length){
     const ev = evalTrade();
     h += `<div class="reveal" style="margin-top:12px"><div class="lbl">트레이드 평가 (상대 구단 관점)</div>
-      내가 주는 <b>${ev.myName}</b> (OVR ${ev.myOvr}, ${ev.myAge}세) → 상대 체감가치 ${ev.myPerceived.toFixed(0)}<br>
-      내가 받는 <b>${ev.oppName}</b> (OVR ${ev.oppOvr}, ${ev.oppAge}세) → 상대 체감가치 ${ev.oppPerceived.toFixed(0)}<br>
+      내가 주는 선수 합계 체감가치 ${ev.myPerceived.toFixed(0)} (${tradeMyPicks.length}명)<br>
+      내가 받는 선수 합계 체감가치 ${ev.oppPerceived.toFixed(0)} (${tradeOppPicks.length}명)<br>
       ${ev.reason}</div>
       <button class="btn" onclick="proposeTrade()">트레이드 제안</button>`;
   }
   return h;
 }
+function pickName(which, x){
+  const t = getTeam(which==='my'?state.myTeam:tradeOppId);
+  const p = (x.kind==='bat'?t.bat:t.pit)[x.idx];
+  return p? p[0] : '?';
+}
 function pickTrade(which, kind, idx){
-  if(which==='my') tradeMyPick={kind,idx}; else tradeOppPick={kind,idx};
+  const picks = which==='my'? tradeMyPicks : tradeOppPicks;
+  const at = picks.findIndex(x=>x.kind===kind && x.idx===idx);
+  if(at>=0) picks.splice(at,1);        // 재터치 → 해제
+  else picks.push({kind,idx});
   openTradeSheet();
 }
 function evalTrade(){
   const my = getTeam(state.myTeam), opp = getTeam(tradeOppId);
-  const myP = (tradeMyPick.kind==='bat'?my.bat:my.pit)[tradeMyPick.idx];
-  const oppP = (tradeOppPick.kind==='bat'?opp.bat:opp.pit)[tradeOppPick.idx];
-  const myOvr = ovrOfEntry(state.myTeam, tradeMyPick.kind, tradeMyPick.idx);
-  const oppOvr = ovrOfEntry(tradeOppId, tradeOppPick.kind, tradeOppPick.idx);
-  const myAge = ageOfEntry(state.myTeam, tradeMyPick.kind, tradeMyPick.idx);
-  const oppAge = ageOfEntry(tradeOppId, tradeOppPick.kind, tradeOppPick.idx);
-  const myPerceived = perceivedValue(tradeOppId, tradeMyPick.kind, myOvr, myP[2], myAge);
-  const oppPerceived = perceivedValue(tradeOppId, tradeOppPick.kind, oppOvr, oppP[2], oppAge);
-  const gain = myPerceived - oppPerceived;
+  // 내가 주는 선수들(상대가 받음) 합계 체감가치
+  let myPerceived = 0, myOldest = 0, myFullPos = false;
+  tradeMyPicks.forEach(x=>{
+    const p = (x.kind==='bat'?my.bat:my.pit)[x.idx];
+    const ovr = ovrOfEntry(state.myTeam, x.kind, x.idx);
+    const age = ageOfEntry(state.myTeam, x.kind, x.idx);
+    myPerceived += perceivedValue(tradeOppId, x.kind, ovr, p[2], age);
+    if(age>myOldest) myOldest=age;
+    if(positionNeed(tradeOppId, x.kind, p[2])<0.9) myFullPos=true;
+  });
+  // 내가 받는 선수들(상대가 잃음) 합계 체감가치 (상대 자기 팀 기준 가치)
+  let oppPerceived = 0;
+  tradeOppPicks.forEach(x=>{
+    const p = (x.kind==='bat'?opp.bat:opp.pit)[x.idx];
+    const ovr = ovrOfEntry(tradeOppId, x.kind, x.idx);
+    const age = ageOfEntry(tradeOppId, x.kind, x.idx);
+    oppPerceived += perceivedValue(tradeOppId, x.kind, ovr, p[2], age);
+  });
+  // 인원 불균형 페널티: 로스터 자리(내주는 수 vs 받는 수)
+  const countDiff = tradeMyPicks.length - tradeOppPicks.length;
+  const rosterAdj = countDiff*1.5;   // 상대가 더 많이 받으면(내가 많이 주면) 소폭 가산
+  const gain = myPerceived + rosterAdj - oppPerceived;
   let reason;
   if(gain >= 0) reason = '✅ 상대에게 이득이라 수락할 것입니다.';
-  else if(gain >= -4) reason = '🤝 상대가 약간 손해지만 받아들일 만합니다.';
+  else if(gain >= -5) reason = '🤝 상대가 약간 손해지만 받아들일 만합니다.';
   else{
-    const need = positionNeed(tradeOppId, tradeMyPick.kind, myP[2]);
-    if(need<0.9) reason = `❌ 상대는 이미 ${myP[2]} 자원이 충분해 거절할 것입니다.`;
-    else if(state.mode==='sim' && myAge>=35) reason = '❌ 내가 주는 선수가 노쇠해 상대가 꺼립니다.';
+    if(myFullPos) reason = '❌ 상대는 내가 주는 포지션 자원이 이미 충분합니다.';
+    else if(state.mode==='sim' && myOldest>=35) reason = '❌ 내가 주는 선수가 노쇠해 상대가 꺼립니다.';
     else reason = '❌ 상대에게 손해가 커 거절할 것입니다.';
   }
-  return {myName:myP[0], oppName:oppP[0], myOvr, oppOvr, myAge, oppAge, myPerceived, oppPerceived, gain, reason};
+  return {myPerceived, oppPerceived, gain, reason};
 }
 function proposeTrade(){
   const ev = evalTrade();
-  const accept = ev.gain >= 0 || (ev.gain >= -4 && Math.random()<0.6) || (ev.gain >= -7 && Math.random()<0.2);
+  const accept = ev.gain >= 0 || (ev.gain >= -5 && Math.random()<0.6) || (ev.gain >= -9 && Math.random()<0.2);
   if(!accept){
-    alert('상대 구단이 트레이드를 거절했습니다.\n' + ev.reason.replace(/^[\u2705\ud83e\udd1d\u274c]\s*/,''));
+    alert('상대 구단이 트레이드를 거절했습니다.\n' + ev.reason.replace(/^[\u2705\u274c\ud83e\udd1d]\s*/,''));
     return;
   }
-  // 성사: 선수 맞교환
   const myT = state.players[state.myTeam], oppT = state.players[tradeOppId];
-  const myArr = tradeMyPick.kind==='bat'?myT.bat:myT.pit;
-  const myAge = tradeMyPick.kind==='bat'?myT.age.bat:myT.age.pit;
-  const oppArr = tradeOppPick.kind==='bat'?oppT.bat:oppT.pit;
-  const oppAge = tradeOppPick.kind==='bat'?oppT.age.bat:oppT.age.pit;
-  const myPlayer = myArr[tradeMyPick.idx], myPlayerAge = myAge[tradeMyPick.idx];
-  const oppPlayer = oppArr[tradeOppPick.idx], oppPlayerAge = oppAge[tradeOppPick.idx];
-  // 제거
-  myArr.splice(tradeMyPick.idx,1); myAge.splice(tradeMyPick.idx,1);
-  oppArr.splice(tradeOppPick.idx,1); oppAge.splice(tradeOppPick.idx,1);
-  // 추가 (같은 종류 배열로 이동)
-  const myDest = tradeOppPick.kind==='bat'?myT.bat:myT.pit;
-  const myDestAge = tradeOppPick.kind==='bat'?myT.age.bat:myT.age.pit;
-  const oppDest = tradeMyPick.kind==='bat'?oppT.bat:oppT.pit;
-  const oppDestAge = tradeMyPick.kind==='bat'?oppT.age.bat:oppT.age.pit;
-  myDest.push([...oppPlayer]); myDestAge.push(oppPlayerAge);
-  oppDest.push([...myPlayer]); oppDestAge.push(myPlayerAge);
+  // 내가 주는 선수 추출 (인덱스 큰 것부터 제거해야 안전)
+  const takeOut = (T, picks)=>{
+    const out = [];
+    picks.map(x=>({...x})).sort((a,b)=> (a.kind===b.kind? b.idx-a.idx : a.kind<b.kind?1:-1));
+    // kind별로 분리해 큰 인덱스부터 제거
+    ['bat','pit'].forEach(kind=>{
+      const arr = kind==='bat'?T.bat:T.pit;
+      const ageArr = kind==='bat'?T.age.bat:T.age.pit;
+      picks.filter(x=>x.kind===kind).map(x=>x.idx).sort((a,b)=>b-a).forEach(i=>{
+        out.push({kind, player:[...arr[i]], age:ageArr[i]});
+        arr.splice(i,1); ageArr.splice(i,1);
+      });
+    });
+    return out;
+  };
+  const myOut = takeOut(myT, tradeMyPicks);
+  const oppOut = takeOut(oppT, tradeOppPicks);
+  // 서로 상대 팀에 추가 (원래 kind 유지)
+  const putIn = (T, list)=>{
+    list.forEach(o=>{
+      const arr = o.kind==='bat'?T.bat:T.pit;
+      const ageArr = o.kind==='bat'?T.age.bat:T.age.pit;
+      arr.push(o.player); ageArr.push(o.age);
+    });
+  };
+  putIn(myT, oppOut);   // 내가 받은 선수 → 내 팀
+  putIn(oppT, myOut);   // 상대가 받은 선수 → 상대 팀
   state.lineups[state.myTeam]=null; state.rotOrder[state.myTeam]=null;
-  tradeMyPick=null; tradeOppPick=null;
+  const outNames = myOut.map(o=>o.player[0]).join(', ');
+  const inNames = oppOut.map(o=>o.player[0]).join(', ');
+  tradeMyPicks=[]; tradeOppPicks=[];
   save();
-  alert(`트레이드 성사!\n${myPlayer[0]} ⇄ ${oppPlayer[0]}`);
+  alert(`트레이드 성사!\n보낸 선수: ${outNames}\n받은 선수: ${inNames}`);
   closeSheet(); renderFront();
 }
-
 /* ═══════════ FA & 드래프트 (v0.9) ═══════════ */
 function buildOffseasonMarket(){
   // 시즌별 1회 생성 (재진입 시 유지). 단 구버전 market은 레전드 메타 보강
