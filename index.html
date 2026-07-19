@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.6.3</title>
-<!-- v0.6 — 실황/시뮬레이션 2모드, 살아있는 선수 데이터(나이·성장·노쇠), 포스트시즌(WC/준PO/PO/KS), 다년 시즌, 선발 3경기 휴식 규칙 -->
+<title>우리팀을 만들자 v0.7</title>
+<!-- v0.7 — 자금/경영 시스템(관중수입·운영비·연봉, 일반/하드/자유), 휴식중 투수 로테이션 자리 고정 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -223,7 +223,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.6.3</span>
+    <span class="ver">v0.7</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -265,7 +265,7 @@ nav button.lock{opacity:.38}
   <div class="hint">타순 변경: 선수 하나를 터치한 뒤, 바꿀 선수를 터치하면 자리가 교환됩니다.</div>
   <div id="lineupList"></div>
   <h2 class="sec" style="margin-top:16px">선발 로테이션</h2>
-  <div class="hint">투수 두 명을 차례로 터치하면 로테이션 자리가 교환됩니다 (휴식중 투수도 교환 가능). 다음 등판은 휴식이 끝난 투수를 자동으로 찾아갑니다.</div>
+  <div class="hint">휴식이 끝난 투수끼리 두 명을 차례로 터치하면 자리가 교환됩니다. 최근 등판한(휴식중) 투수는 자리가 고정됩니다.</div>
   <div id="spList"></div>
 </section>
 
@@ -327,7 +327,7 @@ nav button.lock{opacity:.38}
 'use strict';
 const SAVE_KEY = 'ourteam_slots_v1';
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
-const EMPTY = ()=>({myTeam:null, mode:null, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[]});
+const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[]});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -496,7 +496,10 @@ function bonusOf(p, teamId, isBat){
   if(f === 'fa') return 0;                     // FA 이적: 보정 제외
   let bo = BOOST_CUR;                          // 올해 로스터 기본 보정
   if(f === 'new') bo += BOOST_NEW;             // 신규 영입/신인
-  if(isMine(teamId)) bo += BOOST_MY;           // 내 구단
+  if(isMine(teamId)){
+    const myB = (typeof state!=='undefined' && state.eco==='normal' && state.money<0) ? 1 : BOOST_MY;
+    bo += myB;                                  // 내 구단 (잔고 마이너스 시 감소)
+  }
   return bo;
 }
 function b(v, p, teamId, isBat){ return Math.min(99, v + bonusOf(p, teamId, isBat)); }
@@ -524,7 +527,7 @@ function refreshHeader(){
   const r = document.getElementById('subRight');
   if(state.myTeam){
     const t = TEAMS.find(t=>t.id===state.myTeam);
-    const md = state.mode==='sim' ? `시뮬 ${state.year}년차` : state.mode==='live' ? `실황 ${DATA_DATE}` : '';
+    const md = (state.mode==='sim' ? `시뮬 ${state.year}년차` : state.mode==='live' ? `실황 ${DATA_DATE}` : '') + (ecoOn() ? ` · 💰${fmtMoney()}` : '');
     l.textContent = `슬롯 ${store.active+1}${md?' · '+md:''}`;
     r.textContent = t.name;
   }else{
@@ -664,18 +667,38 @@ function openModeSheet(t){
       <button class="close" onclick="closeSheet()">✕</button></div>
     <div class="meta">${t.real} · 소속 선수 내 구단 보정 +${BOOST_MY}</div>
     <div class="mode-btns">
-      <button class="primary" onclick="startWithMode('${t.id}','live')">📡 실황 모드
+      <button class="primary" onclick="openEcoSheet('${t.id}','live')">📡 실황 모드
         <small>데이터 기준 ${DATA_DATE} 선수단 · 한 시즌 집중 · 성장/노쇠 없음</small></button>
-      <button onclick="startWithMode('${t.id}','sim')">🎮 시뮬레이션 모드
+      <button onclick="openEcoSheet('${t.id}','sim')">🎮 시뮬레이션 모드
         <small>다년 운영 · 선수 성장/노쇠 · 포스트시즌 후 다음 시즌</small></button>
       <button onclick="closeSheet()">취소</button>
     </div>`;
   document.getElementById('mask').classList.add('on');
 }
-function startWithMode(teamId, mode){
+function openEcoSheet(teamId, mode){
+  const t = getTeam(teamId);
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="top"><div class="pname">경영 방식</div>
+      <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">${t.name} · ${mode==='sim'?'시뮬레이션':'실황'} 모드</div>
+    <div class="mode-btns">
+      <button class="primary" onclick="startWithMode('${teamId}','${mode}','normal')">💰 경영 일반
+        <small>시작 자금 100억 · 관중수입/운영비/연봉 · 잔고 마이너스 시 팀 보정 감소</small></button>
+      <button onclick="startWithMode('${teamId}','${mode}','hard')">🔥 경영 하드
+        <small>원작 방식 — 잔고 마이너스 즉시 구단 파산(게임오버)</small></button>
+      <button onclick="startWithMode('${teamId}','${mode}','free')">🕊 자유 모드
+        <small>자금 개념 없이 순수 선수단 운영만</small></button>
+      <button onclick="openModeSheet(getTeam('${teamId}') && TEAMS.find(x=>x.id==='${teamId}'))">← 뒤로</button>
+    </div>`;
+}
+function startWithMode(teamId, mode, eco){
   closeSheet();
   state.myTeam = teamId;
   state.mode = mode;
+  state.eco = eco;
+  state.money = eco==='free' ? 0 : 100;   // 단위: 억
+  state.bankrupt = false;
   state.year = 1;
   state.startedAt = new Date().toISOString().slice(0,10).replaceAll('-','.');
   state.players = snapshotTeams();
@@ -726,11 +749,12 @@ function renderLineup(){
     const rest = state.season ? restOk(t.id, pi) : true;
     const d = document.createElement('div');
     d.className = 'lrow' + (rotSel===slot?' sel':'');
-    if(!rest) d.style.opacity='.7';
+    if(!rest) d.style.opacity='.45';
     d.innerHTML = `<div class="ord">${slot+1}</div><div class="lp">선발</div>
       <div class="ln">${p[0]}${pi===nxtPi?' <span class="boost">다음 등판</span>':''}${!rest?' <span style="color:#8FA396;font-size:11px">휴식중</span>':''}</div>
       <div class="lo num">${pitOvr(p,t.id)}</div>`;
     d.onclick = ()=>{
+      if(!rest){ return; }   // 휴식중(최근 등판) 투수는 자리 고정
       if(rotSel<0){ rotSel = slot; }
       else if(rotSel===slot){ rotSel = -1; }
       else{
@@ -1029,6 +1053,14 @@ function renderGameSetup(){
     renderSeasonDone();
     return;
   }
+  if(state.bankrupt){
+    document.getElementById('gameSetup').style.display='none';
+    document.getElementById('seasonDone').style.display='';
+    document.getElementById('seasonDoneText').innerHTML =
+      `💸 구단 파산!<br>잔고가 바닥나 구단 운영이 중단되었습니다.<br>(경영 하드 모드)`;
+    document.getElementById('newSeasonBtn').textContent = '슬롯 초기화 후 새로 시작';
+    return;
+  }
   document.getElementById('seasonDone').style.display='none';
   document.getElementById('gameSetup').style.display='';
   const m = myMatchToday();
@@ -1039,7 +1071,7 @@ function renderGameSetup(){
   const oppSp = opp.pit[nextSpIdx(opp.id)];
   const rec = state.season.rec[state.myTeam];
   document.getElementById('seasonInfo').innerHTML =
-    `<b>${state.season.day+1}차전 / 36경기</b> · ${rec.w}승 ${rec.l}패 ${rec.t}무${state.mode==='live'?' · 데이터 '+DATA_DATE:''}<br>
+    `<b>${state.season.day+1}차전 / 36경기</b> · ${rec.w}승 ${rec.l}패 ${rec.t}무${ecoOn()?' · 잔고 '+fmtMoney()+(state.eco==='normal'&&state.money<0?' ⚠️보정감소':''):''}<br>
      ${isHome?'🏠 홈':'✈️ 원정'} vs <b>${opp.name}</b><br>
      내 선발: <b>${mySp[0]}</b> (${pitOvr(mySp,my.id)}) — 라인업 탭에서 변경 가능<br>
      상대 선발: ${oppSp[0]} (${pitOvr(oppSp,opp.id)})`;
@@ -1072,6 +1104,9 @@ function playMyGame(){
   markStart(m.home, homeSp); markStart(m.away, awaySp);
   advanceRot(m.home); advanceRot(m.away);
   recordResult(m.home, m.away, curGame.sc);
+  const isHome = m.home===state.myTeam;
+  const myWon = isHome ? curGame.sc.home>curGame.sc.away : curGame.sc.away>curGame.sc.home;
+  curGame.settle = settleGame(isHome, myWon);
   const others = playOtherGames();
   finishDay(`${curGame.away.name} ${curGame.sc.away} : ${curGame.sc.home} ${curGame.home.name}`, others);
   return curGame;
@@ -1125,8 +1160,46 @@ document.getElementById('skip5Btn').onclick = ()=>{
   while(done<5 && !seasonOver()){ playMyGame(); done++; }
   renderGameSetup();   // 확인창 없이 즉시 갱신 — 연타로 시즌 빠르게 소화 가능
 };
-document.getElementById('newSeasonBtn').onclick = ()=>{ nextSeason(); renderGameSetup(); };
+document.getElementById('newSeasonBtn').onclick = ()=>{
+  if(state.bankrupt){ state = EMPTY(); save(); refreshHeader(); renderSlots(); show('select'); return; }
+  nextSeason(); renderGameSetup();
+};
 
+
+
+/* ═══════════ 자금/경영 (v0.7) ═══════════ */
+function ecoOn(){ return state.eco==='normal' || state.eco==='hard'; }
+function fmtMoney(){ return (state.money<0?'-':'') + Math.abs(state.money).toFixed(1) + '억'; }
+function salaryOf(p, isBat){
+  const ovr = isBat ? batOvr(p, state.myTeam) : pitOvr(p, state.myTeam);
+  return Math.max(0.5, Math.pow(Math.max(0,ovr-50)/10, 2.1)*0.9);   // OVR 기반 연봉(억, 고능력치일수록 급증)
+}
+function teamSalary(){
+  const t = getTeam(state.myTeam);
+  let s = 0;
+  t.bat.forEach(p=>s+=salaryOf(p,true));
+  t.pit.forEach(p=>s+=salaryOf(p,false));
+  return s;
+}
+function settleGame(isHome, won){
+  if(!ecoOn() || state.bankrupt) return null;
+  const rec = state.season.rec[state.myTeam];
+  const wpct = (rec.w+rec.l)>0 ? rec.w/(rec.w+rec.l) : 0.5;
+  const income = isHome ? (1.4 + wpct*1.6 + (won?0.4:0)) : 0.35;  // 홈 관중수입 / 원정 중계권
+  const cost = 0.5;                                              // 경기 운영비
+  state.money += income - cost;
+  if(state.money < 0 && state.eco==='hard'){ state.bankrupt = true; }
+  save();
+  return {income, cost};
+}
+function settleSeasonSalary(){
+  if(!ecoOn() || state.bankrupt) return 0;
+  const pay = teamSalary();
+  state.money -= pay;
+  if(state.money < 0 && state.eco==='hard'){ state.bankrupt = true; }
+  save();
+  return pay;
+}
 
 /* ═══════════ 포스트시즌 & 다년 시즌 (v0.6) ═══════════ */
 function playSeries(hiId, loId, need){
@@ -1167,6 +1240,7 @@ function renderSeasonDone(){
   const box = document.getElementById('seasonDoneText');
   if(!state.season.post){
     state.season.post = runPostseason();
+    state.season.salaryPaid = settleSeasonSalary();
     if(!state.history) state.history = [];
     state.history.push({year: state.year, rank, rec:{...rec}, champion: state.season.post.champion});
     save();
@@ -1176,7 +1250,8 @@ function renderSeasonDone(){
   box.innerHTML =
     `정규시즌 ${rank}위 (${rec.w}승 ${rec.l}패 ${rec.t}무)<br><br>` +
     p.log.join('<br>') + '<br><br>' +
-    (isChamp ? '🎉 우리 팀이 우승했습니다!' : '') +
+    (isChamp ? '🎉 우리 팀이 우승했습니다!<br>' : '') +
+    (ecoOn() ? `💰 시즌 연봉 정산: -${(state.season.salaryPaid||0).toFixed(1)}억 → 잔고 ${fmtMoney()}${state.bankrupt?'<br>💸 연봉을 지급하지 못해 구단 파산!':''}<br>` : '') +
     (state.mode==='sim' ? '<br>다음 시즌으로 넘어가면 선수들이 성장/노쇠합니다.' : '');
   document.getElementById('newSeasonBtn').textContent =
     state.mode==='sim' ? `${state.year+1}년차 시즌 시작` : '시즌 다시 시작';
