@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.14</title>
-<!-- v0.14 — 선수 목록 정렬(이름/OVR/나이/연봉/포지션), 다중 선택 트레이드(N:M) -->
+<title>우리팀을 만들자 v0.15</title>
+<!-- v0.15 — 슬롯 5개, 구단 화면 개편(로스터→라인업 통합), 정렬 확대, 트레이드 연봉 반영 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -236,7 +236,7 @@ nav button.lock{opacity:.38}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.14</span>
+    <span class="ver">v0.15</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -259,27 +259,32 @@ nav button.lock{opacity:.38}
 
 <!-- 구단(로스터) -->
 <section class="screen" id="scr-team">
-  <h2 class="sec" id="rosterTitle"></h2>
-  <div class="tabs">
-    <button id="tabBat" class="on">타자</button>
-    <button id="tabPit">투수</button>
-  </div>
-  <div class="plist" id="plist"></div>
-  <h2 class="sec" style="margin-top:18px">저장 슬롯</h2>
-  <div class="hint">슬롯마다 다른 팀으로 별도의 시즌을 진행할 수 있습니다.</div>
-  <div class="slot-row" id="slotRow"></div>
-  <button class="btn ghost" id="resetBtn">이 슬롯 초기화 (구단 다시 선택)</button>
+  <div id="teamHome"></div>
 </section>
 
 
-<!-- 라인업 -->
+<!-- 라인업 (로스터 통합) -->
 <section class="screen" id="scr-lineup">
-  <h2 class="sec">라인업 편성</h2>
-  <div class="hint">타순 변경: 선수 하나를 터치한 뒤, 바꿀 선수를 터치하면 자리가 교환됩니다.</div>
-  <div id="lineupList"></div>
-  <h2 class="sec" style="margin-top:16px">선발 로테이션</h2>
-  <div class="hint">휴식중(최근 등판) 투수끼리 두 명을 차례로 터치하면 자리가 교환됩니다. 등판 준비중인 투수는 자리가 고정됩니다.</div>
-  <div id="spList"></div>
+  <div class="tabs">
+    <button id="ltabLineup" class="on">라인업</button>
+    <button id="ltabRoster">전체 로스터</button>
+  </div>
+  <div id="lineupWrap">
+    <h2 class="sec">라인업 편성</h2>
+    <div class="hint">타순 변경: 선수 하나를 터치한 뒤, 바꿀 선수를 터치하면 자리가 교환됩니다.</div>
+    <div id="lineupList"></div>
+    <h2 class="sec" style="margin-top:16px">선발 로테이션</h2>
+    <div class="hint">휴식중(최근 등판) 투수끼리 두 명을 차례로 터치하면 자리가 교환됩니다. 등판 준비중인 투수는 자리가 고정됩니다.</div>
+    <div id="spList"></div>
+  </div>
+  <div id="rosterWrap" style="display:none">
+    <h2 class="sec" id="rosterTitle"></h2>
+    <div class="tabs">
+      <button id="tabBat" class="on">타자</button>
+      <button id="tabPit">투수</button>
+    </div>
+    <div class="plist" id="plist"></div>
+  </div>
 </section>
 
 <!-- 경기 -->
@@ -570,12 +575,15 @@ let state = store.slots[store.active] || (store.slots[store.active] = EMPTY());
 function loadStore(){
   try{
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if(s && Array.isArray(s.slots)) return s;
+    if(s && Array.isArray(s.slots)){
+      while(s.slots.length<5) s.slots.push(EMPTY());   // 슬롯 5개로 확장
+      return s;
+    }
   }catch(e){}
   // v0.4 단일 저장 → 슬롯 1로 이전
   let mig = null;
   try{ mig = JSON.parse(localStorage.getItem('ourteam_v04')); }catch(e){}
-  return { active:0, slots:[ mig||EMPTY(), EMPTY(), EMPTY() ] };
+  return { active:0, slots:[ mig||EMPTY(), EMPTY(), EMPTY(), EMPTY(), EMPTY() ] };
 }
 function save(){ store.slots[store.active] = state; localStorage.setItem(SAVE_KEY, JSON.stringify(store)); }
 function switchSlot(i){
@@ -584,7 +592,7 @@ function switchSlot(i){
   state = store.slots[i] || (store.slots[i] = EMPTY());
   save();
   refreshHeader(); renderSlots();
-  if(state.myTeam){ renderRoster('bat'); show('team'); }
+  if(state.myTeam){ renderTeamHome(); show('team'); }
   else show('select');
 }
 function renderSlots(){
@@ -679,9 +687,9 @@ function renderRoster(tab){
   document.getElementById('rosterTitle').innerHTML =
     `${t.name} 로스터 <small>선수를 터치하면 모델 선수 공개</small>`;
   const list = document.getElementById('plist');
-  list.innerHTML = '';
-  const arr = tab==='bat' ? t.bat : t.pit;
-  arr.forEach((p,i)=>{
+  const scope = 'roster-'+tab;
+  list.innerHTML = sortBar(scope);
+  sortedEntries(t.id, tab, scope).forEach(([i,p])=>{
     const row = document.createElement('div');
     row.className = 'prow';
     const pos = tab==='bat' ? p[2] : p[2];
@@ -756,10 +764,10 @@ document.querySelectorAll('nav button').forEach(btn=>{
     const nv = btn.dataset.nav;
     if(!state.myTeam && nv!=='team'){ show('select'); return; }
     if(nv==='team'){
-      if(state.myTeam){ renderRoster(rosterTab); show('team'); }
+      if(state.myTeam){ renderTeamHome(); show('team'); }
       else show('select');
     }else if(nv==='lineup'){
-      renderLineup(); show('lineup');
+      showLineupSub('lineup'); show('lineup');
     }else if(nv==='game'){
       renderGameSetup(); show('game');
     }else if(nv==='front'){
@@ -772,11 +780,9 @@ document.querySelectorAll('nav button').forEach(btn=>{
 
 document.getElementById('tabBat').onclick = ()=>renderRoster('bat');
 document.getElementById('tabPit').onclick = ()=>renderRoster('pit');
-document.getElementById('resetBtn').onclick = ()=>{
-  if(confirm('현재 슬롯의 구단과 시즌 기록을 초기화할까요?')){
-    state = EMPTY(); save(); refreshHeader(); renderSlots(); show('select');
-  }
-};
+document.getElementById('ltabLineup').onclick = ()=>showLineupSub('lineup');
+document.getElementById('ltabRoster').onclick = ()=>showLineupSub('roster');
+
 
 
 
@@ -824,7 +830,55 @@ function startWithMode(teamId, mode, eco){
   state.startedAt = new Date().toISOString().slice(0,10).replaceAll('-','.');
   state.players = snapshotTeams();
   save();
-  refreshHeader(); renderSlots(); renderRoster('bat'); show('team');
+  refreshHeader(); renderTeamHome(); show('team');
+}
+
+
+/* ═══════════ 구단 홈 화면 (v0.15 개편) ═══════════ */
+function renderTeamHome(){
+  const box = document.getElementById('teamHome');
+  const t = getTeam(state.myTeam);
+  const md = state.mode==='sim' ? `시뮬레이션 ${state.year}년차` : '실황';
+  const eco = state.eco==='normal'?'경영 일반':state.eco==='hard'?'경영 하드':'자유';
+  box.innerHTML = `
+    <div style="text-align:center;padding:24px 0 16px">
+      <div style="width:72px;height:72px;margin:0 auto 12px;border-radius:50%;background:${t.c};display:flex;align-items:center;justify-content:center;font-size:34px">⚾️</div>
+      <div style="font-family:'Black Han Sans';font-size:24px;color:var(--amber)">${t.name}</div>
+      <div style="font-size:13px;color:var(--dim);margin-top:4px">${t.real} · ${md} · ${eco}</div>
+      ${ecoOn()?`<div style="font-size:14px;color:var(--chalk);margin-top:6px">💰 ${fmtMoney()}</div>`:''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:340px;margin:8px auto 0">
+      <button class="btn" onclick="gotoNav('lineup')">📋 라인업 · 로스터</button>
+      <button class="btn" onclick="gotoNav('game')">📺 경기 하기</button>
+      <button class="btn" onclick="gotoNav('front')">🏢 구단 운영</button>
+      <button class="btn" onclick="gotoNav('rank')">🏆 순위 · 기록</button>
+    </div>
+    <h2 class="sec" style="margin-top:24px">저장 슬롯</h2>
+    <div class="slot-row" id="slotRow"></div>
+    <div style="text-align:center;margin-top:12px">
+      <span class="lb-help" onclick="resetCurrentSlot()">이 슬롯 초기화</span>
+    </div>`;
+  renderSlots();
+}
+function gotoNav(nv){
+  const btn = document.querySelector(`nav button[data-nav="${nv}"]`);
+  if(btn) btn.click();
+}
+function resetCurrentSlot(){
+  if(confirm('현재 슬롯의 구단과 시즌 기록을 초기화할까요?')){
+    state = EMPTY(); save(); refreshHeader(); renderSlots(); show('select');
+  }
+}
+
+
+/* 라인업/로스터 서브탭 */
+function showLineupSub(which){
+  document.getElementById('ltabLineup').classList.toggle('on', which==='lineup');
+  document.getElementById('ltabRoster').classList.toggle('on', which==='roster');
+  document.getElementById('lineupWrap').style.display = which==='lineup'?'':'none';
+  document.getElementById('rosterWrap').style.display = which==='roster'?'':'none';
+  if(which==='lineup') renderLineup();
+  else renderRoster(rosterTab);
 }
 
 /* ═══════════ 라인업 ═══════════ */
@@ -1513,6 +1567,7 @@ function toggleSort(scope, key){
   SORT_STATE[scope] = st;
   // 화면 갱신
   if(scope.startsWith('front')) renderFront();
+  else if(scope.startsWith('roster')) renderRoster(rosterTab);
   else if(scope.startsWith('lineup')) renderLineup();
   else if(scope.startsWith('trade')) openTradeSheet();
 }
@@ -1802,9 +1857,10 @@ function tradeColumns(){
   h += col(tradeOppId,'opp');
   if(tradeMyPicks.length && tradeOppPicks.length){
     const ev = evalTrade();
+    const salLine = ecoOn()? `<br>연봉 변화: 받는 선수 +${(ev.mySalIn||0).toFixed(1)}억 / 보내는 선수 -${(ev.oppSalOut||0).toFixed(1)}억 (내 연봉 ${((ev.mySalIn||0)-(ev.oppSalOut||0)>=0?'+':'')}${((ev.mySalIn||0)-(ev.oppSalOut||0)).toFixed(1)}억)`:'';
     h += `<div class="reveal" style="margin-top:12px"><div class="lbl">트레이드 평가 (상대 구단 관점)</div>
       내가 주는 선수 합계 체감가치 ${ev.myPerceived.toFixed(0)} (${tradeMyPicks.length}명)<br>
-      내가 받는 선수 합계 체감가치 ${ev.oppPerceived.toFixed(0)} (${tradeOppPicks.length}명)<br>
+      내가 받는 선수 합계 체감가치 ${ev.oppPerceived.toFixed(0)} (${tradeOppPicks.length}명)${salLine}<br>
       ${ev.reason}</div>
       <button class="btn" onclick="proposeTrade()">트레이드 제안</button>`;
   }
@@ -1842,10 +1898,18 @@ function evalTrade(){
     const age = ageOfEntry(tradeOppId, x.kind, x.idx);
     oppPerceived += perceivedValue(tradeOppId, x.kind, ovr, p[2], age);
   });
-  // 인원 불균형 페널티: 로스터 자리(내주는 수 vs 받는 수)
+  // 인원 불균형 페널티
   const countDiff = tradeMyPicks.length - tradeOppPicks.length;
-  const rosterAdj = countDiff*1.5;   // 상대가 더 많이 받으면(내가 많이 주면) 소폭 가산
-  const gain = myPerceived + rosterAdj - oppPerceived;
+  const rosterAdj = countDiff*1.5;
+  // 연봉 반영 (경영 모드): 상대는 비싼 선수를 넘기면 연봉 부담을 덜어 선호
+  let salaryAdj = 0, mySalIn = 0, oppSalOut = 0;
+  if(ecoOn()){
+    tradeMyPicks.forEach(x=>{ const p=(x.kind==='bat'?getTeam(state.myTeam).bat:getTeam(state.myTeam).pit)[x.idx]; oppSalOut += salaryOf(p,x.kind==='bat'); });
+    tradeOppPicks.forEach(x=>{ const p=(x.kind==='bat'?getTeam(tradeOppId).bat:getTeam(tradeOppId).pit)[x.idx]; mySalIn += salaryOf(p,x.kind==='bat'); });
+    // 상대가 넘기는 선수(내가 받는) 연봉이 높을수록 상대는 부담 덜어 선호 → gain에 가산
+    salaryAdj = (mySalIn - oppSalOut) * 0.8;
+  }
+  const gain = myPerceived + rosterAdj + salaryAdj - oppPerceived;
   let reason;
   if(gain >= 0) reason = '✅ 상대에게 이득이라 수락할 것입니다.';
   else if(gain >= -5) reason = '🤝 상대가 약간 손해지만 받아들일 만합니다.';
@@ -1854,7 +1918,7 @@ function evalTrade(){
     else if(state.mode==='sim' && myOldest>=35) reason = '❌ 내가 주는 선수가 노쇠해 상대가 꺼립니다.';
     else reason = '❌ 상대에게 손해가 커 거절할 것입니다.';
   }
-  return {myPerceived, oppPerceived, gain, reason};
+  return {myPerceived, oppPerceived, gain, reason, mySalIn, oppSalOut};
 }
 function proposeTrade(){
   const ev = evalTrade();
@@ -2368,7 +2432,7 @@ document.getElementById('rtabPlayer').onclick = ()=>{
 renderTeamGrid();
 refreshHeader();
 renderSlots();
-if(state.myTeam){ renderRoster('bat'); show('team'); }
+if(state.myTeam){ renderTeamHome(); show('team'); }
 else show('select');
 </script>
 </body>
