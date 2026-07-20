@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.19.6</title>
+<title>우리팀을 만들자 v0.19.7</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -121,6 +121,26 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
 .sheet .pname{font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:24px;letter-spacing:.5px}
 .sheet .close{background:none;border:none;color:var(--dim);font-size:22px;padding:2px 6px}
 .sheet-top-btn{position:sticky;bottom:8px;margin-left:auto;display:block;width:40px;height:40px;border-radius:50%;border:none;background:var(--amber);color:#20180A;font-size:18px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+
+/* ── 커스텀 알림/확인창 (네이티브 흰 alert/confirm 대체) ── */
+.amask{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:60;
+  display:none;align-items:center;justify-content:center;padding:24px;
+}
+.amask.on{display:flex}
+.abox{
+  background:var(--panel);border:1px solid var(--amber2);border-radius:16px;
+  width:100%;max-width:340px;padding:22px 20px 18px;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);
+}
+.abox .amsg{font-size:14.5px;line-height:1.6;color:var(--chalk);white-space:pre-line;margin-bottom:18px}
+.abox .abtns{display:flex;gap:10px}
+.abox .abtns button{
+  flex:1;padding:12px 0;border-radius:10px;border:none;font-family:inherit;
+  font-size:14.5px;font-weight:700;
+}
+.abox .abtn-ok{background:var(--amber);color:#20180A}
+.abox .abtn-cancel{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
 .sheet .meta{font-size:13px;color:var(--dim);margin-bottom:14px}
 .reveal{
   background:var(--panel2);border:1px solid var(--line);border-radius:10px;
@@ -292,7 +312,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.19.6</span>
+    <span class="ver">v0.19.7</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -423,8 +443,32 @@ body.theme-rain #rainLayer{display:block;
   <div class="sheet" id="sheet"></div>
 </div>
 
+<!-- 커스텀 알림/확인창 -->
+<div class="amask" id="amask">
+  <div class="abox">
+    <div class="amsg" id="amsg"></div>
+    <div class="abtns" id="abtns"></div>
+  </div>
+</div>
+
 <script>
 'use strict';
+/* 네이티브 alert/confirm 대체 (다크 테마 통일) */
+function showAlert(msg, onOk){
+  const amask = document.getElementById('amask');
+  document.getElementById('amsg').textContent = msg;
+  document.getElementById('abtns').innerHTML = `<button class="abtn-ok" id="aOk">확인</button>`;
+  amask.classList.add('on');
+  document.getElementById('aOk').onclick = ()=>{ amask.classList.remove('on'); if(onOk) onOk(); };
+}
+function showConfirm(msg, onYes){
+  const amask = document.getElementById('amask');
+  document.getElementById('amsg').textContent = msg;
+  document.getElementById('abtns').innerHTML = `<button class="abtn-cancel" id="aCancel">취소</button><button class="abtn-ok" id="aOk">확인</button>`;
+  amask.classList.add('on');
+  document.getElementById('aCancel').onclick = ()=>{ amask.classList.remove('on'); };
+  document.getElementById('aOk').onclick = ()=>{ amask.classList.remove('on'); if(onYes) onYes(); };
+}
 const SAVE_KEY = 'ourteam_slots_v1';
 const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
@@ -1136,9 +1180,9 @@ function gotoNav(nv){
   if(btn) btn.click();
 }
 function resetCurrentSlot(){
-  if(confirm('현재 슬롯의 구단과 시즌 기록을 초기화할까요?')){
+  showConfirm('현재 슬롯의 구단과 시즌 기록을 초기화할까요?', ()=>{
     state = EMPTY(); save(); refreshHeader(); renderSlots(); show('select');
-  }
+  });
 }
 
 
@@ -1223,7 +1267,7 @@ function renderLineup(){
           const a=lu.pos[luSel], b2=lu.pos[pos];
           const pa=t.bat[lu.order[luSel]], pb=t.bat[lu.order[pos]];
           if(canPlay(pa[2],b2) && canPlay(pb[2],a)){ [lu.pos[luSel],lu.pos[pos]]=[lu.pos[pos],lu.pos[luSel]]; }
-          else alert('수비 위치 교체가 불가능한 조합입니다 (외야끼리 또는 DH만 가능).');
+          else showAlert('수비 위치 교체가 불가능한 조합입니다 (외야끼리 또는 DH만 가능).');
         }
         luSel = -1; save();
       }
@@ -1245,7 +1289,7 @@ function renderLineup(){
       d.innerHTML = `<div class="ord">–</div><div class="lp">${p[2]}</div>
         <div class="ln">${p[0]} ${gradeBadge(batOvr(p,t.id))}</div><div class="lo num">${batOvr(p,t.id)}</div>`;
       d.onclick = ()=>{
-        if(luSel<0){ alert('먼저 교체할 타순(위쪽 목록)을 선택하세요.'); return; }
+        if(luSel<0){ showAlert('먼저 교체할 타순(위쪽 목록)을 선택하세요.'); return; }
         lu.order[luSel] = bi; luSel=-1; save(); renderLineup();
       };
       list.appendChild(d);
@@ -2363,7 +2407,7 @@ function proposeTrade(){
   const ev = evalTrade();
   const accept = !ev.gradeBlocked && (ev.gain >= 0 || (ev.gain >= -5 && Math.random()<0.6) || (ev.gain >= -9 && Math.random()<0.2));
   if(!accept){
-    alert('상대 구단이 트레이드를 거절했습니다.\n' + ev.reason.replace(/^[\u2705\u274c\ud83e\udd1d]\s*/,''));
+    showAlert('상대 구단이 트레이드를 거절했습니다.\n' + ev.reason.replace(/^[\u2705\u274c\ud83e\udd1d]\s*/,''));
     return;
   }
   const myT = state.players[state.myTeam], oppT = state.players[tradeOppId];
@@ -2399,7 +2443,7 @@ function proposeTrade(){
   const inNames = oppOut.map(o=>o.player[0]).join(', ');
   tradeMyPicks=[]; tradeOppPicks=[];
   save();
-  alert(`트레이드 성사!\n보낸 선수: ${outNames}\n받은 선수: ${inNames}`);
+  showAlert(`트레이드 성사!\n보낸 선수: ${outNames}\n받은 선수: ${inNames}`);
   closeSheet(); renderFront();
 }
 /* ═══════════ FA & 드래프트 (v0.9) ═══════════ */
@@ -2605,9 +2649,9 @@ function openTrainSheet(key){
 function doTrain(key){
   if(!state.season.trained) state.season.trained=[];
   if(state.season.trained.includes(key)) return;
-  if(state.season.trained.length>=3){ alert('시즌당 최대 3명까지 훈련할 수 있습니다.'); return; }
+  if(state.season.trained.length>=3){ showAlert('시즌당 최대 3명까지 훈련할 수 있습니다.'); return; }
   if(ecoOn()){
-    if(state.money < 5){ alert('훈련 비용(5억)이 부족합니다.'); return; }
+    if(state.money < 5){ showAlert('훈련 비용(5억)이 부족합니다.'); return; }
     state.money -= 5;
   }
   state.season.trained.push(key);
@@ -2649,7 +2693,7 @@ function signLegend(idx){
   const lg = m.legends[idx]; if(!lg) return;
   if(ecoOn()){
     const cost = legendCost(lg.ovr);
-    if(state.money < cost){ alert(`영입가 ${cost.toFixed(0)}억이 부족합니다. (잔고 ${fmtMoney()})`); return; }
+    if(state.money < cost){ showAlert(`영입가 ${cost.toFixed(0)}억이 부족합니다. (잔고 ${fmtMoney()})`); return; }
     state.money -= cost;
   }
   const my = state.players[state.myTeam];
@@ -2668,7 +2712,7 @@ function signFA(idx){
   const fa = m.fa[idx]; if(!fa) return;
   if(ecoOn()){
     const cost = faCost(fa.ovr);
-    if(state.money < cost){ alert(`계약금 ${cost.toFixed(0)}억이 부족합니다. (잔고 ${fmtMoney()})`); return; }
+    if(state.money < cost){ showAlert(`계약금 ${cost.toFixed(0)}억이 부족합니다. (잔고 ${fmtMoney()})`); return; }
     state.money -= cost;
   }
   // 내 팀에 추가, 원 소속팀에서 제거
@@ -2684,7 +2728,7 @@ function signFA(idx){
 }
 function draftPick(idx){
   const m = state.season.market;
-  if(m.drafted){ alert('이번 시즌 지명은 이미 완료했습니다.'); return; }
+  if(m.drafted){ showAlert('이번 시즌 지명은 이미 완료했습니다.'); return; }
   const d = m.draft[idx]; if(!d) return;
   const my = state.players[state.myTeam];
   if(d.kind==='bat'){ my.bat.push([...d.data]); my.age.bat.push(d.age); }
@@ -2874,7 +2918,7 @@ function renderLeaderboard(){
   wrap.innerHTML = h;
   wrap.querySelectorAll('[data-cat]').forEach(b=> b.onclick = ()=>{ lbCat=b.dataset.cat; renderLeaderboard(); });
   const help = document.getElementById('statHelp');
-  if(help) help.onclick = ()=> alert(lbCat + ' — ' + (STAT_INFO[lbCat]||''));
+  if(help) help.onclick = ()=> showAlert(lbCat + ' — ' + (STAT_INFO[lbCat]||''));
 }
 
 /* ═══════════ 순위표 ═══════════ */
@@ -2951,7 +2995,7 @@ function toggleRankSort(k){
   renderRank();
 }
 document.getElementById('resetSeasonBtn').onclick = ()=>{
-  if(confirm('시즌 기록을 초기화하고 새로 시작할까요?')){ newSeason(); renderRank(); }
+  showConfirm('시즌 기록을 초기화하고 새로 시작할까요?', ()=>{ newSeason(); renderRank(); });
 };
 document.getElementById('rtabTeam').onclick = ()=>{
   document.getElementById('rtabTeam').classList.add('on');
