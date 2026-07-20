@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.19.2</title>
+<title>우리팀을 만들자 v0.19.3</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -155,9 +155,10 @@ nav button.lock{opacity:.38}
 .locked-msg .big{font-size:34px;display:block;margin-bottom:10px}
 
 /* ── 라인업 ── */
+.lrow.sel{outline:3px solid var(--amber);background:rgba(240,180,60,.18)!important;transform:scale(1.01)}
 .lrow{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
   border-radius:11px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
-.lrow.sel{border-color:var(--amber);background:var(--panel2)}
+.lrow.selDUMMY{border-color:var(--amber);background:var(--panel2)}
 .lrow .ord{width:26px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:var(--amber);text-align:center}
 .lrow .lp{width:38px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim)}
 .lrow .ln{flex:1;font-weight:700}
@@ -279,7 +280,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.19.2</span>
+    <span class="ver">v0.19.3</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1181,6 +1182,14 @@ function renderLineup(){
   const lu = getLineup(t.id);
   const list = document.getElementById('lineupList');
   list.innerHTML = '';
+  if(luSel>=0){
+    const selP = t.bat[lu.order[luSel]];
+    const banner = document.createElement('div');
+    banner.className = 'notice';
+    banner.style.cssText = 'border-color:var(--amber);color:var(--amber);margin-bottom:8px';
+    banner.textContent = `👉 ${luSel+1}번 ${selP[0]} 선택됨 — ${luMode==='order'?'교환할 타순':'맞바꿀 수비 위치'}을(를) 터치하세요`;
+    list.appendChild(banner);
+  }
   lu.order.forEach((bi, pos)=>{
     const p = t.bat[bi];
     const slotPos = lu.pos[pos];
@@ -2818,10 +2827,10 @@ function renderLeaderboard(){
   const wrap = document.getElementById('rankPlayerWrap');
   const cats = ['AVG','HR','RBI','OPS','W','ERA','SO','SV'];
   const labels = {AVG:'타율',HR:'홈런',RBI:'타점',OPS:'OPS',W:'다승',ERA:'방어율',SO:'탈삼진',SV:'세이브'};
-  let h = `<div class="lb-cat">`;
+  let h = `<div class="sortbar" style="margin-top:6px">`;
   cats.forEach(c=> h += `<button class="${lbCat===c?'on':''}" data-cat="${c}">${labels[c]}</button>`);
   h += `</div>`;
-  h += `<span class="lb-help" id="statHelp">${lbCat} 뜻 보기 ⓘ</span>`;
+  h += `<div style="margin:2px 0 10px"><span class="lb-help" id="statHelp">${labels[lbCat]}(${lbCat}) 설명 ⓘ</span></div>`;
   let list;
   const isBat = ['AVG','HR','RBI','OPS'].includes(lbCat);
   if(isBat){
@@ -2843,10 +2852,11 @@ function renderLeaderboard(){
     if(lbCat==='W') return x.w; if(lbCat==='SO') return x.so; if(lbCat==='SV') return x.sv;
   };
   list.slice(0,15).forEach((x,i)=>{
-    h += `<div class="lb-row ${x.teamId===state.myTeam?'me':''}">
-      <div class="lbrk">${i+1}</div>
-      <div class="lbn"><b>${x.name}</b> <small>${x.teamName}</small></div>
-      <div class="lbv">${fmt(x)}</div></div>`;
+    const mine = x.teamId===state.myTeam;
+    h += `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:6px;border-radius:10px;border:1px solid ${mine?'var(--amber)':'var(--line)'};background:${mine?'rgba(240,180,60,.12)':'var(--panel)'}">
+      <div style="width:24px;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:700;color:${i<3?'var(--amber)':'var(--dim)'};font-size:15px">${i+1}</div>
+      <div style="flex:1;min-width:0"><span style="font-weight:700">${x.name}</span> <span style="font-size:11px;color:var(--dim)">${x.teamName}</span></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:16px;color:var(--chalk)">${fmt(x)}</div></div>`;
   });
   if(list.length===0) h += `<div class="hint">아직 기록이 없습니다. 경기를 진행해 주세요.</div>`;
   wrap.innerHTML = h;
@@ -2867,22 +2877,46 @@ function rankOrder(){
 function renderRank(){
   if(!state.season) newSeason();
   const rec = state.season.rec;
-  const order = rankOrder();
+  const order = rankOrder();   // 승률 기준 실제 순위 (순위 번호용)
+  const rankMap = {}; order.forEach((id,i)=>rankMap[id]=i+1);
   const top = rec[order[0]];
-  let html = '<tr><th>#</th><th style="text-align:left;padding-left:10px">팀</th><th>경기</th><th>승</th><th>패</th><th>무</th><th>승률</th><th>게임차</th></tr>';
-  order.forEach((id,i)=>{
+  // 정렬 상태 (기본 승률 내림차순)
+  const rs = rankSort;
+  const sorted = [...order].sort((a,b)=>{
+    const ra=rec[a], rb=rec[b];
+    const val = (r,id)=>{
+      switch(rs.key){
+        case 'w': return r.w; case 'l': return r.l; case 't': return r.t;
+        case 'gp': return r.w+r.l+r.t;
+        case 'pct': return (r.w+r.l)?r.w/(r.w+r.l):0;
+        default: return (r.w+r.l)?r.w/(r.w+r.l):0;
+      }
+    };
+    const c = val(ra,a)-val(rb,b);
+    return rs.dir==='desc'? -c : c;
+  });
+  const arrow = k => rs.key===k ? (rs.dir==='desc'?' ↓':' ↑') : '';
+  const th = (k,label) => `<th onclick="toggleRankSort('${k}')" style="cursor:pointer">${label}${arrow(k)}</th>`;
+  let html = `<tr><th>#</th><th style="text-align:left;padding-left:10px">팀</th>${th('gp','경기')}${th('w','승')}${th('l','패')}${th('t','무')}${th('pct','승률')}<th>게임차</th></tr>`;
+  sorted.forEach((id)=>{
     const t = TEAMS.find(t=>t.id===id), r = rec[id];
     const gp = r.w+r.l+r.t;
     const pct = r.w+r.l ? (r.w/(r.w+r.l)).toFixed(3).replace('0.','.') : '-';
-    const gb = i===0 ? '-' : (((top.w-r.w)+(r.l-top.l))/2).toFixed(1);
+    const gb = rankMap[id]===1 ? '-' : (((top.w-r.w)+(r.l-top.l))/2).toFixed(1);
     html += `<tr class="${id===state.myTeam?'me':''}">
-      <td class="rk">${i+1}</td><td class="tm">${t.name}</td>
+      <td class="rk">${rankMap[id]}</td><td class="tm">${t.name}</td>
       <td>${gp}</td><td>${r.w}</td><td>${r.l}</td><td>${r.t}</td><td>${pct}</td><td>${gb}</td></tr>`;
   });
   document.getElementById('rankTable').innerHTML = html;
   document.getElementById('rankTitle').textContent = `${state.mode==='sim'? state.year+'년차 ':''}순위표 — ${state.season.day}/36경기`;
   document.getElementById('lastResults').innerHTML =
     state.season.last.length ? '<b>최근 경기 결과</b><br>'+state.season.last.join('<br>') : '아직 치른 경기가 없습니다.';
+}
+let rankSort = {key:'pct', dir:'desc'};
+function toggleRankSort(k){
+  if(rankSort.key===k) rankSort.dir = rankSort.dir==='desc'?'asc':'desc';
+  else rankSort = {key:k, dir:'desc'};
+  renderRank();
 }
 document.getElementById('resetSeasonBtn').onclick = ()=>{
   if(confirm('시즌 기록을 초기화하고 새로 시작할까요?')){ newSeason(); renderRank(); }
