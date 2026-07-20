@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.19.9</title>
+<title>우리팀을 만들자 v0.20.1</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -146,6 +146,19 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
 }
 .abox .abtn-ok{background:var(--amber);color:#20180A}
 .abox .abtn-cancel{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
+
+/* ── 오프시즌 필수 체크리스트 ── */
+.checklist{background:var(--panel);border:1px solid var(--amber2);border-radius:14px;padding:14px 14px 12px;margin:12px 0}
+.cl-title{font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px}
+.cl-row{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13.5px}
+.cl-ic{font-size:15px}
+.cl-lb{flex:1;color:var(--chalk)}
+.cl-note{font-size:12px}
+.cl-note.ok{color:#3FD99A}
+.cl-note.todo{color:var(--amber)}
+.btn.cl-start{margin-top:12px;transition:background .2s,color .2s}
+.btn.cl-start.locked{background:var(--panel2);color:var(--dim);border:1px solid var(--line);cursor:not-allowed}
+.btn.cl-start.ready{background:var(--amber);color:#20180A;box-shadow:0 2px 10px rgba(255,182,59,.3)}
 .sheet .meta{font-size:13px;color:var(--dim);margin-bottom:14px}
 .reveal{
   background:var(--panel2);border:1px solid var(--line);border-radius:10px;
@@ -326,7 +339,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.19.9</span>
+    <span class="ver">v0.20.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -343,7 +356,7 @@ body.theme-rain #rainLayer{display:block;
   <div id="slotStatus"></div>
   <div id="teamPicker" style="display:none">
     <div class="notice" style="margin-top:16px">
-      <b>새 구단 선택</b> (2026 로스터 기준) · 보정: 내 구단 <b>+3</b> · 올해 <b>+2</b> · 신규 <b>+1</b> · FA 제외.
+      <b>새 구단 선택</b> (2026 로스터 기준) · 보정: 원래팀 <b>+3</b> · 올해 <b>+2</b> · 신규 <b>+1</b> · FA·타팀 레전드 제외.
     </div>
     <div class="team-grid" id="teamGrid"></div>
   </div>
@@ -557,47 +570,60 @@ function ageOf(realName){
 
 /* ───────────── 레전드 선수 풀 (골든글러브·명예의전당급, 커리어 명성 기반 추정) ───────────── */
 // [가명, 실제모델, 포지션, 손, ...능력치] + 전성기 나이대로 편입
+// [가명, 실제모델, 포지션, 손, con,pow,spd,def,eye, year, why, trait, 원래팀]
 const LEGENDS_BAT = [
-  ['이성협','이승엽','1B','좌',86,96,55,72,84,'03','2003년 아시아 최다 56홈런','국민타자'],
-  ['양준현','양준혁','LF','좌',88,86,60,70,90,'96','통산 최다 안타·출루 머신','양신'],
-  ['이종벌','이종범','SS','우',90,74,96,88,82,'94','1994년 타율.393 84도루 MVP','바람의 아들'],
-  ['이대오','이대호','1B','우',88,94,45,68,86,'10','2010년 타격 7관왕·트리플크라운','조선의 4번타자'],
-  ['장종훈','장종훈','1B','우',80,92,58,68,80,'92','1992년 최초 40홈런 MVP','연습생 신화'],
-  ['한대화','한대화','3B','우',82,84,60,80,80,'89','해결사 3루수·골글 8회','해결사'],
-  ['김기택','김기태','LF','좌',82,88,52,66,82,'91','좌타 거포 홈런왕','타격 기계'],
-  ['박경완','박경완','C','우',72,80,50,88,74,'00','최고의 수비형 포수·투수 리드','안방마님'],
-  ['홍성헌','홍성흔','C','우',84,78,58,80,78,'09','타격 잘하는 포수·지명타자','꽃미남 타자'],
-  ['테임슨','에릭 테임스','1B','좌',86,94,88,72,84,'15','2015년 40-40 클럽 MVP','호타준족'],
-  ['서건찬','서건창','2B','좌',94,60,80,76,84,'14','2014년 최초 201안타 MVP','안타 제조기'],
-  ['이정후','이정후','CF','좌',96,72,80,82,90,'22','2022년 타격 5관왕 MVP','바람의 손자'],
-  ['박병오','박병호','1B','우',76,96,48,66,78,'12','2012·13 연속 MVP 홈런왕','수원 반달곰'],
-  ['타이론','타이론 우즈','1B','우',78,92,50,64,76,'98','1998년 42홈런 MVP','흑곰'],
-  ['장효조','장효조','LF','좌',92,70,66,74,90,'87','1987년 MVP·타율의 달인','타격의 달인'],
-  ['김도녕','김도영','3B','우',88,90,88,78,80,'24','2024년 최초 월간 10-10 MVP','슈퍼스타'],
+  ['이성협','이승엽','1B','좌',86,96,55,72,84,'03','2003년 아시아 최다 56홈런','국민타자','SS'],
+  ['양준현','양준혁','LF','좌',88,86,60,70,90,'96','통산 최다 안타·출루 머신','양신','SS'],
+  ['장효조','장효조','LF','좌',92,70,66,74,90,'87','1987년 MVP·타율의 달인','타격의 달인','SS'],
+  ['이종벌','이종범','SS','우',90,74,96,88,82,'94','1994년 타율.393 84도루 MVP','바람의 아들','KIA'],
+  ['한대화','한대화','3B','우',82,84,60,80,80,'89','해결사 3루수·골글 8회','해결사','KIA'],
+  ['김도녕','김도영','3B','우',88,90,88,78,80,'24','2024년 최초 월간 10-10 MVP','슈퍼스타','KIA'],
+  ['이대오','이대호','1B','우',88,94,45,68,86,'10','2010년 타격 7관왕·트리플크라운','조선의 4번타자','LT'],
+  ['박정탁','박정태','2B','우',86,68,58,78,78,'99','1999년 최다안타·연속경기 안타','악바리','LT'],
+  ['장종훈','장종훈','1B','우',80,92,58,68,80,'92','1992년 최초 40홈런 MVP','연습생 신화','HH'],
+  ['김대균','김태균','1B','우',88,82,40,64,90,'12','통산 고타율·출루의 달인','한화의 4번','HH'],
+  ['박경완','박경완','C','우',72,80,50,88,74,'00','최고의 수비형 포수·투수 리드','안방마님','SSG'],
+  ['김기택','김기태','LF','좌',82,88,52,66,82,'97','좌타 거포 홈런왕','타격 기계','SSG'],
+  ['홍성헌','홍성흔','C','우',84,78,58,80,78,'09','타격 잘하는 포수·지명타자','꽃미남 타자','DS'],
+  ['타이론','타이론 우즈','1B','우',78,92,50,64,76,'98','1998년 42홈런 MVP','흑곰','DS'],
+  ['테임슨','에릭 테임스','1B','좌',86,94,88,72,84,'15','2015년 40-40 클럽 MVP','호타준족','NC'],
+  ['서건찬','서건창','2B','좌',94,60,80,76,84,'14','2014년 최초 201안타 MVP','안타 제조기','KW'],
+  ['이정후','이정후','CF','좌',96,72,80,82,90,'22','2022년 타격 5관왕 MVP','바람의 손자','KW'],
+  ['박병오','박병호','1B','우',76,96,48,66,78,'12','2012·13 연속 MVP 홈런왕','수원 반달곰','KW'],
+  ['이병교','이병규','CF','좌',90,66,74,76,80,'99','1999년 신인 타율.349·최다안타','적토마','LG'],
+  ['박용탁','박용택','LF','좌',88,62,66,68,82,'09','통산 최다 안타 기록 보유','용가리','LG'],
+  ['로하즈','멜 로하스','RF','양',82,92,68,72,78,'20','2020년 홈런왕·MVP','스위치 거포','KT'],
 ];
 const LEGENDS_PIT = [
-  ['최동언','최동원','선발','우',152,88,90,94,'84','1984년 한국시리즈 홀로 4승','무쇠팔'],
-  ['선동열','선동열','선발','우',154,92,94,90,'89','통산 방어율 1.20 국보급','무등산 폭격기'],
-  ['정민철','정민철','선발','우',148,86,84,86,'97','한화 에이스·통산 161승','앙팡테리블'],
-  ['임창영','임창용','마무리','우',156,82,86,80,'98','160km 뱀직구 마무리','애니콜'],
-  ['구대성','구대성','선발','좌',149,88,86,84,'00','2000년 대성불패 좌완','대성불패'],
-  ['송진욱','송진우','선발','좌',146,86,82,88,'92','통산 최다승·이닝 좌완','노송'],
-  ['유현진','류현진','선발','좌',150,90,88,86,'06','2006년 신인왕·MVP 동시석권','코리안 몬스터'],
-  ['린드블룸','조쉬 린드블럼','선발','우',149,86,84,88,'19','2019년 다승·MVP','디트로이트'],
-  ['니퍼트','더스틴 니퍼트','선발','우',152,84,82,86,'16','2016년 22승 MVP','느바트'],
-  ['윤석민','윤석민','선발','우',149,86,84,82,'11','2011년 투수 4관왕 MVP','윤사장'],
-  ['손민한','손민한','선발','우',147,86,82,84,'05','2005년 깜짝 MVP 에이스','작은 거인'],
+  ['최동언','최동원','선발','우',152,88,90,94,'84','1984년 한국시리즈 홀로 4승','무쇠팔','LT'],
+  ['손민한','손민한','선발','우',147,86,82,84,'05','2005년 깜짝 MVP 에이스','작은 거인','LT'],
+  ['선동열','선동열','선발','우',154,92,94,90,'89','통산 방어율 1.20 국보급','무등산 폭격기','KIA'],
+  ['윤석민','윤석민','선발','우',149,86,84,82,'11','2011년 투수 4관왕 MVP','윤사장','KIA'],
+  ['정민철','정민철','선발','우',148,86,84,86,'97','한화 에이스·통산 161승','앙팡테리블','HH'],
+  ['구대성','구대성','선발','좌',149,88,86,84,'00','2000년 대성불패 좌완','대성불패','HH'],
+  ['송진욱','송진우','선발','좌',146,86,82,88,'92','통산 최다승·이닝 좌완','노송','HH'],
+  ['유현진','류현진','선발','좌',150,90,88,86,'06','2006년 신인왕·MVP 동시석권','코리안 몬스터','HH'],
+  ['임창영','임창용','마무리','우',156,82,86,80,'98','160km 뱀직구 마무리','애니콜','SS'],
+  ['린드블룸','조쉬 린드블럼','선발','우',149,86,84,88,'19','2019년 다승·MVP','디트로이트','DS'],
+  ['니퍼트','더스틴 니퍼트','선발','우',152,84,82,86,'16','2016년 22승 MVP','느바트','DS'],
+  ['김광헌','김광현','선발','좌',151,86,86,86,'08','2008년 리그 최고 좌완 에이스','KK','SSG'],
+  ['이재핵','이재학','선발','우',146,82,82,80,'13','2013년 신인왕','너클커브','NC'],
+  ['손승낙','손승락','마무리','우',148,84,82,78,'13','통산 세이브 정상급 마무리','수호신','KW'],
+  ['이상운','이상훈','선발','좌',150,84,82,84,'95','1995년 20승·최고 좌완','야생마','LG'],
+  ['고연표','고영표','선발','우',143,88,84,80,'21','KT 창단 에이스·체인지업 달인','체인지업 마스터','KT'],
 ];
 function legendPool(){
   const pool = [];
   // 능력치는 앞 9칸(bat)/8칸(pit)만, 그 뒤 [year,why,trait] 메타 분리, flag 'legend'는 정확한 인덱스에
   LEGENDS_BAT.forEach(p=>{
     const data = p.slice(0,9); data.push('legend');   // 인덱스9 = flag
-    pool.push({kind:'bat', data, age:29, year:p[9], why:p[10], trait:p[11]});
+    data.push(p[12]);                                  // 인덱스10 = 원래팀
+    pool.push({kind:'bat', data, age:29, year:p[9], why:p[10], trait:p[11], team:p[12]});
   });
   LEGENDS_PIT.forEach(p=>{
     const data = p.slice(0,8); data.push('legend');   // 인덱스8 = flag
-    pool.push({kind:'pit', data, age:29, year:p[8], why:p[9], trait:p[10]});
+    data.push(p[11]);                                  // 인덱스9 = 원래팀
+    pool.push({kind:'pit', data, age:29, year:p[8], why:p[9], trait:p[10], team:p[11]});
   });
   return pool;
 }
@@ -825,16 +851,18 @@ function isMine(teamId){ return state.myTeam === teamId; }
 function flagOf(p, isBat){ return (isBat ? p[9] : p[8]) || ''; }
 function bonusOf(p, teamId, isBat){
   const f = flagOf(p, isBat);
-  if(f === 'fa') return 0;                     // FA 이적: 보정 제외
-  if(f === 'legend'){                          // 레전드: 내 팀 보정만 (규칙 ④)
-    return isMine(teamId) ? BOOST_MY : 0;
+  if(f === 'fa') return 0;                     // FA 이적: 원래팀 떠남 → 보정 없음
+  if(f === 'legend'){                          // 레전드: 원래팀에 영입했을 때만 +3
+    const origin = p[isBat?10:9];             // 레전드 원래팀
+    return (origin && origin === teamId) ? BOOST_MY : 0;
   }
-  let bo = BOOST_CUR;                          // 올해 로스터 기본 보정
-  if(f === 'new') bo += BOOST_NEW;             // 신규 영입/신인
-  if(isMine(teamId)){
-    const myB = (typeof state!=='undefined' && state.eco==='normal' && state.money<0) ? 1 : BOOST_MY;
-    bo += myB;                                  // 내 구단 (잔고 마이너스 시 감소)
-  }
+  let bo = BOOST_CUR;                          // 올해(현재시즌) 보정 +2 · 전 팀 공통
+  if(f === 'new') bo += BOOST_NEW;             // 신규 영입/신인 +1
+  // 원래팀 소속(=현재 팀에 그대로 남은) 선수 +3 — 모든 팀 공통(FA만 제외)
+  let loyalty = BOOST_MY;
+  // 내 구단이 파산 위기(경영 일반·잔고 마이너스)면 내 팀만 페널티
+  if(typeof state!=='undefined' && state.eco==='normal' && state.money<0 && isMine(teamId)) loyalty = 1;
+  bo += loyalty;
   return bo;
 }
 function b(v, p, teamId, isBat){ return Math.min(99, v + bonusOf(p, teamId, isBat)); }
@@ -943,8 +971,13 @@ function statRow2(label, base, p, teamId, isBat){
   let breakdown = '';
   if(bo>0){
     const parts = [];
-    if(f!=='fa' && f!=='legend'){ parts.push('올해+'+BOOST_CUR); if(f==='new') parts.push('신규+'+BOOST_NEW); }
-    if(isMine(teamId)) parts.push('내구단+'+BOOST_MY);
+    if(f==='legend'){ parts.push('원래팀+'+BOOST_MY); }
+    else if(f!=='fa'){
+      parts.push('올해+'+BOOST_CUR);
+      if(f==='new') parts.push('신규+'+BOOST_NEW);
+      const loyalty = (typeof state!=='undefined' && state.eco==='normal' && state.money<0 && isMine(teamId)) ? 1 : BOOST_MY;
+      parts.push('원래팀+'+loyalty);
+    }
     breakdown = ` <span style="font-size:10px;color:var(--amber)">(${base} ${parts.map(x=>'+'+x.split('+')[1]).join(' ')})</span>`;
   }
   return `<div class="stat"><div class="sl"><span>${label}</span><span class="v">${total}${breakdown}</span></div>
@@ -970,11 +1003,17 @@ function openSheet(team, tab, idx){
   }
   let bonusLine;
   if(f==='fa') bonusLine = '<span style="color:#8FA396">FA 이적 선수 · 보정 제외</span>';
-  else if(f==='legend') bonusLine = '<span class="boost">🏅 레전드 · 내 구단 보정만</span>';
+  else if(f==='legend'){
+    const origin = p[isBat?10:9];
+    bonusLine = (origin===team.id)
+      ? '<span class="boost">🏅 레전드 · 원래팀 복귀 +'+BOOST_MY+'</span>'
+      : '<span style="color:#8FA396">🏅 레전드 · 타팀 영입(원래팀 '+(TEAMS.find(t=>t.id===origin)?.name||origin)+') · 보정 없음</span>';
+  }
   else{
     const parts = ['올해 시즌 +'+BOOST_CUR];
     if(f==='new') parts.push('신규 영입 +'+BOOST_NEW);
-    if(isMine(team.id)) parts.push('내 구단 +'+BOOST_MY);
+    const loyalty = (state.eco==='normal' && state.money<0 && isMine(team.id)) ? 1 : BOOST_MY;
+    parts.push('원래팀 +'+loyalty);
     bonusLine = '<span class="boost">보정: '+parts.join(' · ')+'</span>';
   }
   sheet.innerHTML = `
@@ -1037,7 +1076,7 @@ function openTeamPreview(t){
   let h = `<div class="top"><div class="pname">${t.name}</div>
     <button class="close" onclick="closeSheet()">✕</button></div>
     <div class="meta">${t.real} · 2025 실제 순위 <b>${RANK2025[t.id]||'-'}위</b> · 팀 전력 OVR ${teamOvr}</div>
-    <div class="reveal"><div class="lbl">이 구단으로 시작</div>소속 선수 내 구단 보정 +${BOOST_MY}. 아래 로스터를 확인하고 시작하세요.</div>
+    <div class="reveal"><div class="lbl">이 구단으로 시작</div>소속(원래팀) 선수 보정 +${BOOST_MY}. 아래 로스터를 확인하고 시작하세요.</div>
     <button class="btn" onclick="openModeSheet(TEAMS.find(x=>x.id==='${t.id}'))">이 구단으로 시작하기</button>
     <h2 class="sec" style="font-size:14px;margin-top:14px">주요 타자</h2>`;
   bats.slice(0,9).forEach(({p,ovr})=>{
@@ -1062,7 +1101,7 @@ function openModeSheet(t){
   sheet.innerHTML = `
     <div class="top"><div class="pname">${t.name}</div>
       <button class="close" onclick="closeSheet()">✕</button></div>
-    <div class="meta">${t.real} · 소속 선수 내 구단 보정 +${BOOST_MY}</div>
+    <div class="meta">${t.real} · 원래팀 소속 선수 보정 +${BOOST_MY}</div>
     <div class="mode-btns">
       <button class="primary" onclick="openEcoSheet('${t.id}','live')">📡 실황 모드
         <small>데이터 기준 ${DATA_DATE} 선수단 · 한 시즌 집중 · 성장/노쇠 없음</small></button>
@@ -2110,7 +2149,7 @@ function renderFront(){
   if(ecoOn()){
     info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b>` +
       (state.eco==='hard'?' · 하드(파산주의)':state.eco==='normal'?' · 일반':'') +
-      (state.money<0 && state.eco==='normal'?'<br>⚠️ 잔고 마이너스 — 내 구단 보정 감소 중':'');
+      (state.money<0 && state.eco==='normal'?'<br>⚠️ 잔고 마이너스 — 내 팀 원래팀 보정 감소 중':'');
   }else{
     info.innerHTML = `자유 모드 · 자금 시스템 꺼짐 · 연간 총연봉(참고) ${salTotal.toFixed(1)}억`;
   }
@@ -2131,20 +2170,38 @@ function renderOffseason(t){
   const m = state.season.market;
   let h = `<div class="notice" style="border-color:var(--amber)"><b>⚾ 오프시즌 ${state.mode==='sim'?state.year+'년차':''}</b><br>
     FA 영입·신인 지명·방출·훈련을 진행하고, 끝나면 아래 버튼으로 다음 시즌을 시작합니다.</div>`;
+  // ── 필수 체크리스트 + 새 시즌 시작 (상단 고정) ──
+  const cl = offseasonChecklist();
+  const nextLabel = state.mode==='sim'?(state.year+1)+'년차 시즌 시작':'새 시즌 시작';
+  h += `<div class="checklist">
+    <div class="cl-title">새 시즌 시작 조건</div>
+    ${cl.items.map(it=>`<div class="cl-row"><span class="cl-ic">${it.ok?'✅':'⬜'}</span><span class="cl-lb">${it.label}</span><span class="cl-note ${it.ok?'ok':'todo'}">${it.note}</span></div>`).join('')}
+    <button class="btn cl-start ${cl.allOk?'ready':'locked'}" id="startNextTop" ${cl.allOk?'':'disabled'}>${cl.allOk?'▶ '+nextLabel:'🔒 '+nextLabel}</button>
+  </div>`;
   // 연봉 협상 (경영 모드)
   if(ecoOn()){
     buildSalaryDemands();
     const dm = state.season.demands || [];
     if(dm.length){
+      const pend = countPendingDemands();
       h += `<h2 class="sec" style="margin-top:14px">💵 연봉 협상 <small>우수 선수의 인상 요구</small></h2>
-        <div class="hint">수락하면 선수가 만족하지만 다음 시즌 연봉 부담이 커집니다. 거절하면 불만으로 능력치가 소폭 하락합니다.</div>`;
+        <div class="hint">수락(만족·연봉↑) / 거절(불만·능력치 소폭↓) / 재협상(성적 따라 확률로 인상폭 절반 합의). ${pend>0?`<b style="color:var(--amber)">미처리 ${pend}명 — 전부 처리해야 새 시즌 시작 가능</b>`:'<b style="color:#3FD99A">✅ 모두 처리 완료</b>'}</div>`;
       dm.forEach((d,i)=>{
         const res = state.season.demandResults?.[i];
+        const renegUsed = state.season.demandResults?.['reneg_used_'+i];
+        let statusBtns;
+        if(res==='accept') statusBtns = '<span class="boost">✅ 수락</span>';
+        else if(res==='reject') statusBtns = '<span class="boost" style="color:#8FA396">❌ 거절</span>';
+        else if(res==='renego_ok') statusBtns = '<span class="boost" style="color:#3FD99A">🤝 재협상 합의</span>';
+        else {
+          statusBtns = `<button class="signbtn" onclick="acceptDemand(${i})">수락</button>`
+            + `<button class="cutbtn" onclick="rejectDemand(${i})" style="margin-left:4px">거절</button>`
+            + (renegUsed ? '' : `<button class="cutbtn" onclick="renegoDemand(${i})" style="margin-left:4px;border-color:var(--amber);color:var(--amber)">재협상</button>`);
+        }
         h += `<div class="prow">
           <div class="mid"><div class="nm">${d.name} <span style="font-size:11px;color:var(--amber)">${d.why}</span></div>
           <div class="hand">연봉 ${d.cur.toFixed(1)}억 → ${(d.cur+d.raise).toFixed(1)}억 요구 (+${d.raise}억)</div></div>
-          ${res==='accept'? '<span class="boost">✅ 수락</span>' : res==='reject'? '<span class="boost" style="color:#8FA396">거절</span>' :
-            `<button class="signbtn" onclick="acceptDemand(${i})">수락</button><button class="cutbtn" onclick="rejectDemand(${i})" style="margin-left:4px">거절</button>`}</div>`;
+          ${statusBtns}</div>`;
       });
     }
   }
@@ -2170,7 +2227,7 @@ function renderOffseason(t){
     <span class="lb-help" style="margin-left:8px" onclick="openLegendDex()">📖 전체 레전드 보기</span></h2>`;
   if(!m.legends || m.legends.length===0){ h += `<div class="hint">올해 영입 가능한 레전드가 없습니다.</div>`; }
   else{
-    h += `<div class="hint">역대 골든글러브·명예의전당급 선수입니다. 내 구단 보정만 받습니다.</div>`;
+    h += `<div class="hint">역대 골든글러브·명예의전당급 선수입니다. 원래팀에 영입해야 보정을 받습니다.</div>`;
     m.legends.forEach((lg,idx)=>{
       const cost = ecoOn()? `${legendCost(lg.ovr).toFixed(0)}억` : '영입';
       h += `<div class="prow" style="cursor:pointer;border-color:var(--amber)" data-legend="${idx}">
@@ -2215,7 +2272,7 @@ function renderOffseason(t){
     <div class="hint">비주전 선수만 방출할 수 있습니다. 방출하면 다음 시즌부터 연봉이 빠집니다.</div>
     <h2 class="sec" style="margin-top:10px;font-size:14px">타자</h2>${playerRows(t,true)}
     <h2 class="sec" style="margin-top:10px;font-size:14px">투수</h2>${playerRows(t,false)}
-    <button class="btn" id="startNextBtn" style="margin-top:18px">${state.mode==='sim'?(state.year+1)+'년차 시즌 시작':'새 시즌 시작'}</button>`;
+    <div style="height:20px"></div>`;
   return h;
 }
 function bindOffseason(){
@@ -2237,10 +2294,39 @@ function bindOffseason(){
   document.querySelectorAll('[data-legend]').forEach(el=>{
     el.onclick = ()=> openLegendSheet(+el.dataset.legend);
   });
-  const sb = document.getElementById('startNextBtn');
+  const sb = document.getElementById('startNextTop');
   if(sb) sb.onclick = ()=>{ doOffseasonEnd(); };
 }
+function offseasonChecklist(){
+  const m = state.season.market || {};
+  const my = state.players[state.myTeam];
+  const rosterNow = my.bat.length + my.pit.length;
+  const base = state.season.rosterAtStart ?? rosterNow;
+  const overBy = rosterNow - base;               // 시작 인원 대비 초과(+면 방출 필요)
+  const items = [];
+  // 1) 연봉협상 (경영 모드만)
+  if(ecoOn()){
+    const pend = countPendingDemands();
+    items.push({key:'nego', label:'연봉 협상', ok:pend===0,
+      note: pend===0?'모두 처리':`${pend}명 미처리`});
+  }
+  // 2) 신인 지명 (매 시즌 1명)
+  items.push({key:'draft', label:'신인 지명', ok:!!m.drafted,
+    note: m.drafted?'지명 완료':'1명 지명 필요'});
+  // 3) 방출 — 늘어난 인원만큼 방출해 숫자 맞추기
+  items.push({key:'cut', label:'방출(인원 맞추기)', ok:overBy<=0,
+    note: overBy<=0?'인원 정상':`${overBy}명 더 방출 필요`});
+  const allOk = items.every(it=>it.ok);
+  return {items, allOk};
+}
 function doOffseasonEnd(){
+  // 필수 조건 미충족 시 차단
+  const cl = offseasonChecklist();
+  if(!cl.allOk){
+    const todo = cl.items.filter(it=>!it.ok).map(it=>`· ${it.label}: ${it.note}`).join('\n');
+    showAlert('새 시즌을 시작하려면 먼저 처리해야 합니다:\n\n'+todo);
+    return;
+  }
   // 훈련 효과 적용 후 성장/노쇠 → 다음 시즌
   const trained = state.season.trained || [];
   state.season.offDone = true;
@@ -2532,6 +2618,11 @@ function buildOffseasonMarket(){
     }
   }
   state.season.market = market;
+  // 방출 필수 판정 기준: 오프시즌 진입 시점 로스터 인원 저장
+  if(state.season.rosterAtStart === undefined){
+    const my = state.players[state.myTeam];
+    state.season.rosterAtStart = my.bat.length + my.pit.length;
+  }
   save();
 }
 
@@ -2623,7 +2714,7 @@ function openLegendSheet(idx){
     <div class="reveal" style="border-color:var(--amber)"><div class="lbl">🏅 레전드 · '${lg.year} · ${lg.trait}</div>
       실제 모델: <b>${lg.data[1]}</b> ('${lg.year})<br>
       ${lg.why}<br>
-      내 구단 보정만 적용됩니다.<br>
+      원래팀: <b>${TEAMS.find(t=>t.id===lg.team)?.name||lg.team}</b> · ${lg.team===state.myTeam? '내 구단이 원래팀 → 영입 시 보정 +'+BOOST_MY+' 🔥' : '타팀 레전드 → 보정 없음'}<br>
       ${ecoOn()? '영입가 <b>'+cost+'</b> (현재 잔고 '+fmtMoney()+')':'명예 영입'}</div>
     ${playerStatsHtml(lg.data, isBat, state.myTeam)}
     <button class="btn" onclick="closeSheet(); signLegend(${idx})">${ecoOn()? cost+' 영입':'영입하기'}</button>
@@ -2816,6 +2907,43 @@ function rejectDemand(i){
     if(d.kind==='bat'){ for(let k=4;k<=8;k++) p[k]=Math.max(30,p[k]-1); }
     else{ for(let k=5;k<=7;k++) p[k]=Math.max(30,p[k]-1); }
   }
+  save(); renderFront();
+}
+// 미처리 협상 개수 (무시 불가 — 전부 처리해야 시즌 진행)
+function countPendingDemands(){
+  if(!ecoOn()) return 0;
+  const dm = state.season.demands || [];
+  const res = state.season.demandResults || {};
+  return dm.filter((d,i)=> res[i]!=='accept' && res[i]!=='reject' && res[i]!=='renego_ok' && res[i]!=='renego_fail_done').length;
+}
+// 재협상 — 깎아서 다시 제안. 선수 그해 성적이 좋을수록 수용 확률 낮음(콧대 높음)
+function renegoDemand(i){
+  const d = state.season.demands[i]; if(!d) return;
+  const res = state.season.demandResults || {};
+  if(res['reneg_used_'+i]){ showAlert('이미 재협상한 선수입니다. 수락 또는 거절만 가능합니다.'); return; }
+  // 성적 점수(0~1): 요구 사유가 강할수록 높음 + 요구 인상폭 비율
+  let perf = 0.5;
+  const why = d.why||'';
+  if(/([0-9]+)홈런/.test(why)) perf = Math.min(1, 0.5 + (+RegExp.$1)/12);
+  else if(/타율/.test(why)) perf = 0.75;
+  else if(/([0-9]+)타점/.test(why)) perf = Math.min(1, 0.4 + (+RegExp.$1)/70);
+  else if(/([0-9]+)승/.test(why)) perf = Math.min(1, 0.45 + (+RegExp.$1)/14);
+  else if(/([0-9]+)세이브/.test(why)) perf = Math.min(1, 0.4 + (+RegExp.$1)/25);
+  else if(/([0-9]+)탈삼진/.test(why)) perf = Math.min(1, 0.4 + (+RegExp.$1)/120);
+  // 수용 확률: 성적 좋을수록 콧대 높아 거절(수용 확률↓). 40%~85% 범위
+  const acceptChance = Math.max(0.15, 0.9 - perf*0.7);
+  const ok = Math.random() < acceptChance;
+  res['reneg_used_'+i] = true;
+  if(ok){
+    // 절반만 인상하는 선에서 합의 — 만족(페널티 없음)
+    d.raise = +(d.raise*0.5).toFixed(1);
+    res[i] = 'renego_ok';
+    showAlert(`재협상 성공!\n${d.name} 선수가 인상폭을 절반(+${d.raise}억)으로 조정하는 데 합의했습니다.`);
+  }else{
+    res[i] = ''; // 다시 미처리 → 수락/거절만 가능
+    showAlert(`재협상 결렬!\n${d.name} 선수가 원래 요구를 고수합니다. 수락 또는 거절해야 합니다.`);
+  }
+  state.season.demandResults = res;
   save(); renderFront();
 }
 
