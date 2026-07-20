@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.19.8</title>
+<title>우리팀을 만들자 v0.19.9</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -60,14 +60,19 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
 /* ── 팀 선택 ── */
 .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tcard{
-  background:var(--panel);border:1px solid var(--line);border-radius:12px;
-  padding:14px 12px;display:flex;flex-direction:column;gap:6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;
   cursor:pointer;transition:transform .08s;
 }
-.tcard:active{transform:scale(.97)}
-.tcard .stripe{height:6px;border-radius:3px}
+.tcard:active{transform:scale(.96)}
+.tcard .temblem{
+  width:64px;height:64px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:34px;
+  line-height:1;
+}
+.tcard .tinfo{text-align:center}
 .tcard .tname{font-weight:700;font-size:15px}
-.tcard .treal{font-size:11px;color:var(--dim)}
+.tcard .treal{font-size:11px;color:var(--dim);margin-top:2px}
 .notice{
   background:var(--panel2);border:1px dashed var(--line);border-radius:10px;
   padding:12px;font-size:13px;color:var(--dim);line-height:1.6;margin-bottom:14px;
@@ -230,8 +235,17 @@ nav button.lock{opacity:.38}
 body.theme-day{--bg:#3E6B8C}
 body.theme-night{--bg:#0D1811}
 body.theme-rain{--bg:#151C22}
+
+/* 낮·비 테마: 밝은 하늘 배경이라 콘텐츠 뒤에 어두운 스크림을 깔아 글씨 대비 확보
+   (배경 그라디언트 z=-2 위, 빗줄기 z=-1 아래) */
+main::after{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:transparent;transition:background .2s}
+body.theme-day main::after,
+body.theme-rain main::after{background:linear-gradient(180deg,rgba(10,18,13,.42) 0%,rgba(10,18,13,.60) 100%)}
+/* 낮·비 테마: 배경 위에 직접 놓이는 흐린 글씨를 더 밝고 진하게 */
+body.theme-day, body.theme-rain{--dim:#C9D6CD; --chalk:#FFFFFF}
 /* 야구장 안 느낌: 하늘 + 외야 담장 + 잔디 + 내야 흙 */
-main::before{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none}
+main::before{content:'';position:fixed;inset:0;z-index:-3;pointer-events:none}
 body.theme-day main::before{background:
   radial-gradient(circle at 82% 12%, #FFF3B0 0 4%, #FFE87A 4% 6%, transparent 10%),
   linear-gradient(180deg,#5AA8E8 0%,#84C2EE 18%,#B4DCF2 30%,#DCF0F8 40%,transparent 48%),
@@ -312,7 +326,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.19.8</span>
+    <span class="ver">v0.19.9</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -858,17 +872,29 @@ function refreshHeader(){
 }
 
 /* ───────────── 팀 선택 ───────────── */
+const TEAM_EMOJI = {
+  LG:'👯', HH:'🦅', KIA:'🐯', SS:'🦁', DS:'🐻',
+  KT:'🧙', SSG:'🚀', LT:'🗿', NC:'🦖', KW:'🦸'
+};
 function renderTeamGrid(){
   const g = document.getElementById('teamGrid');
   g.innerHTML = '';
   TEAMS.forEach(t=>{
     const d = document.createElement('div');
     d.className = 'tcard';
-    d.innerHTML = `<div class="stripe" style="background:${t.c}"></div>
-      <div class="tname">${t.name}</div><div class="treal">${t.real}</div>`;
+    const emo = TEAM_EMOJI[t.id] || '⚾️';
+    d.innerHTML = `<div class="temblem" style="background:${hexToSoft(t.c)};box-shadow:inset 0 0 0 2px ${t.c}55">${emo}</div>
+      <div class="tinfo"><div class="tname">${t.name}</div><div class="treal">${t.real}</div></div>`;
     d.onclick = ()=>openTeamPreview(t);
     g.appendChild(d);
   });
+}
+function hexToSoft(hex){
+  // 팀 색을 어둡고 은은한 배경으로 변환
+  let h = hex.replace('#','');
+  if(h.length===3) h = h.split('').map(c=>c+c).join('');
+  const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+  return `linear-gradient(145deg, rgba(${r},${g},${b},.28), rgba(${r},${g},${b},.10))`;
 }
 
 /* ───────────── 로스터 ───────────── */
@@ -1154,7 +1180,7 @@ function renderTeamHome(){
   const eco = state.eco==='normal'?'경영 일반':state.eco==='hard'?'경영 하드':'자유';
   box.innerHTML = `
     <div style="text-align:center;padding:24px 0 16px">
-      <div style="width:72px;height:72px;margin:0 auto 12px;border-radius:50%;background:${t.c};display:flex;align-items:center;justify-content:center;font-size:34px">⚾️</div>
+      <div style="width:72px;height:72px;margin:0 auto 12px;border-radius:50%;background:${t.c};display:flex;align-items:center;justify-content:center;font-size:36px">${TEAM_EMOJI[t.id]||'⚾️'}</div>
       <div style="font-family:'Black Han Sans';font-size:24px;color:var(--amber)">${t.name}</div>
       <div style="font-size:13px;color:var(--dim);margin-top:4px">${t.real} · ${md} · ${eco}</div>
       ${ecoOn()?`<div style="font-size:14px;color:var(--chalk);margin-top:6px">💰 ${fmtMoney()}</div>`:''}
