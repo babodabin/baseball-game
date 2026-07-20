@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.19.1</title>
+<title>우리팀을 만들자 v0.19.2</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -209,13 +209,20 @@ body.theme-rain{--bg:#7C9CB8;--panel:#E8EFF4;--panel2:#DBE6EE;--chalk:#1E2E3A;--
 /* 야구장 안 느낌: 하늘 + 외야 담장 + 잔디 + 내야 흙 */
 main::before{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none}
 body.theme-day main::before{background:
-  linear-gradient(180deg,#6FB4E8 0%,#9CCBEE 14%,#BFE0F2 24%,transparent 34%),
-  linear-gradient(0deg,#C9A46B 0%,#C9A46B 8%,transparent 8%),
-  linear-gradient(0deg,#3FA35A 0%,#4FB86A 22%,#5CC077 34%,transparent 50%);opacity:1}
+  radial-gradient(circle at 82% 12%, #FFF3B0 0 4%, #FFE87A 4% 6%, transparent 10%),
+  linear-gradient(180deg,#5AA8E8 0%,#84C2EE 18%,#B4DCF2 30%,#DCF0F8 40%,transparent 48%),
+  linear-gradient(0deg,#C9A46B 0%,#C9A46B 7%,transparent 7%),
+  linear-gradient(0deg,#3FA35A 0%,#54BC6E 24%,#66C880 38%,transparent 52%);opacity:1}
 body.theme-night main::before{background:
-  linear-gradient(180deg,#12203A 0%,#1B2C4C 16%,#2C3A5C 26%,transparent 36%),
-  linear-gradient(0deg,#5A4A32 0%,#5A4A32 8%,transparent 8%),
-  linear-gradient(0deg,#164024 0%,#1E5230 22%,transparent 40%);opacity:.85}
+  radial-gradient(circle at 80% 13%, #F4F1D8 0 3.2%, #D8D2A8 3.2% 3.8%, transparent 8%),
+  radial-gradient(1px 1px at 20% 10%, #fff 50%, transparent),
+  radial-gradient(1px 1px at 42% 16%, #fff 50%, transparent),
+  radial-gradient(1px 1px at 62% 8%, #fff 50%, transparent),
+  radial-gradient(1.5px 1.5px at 33% 22%, #fff 50%, transparent),
+  radial-gradient(1px 1px at 70% 20%, #fff 50%, transparent),
+  linear-gradient(180deg,#0A1430 0%,#122044 18%,#1B2C52 30%,transparent 44%),
+  linear-gradient(0deg,#3A3020 0%,#3A3020 7%,transparent 7%),
+  linear-gradient(0deg,#123018 0%,#1A4426 24%,transparent 42%);opacity:1;background-repeat:no-repeat}
 body.theme-rain main::before{background:
   linear-gradient(180deg,#6E93B4 0%,#89A9C4 30%,#A9C2D6 55%,#7FA07C 78%,#6B9068 100%);opacity:1}
 /* 비: SVG 빗줄기 레이어 */
@@ -247,6 +254,12 @@ body.theme-rain #rainLayer{display:block;
 
 .other-results{font-size:12px;color:var(--dim);line-height:1.8;margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
 
+
+.sortbar{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
+.sortbar .sbl{font-size:11px;color:var(--dim);align-self:center;margin-right:2px}
+.sortbar button{flex:none;padding:6px 12px;border-radius:16px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--dim);font-family:inherit;font-size:12.5px;font-weight:600;white-space:nowrap}
+.sortbar button.on{background:var(--amber);border-color:var(--amber);color:#20180A;font-weight:700}
 .lb-cat{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
 .lb-cat button{flex:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
 .lb-cat button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
@@ -266,7 +279,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.19.1</span>
+    <span class="ver">v0.19.2</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1181,8 +1194,9 @@ function renderLineup(){
       else if(luSel===pos){ luSel = -1; }
       else{
         if(luMode==='order'){
-          // 타순 교환: 선수(+포지션 함께 이동은 안 함, 타순만) — 선수 자체를 교환
+          // 타순 교환: 선수와 그 수비 포지션을 함께 이동 (선수는 자기 포지션 유지)
           [lu.order[luSel], lu.order[pos]] = [lu.order[pos], lu.order[luSel]];
+          [lu.pos[luSel], lu.pos[pos]] = [lu.pos[pos], lu.pos[luSel]];
         }else{
           // 수비 배치 교환: 두 자리의 수비 포지션(lu.pos)을 맞바꿈, 단 외야끼리/DH만 허용
           const a=lu.pos[luSel], b2=lu.pos[pos];
@@ -1903,7 +1917,7 @@ const SORT_KEYS = [
 const POS_ORDER = {'C':1,'1B':2,'2B':3,'3B':4,'SS':5,'LF':6,'CF':7,'RF':8,'DH':9,'선발':10,'마무리':11,'불펜':12};
 function sortBar(scope){
   const st = SORT_STATE[scope] || {key:'ovr', dir:'desc'};
-  let h = '<div class="lb-cat" style="margin-bottom:8px">';
+  let h = '<div class="sortbar"><span class="sbl">정렬</span>';
   SORT_KEYS.forEach(s=>{
     const on = st.key===s.k;
     const arrow = on ? (st.dir==='desc'?' ↓':' ↑') : '';
