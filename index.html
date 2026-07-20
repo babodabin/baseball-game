@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.18</title>
-<!-- v0.18 — 구단홈 버튼 제거, 팀 선택 시 로스터+2025순위 미리보기, 능력치 분해표시, 배경(밝게/낮밤비) -->
+<title>우리팀을 만들자 v0.19</title>
+<!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -203,20 +203,27 @@ nav button.lock{opacity:.38}
 
 
 /* ── 배경 테마 ── */
-body.theme-day{--bg:#16241A;--panel:#1E2E22;--panel2:#26382B;--chalk:#F2EFE6;--dim:#A8BBAC}
+body.theme-day{--bg:#3E6B8C;--panel:#EAF2F6;--panel2:#DCE8EF;--chalk:#1B2A33;--dim:#516471;--line:#C3D3DC}
 body.theme-night{--bg:#0D1811;--panel:#152219;--panel2:#1C2C21;--chalk:#EDEAE0;--dim:#8FA396}
 body.theme-rain{--bg:#151C22;--panel:#1C262E;--panel2:#242F38;--chalk:#E4EAEE;--dim:#8FA0AC}
-/* 야구장 그라운드 느낌: 상단 하늘 그라데이션 + 하단 잔디 */
-main::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5}
-body.theme-day main::before{background:linear-gradient(180deg,#4A82B4 0%,#79A5C9 22%,transparent 42%),linear-gradient(0deg,#2C6B3A 0%,#3C7D48 12%,transparent 30%)}
-body.theme-night main::before{background:linear-gradient(180deg,#1A2740 0%,#243456 20%,transparent 42%),linear-gradient(0deg,#183A22 0%,#1F4A2C 12%,transparent 30%)}
-body.theme-rain main::before{background:linear-gradient(180deg,#2A3742 0%,#3A4854 22%,transparent 44%),linear-gradient(0deg,#22402C 0%,#2A4A34 12%,transparent 30%)}
-/* 비 효과 */
-body.theme-rain main::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background-image:repeating-linear-gradient(105deg,transparent 0 6px,rgba(160,190,210,.14) 6px 7px);
-  animation:rainfall .6s linear infinite;opacity:.5}
-@keyframes rainfall{from{background-position:0 0}to{background-position:-14px 40px}}
-.theme-pick{display:flex;gap:8px;margin-top:10px}
+/* 야구장 안 느낌: 하늘 + 외야 담장 + 잔디 + 내야 흙 */
+main::before{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none}
+body.theme-day main::before{background:
+  linear-gradient(180deg,#6FB4E8 0%,#9CCBEE 14%,#BFE0F2 24%,transparent 34%),
+  linear-gradient(0deg,#C9A46B 0%,#C9A46B 8%,transparent 8%),
+  linear-gradient(0deg,#3FA35A 0%,#4FB86A 22%,#5CC077 34%,transparent 50%);opacity:1}
+body.theme-night main::before{background:
+  linear-gradient(180deg,#12203A 0%,#1B2C4C 16%,#2C3A5C 26%,transparent 36%),
+  linear-gradient(0deg,#5A4A32 0%,#5A4A32 8%,transparent 8%),
+  linear-gradient(0deg,#164024 0%,#1E5230 22%,transparent 40%);opacity:.85}
+body.theme-rain main::before{background:
+  linear-gradient(180deg,#2A3742 0%,#3A4854 18%,transparent 40%),
+  linear-gradient(0deg,#4A3E2E 0%,#4A3E2E 8%,transparent 8%),
+  linear-gradient(0deg,#1E4028 0%,#2A4A34 22%,transparent 40%);opacity:.8}
+/* 비: SVG 빗줄기 레이어 */
+#rainLayer{position:fixed;inset:0;z-index:-1;pointer-events:none;display:none}
+body.theme-rain #rainLayer{display:block}
+.theme-pick{.theme-pick{display:flex;gap:8px;margin-top:10px}
 .theme-pick button{flex:1;padding:9px 0;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
 .theme-pick button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
 
@@ -256,7 +263,7 @@ body.theme-rain main::after{content:'';position:fixed;inset:0;z-index:-1;pointer
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.18</span>
+    <span class="ver">v0.19</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -268,6 +275,7 @@ body.theme-rain main::after{content:'';position:fixed;inset:0;z-index:-1;pointer
 <!-- 팀 선택 -->
 <section class="screen" id="scr-select">
   <h2 class="sec" style="margin-top:6px" id="selectTitle">우리팀을 만들자!</h2>
+  <button id="pickBackBtn" class="btn ghost" style="display:none;margin-bottom:10px" onclick="backToSlots()">← 슬롯 목록으로</button>
   <div class="hint" id="selectHint">진행 중인 슬롯을 누르면 이어서 하고, 빈 슬롯을 누르면 새 구단을 선택합니다.</div>
   <div id="slotStatus"></div>
   <div id="teamPicker" style="display:none">
@@ -363,6 +371,7 @@ body.theme-rain main::after{content:'';position:fixed;inset:0;z-index:-1;pointer
     <span id="lockText">다음 업데이트에서 열립니다</span>
   </div>
 </section>
+<div id="rainLayer"></div>
 <button id="scrollTopBtn" onclick="document.querySelector('main').scrollTo({top:0,behavior:'smooth'})"
   style="position:fixed;right:14px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:25;display:none;
   width:44px;height:44px;border-radius:50%;border:none;background:var(--amber);color:#20180A;font-size:20px;font-weight:700;box-shadow:0 3px 10px rgba(0,0,0,.4)">↑</button>
@@ -532,6 +541,14 @@ function snapshotTeams(){
   TEAMS.forEach((t,ti)=>{
     const bat = t.bat.map(p=>[...p]);
     const pit = t.pit.map(p=>[...p]);
+    // 선발 5명 보장 (부족하면 생성)
+    let spCount = pit.filter(p=>p[2]==='선발').length;
+    let g = 0;
+    while(spCount < 5){
+      const sp = genRelief(t.pit, ti*20+50+g);
+      sp[2] = '선발'; sp[7] = 70 + Math.floor(Math.random()*10);   // 선발용 체력
+      pit.push(sp); spCount++; g++;
+    }
     // 백업 야수 4명
     for(let i=0;i<4;i++) bat.push(genBackupBat(t.bat, ti*20+i));
     // 불펜 투수 4명
@@ -628,6 +645,7 @@ function renderSlotStatus(){
   const tp=document.getElementById('teamPicker'); if(tp) tp.style.display='none';
   const hint=document.getElementById('selectHint'); if(hint) hint.style.display='';
   const title=document.getElementById('selectTitle'); if(title) title.textContent='우리팀을 만들자!';
+  const back=document.getElementById('pickBackBtn'); if(back) back.style.display='none';
   box.innerHTML = '';
   store.slots.forEach((s,i)=>{
     const card = document.createElement('div');
@@ -679,7 +697,13 @@ function switchSlotEmpty(i){
   if(hint) hint.style.display='none';
   if(title) title.textContent='새 구단을 선택하세요';
   if(tp){ tp.style.display=''; }
+  const back=document.getElementById('pickBackBtn'); if(back) back.style.display='';
   renderTeamGrid();
+  document.querySelector('main').scrollTo({top:0});
+}
+function backToSlots(){
+  const back=document.getElementById('pickBackBtn'); if(back) back.style.display='none';
+  renderSlots();   // 슬롯 목록 복원 (renderSlotStatus가 teamPicker 숨김)
   document.querySelector('main').scrollTo({top:0});
 }
 
@@ -980,10 +1004,37 @@ function applyTheme(){
   const th = (store && store.theme) || 'night';
   document.body.classList.remove('theme-day','theme-night','theme-rain');
   document.body.classList.add('theme-'+th);
+  buildRain(th==='rain');
+}
+function buildRain(on){
+  const layer = document.getElementById('rainLayer');
+  if(!layer) return;
+  if(!on){ layer.innerHTML=''; return; }
+  if(layer.dataset.built==='1') return;
+  const W=window.innerWidth||390, H=window.innerHeight||800;
+  let drops='';
+  for(let i=0;i<70;i++){
+    const x=Math.random()*W, len=8+Math.random()*14, dur=(0.4+Math.random()*0.5).toFixed(2), delay=(Math.random()*1.2).toFixed(2), op=(0.25+Math.random()*0.4).toFixed(2);
+    drops += `<line x1="${x.toFixed(0)}" y1="-20" x2="${(x-6).toFixed(0)}" y2="${(-20+len).toFixed(0)}" stroke="#Bcd6e6" stroke-width="1.4" stroke-linecap="round" opacity="${op}">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="${(-30).toFixed(0)} ${(H+60)}" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+    </line>`;
+  }
+  // 바닥 튀는 물방울
+  let splash='';
+  for(let i=0;i<14;i++){
+    const x=Math.random()*W, y=H-Math.random()*40-10, dur=(0.5+Math.random()*0.4).toFixed(2), delay=(Math.random()*1.5).toFixed(2);
+    splash += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="1" fill="none" stroke="#cfe4f0" stroke-width="1" opacity="0">
+      <animate attributeName="r" from="1" to="7" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" from="0.5" to="0" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+    </circle>`;
+  }
+  layer.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${drops}${splash}</svg>`;
+  layer.dataset.built='1';
 }
 function setTheme(th){
   store.theme = th;
   localStorage.setItem(SAVE_KEY, JSON.stringify(store));
+  const layer=document.getElementById('rainLayer'); if(layer) layer.dataset.built='';
   applyTheme();
   renderTeamHome();
 }
@@ -1060,11 +1111,29 @@ function showLineupSub(which){
 function getLineup(teamId){
   const t = getTeam(teamId);
   let lu = state.lineups[teamId];
-  if(!lu || lu.order.length !== t.bat.length){
-    lu = { order: t.bat.map((_,i)=>i), sp: 0 };
+  // order: 타순 9명의 batter 인덱스, pos: 각 타순의 수비 포지션, sp: 선발 인덱스
+  const valid = lu && lu.order && lu.order.length===9 && lu.pos && lu.pos.length===9
+    && lu.order.every(i=>i<t.bat.length);
+  if(!valid){
+    const assign = autoAssignLineup(teamId);
+    const order = [], pos = [];
+    // 타순: 배정된 선수를 OVR 순이 아니라 포지션 순서대로 넣되, 상위타자를 앞에
+    const entries = BAT_POSITIONS.filter(sp=>assign[sp]!==undefined)
+      .map(sp=>({pos:sp, idx:assign[sp], ovr:batOvr(t.bat[assign[sp]],teamId)}));
+    // 타순은 OVR 높은 선수가 2~4번에 오도록 간단 정렬 (상위타자 중심)
+    entries.sort((a,b)=>b.ovr-a.ovr);
+    entries.forEach(e=>{ order.push(e.idx); pos.push(e.pos); });
+    lu = { order, pos, sp: (lu&&lu.sp)||0 };
     state.lineups[teamId] = lu; save();
   }
   return lu;
+}
+// 현재 라인업에 못 든 야수(백업) 인덱스 목록
+function benchBatters(teamId){
+  const t = getTeam(teamId);
+  const lu = getLineup(teamId);
+  const inLineup = new Set(lu.order);
+  return t.bat.map((p,i)=>i).filter(i=>!inLineup.has(i));
 }
 let luSel = -1; // 교환 대기 중인 타순 index
 let rotSel = -1; // 교환 대기 중인 로테이션 자리
@@ -1075,10 +1144,12 @@ function renderLineup(){
   list.innerHTML = '';
   lu.order.forEach((bi, pos)=>{
     const p = t.bat[bi];
+    const slotPos = lu.pos[pos];
     const d = document.createElement('div');
     d.className = 'lrow' + (luSel===pos?' sel':'');
-    d.innerHTML = `<div class="ord">${pos+1}</div><div class="lp">${p[2]}</div>
-      <div class="ln">${p[0]}</div><div class="lo num">${batOvr(p,t.id)}</div>`;
+    const posOk = canPlay(p[2], slotPos);
+    d.innerHTML = `<div class="ord">${pos+1}</div><div class="lp">${slotPos}${p[2]!==slotPos&&slotPos!=='DH'?`<span style="font-size:9px;color:var(--dim)">(${p[2]})</span>`:''}</div>
+      <div class="ln">${p[0]} ${gradeBadge(batOvr(p,t.id))}${!posOk?' <span style="color:#C77;font-size:10px">수비부적합</span>':''}</div><div class="lo num">${batOvr(p,t.id)}</div>`;
     d.onclick = ()=>{
       if(luSel<0){ luSel = pos; }
       else if(luSel===pos){ luSel = -1; }
@@ -1090,6 +1161,26 @@ function renderLineup(){
     };
     list.appendChild(d);
   });
+  // 벤치(백업) 선수 → 라인업에 투입
+  const bench = benchBatters(t.id);
+  if(bench.length){
+    const bt = document.createElement('div');
+    bt.innerHTML = '<div class="hint" style="margin-top:8px">벤치 (터치해서 선택한 타순과 교체)</div>';
+    list.appendChild(bt);
+    bench.forEach(bi=>{
+      const p = t.bat[bi];
+      const d = document.createElement('div');
+      d.className = 'lrow';
+      d.style.opacity = '.75';
+      d.innerHTML = `<div class="ord">–</div><div class="lp">${p[2]}</div>
+        <div class="ln">${p[0]} ${gradeBadge(batOvr(p,t.id))}</div><div class="lo num">${batOvr(p,t.id)}</div>`;
+      d.onclick = ()=>{
+        if(luSel<0){ alert('먼저 교체할 타순(위쪽 목록)을 선택하세요.'); return; }
+        lu.order[luSel] = bi; luSel=-1; save(); renderLineup();
+      };
+      list.appendChild(d);
+    });
+  }
   const spBox = document.getElementById('spList');
   spBox.innerHTML = '';
   const ro = rotOrderOf(t.id);
@@ -1715,6 +1806,39 @@ function nextSeason(){
 
 
 
+
+
+/* ═══════════ 포지션 계열 (v0.19) ═══════════ */
+const INFIELD = ['1B','2B','3B','SS'];
+const OUTFIELD = ['LF','CF','RF'];
+const BAT_POSITIONS = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];  // 라인업 9자리
+// 선수가 특정 포지션을 소화 가능한지 (주포지션 + 같은 계열 커버, DH는 누구나)
+function canPlay(playerPos, slotPos){
+  if(slotPos==='DH') return true;                 // DH는 누구나
+  if(playerPos===slotPos) return true;            // 주포지션 일치
+  if(INFIELD.includes(playerPos) && INFIELD.includes(slotPos)) return true;   // 내야 계열
+  if(OUTFIELD.includes(playerPos) && OUTFIELD.includes(slotPos)) return true; // 외야 계열
+  return false;   // 포수는 포수만 (전문 포지션)
+}
+// 라인업 자동 배정: 9자리에 최적 야수 채우기 (OVR 높은 순, 포지션 충족)
+function autoAssignLineup(teamId){
+  const t = getTeam(teamId);
+  const pool = t.bat.map((p,i)=>({i, p, ovr:batOvr(p,teamId)})).sort((a,b)=>b.ovr-a.ovr);
+  const used = new Set();
+  const assign = {};   // slotPos → batterIndex
+  // 1) 전문 포지션(포수)부터, 그다음 각 자리에 맞는 최고 선수
+  BAT_POSITIONS.forEach(slot=>{
+    if(slot==='DH') return;   // DH는 마지막에
+    // 주포지션 정확히 일치하는 최고 선수 우선
+    let pick = pool.find(x=>!used.has(x.i) && x.p[2]===slot);
+    if(!pick) pick = pool.find(x=>!used.has(x.i) && canPlay(x.p[2], slot));
+    if(pick){ assign[slot]=pick.i; used.add(pick.i); }
+  });
+  // DH: 남은 선수 중 최고 타자
+  const dh = pool.find(x=>!used.has(x.i));
+  if(dh){ assign['DH']=dh.i; used.add(dh.i); }
+  return assign;
+}
 
 /* ═══════════ 선수 등급 (v0.16) ═══════════ */
 // OVR 기준 커트라인 (KBO 로스터 분포상 종형 곡선이 되도록)
