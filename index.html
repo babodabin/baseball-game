@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.19.3</title>
+<title>우리팀을 만들자 v0.19.4</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -253,14 +253,23 @@ body.theme-rain #rainLayer{display:block;
 .mode-btns button.primary small{color:#5A4415}
 
 
-.other-results{font-size:12px;color:var(--dim);line-height:1.8;margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.other-results{margin-top:14px}
+.rr-title{font-size:14px;font-weight:700;color:var(--chalk);margin-bottom:8px}
+.rr-card{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:6px;font-size:13.5px}
+.rr-card .rt{flex:1;text-align:right;color:var(--chalk)}
+.rr-card .rt.r{text-align:left}
+.rr-card .rs{font-family:'IBM Plex Mono',monospace;font-weight:700;padding:0 12px;color:var(--amber);white-space:nowrap}
+.rr-card .win{font-weight:700}
+.rr-card.mine{border-color:var(--amber);background:rgba(240,180,60,.08)}
 
 
-.sortbar{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
-.sortbar .sbl{font-size:11px;color:var(--dim);align-self:center;margin-right:2px}
-.sortbar button{flex:none;padding:6px 12px;border-radius:16px;border:1px solid var(--line);
-  background:var(--panel2);color:var(--dim);font-family:inherit;font-size:12.5px;font-weight:600;white-space:nowrap}
-.sortbar button.on{background:var(--amber);border-color:var(--amber);color:#20180A;font-weight:700}
+.sortbar{margin:8px 0 12px}
+.sortbar .sbl{display:block;font-size:11px;color:var(--dim);margin:0 0 6px 2px;letter-spacing:.02em}
+.sortbar .sbrow{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.sortbar .sbrow::-webkit-scrollbar{display:none}
+.sortbar button{flex:none;padding:8px 15px;border-radius:20px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--dim);font-family:inherit;font-size:13px;font-weight:600;white-space:nowrap}
+.sortbar button.on{background:var(--amber);border-color:var(--amber);color:#20180A;font-weight:700;box-shadow:0 2px 6px rgba(240,180,60,.3)}
 .lb-cat{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
 .lb-cat button{flex:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
 .lb-cat button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
@@ -280,7 +289,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.19.3</span>
+    <span class="ver">v0.19.4</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1926,13 +1935,13 @@ const SORT_KEYS = [
 const POS_ORDER = {'C':1,'1B':2,'2B':3,'3B':4,'SS':5,'LF':6,'CF':7,'RF':8,'DH':9,'선발':10,'마무리':11,'불펜':12};
 function sortBar(scope){
   const st = SORT_STATE[scope] || {key:'ovr', dir:'desc'};
-  let h = '<div class="sortbar"><span class="sbl">정렬</span>';
+  let h = '<div class="sortbar"><span class="sbl">정렬 기준</span><div class="sbrow">';
   SORT_KEYS.forEach(s=>{
     const on = st.key===s.k;
     const arrow = on ? (st.dir==='desc'?' ↓':' ↑') : '';
     h += `<button class="${on?'on':''}" onclick="toggleSort('${scope}','${s.k}')">${s.label}${arrow}</button>`;
   });
-  return h + '</div>';
+  return h + '</div></div>';
 }
 function toggleSort(scope, key){
   const st = SORT_STATE[scope] || {key:'ovr', dir:'desc'};
@@ -2827,10 +2836,10 @@ function renderLeaderboard(){
   const wrap = document.getElementById('rankPlayerWrap');
   const cats = ['AVG','HR','RBI','OPS','W','ERA','SO','SV'];
   const labels = {AVG:'타율',HR:'홈런',RBI:'타점',OPS:'OPS',W:'다승',ERA:'방어율',SO:'탈삼진',SV:'세이브'};
-  let h = `<div class="sortbar" style="margin-top:6px">`;
+  let h = `<div class="sortbar" style="margin-top:6px"><span class="sbl">기록 부문</span><div class="sbrow">`;
   cats.forEach(c=> h += `<button class="${lbCat===c?'on':''}" data-cat="${c}">${labels[c]}</button>`);
-  h += `</div>`;
-  h += `<div style="margin:2px 0 10px"><span class="lb-help" id="statHelp">${labels[lbCat]}(${lbCat}) 설명 ⓘ</span></div>`;
+  h += `</div></div>`;
+  h += `<div style="margin:0 0 10px 2px"><span class="lb-help" id="statHelp">${labels[lbCat]}(${lbCat}) 설명 ⓘ</span></div>`;
   let list;
   const isBat = ['AVG','HR','RBI','OPS'].includes(lbCat);
   if(isBat){
@@ -2909,8 +2918,28 @@ function renderRank(){
   });
   document.getElementById('rankTable').innerHTML = html;
   document.getElementById('rankTitle').textContent = `${state.mode==='sim'? state.year+'년차 ':''}순위표 — ${state.season.day}/36경기`;
-  document.getElementById('lastResults').innerHTML =
-    state.season.last.length ? '<b>최근 경기 결과</b><br>'+state.season.last.join('<br>') : '아직 치른 경기가 없습니다.';
+  const lastBox = document.getElementById('lastResults');
+  if(!state.season.last.length){ lastBox.innerHTML = '<div class="hint">아직 치른 경기가 없습니다.</div>'; }
+  else{
+    const myName = getTeam(state.myTeam).name;
+    let rh = '<div class="rr-title">최근 경기 결과</div>';
+    state.season.last.forEach(txt=>{
+      // "어웨이 N : M 홈" 파싱
+      const mt = txt.match(/^(.+?)\s+(\d+)\s*:\s*(\d+)\s+(.+)$/);
+      if(mt){
+        const [,away,as,hs,home]=mt;
+        const av=+as, hv=+hs;
+        const mine = away===myName||home===myName;
+        rh += `<div class="rr-card ${mine?'mine':''}">
+          <span class="rt ${av>hv?'win':''}">${away}</span>
+          <span class="rs">${as} : ${hs}</span>
+          <span class="rt r ${hv>av?'win':''}">${home}</span></div>`;
+      }else{
+        rh += `<div class="rr-card">${txt}</div>`;
+      }
+    });
+    lastBox.innerHTML = rh;
+  }
 }
 let rankSort = {key:'pct', dir:'desc'};
 function toggleRankSort(k){
