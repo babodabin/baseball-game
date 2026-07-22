@@ -10,7 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.22.0</title>
+<title>우리팀을 만들자 v0.22.1</title>
+<!-- v0.22.1 — 포지션 엄격 배치, 5인 선발 로테이션, 선수 카드 경계선 제거, 화면 고정 레이아웃 -->
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -21,14 +22,15 @@
   --red:#E4573D;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{width:100%;height:100%;min-height:100%;overflow:hidden;background:#0A130D;color-scheme:dark}
+html{width:100%;height:100%;overflow:hidden;background:#0A130D;color-scheme:dark}
 body{
+  position:fixed;inset:0;width:100%;height:auto;min-height:0;overflow:hidden;
   background:var(--bg); color:var(--chalk);
   font-family:'IBM Plex Sans KR',sans-serif; font-size:15px;
   display:flex; flex-direction:column;
   overscroll-behavior:none;
 }
-main{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+main{flex:1 1 0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .num{font-family:'IBM Plex Mono',monospace}
 
 /* ── 전광판 헤더 ── */
@@ -91,7 +93,7 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
 .plist{display:flex;flex-direction:column;gap:8px}
 .prow{
   display:flex;align-items:center;gap:10px;
-  background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  background:var(--panel);border:none;border-radius:11px;
   padding:11px 12px;cursor:pointer;
 }
 .prow:active{background:var(--panel2)}
@@ -199,7 +201,7 @@ nav button.lock{opacity:.38}
 
 /* ── 라인업 ── */
 .lrow.sel{outline:3px solid var(--amber);background:rgba(240,180,60,.18)!important;transform:scale(1.01)}
-.lrow{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
+.lrow{display:flex;align-items:center;gap:10px;background:var(--panel);border:none;
   border-radius:11px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
 .lrow.selDUMMY{border-color:var(--amber);background:var(--panel2)}
 .lrow .ord{width:26px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:var(--amber);text-align:center}
@@ -351,7 +353,7 @@ body.theme-rain #rainLayer{display:block;
 .lb-cat button{flex:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
 .lb-cat button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
 .lb-help{font-size:12px;color:var(--amber);text-decoration:underline;cursor:pointer;margin-bottom:8px;display:inline-block}
-.lb-row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px}
+.lb-row{display:flex;align-items:center;gap:10px;background:var(--panel);border:none;border-radius:10px;padding:9px 12px;margin-bottom:6px}
 .lb-row.me{border-color:var(--amber);background:#23361F}
 .lb-row .lbrk{width:22px;font-family:'IBM Plex Mono',monospace;color:var(--amber);font-weight:700;text-align:center}
 .lb-row .lbn{flex:1}.lb-row .lbn b{font-weight:700}.lb-row .lbn small{color:var(--dim);font-size:11px}
@@ -366,7 +368,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.22.0</span>
+    <span class="ver">v0.22.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -410,7 +412,7 @@ body.theme-rain #rainLayer{display:block;
     <div class="hint" id="luModeHint">선수 두 명을 차례로 터치하면 타순이 교환됩니다.</div>
     <div id="lineupList"></div>
     <h2 class="sec" style="margin-top:16px">선발 로테이션</h2>
-    <div class="hint">휴식중(최근 등판) 투수끼리 두 명을 차례로 터치하면 자리가 교환됩니다. 등판 준비중인 투수는 자리가 고정됩니다.</div>
+    <div class="hint">선발 로테이션은 최대 5명입니다. 휴식 중인 투수끼리 자리를 바꾸거나 아래 후보와 교체할 수 있습니다.</div>
     <div id="spList"></div>
   </div>
   <div id="rosterWrap" style="display:none">
@@ -1088,10 +1090,10 @@ function playerHealth(teamId,kind,p){
 function conditionInfo(teamId,kind,p){
   const h=playerHealth(teamId,kind,p), f=Math.max(0,Math.min(100,h.fatigue||0));
   if(h.injury>0) return {label:`🤕 부상 ${h.injury}경기`,color:'#E4573D',mod:-8};
-  if(f<=15) return {label:'🔥 최상',color:'#FFB63B',mod:2};
-  if(f<=35) return {label:'🙂 좋음',color:'#77D69B',mod:1};
-  if(f<=60) return {label:'➖ 보통',color:'#C9D6CD',mod:0};
-  if(f<=80) return {label:'😓 피곤',color:'#E7B65B',mod:-2};
+  if(f<=20) return {label:'🔥 최상',color:'#FFB63B',mod:2};
+  if(f<=45) return {label:'🙂 좋음',color:'#77D69B',mod:1};
+  if(f<=70) return {label:'➖ 보통',color:'#C9D6CD',mod:0};
+  if(f<=88) return {label:'😓 피곤',color:'#E7B65B',mod:-2};
   return {label:'🥵 매우 피곤',color:'#E4573D',mod:-4};
 }
 function isInjured(teamId,kind,p){ return playerHealth(teamId,kind,p).injury>0; }
@@ -1106,8 +1108,6 @@ function ensureHealthyLineup(teamId){
     let pick=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId)}))
       .filter(x=>!used.has(x.i)&&!isInjured(teamId,'bat',x.p)&&canPlay(x.p[2],slot))
       .sort((a,b)=>b.o-a.o)[0];
-    if(!pick) pick=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId)}))
-      .filter(x=>!used.has(x.i)&&!isInjured(teamId,'bat',x.p)).sort((a,b)=>b.o-a.o)[0];
     if(pick){ used.delete(cur); used.add(pick.i); lu.order[pos]=pick.i; }
   }
   state.lineups[teamId]=lu;
@@ -1121,17 +1121,17 @@ function updateDailyHealth(){
     const process=(kind,p,i,active,load)=>{
       const h=playerHealth(teamId,kind,p);
       if(h.injury>0){ h.injury--; h.fatigue=Math.max(0,(h.fatigue||0)-12); return; }
-      h.fatigue=Math.max(0,Math.min(100,(h.fatigue||0)+(active?load:-10)));
-      const chance=h.fatigue>=90?.04:h.fatigue>=78?.015:0;
+      h.fatigue=Math.max(0,Math.min(100,(h.fatigue||0)+(active?load:-12)));
+      const chance=h.fatigue>=94?.025:h.fatigue>=86?.008:0;
       if(chance&&Math.random()<chance){
         h.injury=2+Math.floor(Math.random()*4); h.fatigue=Math.max(45,h.fatigue-20);
         if(teamId===state.myTeam) news.push(`🤕 ${p[0]} ${h.injury}경기 부상`);
       }
     };
-    t.bat.forEach((p,i)=>process('bat',p,i,starters.has(i),starters.has(i)?10:0));
+    t.bat.forEach((p,i)=>process('bat',p,i,starters.has(i),starters.has(i)?5:0));
     t.pit.forEach((p,i)=>{
       const last=state.spLast&&state.spLast[teamId]?state.spLast[teamId][i]:undefined;
-      process('pit',p,i,last===today,last===today?28:0);
+      process('pit',p,i,last===today,last===today?20:0);
     });
   });
   state.season.healthNews=news;
@@ -1539,7 +1539,7 @@ let luMode = "order"; // order=타순, def=수비배치
 function setLuMode(m){ luMode=m; luSel=-1;
   document.getElementById("luModeOrder").classList.toggle("on",m==="order");
   document.getElementById("luModeDef").classList.toggle("on",m==="def");
-  document.getElementById("luModeHint").textContent = m==="order"?"선수 두 명을 차례로 터치하면 타순이 교환됩니다.":"선수 두 명을 터치하면 수비 위치를 맞바꿉니다. 외야끼리만 교체 가능합니다.";
+  document.getElementById("luModeHint").textContent = m==="order"?"선수 두 명을 차례로 터치하면 타순이 교환됩니다.":"선수 두 명을 터치하면 수비 위치를 맞바꿉니다. 두 선수 모두 바뀐 자리와 주포지션이 정확히 일치해야 합니다.";
   renderLineup();
 }
 function renderLineup(){
@@ -1576,7 +1576,7 @@ function renderLineup(){
           const a=lu.pos[luSel], b2=lu.pos[pos];
           const pa=t.bat[lu.order[luSel]], pb=t.bat[lu.order[pos]];
           if(canPlay(pa[2],b2) && canPlay(pb[2],a)){ [lu.pos[luSel],lu.pos[pos]]=[lu.pos[pos],lu.pos[luSel]]; }
-          else showAlert('수비 위치 교체가 불가능한 조합입니다 (외야끼리 또는 DH만 가능).');
+          else showAlert('수비 위치 교체가 불가능합니다. DH를 제외하면 선수의 주포지션과 수비 자리가 정확히 일치해야 합니다.');
         }
         luSel = -1; save();
       }
@@ -1602,6 +1602,10 @@ function renderLineup(){
       d.onclick = ()=>{
         if(injured){ showAlert('부상 중인 선수는 라인업에 넣을 수 없습니다.'); return; }
         if(luSel<0){ showAlert('먼저 교체할 타순(위쪽 목록)을 선택하세요.'); return; }
+        const targetPos=lu.pos[luSel];
+        if(!canPlay(p[2],targetPos)){
+          showAlert(`이 선수의 주포지션은 ${p[2]}입니다. ${targetPos} 자리에는 넣을 수 없습니다.`); return;
+        }
         lu.order[luSel] = bi; luSel=-1; save(); renderLineup();
       };
       list.appendChild(d);
@@ -1633,6 +1637,23 @@ function renderLineup(){
     };
     spBox.appendChild(d);
   });
+  const reserveSp=spIdxList(t).filter(i=>!ro.includes(i));
+  if(reserveSp.length){
+    const h=document.createElement('div');
+    h.className='hint'; h.style.marginTop='10px';
+    h.textContent='선발 후보 — 로테이션 선수 한 명을 먼저 선택한 뒤 후보를 터치하면 교체됩니다.';
+    spBox.appendChild(h);
+    reserveSp.forEach(pi=>{
+      const p=t.pit[pi], d=document.createElement('div'), pci=conditionInfo(t.id,'pit',p);
+      d.className='lrow'; d.style.opacity='.76';
+      d.innerHTML=`<div class="ord">–</div><div class="lp">후보</div><div class="ln">${p[0]}<br><span style="font-size:10px;color:${pci.color}">${pci.label}</span></div><div class="lo num">${pitOvr(p,t.id)}</div>`;
+      d.onclick=()=>{
+        if(rotSel<0){ showAlert('먼저 위의 5인 선발 로테이션에서 교체할 자리를 선택하세요.'); return; }
+        ro[rotSel]=pi; rotSel=-1; state.rotOrder[t.id]=ro; save(); renderLineup();
+      };
+      spBox.appendChild(d);
+    });
+  }
 }
 
 /* ═══════════ 시뮬레이션 엔진 ═══════════ */
@@ -1929,10 +1950,11 @@ function rotOrderOf(teamId){
   const t = getTeam(teamId);
   const sp = spIdxList(t);
   if(!state.rotOrder) state.rotOrder = {};
-  let ro = state.rotOrder[teamId];
-  if(!ro || ro.length!==sp.length || !ro.every(i=>sp.includes(i))){
-    ro = [...sp]; state.rotOrder[teamId] = ro;
-  }
+  let ro = Array.isArray(state.rotOrder[teamId]) ? state.rotOrder[teamId].filter(i=>sp.includes(i)) : [];
+  // 라인업의 선발 로테이션은 최대 5명. 기존 순서를 우선 보존하고 빈자리는 OVR 순으로 채운다.
+  const remain = sp.filter(i=>!ro.includes(i)).sort((a,b)=>pitOvr(t.pit[b],teamId)-pitOvr(t.pit[a],teamId));
+  ro = ro.concat(remain).slice(0,5);
+  state.rotOrder[teamId] = ro;
   return ro;
 }
 function nextSpIdx(teamId){
@@ -2500,12 +2522,10 @@ function nextSeason(){
 const INFIELD = ['1B','2B','3B','SS'];
 const OUTFIELD = ['LF','CF','RF'];
 const BAT_POSITIONS = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];  // 라인업 9자리
-// 선수가 특정 포지션을 소화 가능한지 (주포지션 + 같은 계열 커버, DH는 누구나)
+// 선수가 특정 포지션을 소화 가능한지: DH를 제외하면 주포지션이 정확히 일치해야 한다.
 function canPlay(playerPos, slotPos){
-  if(slotPos==='DH') return true;                 // DH는 누구나
-  if(playerPos===slotPos) return true;            // 주포지션 일치 (1인 1포지션 원칙)
-  if(OUTFIELD.includes(playerPos) && OUTFIELD.includes(slotPos)) return true; // 외야끼리만 교체 허용
-  return false;
+  if(slotPos==='DH') return true;
+  return playerPos===slotPos;
 }
 // 라인업 자동 배정: 9자리에 최적 야수 채우기 (OVR 높은 순, 포지션 충족)
 function autoAssignLineup(teamId){
@@ -2519,7 +2539,6 @@ function autoAssignLineup(teamId){
     if(slot==='DH') return;   // DH는 마지막에
     // 주포지션 정확히 일치하는 최고 선수 우선
     let pick = pool.find(x=>!used.has(x.i) && x.p[2]===slot);
-    if(!pick) pick = pool.find(x=>!used.has(x.i) && canPlay(x.p[2], slot));
     if(pick){ assign[slot]=pick.i; used.add(pick.i); }
   });
   // DH: 남은 선수 중 최고 타자
