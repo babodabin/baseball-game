@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.20.7</title>
+<title>우리팀을 만들자 v0.21.5</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -365,7 +365,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.20.7</span>
+    <span class="ver">v0.21.5</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -554,7 +554,7 @@ function showConfirm(msg, onYes){
 const SAVE_KEY = 'ourteam_slots_v1';
 const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
-const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}});
+const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -776,6 +776,7 @@ function applyGrowthWithTraining(trained){
       for(let k=4;k<=8;k++){
         p[k] = growVal(p[k], age, false);
         if(boost) p[k] = Math.min(99, p[k] + Math.floor(Math.random()*boost)+1);
+        if(isMy && state.staff){ const c=state.staff.batCoach; if((c==='contact'&&k===4)||(c==='power'&&k===5)||(c==='eye'&&k===8)) p[k]=Math.min(99,p[k]+1); }
       }
       s.age.bat[i]++;
     });
@@ -787,6 +788,7 @@ function applyGrowthWithTraining(trained){
       for(let k=5;k<=7;k++){
         p[k] = growVal(p[k], age, false);
         if(boost) p[k] = Math.min(99, p[k] + Math.floor(Math.random()*boost)+1);
+        if(isMy && state.staff){ const c=state.staff.pitCoach; if((c==='control'&&k===5)||(c==='breaking'&&k===6)||(c==='stamina'&&k===7)) p[k]=Math.min(99,p[k]+1); }
       }
       s.age.pit[i]++;
     });
@@ -913,12 +915,74 @@ function renderSlots(){
   });
 }
 
+/* ═══════════ 외국인 선수 (v0.21.5) ═══════════ */
+const FOREIGN_LIMIT = {regular:3, asia:1};
+const FOREIGN_FIRST = ['마이클','브랜든','카를로스','루이스','타일러','에릭','제이크','마커스','앤서니','다니엘','료타','유키','쇼타','웨이','첸'];
+const FOREIGN_LAST = ['존슨','밀러','가르시아','로페즈','윌슨','브라운','데이비스','마르티네스','톰슨','로빈슨','다나카','사토','스즈키','린','왕'];
+function foreignFlag(p,isBat){ return flagOf(p,isBat)==='foreign' || flagOf(p,isBat)==='asia'; }
+function foreignType(p,isBat){ const f=flagOf(p,isBat); return f==='asia'?'asia':f==='foreign'?'regular':null; }
+function foreignKey(p,isBat){ return (isBat?'b:':'p:')+p[0]; }
+function ensureForeignState(){ if(!state.foreignContracts) state.foreignContracts={}; }
+function foreignCounts(teamId){
+  const t=getTeam(teamId); let regular=0,asia=0;
+  t.bat.forEach(p=>{const x=foreignType(p,true); if(x==='asia')asia++; else if(x==='regular')regular++;});
+  t.pit.forEach(p=>{const x=foreignType(p,false); if(x==='asia')asia++; else if(x==='regular')regular++;});
+  return {regular,asia,total:regular+asia};
+}
+function foreignAdaptBonus(p,isBat){
+  ensureForeignState(); const c=state.foreignContracts[foreignKey(p,isBat)];
+  if(!c) return 0; return c.adapt>=85?2:c.adapt>=70?1:c.adapt>=55?0:-2;
+}
+function foreignCost(ovr,asia){ return Math.max(12,(ovr-58)*(asia?1.6:2.0)); }
+function genForeignCandidate(i){
+  const asia=Math.random()<.25, isBat=Math.random()<.48;
+  const nm=FOREIGN_FIRST[(nameHash('f'+state.year+i*7))%FOREIGN_FIRST.length]+' '+FOREIGN_LAST[(nameHash('l'+state.year+i*11))%FOREIGN_LAST.length];
+  const age=24+Math.floor(Math.random()*9), base=62+Math.floor(Math.random()*20), hand=Math.random()<.28?'좌':'우';
+  if(isBat){
+    const pos=['C','1B','2B','3B','SS','LF','CF','RF'][i%8]; const j=()=>Math.max(48,Math.min(90,base-7+Math.floor(Math.random()*15)));
+    const data=[nm,nm+(asia?' (아시아쿼터)':''),pos,hand,j(),j(),j(),j(),j(),asia?'asia':'foreign'];
+    return {kind:'bat',data,age,asia,adapt:50+Math.floor(Math.random()*36),ovr:batOvr(data,state.myTeam)};
+  }
+  const role=Math.random()<.7?'선발':(Math.random()<.5?'불펜':'마무리'), j=()=>Math.max(48,Math.min(90,base-7+Math.floor(Math.random()*15)));
+  const data=[nm,nm+(asia?' (아시아쿼터)':''),role,hand,142+Math.floor(Math.random()*13),j(),j(),role==='선발'?j():55,asia?'asia':'foreign'];
+  return {kind:'pit',data,age,asia,adapt:50+Math.floor(Math.random()*36),ovr:pitOvr(data,state.myTeam)};
+}
+function foreignMarketHtml(m){
+  const cnt=foreignCounts(state.myTeam), list=m.foreign||[];
+  let h=`<h2 class="sec" style="margin-top:16px">🌍 외국인 선수 시장 <small>일반 ${cnt.regular}/${FOREIGN_LIMIT.regular} · 아시아 ${cnt.asia}/${FOREIGN_LIMIT.asia}</small></h2>
+    <div class="hint">계약 선수는 적응도에 따라 능력치가 -2~+2 보정됩니다. 일반 외국인 3명과 아시아쿼터 1명까지 보유할 수 있습니다.</div>`;
+  if(!list.length) return h+'<div class="hint">현재 영입 가능한 후보가 없습니다.</div>';
+  list.forEach((f,i)=>{ const cost=ecoOn()?foreignCost(f.ovr,f.asia).toFixed(0)+'억':'영입';
+    h+=`<div class="prow" style="cursor:pointer" data-foreign="${i}"><div class="pos">${f.kind==='bat'?f.data[2]:(f.data[2]==='선발'?'SP':f.data[2]==='마무리'?'CL':'RP')}</div>
+      <div class="mid"><div class="nm">${f.data[0]} <span class="boost">${f.asia?'아시아쿼터':'외국인'}</span></div><div class="hand">${f.age}세 · OVR ${f.ovr} · 적응 예상 ${f.adapt}</div></div><button class="signbtn">${cost}</button></div>`;
+  }); return h;
+}
+function openForeignSheet(idx){
+  const f=state.season.market.foreign[idx]; if(!f)return; const isBat=f.kind==='bat', cost=foreignCost(f.ovr,f.asia);
+  const sheet=document.getElementById('sheet'); sheet.innerHTML=`<div class="top"><div class="pname">${f.data[0]}</div><button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="meta">${f.data[2]} · ${f.data[3]}${isBat?'타':'투'} · ${f.age}세 · OVR ${f.ovr}</div>
+    <div class="reveal"><div class="lbl">🌍 ${f.asia?'아시아쿼터':'외국인 선수'} · 2년 계약</div>적응도 <b>${f.adapt}</b> · 경기 능력 보정 <b>${f.adapt>=85?'+2':f.adapt>=70?'+1':f.adapt>=55?'0':'-2'}</b><br>${ecoOn()?`계약금 <b>${cost.toFixed(0)}억</b> · 현재 잔고 ${fmtMoney()}`:'자유 영입'}</div>
+    ${playerStatsHtml(f.data,isBat,state.myTeam)}<button class="btn" onclick="closeSheet(); signForeign(${idx})">${ecoOn()?cost.toFixed(0)+'억 계약':'영입하기'}</button><button class="btn ghost" onclick="closeSheet()">취소</button>`;
+  document.getElementById('mask').classList.add('on');
+}
+function signForeign(idx){
+  const m=state.season.market, f=m.foreign[idx]; if(!f)return; const cnt=foreignCounts(state.myTeam);
+  if(f.asia && cnt.asia>=FOREIGN_LIMIT.asia){showAlert('아시아쿼터 보유 한도(1명)를 초과합니다.');return;}
+  if(!f.asia && cnt.regular>=FOREIGN_LIMIT.regular){showAlert('일반 외국인 선수 보유 한도(3명)를 초과합니다.');return;}
+  const cost=foreignCost(f.ovr,f.asia); if(ecoOn()&&state.money<cost){showAlert(`계약금 ${cost.toFixed(0)}억이 부족합니다. (잔고 ${fmtMoney()})`);return;}
+  if(ecoOn())state.money-=cost; const my=state.players[state.myTeam];
+  if(f.kind==='bat'){my.bat.push([...f.data]);my.age.bat.push(f.age);}else{my.pit.push([...f.data]);my.age.pit.push(f.age);}
+  ensureForeignState(); state.foreignContracts[foreignKey(f.data,f.kind==='bat')]={years:2,adapt:f.adapt,asia:f.asia,salary:+(cost*.28).toFixed(1)};
+  m.foreign.splice(idx,1); state.lineups[state.myTeam]=null; save();refreshHeader();renderFront();
+}
+
 /* ───────────── 능력치 계산 ───────────── */
 function isMine(teamId){ return state.myTeam === teamId; }
 function flagOf(p, isBat){ return (isBat ? p[9] : p[8]) || ''; }
 function bonusOf(p, teamId, isBat){
   const f = flagOf(p, isBat);
-  if(f === 'fa') return 0;                     // FA 이적: 원래팀 떠남 → 보정 없음
+  if(f === 'fa') return 0;
+  if(f === 'foreign' || f === 'asia') return foreignAdaptBonus(p,isBat);                     // FA 이적: 원래팀 떠남 → 보정 없음
   if(f === 'legend'){                          // 레전드: 원래팀에 영입했을 때만 +3
     const origin = p[isBat?10:9];             // 레전드 원래팀
     return (origin && origin === teamId) ? BOOST_MY : 0;
@@ -1200,7 +1264,7 @@ function openEcoSheet(teamId, mode){
       <button class="primary" onclick="startWithMode('${teamId}','${mode}','normal')">💰 경영 일반
         <small>시작 자금 100억 · 관중수입/운영비/연봉 · 잔고 마이너스 시 팀 보정 감소</small></button>
       <button onclick="startWithMode('${teamId}','${mode}','hard')">🔥 경영 하드
-        <small>원작 방식 — 잔고 마이너스 즉시 구단 파산(게임오버)</small></button>
+        <small>적자 3경기 유예 · 잔고 -20억 이하이면 즉시 파산</small></button>
       <button onclick="startWithMode('${teamId}','${mode}','free')">🕊 자유 모드
         <small>자금 개념 없이 순수 선수단 운영만</small></button>
       <button onclick="openModeSheet(getTeam('${teamId}') && TEAMS.find(x=>x.id==='${teamId}'))">← 뒤로</button>
@@ -1213,9 +1277,14 @@ function startWithMode(teamId, mode, eco){
   state.eco = eco;
   state.money = eco==='free' ? 0 : 100;   // 단위: 억
   state.bankrupt = false;
+  state.debtGames = 0;
+  state.popularity = 50;
+  state.winStreak = 0;
+  state.lastAttendance = 0;
   state.year = 1;
   state.gameControl = 'auto';
   state.managerPlan = {attack:'balanced',bullpen:'normal'};
+  state.staff = {manager:'balanced',batCoach:'contact',pitCoach:'control'};
   state.startedAt = new Date().toISOString().slice(0,10).replaceAll('-','.');
   state.players = snapshotTeams();
   save();
@@ -1288,7 +1357,11 @@ function teamStatusHtml(){
   const topBat = [...t.bat].map((p,i)=>({n:p[0],o:batOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
   const topPit = [...t.pit].map((p,i)=>({n:p[0],o:pitOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
   s += `간판 타자: ${topBat.n} (OVR ${topBat.o}) · 에이스: ${topPit.n} (OVR ${topPit.o})`;
-  if(ecoOn()) s += `<br>잔고 ${fmtMoney()} · 연간 총연봉 ${teamSalary().toFixed(1)}억`;
+  if(ecoOn()){
+    ensureFanState();
+    s += `<br>잔고 ${fmtMoney()} · 연간 총연봉 ${teamSalary().toFixed(1)}억`;
+    s += `<br>구단 인기 ${state.popularity.toFixed(1)} · 예상 홈 관중 ${estimateAttendance().toLocaleString()}명`;
+  }
   return s;
 }
 
@@ -1474,11 +1547,15 @@ function paResult(bat, batTid, pit, pitTid, tactic){
         spd=b(bat[6],bat,batTid,true), eye=b(bat[8],bat,batTid,true);
   const velo=bv(pit[4],pit,pitTid), ctrl=b(pit[5],pit,pitTid,false), brk=b(pit[6],pit,pitTid,false);
   tactic = tactic || 'balanced';
-  const kAdj = tactic==='power' ? .022 : tactic==='small' ? -.012 : 0;
-  const hitAdj = tactic==='power' ? .008 : tactic==='small' ? .018 : 0;
-  const hrAdj = tactic==='power' ? .018 : tactic==='small' ? -.012 : 0;
+  ensureStaff();
+  const myBatCoach = batTid===state.myTeam ? state.staff.batCoach : null;
+  const myPitCoach = pitTid===state.myTeam ? state.staff.pitCoach : null;
+  const mgrAtk = managerAttackBonus(batTid), mgrPit = managerPitchBonus(pitTid);
+  const kAdj = (tactic==='power' ? .022 : tactic==='small' ? -.012 : 0) - (myPitCoach==='breaking'?.008:0) - mgrPit;
+  const hitAdj = (tactic==='power' ? .008 : tactic==='small' ? .018 : 0) + (myBatCoach==='contact'?.010:0) + mgrAtk;
+  const hrAdj = (tactic==='power' ? .018 : tactic==='small' ? -.012 : 0) + (myBatCoach==='power'?.012:0);
   const kP  = clamp(.125 + (brk-72)*.004 + (velo-146)*.006 - (con-72)*.004 - (eye-70)*.002 + kAdj, .05, .37);
-  const bbP = clamp(.085 + (eye-70)*.003 - (ctrl-76)*.004, .03, .17);
+  const bbP = clamp(.085 + (eye-70)*.003 - (ctrl-76)*.004 + (myBatCoach==='eye'?.010:0) - (myPitCoach==='control'?.010:0), .03, .17);
   let r = Math.random();
   if(r < kP) return {t:'K'};
   r -= kP;
@@ -1603,8 +1680,10 @@ function simGame(myId, oppId, mySp, oppSp){
   const mgrPlan = state.managerPlan || {attack:'balanced',bullpen:'normal'};
   const tacticFor = teamId => (mgrDirect && teamId===state.myTeam) ? mgrPlan.attack : 'balanced';
   const bullpenFactorFor = teamId => {
-    if(!(mgrDirect && teamId===state.myTeam)) return 1;
-    return mgrPlan.bullpen==='quick' ? .78 : mgrPlan.bullpen==='late' ? 1.18 : 1;
+    ensureStaff();
+    const coach = teamId===state.myTeam && state.staff.pitCoach==='stamina' ? 1.10 : 1;
+    if(!(mgrDirect && teamId===state.myTeam)) return coach;
+    return (mgrPlan.bullpen==='quick' ? .78 : mgrPlan.bullpen==='late' ? 1.18 : 1) * coach;
   };
   function pitcherFor(defSide){
     const s = st[defSide];
@@ -1770,15 +1849,21 @@ function nextSpIdx(teamId){
   return list[base];   // 전원 휴식 중이면 원래 순번 (예외 상황)
 }
 function advanceRot(teamId){ state.rot[teamId] = ((state.rot[teamId]||0)+1); }
+function pitchingDay(){
+  if(!state.season) return 0;
+  // 포스트시즌은 정규시즌 경기 수와 별도의 날짜를 사용한다.
+  // 화면의 36/36 표시는 유지하면서도 선발 휴식은 계속 계산된다.
+  return Number.isFinite(state.season.postDay) ? state.season.postDay : state.season.day;
+}
 function markStart(teamId, pitIdx){
   if(!state.spLast) state.spLast = {};
   if(!state.spLast[teamId]) state.spLast[teamId] = {};
-  state.spLast[teamId][pitIdx] = state.season ? state.season.day : 0;
+  state.spLast[teamId][pitIdx] = pitchingDay();
 }
 function restOk(teamId, pitIdx){
   const last = state.spLast && state.spLast[teamId] ? state.spLast[teamId][pitIdx] : undefined;
   if(last===undefined) return true;
-  return (state.season.day - last) >= 4;   // 등판 후 3경기 휴식
+  return (pitchingDay() - last) >= 4;   // 등판 후 3경기 휴식
 }
 
 function genSchedule(){
@@ -1858,6 +1943,85 @@ function setManagerControl(v){ state.gameControl=v; save(); renderManagerSetting
 function setManagerAttack(v){ ensureManagerSettings(); state.managerPlan.attack=v; save(); renderManagerSettings(); }
 function setManagerBullpen(v){ ensureManagerSettings(); state.managerPlan.bullpen=v; save(); renderManagerSettings(); }
 
+
+
+/* ═══════════ 감독·코치 시스템 (v0.21.5) ═══════════ */
+const STAFF_INFO = {
+  manager:{
+    balanced:{name:'균형형 감독',desc:'공격·투수 운영을 고르게 보정',attack:0.004,pitch:0.004},
+    offense:{name:'공격형 감독',desc:'타격 확률 상승 · 투수 운영 소폭 불리',attack:0.010,pitch:-0.003},
+    defense:{name:'수비형 감독',desc:'투수 억제력 상승 · 공격 소폭 불리',attack:-0.003,pitch:0.010}
+  },
+  batCoach:{
+    contact:{name:'정교 타격 코치',desc:'컨택 성장과 안타 확률 보정',stat:'컨택'},
+    power:{name:'장타 코치',desc:'파워 성장과 홈런 확률 보정',stat:'파워'},
+    eye:{name:'선구안 코치',desc:'선구 성장과 볼넷 확률 보정',stat:'선구'}
+  },
+  pitCoach:{
+    control:{name:'제구 코치',desc:'제구 성장과 볼넷 억제 보정',stat:'제구'},
+    breaking:{name:'변화구 코치',desc:'변화구 성장과 탈삼진 보정',stat:'변화구'},
+    stamina:{name:'체력 코치',desc:'체력 성장과 투수 교체 지연 보정',stat:'체력'}
+  }
+};
+function ensureStaff(){
+  if(!state.staff) state.staff={manager:'balanced',batCoach:'contact',pitCoach:'control'};
+  if(!STAFF_INFO.manager[state.staff.manager]) state.staff.manager='balanced';
+  if(!STAFF_INFO.batCoach[state.staff.batCoach]) state.staff.batCoach='contact';
+  if(!STAFF_INFO.pitCoach[state.staff.pitCoach]) state.staff.pitCoach='control';
+}
+function setStaff(kind,key){ ensureStaff(); state.staff[kind]=key; save(); renderFront(); }
+function staffPanel(){
+  ensureStaff();
+  const section=(kind,title)=>`<h2 class="sec" style="margin-top:14px">${title}</h2><div class="lb-cat">`+
+    Object.entries(STAFF_INFO[kind]).map(([k,v])=>`<button class="${state.staff[kind]===k?'on':''}" onclick="setStaff('${kind}','${k}')">${v.name}</button>`).join('')+`</div><div class="hint">${STAFF_INFO[kind][state.staff[kind]].desc}</div>`;
+  return `<div class="notice" style="margin-top:12px"><b>🧢 감독·코치진</b><br>선택은 즉시 저장되며 경기 보정은 이번 경기부터, 성장 보정은 다음 오프시즌부터 적용됩니다.</div>`+
+    section('manager','감독 성향')+section('batCoach','타격 코치')+section('pitCoach','투수 코치');
+}
+function managerAttackBonus(teamId){ ensureStaff(); return teamId===state.myTeam ? STAFF_INFO.manager[state.staff.manager].attack : 0; }
+function managerPitchBonus(teamId){ ensureStaff(); return teamId===state.myTeam ? STAFF_INFO.manager[state.staff.manager].pitch : 0; }
+
+
+/* ═══════════ 스카우트 시스템 (v0.21.5) ═══════════ */
+const SCOUT_INFO = {
+  basic:{name:'지역 스카우트',desc:'후보 6명 · 잠재력과 현재 능력 오차가 큼',count:6,potErr:1,ovrErr:5},
+  standard:{name:'전국 스카우트',desc:'후보 8명 · 잠재력과 현재 능력을 비교적 정확히 파악',count:8,potErr:1,ovrErr:2},
+  elite:{name:'수석 스카우트',desc:'후보 10명 · 잠재력과 현재 능력을 정확히 파악',count:10,potErr:0,ovrErr:0}
+};
+function ensureScout(){ if(!SCOUT_INFO[state.scout]) state.scout='standard'; }
+function setScout(key){
+  ensureScout();
+  if(!SCOUT_INFO[key]) return;
+  state.scout=key; save(); renderFront();
+}
+function scoutPanel(){
+  ensureScout();
+  const cur=SCOUT_INFO[state.scout];
+  const locked=isOffseason() && state.season?.market;
+  return `<div class="notice" style="margin-top:12px"><b>🔎 신인 스카우트</b><br>${locked?'현재 드래프트 후보는 이미 확정되었습니다. 변경한 스카우트는 다음 시즌 후보부터 적용됩니다.':'선택한 스카우트가 다음 오프시즌 신인 후보 수와 정보 정확도에 적용됩니다.'}</div>
+    <div class="lb-cat">${Object.entries(SCOUT_INFO).map(([k,v])=>`<button class="${state.scout===k?'on':''}" onclick="setScout('${k}')">${v.name}</button>`).join('')}</div>
+    <div class="hint">${cur.desc}</div>`;
+}
+function starCount(pot){ return Math.max(1,Math.min(5,(pot||'★').length)); }
+function stars(n){ return '★'.repeat(Math.max(1,Math.min(5,n))); }
+function prepareScoutReport(d,idx){
+  ensureScout();
+  const sc=SCOUT_INFO[state.scout];
+  if(!d.truePot) d.truePot=d.pot||'★';
+  if(d.scoutSeed===undefined) d.scoutSeed=(nameHash(d.data[0]+':'+idx)%1000)/1000;
+  const signed=d.scoutSeed<.5?-1:1;
+  const potDelta=sc.potErr ? (d.scoutSeed<.34?0:signed*sc.potErr) : 0;
+  d.reportPot=stars(starCount(d.truePot)+potDelta);
+  const trueOvr=d.kind==='bat'?batOvr(d.data,state.myTeam):pitOvr(d.data,state.myTeam);
+  const ovrDelta=sc.ovrErr ? Math.round((d.scoutSeed*2-1)*sc.ovrErr) : 0;
+  d.reportOvr=trueOvr+ovrDelta;
+  d.pot=d.truePot;
+  return d;
+}
+function scoutRange(val){
+  ensureScout(); const e=SCOUT_INFO[state.scout].ovrErr;
+  return e===0?String(val):`${Math.max(0,val-e)}~${Math.min(99,val+e)}`;
+}
+
 /* ═══════════ 경기 화면 ═══════════ */
 let spdSel='pa', gTimer=null, curGame=null;
 function renderGameSetup(){
@@ -1891,7 +2055,7 @@ function renderGameSetup(){
   const oppSp = opp.pit[nextSpIdx(opp.id)];
   const rec = state.season.rec[state.myTeam];
   document.getElementById('seasonInfo').innerHTML =
-    `<b>${state.season.day+1}차전 / 36경기</b> · ${rec.w}승 ${rec.l}패 ${rec.t}무${ecoOn()?' · 잔고 '+fmtMoney()+(state.eco==='normal'&&state.money<0?' ⚠️보정감소':''):''}<br>
+    `<b>${state.season.day+1}차전 / 36경기</b> · ${rec.w}승 ${rec.l}패 ${rec.t}무${ecoOn()?' · 잔고 '+fmtMoney()+(state.eco==='normal'&&state.money<0?' ⚠️보정감소':'')+debtStatusText():''}<br>
      ${isHome?'🏠 홈':'✈️ 원정'} vs <b>${opp.name}</b><br>
      내 선발: <b>${mySp[0]}</b> (${pitOvr(mySp,my.id)}) — 라인업 탭에서 변경 가능<br>
      상대 선발: ${oppSp[0]} (${pitOvr(oppSp,opp.id)})<br>
@@ -2011,6 +2175,7 @@ function clearSalaryRaise(p, isBat){
   if(state.salaryAdjustments) delete state.salaryAdjustments[salaryKey(p,isBat)];
 }
 function salaryOf(p, isBat){
+  if(foreignFlag(p,isBat)){ ensureForeignState(); const c=state.foreignContracts[foreignKey(p,isBat)]; if(c&&c.salary) return c.salary; }
   const ovr = isBat ? batOvr(p, state.myTeam) : pitOvr(p, state.myTeam);
   const base = Math.max(0.5, Math.pow(Math.max(0,ovr-50)/10, 2.1)*0.9);
   return base + salaryBonusOf(p,isBat);   // OVR 기본 연봉 + 협상으로 누적된 실제 인상분
@@ -2022,22 +2187,69 @@ function teamSalary(){
   t.pit.forEach(p=>s+=salaryOf(p,false));
   return s;
 }
+function updateDebtStatus(countGame=false){
+  if(state.eco!=='hard' || state.bankrupt) return;
+  if(state.money >= 0){ state.debtGames = 0; return; }
+  if(state.money <= -20){ state.bankrupt = true; return; }
+  if(countGame) state.debtGames = (state.debtGames||0) + 1;
+  else if(!state.debtGames) state.debtGames = 1;
+  if((state.debtGames||0) >= 3) state.bankrupt = true;
+}
+function debtStatusText(){
+  if(state.eco!=='hard' || state.money>=0 || state.bankrupt) return '';
+  const left = Math.max(0, 3-(state.debtGames||0));
+  return ` · ⚠️ 적자 유예 ${left}경기`;
+}
+function ensureFanState(){
+  if(!Number.isFinite(state.popularity)) state.popularity = 50;
+  if(!Number.isFinite(state.winStreak)) state.winStreak = 0;
+  if(!Number.isFinite(state.lastAttendance)) state.lastAttendance = 0;
+}
+function starPlayerCount(){
+  const t = getTeam(state.myTeam);
+  if(!t) return 0;
+  let n = 0;
+  t.bat.forEach(p=>{ if(batOvr(p,t.id)>=80) n++; });
+  t.pit.forEach(p=>{ if(pitOvr(p,t.id)>=80) n++; });
+  return n;
+}
+function estimateAttendance(){
+  ensureFanState();
+  const stars = starPlayerCount();
+  const streakBonus = Math.max(0,state.winStreak||0) * 500;
+  return Math.round(Math.max(8000, Math.min(30000,
+    7000 + state.popularity*180 + stars*650 + streakBonus
+  )));
+}
+function updateFanState(won, isHome){
+  ensureFanState();
+  if(won){
+    state.winStreak = Math.max(1,(state.winStreak||0)+1);
+    state.popularity += isHome ? 1.5 : 1.0;
+  }else{
+    state.winStreak = Math.min(-1,(state.winStreak||0)-1);
+    state.popularity -= isHome ? 0.8 : 0.5;
+  }
+  state.popularity = Math.max(20,Math.min(95,+state.popularity.toFixed(1)));
+}
 function settleGame(isHome, won){
   if(!ecoOn() || state.bankrupt) return null;
-  const rec = state.season.rec[state.myTeam];
-  const wpct = (rec.w+rec.l)>0 ? rec.w/(rec.w+rec.l) : 0.5;
-  const income = isHome ? (1.4 + wpct*1.6 + (won?0.4:0)) : 0.35;  // 홈 관중수입 / 원정 중계권
-  const cost = 0.5;                                              // 경기 운영비
+  ensureFanState();
+  const attendance = isHome ? estimateAttendance() : 0;
+  const income = isHome ? (0.6 + attendance/10000*1.1 + (won?0.2:0)) : 0.35;
+  const cost = 0.5;
+  state.lastAttendance = attendance;
   state.money += income - cost;
-  if(state.money < 0 && state.eco==='hard'){ state.bankrupt = true; }
+  updateFanState(won,isHome);
+  updateDebtStatus(true);
   save();
-  return {income, cost};
+  return {income, cost, attendance, popularity:state.popularity};
 }
 function settleSeasonSalary(){
   if(!ecoOn() || state.bankrupt) return 0;
   const pay = teamSalary();
   state.money -= pay;
-  if(state.money < 0 && state.eco==='hard'){ state.bankrupt = true; }
+  updateDebtStatus(false);   // 연봉 정산 적자는 다음 경기부터 유예 카운트 진행
   save();
   return pay;
 }
@@ -2065,7 +2277,10 @@ function playSeries(hiId, loId, need){
     guard++;
     const hs=nextSpIdx(hiId), ls=nextSpIdx(loId);
     const g=simGame(hiId, loId, hs, ls);
+    markStart(hiId, hs); markStart(loId, ls);
     advanceRot(hiId); advanceRot(loId);
+    // 무승부를 포함해 한 경기가 끝날 때마다 포스트시즌 날짜가 흐른다.
+    state.season.postDay++;
     if(g.sc.home>g.sc.away) hw++;
     else if(g.sc.home<g.sc.away) lw++;
     else continue;   // 무승부 재경기
@@ -2074,15 +2289,20 @@ function playSeries(hiId, loId, need){
   return {winner: hw>lw?hiId:loId, hw, lw, scores};
 }
 function runPostseason(){
+  // 정규시즌 종료 후 4일 휴식 뒤 시작. 정규시즌 day 값은 건드리지 않는다.
+  state.season.postDay = Math.max(state.season.day, state.season.sched.length) + 4;
   const order = rankOrder();
   const [t1,t2,t3,t4,t5] = order;
   const log = [];
   const nm = id=>getTeam(id).name;
   const wc = playSeries(t4, t5, 1);
+  state.season.postDay++;   // 시리즈 사이 이동·휴식일
   log.push(`와일드카드: ${nm(t4)} vs ${nm(t5)} → ${nm(wc.winner)} 승`);
   const spo = playSeries(t3, wc.winner, 2);
+  state.season.postDay++;
   log.push(`준플레이오프: ${nm(t3)} vs ${nm(wc.winner)} → ${nm(spo.winner)} 승 (${spo.hw}-${spo.lw})`);
   const po = playSeries(t2, spo.winner, 2);
+  state.season.postDay++;
   log.push(`플레이오프: ${nm(t2)} vs ${nm(spo.winner)} → ${nm(po.winner)} 승 (${po.hw}-${po.lw})`);
   const ks = playSeries(t1, po.winner, 3);
   log.push(`한국시리즈: ${nm(t1)} vs ${nm(po.winner)} → 🏆 ${nm(ks.winner)} 우승! (${ks.hw}-${ks.lw})`);
@@ -2107,7 +2327,7 @@ function renderSeasonDone(){
     `정규시즌 ${rank}위 (${rec.w}승 ${rec.l}패 ${rec.t}무)<br><br>` +
     p.log.join('<br>') + '<br><br>' +
     (isChamp ? '🎉 우리 팀이 우승했습니다!<br>' : '') +
-    (ecoOn() ? `💰 순위 분배금 +${(state.season.bonus?.rankMoney||0)}억, 포스트시즌 보너스 +${(state.season.bonus?.psMoney||0)}억<br>연봉 정산 -${(state.season.salaryPaid||0).toFixed(1)}억 → 잔고 ${fmtMoney()}${state.bankrupt?'<br>💸 연봉을 지급하지 못해 구단 파산!':''}<br>` : '') +
+    (ecoOn() ? `💰 순위 분배금 +${(state.season.bonus?.rankMoney||0)}억, 포스트시즌 보너스 +${(state.season.bonus?.psMoney||0)}억<br>연봉 정산 -${(state.season.salaryPaid||0).toFixed(1)}억 → 잔고 ${fmtMoney()}${state.bankrupt?'<br>💸 지급 불능으로 구단 파산!':(state.eco==='hard'&&state.money<0?'<br>⚠️ 적자 유예가 시작되었습니다. 다음 경기부터 3경기 안에 흑자로 전환해야 합니다.':'')}<br>` : '') +
     (state.mode==='sim' ? '<br>다음 시즌으로 넘어가면 선수들이 성장/노쇠합니다.' : '');
   document.getElementById('newSeasonBtn').textContent = '구단운영 · 오프시즌으로';
 }
@@ -2274,7 +2494,7 @@ function playerRows(t, isBat){
     const canCut = isOffseason() && !isStarter && !liveProtected;   // 실황 원본 선수는 방출 불가
     html += `<div class="prow" ${canCut?`style="cursor:pointer" data-cutrow="${isBat?'bat':'pit'}" data-cri="${i}"`:'style="cursor:default"'}>
       <div class="pos">${isBat?p[2]:(p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP')}</div>
-      <div class="mid"><div class="nm">${p[0]} ${liveProtected?'<span class="boost">🔒 실황 보호</span>':''} <span style="font-size:11px;color:var(--dim)">${age}세</span></div>
+      <div class="mid"><div class="nm">${p[0]} ${liveProtected?'<span class="boost">🔒 실황 보호</span>':''}${foreignFlag(p,isBat)?'<span class="boost"> 🌍 외국인</span>':''} <span style="font-size:11px;color:var(--dim)">${age}세</span></div>
         <div class="hand">OVR ${ovr} · 연봉 ${sal.toFixed(1)}억${liveProtected?' · 방출/FA/트레이드 제외':''}</div></div>
       ${canCut? `<button class="cutbtn" data-cut="${isBat?'bat':'pit'}" data-ci="${i}">방출</button>`
               : `<div class="ovr num" style="font-size:15px">${sal.toFixed(1)}</div>`}</div>`;
@@ -2288,18 +2508,20 @@ function renderFront(){
   const body = document.getElementById('frontBody');
   const salTotal = teamSalary();
   if(ecoOn()){
-    info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b>` +
-      (state.eco==='hard'?' · 하드(파산주의)':state.eco==='normal'?' · 일반':'') +
-      (state.money<0 && state.eco==='normal'?'<br>⚠️ 잔고 마이너스 — 내 팀 원래팀 보정 감소 중':'');
+    ensureFanState();
+    info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b><br>구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>` +
+      (state.eco==='hard'?' · 하드(적자 3경기 유예)':state.eco==='normal'?' · 일반':'') +
+      (state.money<0 && state.eco==='normal'?'<br>⚠️ 잔고 마이너스 — 내 팀 원래팀 보정 감소 중':'') +
+      (state.eco==='hard' && state.money<0 && !state.bankrupt?`<br>⚠️ 적자 유예 중 — ${Math.max(0,3-(state.debtGames||0))}경기 안에 흑자 전환 필요 · -20억 이하 즉시 파산`:'');
   }else{
     info.innerHTML = `자유 모드 · 자금 시스템 꺼짐 · 연간 총연봉(참고) ${salTotal.toFixed(1)}억`;
   }
 
   if(isOffseason()){
-    body.innerHTML = renderOffseason(t);
+    body.innerHTML = staffPanel() + scoutPanel() + renderOffseason(t);
     bindOffseason();
   }else{
-    body.innerHTML = `
+    body.innerHTML = staffPanel() + scoutPanel() + `
       <div class="hint">시즌 중에는 선수단 현황과 연봉을 확인할 수 있습니다. 재계약·방출·훈련·FA는 시즌 종료 후 오프시즌에 진행합니다.</div>
       <h2 class="sec" style="margin-top:14px">타자</h2>${playerRows(t,true)}
       <h2 class="sec" style="margin-top:14px">투수</h2>${playerRows(t,false)}`;
@@ -2363,6 +2585,7 @@ function renderOffseason(t){
         <button class="signbtn">${cost}</button></div>`;
     });
   }
+  h += foreignMarketHtml(m);
   // 레전드 시장
   h += `<h2 class="sec" style="margin-top:16px">🏅 레전드 영입 <small>${ecoOn()?'거액 필요':'명예 영입'}</small>
     <span class="lb-help" style="margin-left:8px" onclick="openLegendDex()">📖 전체 레전드 보기</span></h2>`;
@@ -2379,15 +2602,16 @@ function renderOffseason(t){
     });
   }
   // 신인 드래프트
-  h += `<h2 class="sec" style="margin-top:16px">신인 드래프트 <small>${m.drafted?'지명 완료':'1명 지명 가능'}</small></h2>`;
-  h += `<div class="hint">별(★)이 많을수록 성장 잠재력이 큽니다. 어리지만 처음엔 약합니다.</div>`;
-  m.draft.forEach((d,idx)=>{
-    const ov = d.kind==='bat'?batOvr(d.data,state.myTeam):pitOvr(d.data,state.myTeam);
+  ensureScout();
+  h += `<h2 class="sec" style="margin-top:16px">신인 드래프트 <small>${m.drafted?'지명 완료':'1명 지명 가능'} · ${SCOUT_INFO[state.scout].name}</small></h2>`;
+  h += `<div class="hint">표시된 잠재력과 OVR은 스카우트 보고서입니다. 낮은 등급 스카우트의 보고서는 실제 능력과 차이가 날 수 있습니다.</div>`;
+  m.draft.forEach((raw,idx)=>{
+    const d=prepareScoutReport(raw,idx);
     h += `<div class="prow ${m.drafted?'':''}" style="cursor:${m.drafted?'default':'pointer'};${m.drafted?'opacity:.5':''}" data-draft="${idx}">
       <div class="pos">${d.kind==='bat'?d.data[2]:(d.data[2]==='선발'?'SP':'RP')}</div>
-      <div class="mid"><div class="nm">${d.data[0]} <span style="font-size:11px;color:var(--amber)">${d.pot}</span></div>
-      <div class="hand">${d.age}세 · OVR ${ov}</div></div>
-      <div class="ovr num" style="font-size:14px">${ov}</div></div>`;
+      <div class="mid"><div class="nm">${d.data[0]} <span style="font-size:11px;color:var(--amber)">${d.reportPot}</span></div>
+      <div class="hand">${d.age}세 · 예상 OVR ${scoutRange(d.reportOvr)}</div></div>
+      <div class="ovr num" style="font-size:14px">${d.reportOvr}</div></div>`;
   });
   // 훈련 (시뮬 모드 전용)
   if(state.mode==='sim'){
@@ -2429,6 +2653,7 @@ function bindOffseason(){
   document.querySelectorAll('[data-fa]').forEach(el=>{
     el.onclick = ()=> openFaSheet(+el.dataset.fa);
   });
+  document.querySelectorAll('[data-foreign]').forEach(el=>{ el.onclick=()=>openForeignSheet(+el.dataset.foreign); });
   document.querySelectorAll('[data-draft]').forEach(el=>{
     el.onclick = ()=> openDraftSheet(+el.dataset.draft);
   });
@@ -2484,7 +2709,7 @@ function doOffseasonEnd(){
 
 
 
-/* ═══════════ 트레이드 (v0.13) ═══════════ */
+/* ═══════════ 트레이드 (v0.21.5) ═══════════ */
 let tradeOppId = null, tradeMyPicks = [], tradeOppPicks = [];   // 다중 선택 (N:M)
 function posOf(teamId, kind, idx){
   const t = getTeam(teamId);
@@ -2532,6 +2757,38 @@ function ageValue(age){
 function perceivedValue(receiverId, kind, ovr, pos, age){
   return ovr * positionNeed(receiverId, kind, pos) * ageValue(age);
 }
+// 팀 전력상 부족한 포지션을 간단히 표시
+function tradeNeedsText(teamId){
+  const t = getTeam(teamId);
+  const needs = [];
+  const batPos = ['C','1B','2B','3B','SS','LF','CF','RF'];
+  batPos.forEach(pos=>{ if(positionNeed(teamId,'bat',pos)>1.05) needs.push(pos); });
+  ['선발','불펜','마무리'].forEach(pos=>{ if(positionNeed(teamId,'pit',pos)>1.05) needs.push(pos==='선발'?'SP':pos==='마무리'?'CL':'RP'); });
+  return needs.length ? needs.slice(0,5).join(' · ') : '뚜렷한 약점 없음';
+}
+function rosterAfterTrade(teamId, outgoing, incoming, isMy){
+  const t = getTeam(teamId);
+  const outBat = outgoing.filter(x=>x.kind==='bat').length;
+  const outPit = outgoing.filter(x=>x.kind==='pit').length;
+  const inBat = incoming.filter(x=>x.kind==='bat').length;
+  const inPit = incoming.filter(x=>x.kind==='pit').length;
+  const incomingTeam = getTeam(isMy?tradeOppId:state.myTeam);
+  const startNow = t.pit.filter(p=>p[2]==='선발').length;
+  const closeNow = t.pit.filter(p=>p[2]==='마무리').length;
+  const outStart = outgoing.filter(x=>x.kind==='pit' && t.pit[x.idx] && t.pit[x.idx][2]==='선발').length;
+  const outClose = outgoing.filter(x=>x.kind==='pit' && t.pit[x.idx] && t.pit[x.idx][2]==='마무리').length;
+  const inStart = incoming.filter(x=>x.kind==='pit' && incomingTeam.pit[x.idx] && incomingTeam.pit[x.idx][2]==='선발').length;
+  const inClose = incoming.filter(x=>x.kind==='pit' && incomingTeam.pit[x.idx] && incomingTeam.pit[x.idx][2]==='마무리').length;
+  const bat = t.bat.length-outBat+inBat;
+  const pit = t.pit.length-outPit+inPit;
+  const starters = startNow-outStart+inStart;
+  const closers = closeNow-outClose+inClose;
+  if(bat<9) return {ok:false, reason:`${t.name}의 야수가 9명 미만이 됩니다.`};
+  if(pit<6) return {ok:false, reason:`${t.name}의 투수가 6명 미만이 됩니다.`};
+  if(starters<5) return {ok:false, reason:`${t.name}의 선발투수가 5명 미만이 됩니다.`};
+  if(closers<1) return {ok:false, reason:`${t.name}의 마무리투수가 없어집니다.`};
+  return {ok:true, reason:''};
+}
 
 function ovrOfEntry(teamId, kind, idx){
   const t = getTeam(teamId);
@@ -2543,7 +2800,7 @@ function openTradeSheet(){
   const sheet = document.getElementById('sheet');
   let h = `<div class="top"><div class="pname">🔄 트레이드</div>
     <button class="close" onclick="closeSheet()">✕</button></div>
-    <div class="meta">상대 팀을 골라 선수 1:1 교환을 제안합니다.</div>`;
+    <div class="meta">상대 팀을 골라 최대 3명씩 묶어 트레이드를 제안합니다. 상대 구단의 포지션 수요·나이·등급·연봉이 평가에 반영됩니다.</div>`;
   h += `<div class="opp-grid" style="margin-top:8px">`;
   TEAMS.forEach(t=>{ if(t.id===state.myTeam) return;
     h += `<button class="${tradeOppId===t.id?'on':''}" onclick="selTradeOpp('${t.id}')">${t.name}</button>`;
@@ -2577,7 +2834,10 @@ function tradeColumns(){
     });
     return s;
   };
-  let h = `<div class="hint" style="margin-top:10px">양팀에서 각각 원하는 만큼 선택하세요 (1:1, 1:2, 2:2 등 가능).</div>`;
+  const tradeCount = state.season ? (state.season.tradeCount||0) : 0;
+  let h = `<div class="hint" style="margin-top:10px">양팀에서 각각 1~3명을 선택하세요. 이번 오프시즌 트레이드 ${tradeCount}/3회.</div>
+    <div class="reveal"><div class="lbl">구단별 보강 필요</div>
+    ${my.name}: ${tradeNeedsText(state.myTeam)}<br>${opp.name}: ${tradeNeedsText(tradeOppId)}</div>`;
   h += `<div class="reveal"><div class="lbl">선택 현황</div>
     내가 주는: ${tradeMyPicks.length? tradeMyPicks.map(x=>pickName('my',x)).join(', ') : '없음'}<br>
     내가 받는: ${tradeOppPicks.length? tradeOppPicks.map(x=>pickName('opp',x)).join(', ') : '없음'}</div>`;
@@ -2608,7 +2868,10 @@ function pickTrade(which, kind, idx){
   const picks = which==='my'? tradeMyPicks : tradeOppPicks;
   const at = picks.findIndex(x=>x.kind===kind && x.idx===idx);
   if(at>=0) picks.splice(at,1);        // 재터치 → 해제
-  else picks.push({kind,idx});
+  else{
+    if(picks.length>=3){ showAlert('한쪽에서 최대 3명까지 선택할 수 있습니다.'); return; }
+    picks.push({kind,idx});
+  }
   openTradeSheet();
 }
 function evalTrade(){
@@ -2629,7 +2892,11 @@ function evalTrade(){
     const p = (x.kind==='bat'?opp.bat:opp.pit)[x.idx];
     const ovr = ovrOfEntry(tradeOppId, x.kind, x.idx);
     const age = ageOfEntry(tradeOppId, x.kind, x.idx);
-    oppPerceived += perceivedValue(tradeOppId, x.kind, ovr, p[2], age);
+    let v = perceivedValue(tradeOppId, x.kind, ovr, p[2], age);
+    // 상대 팀 최고급 선수는 프랜차이즈 프리미엄: 쉽게 내주지 않음
+    const teamTop = Math.max(...opp.bat.map(p=>batOvr(p,tradeOppId)), ...opp.pit.map(p=>pitOvr(p,tradeOppId)));
+    if(ovr>=teamTop-1) v *= 1.10;
+    oppPerceived += v;
   });
   // 인원 불균형 페널티
   const countDiff = tradeMyPicks.length - tradeOppPicks.length;
@@ -2647,11 +2914,16 @@ function evalTrade(){
     // 상대가 넘기는 선수(내가 받는) 연봉이 높을수록 상대는 부담 덜어 선호 → gain에 가산
     salaryAdj = (mySalIn - oppSalOut) * 0.8;
   }
+  const myRoster = rosterAfterTrade(state.myTeam, tradeMyPicks, tradeOppPicks, true);
+  const oppRoster = rosterAfterTrade(tradeOppId, tradeOppPicks, tradeMyPicks, false);
+  const rosterBlocked = !myRoster.ok || !oppRoster.ok;
+  const rosterReason = !myRoster.ok ? myRoster.reason : (!oppRoster.ok ? oppRoster.reason : '');
   const gain = myPerceived + rosterAdj + salaryAdj - oppPerceived;
   // 등급차 2단계 이상이면 무조건 거절 (특급을 다수 하위선수로 못 데려옴)
   const gradeBlocked = gradeGap >= 2;
   let reason;
-  if(gradeBlocked) reason = `❌ 등급 격차가 큽니다 (${oppTopG}급을 ${myTopG}급으로는 데려올 수 없습니다).`;
+  if(rosterBlocked) reason = `❌ ${rosterReason}`;
+  else if(gradeBlocked) reason = `❌ 등급 격차가 큽니다 (${oppTopG}급을 ${myTopG}급으로는 데려올 수 없습니다).`;
   else if(gain >= 0) reason = '✅ 상대에게 이득이라 수락할 것입니다.';
   else if(gain >= -5) reason = '🤝 상대가 약간 손해지만 받아들일 만합니다.';
   else{
@@ -2659,11 +2931,12 @@ function evalTrade(){
     else if(state.mode==='sim' && myOldest>=35) reason = '❌ 내가 주는 선수가 노쇠해 상대가 꺼립니다.';
     else reason = '❌ 상대에게 손해가 커 거절할 것입니다.';
   }
-  return {myPerceived, oppPerceived, gain, reason, mySalIn, oppSalOut, gradeBlocked, myTopG, oppTopG};
+  return {myPerceived, oppPerceived, gain, reason, mySalIn, oppSalOut, gradeBlocked, rosterBlocked, myTopG, oppTopG};
 }
 function proposeTrade(){
+  if(state.season && (state.season.tradeCount||0)>=3){ showAlert('이번 오프시즌에는 이미 트레이드를 3회 진행했습니다.'); return; }
   const ev = evalTrade();
-  const accept = !ev.gradeBlocked && (ev.gain >= 0 || (ev.gain >= -5 && Math.random()<0.6) || (ev.gain >= -9 && Math.random()<0.2));
+  const accept = !ev.gradeBlocked && !ev.rosterBlocked && (ev.gain >= 0 || (ev.gain >= -5 && Math.random()<0.6) || (ev.gain >= -9 && Math.random()<0.2));
   if(!accept){
     showAlert('상대 구단이 트레이드를 거절했습니다.\n' + ev.reason.replace(/^[\u2705\u274c\ud83e\udd1d]\s*/,''));
     return;
@@ -2701,6 +2974,7 @@ function proposeTrade(){
   const outNames = myOut.map(o=>o.player[0]).join(', ');
   const inNames = oppOut.map(o=>o.player[0]).join(', ');
   tradeMyPicks=[]; tradeOppPicks=[];
+  if(state.season) state.season.tradeCount = (state.season.tradeCount||0)+1;
   save();
   showAlert(`트레이드 성사!\n보낸 선수: ${outNames}\n받은 선수: ${inNames}`);
   closeSheet(); renderFront();
@@ -2717,9 +2991,11 @@ function buildOffseasonMarket(){
       lg.forEach(l=>{ const m=meta[l.data[0]]; if(m){ l.year=m.year; l.why=m.why; l.trait=m.trait; } });
       save();
     }
+    if(!state.season.market.foreign){ state.season.market.foreign=[]; for(let i=0;i<6;i++) state.season.market.foreign.push(genForeignCandidate(i)); save(); }
     return;
   }
-  const market = { fa: [], draft: [], drafted: false };
+  ensureScout();
+  const market = { fa: [], draft: [], drafted: false, scoutUsed:state.scout };
   // FA 풀: 내 팀 제외, 30세 이상 준수한 비주전/주전 일부
   Object.keys(state.players).forEach(id=>{
     if(id===state.myTeam) return;
@@ -2736,6 +3012,8 @@ function buildOffseasonMarket(){
     });
   });
   market.fa = market.fa.sort((a,b)=>b.ovr-a.ovr).slice(0,6);
+  market.foreign = [];
+  for(let i=0;i<6;i++) market.foreign.push(genForeignCandidate(i));
   // 레전드 시장: 매 시즌 풀에서 2명 랜덤 (아직 영입 안 된 것만)
   const owned = state.legendsOwned || [];
   const pool = legendPool().filter(l=>!owned.includes(l.data[0]));
@@ -2745,22 +3023,23 @@ function buildOffseasonMarket(){
     pick.ovr = pick.kind==='bat'? batOvr(pick.data, state.myTeam) : pitOvr(pick.data, state.myTeam);
     market.legends.push(pick);
   }
-  // 신인 드래프트 8명 생성
+  // 스카우트 수준에 따라 신인 후보 6~10명 생성
+  const draftCount=SCOUT_INFO[state.scout].count;
   const posPool=['C','1B','2B','3B','SS','LF','CF','RF'];
-  for(let i=0;i<8;i++){
+  for(let i=0;i<draftCount;i++){
     const isBat = Math.random()<0.55;
     const age = 18 + Math.floor(Math.random()*3);
     const base = 48 + Math.floor(Math.random()*22);   // 신인은 낮게 시작
     const pot = ['★','★★','★★★','★★★★','★★★★★'][Math.min(4,Math.floor(Math.random()*3)+ (Math.random()<.2?2:0))];
     if(isBat){
       const jit=()=>Math.max(38,Math.min(80, base-6+Math.floor(Math.random()*16)));
-      market.draft.push({kind:'bat', pot, age,
+      market.draft.push({kind:'bat', pot, truePot:pot, age,
         data:[genName(9000+i), '신인', posPool[i%posPool.length], Math.random()<.5?'우':'좌', jit(),jit(),jit(),jit(),jit()]});
     }else{
       const role = Math.random()<.6?'선발':'불펜';
       const velo=140+Math.floor(Math.random()*12);
       const jit=()=>Math.max(38,Math.min(80, base-6+Math.floor(Math.random()*16)));
-      market.draft.push({kind:'pit', pot, age,
+      market.draft.push({kind:'pit', pot, truePot:pot, age,
         data:[genName(9100+i), '신인', role, Math.random()<.7?'우':'좌', velo, jit(),jit(), role==='불펜'?45:jit()]});
     }
   }
@@ -2869,18 +3148,19 @@ function openLegendSheet(idx){
   document.getElementById('mask').classList.add('on');
 }
 function openDraftSheet(idx){
-  const d = state.season.market.draft[idx]; if(!d) return;
+  const raw = state.season.market.draft[idx]; if(!raw) return;
+  const d=prepareScoutReport(raw,idx);
   const isBat = d.kind==='bat';
-  const ov = isBat?batOvr(d.data,state.myTeam):pitOvr(d.data,state.myTeam);
+  const exact=SCOUT_INFO[state.scout].ovrErr===0;
   const sheet = document.getElementById('sheet');
   sheet.innerHTML = `
     <div class="top"><div class="pname">${d.data[0]}</div>
       <button class="close" onclick="closeSheet()">✕</button></div>
-    <div class="meta">${d.data[2]} · ${d.data[3]}${isBat?'타':'투'} · ${d.age}세 · OVR ${ov}</div>
-    <div class="reveal"><div class="lbl">신인 드래프트 · 잠재력 ${d.pot}</div>
-      갓 데뷔한 신인입니다. 지금은 약하지만 어려서 성장 여지가 큽니다.<br>
+    <div class="meta">${d.data[2]} · ${d.data[3]}${isBat?'타':'투'} · ${d.age}세 · 예상 OVR ${scoutRange(d.reportOvr)}</div>
+    <div class="reveal"><div class="lbl">${SCOUT_INFO[state.scout].name} 보고서 · 잠재력 ${d.reportPot}</div>
+      ${exact?'정밀 분석이 완료되어 보고서 오차가 없습니다.':'보고서에는 오차가 있으며, 지명 후 실제 능력과 잠재력이 공개됩니다.'}<br>
       ${state.season.market.drafted? '⚠️ 이번 시즌 지명은 이미 완료했습니다.':'지명은 시즌당 1명만 가능합니다.'}</div>
-    ${playerStatsHtml(d.data, isBat, state.myTeam)}
+    ${exact?playerStatsHtml(d.data,isBat,state.myTeam):`<div class="notice">세부 능력치는 지명 후 공개됩니다.<br>현재 능력 예상치: <b>OVR ${scoutRange(d.reportOvr)}</b></div>`}
     ${state.season.market.drafted? '' : `<button class="btn" onclick="closeSheet(); draftPick(${idx})">이 선수 지명</button>`}
     <button class="btn ghost" onclick="closeSheet()">${state.season.market.drafted?'닫기':'취소'}</button>`;
   document.getElementById('mask').classList.add('on');
@@ -2948,6 +3228,7 @@ function doCut(kind, i){
   const p = arr[i];
   if(isLiveCorePlayer(state.myTeam,p,kind)){ showAlert('실황 모드의 원본 실제 선수는 방출할 수 없습니다.'); return; }
   clearSalaryRaise(p,isBat);
+  if(foreignFlag(p,isBat)){ ensureForeignState(); delete state.foreignContracts[foreignKey(p,isBat)]; }
   arr.splice(i,1);
   if(isBat) t.age.bat.splice(i,1); else t.age.pit.splice(i,1);
   state.lineups[state.myTeam]=null; state.rotOrder[state.myTeam]=null;
@@ -3002,7 +3283,10 @@ function draftPick(idx){
   if(d.kind==='bat'){ my.bat.push([...d.data]); my.age.bat.push(d.age); }
   else{ my.pit.push([...d.data]); my.age.pit.push(d.age); }
   m.drafted = true;
+  const realPot=d.truePot||d.pot;
+  const realOvr=d.kind==='bat'?batOvr(d.data,state.myTeam):pitOvr(d.data,state.myTeam);
   save(); renderFront();
+  showAlert(`신인 지명 완료!\n${d.data[0]} · 실제 잠재력 ${realPot} · OVR ${realOvr}`);
 }
 
 
@@ -3012,33 +3296,83 @@ function draftPick(idx){
 function buildSalaryDemands(){
   if(!ecoOn()) return;
   if(state.season.demands) return;
+  ensureStats();
+
   const demands = [];
   const my = getTeam(state.myTeam);
-  const S = state.season.stats?.[state.myTeam];
-  if(!S) { state.season.demands=[]; return; }
-  // 타자: 타율 높거나 홈런 많은 선수
-  Object.keys(S.bat||{}).forEach(idx=>{
-    const st = S.bat[idx]; const p = my.bat[+idx]; if(!p) return;
-    const avg = st.ab>0? st.h/st.ab : 0;
-    if((st.ab>=30 && avg>=0.320) || st.hr>=6 || st.rbi>=30){
-      const cur = salaryOf(p,true);
-      const raise = +(cur*(0.2+Math.random()*0.3)).toFixed(1);
-      demands.push({kind:'bat', idx:+idx, name:p[0], cur, raise, why: st.hr>=6?`${st.hr}홈런`:avg>=0.320?`타율 ${avg.toFixed(3).replace('0.','.')}`:`${st.rbi}타점`});
-    }
+  const myStats = state.season.stats?.[state.myTeam];
+  if(!myStats){ state.season.demands=[]; return; }
+
+  // 리그 전체 기록을 모아 종목별 상위 10%를 계산한다.
+  // 동률은 같은 순위로 인정하므로 기준선 동률자는 함께 협상 대상이 될 수 있다.
+  const leagueBat = [];
+  const leaguePit = [];
+  TEAMS.forEach(t=>{
+    const team = getTeam(t.id);
+    const S = state.season.stats?.[t.id];
+    if(!S) return;
+    Object.keys(S.bat||{}).forEach(idx=>{
+      const st=S.bat[idx], p=team.bat[+idx]; if(!p) return;
+      leagueBat.push({team:t.id, idx:+idx, name:p[0], ...st, avg:st.ab>0?st.h/st.ab:0});
+    });
+    Object.keys(S.pit||{}).forEach(name=>{
+      const st=S.pit[name];
+      leaguePit.push({team:t.id, name, ...st});
+    });
   });
-  // 투수: 다승/세이브/탈삼진
-  Object.keys(S.pit||{}).forEach(nm=>{
-    const st = S.pit[nm];
-    const p = my.pit.find(x=>x[0]===nm); if(!p) return;
-    if(st.w>=5 || st.sv>=8 || st.so>=40){
-      const cur = salaryOf(p,false);
-      const raise = +(cur*(0.2+Math.random()*0.3)).toFixed(1);
-      const pidx = my.pit.findIndex(x=>x[0]===nm);
-      demands.push({kind:'pit', idx:pidx, name:nm, cur, raise, why: st.w>=5?`${st.w}승`:st.sv>=8?`${st.sv}세이브`:`${st.so}탈삼진`});
-    }
+
+  function rankInfo(list, value, key, eligible){
+    const pool=list.filter(eligible).sort((a,b)=>b[key]-a[key]);
+    if(!pool.length || value<=0) return null;
+    const topN=Math.max(1,Math.ceil(pool.length*0.10));
+    const rank=1+pool.filter(x=>x[key]>value).length;
+    return rank<=topN ? {rank, topN, total:pool.length} : null;
+  }
+  function bestReason(items){
+    if(!items.length) return null;
+    items.sort((a,b)=>a.rank-b.rank || a.priority-b.priority);
+    return items[0].text;
+  }
+
+  // 타자: 규정 수준 타율, 홈런, 타점 가운데 리그 상위 10%면 요구한다.
+  Object.keys(myStats.bat||{}).forEach(idx=>{
+    const st=myStats.bat[idx], p=my.bat[+idx]; if(!p) return;
+    const avg=st.ab>0?st.h/st.ab:0;
+    const reasons=[];
+    let r=rankInfo(leagueBat,avg,'avg',x=>x.ab>=30);
+    if(r && st.ab>=30) reasons.push({rank:r.rank,priority:1,text:`타율 ${avg.toFixed(3).replace('0.','')} · 리그 ${r.rank}위`});
+    r=rankInfo(leagueBat,st.hr,'hr',x=>x.hr>0);
+    if(r) reasons.push({rank:r.rank,priority:2,text:`${st.hr}홈런 · 리그 ${r.rank}위`});
+    r=rankInfo(leagueBat,st.rbi,'rbi',x=>x.rbi>0);
+    if(r) reasons.push({rank:r.rank,priority:3,text:`${st.rbi}타점 · 리그 ${r.rank}위`});
+    const why=bestReason(reasons); if(!why) return;
+    const cur=salaryOf(p,true);
+    const raise=+(cur*(0.2+Math.random()*0.3)).toFixed(1);
+    demands.push({kind:'bat',idx:+idx,name:p[0],cur,raise,why});
   });
-  state.season.demands = demands.slice(0,6);
-  state.season.demandResults = {};
+
+  // 투수: 다승, 세이브, 탈삼진 가운데 리그 상위 10%면 요구한다.
+  Object.keys(myStats.pit||{}).forEach(name=>{
+    const st=myStats.pit[name];
+    const p=my.pit.find(x=>x[0]===name); if(!p) return;
+    const reasons=[];
+    let r=rankInfo(leaguePit,st.w,'w',x=>x.w>0);
+    if(r) reasons.push({rank:r.rank,priority:1,text:`${st.w}승 · 리그 ${r.rank}위`});
+    r=rankInfo(leaguePit,st.sv,'sv',x=>x.sv>0);
+    if(r) reasons.push({rank:r.rank,priority:2,text:`${st.sv}세이브 · 리그 ${r.rank}위`});
+    r=rankInfo(leaguePit,st.so,'so',x=>x.so>0);
+    if(r) reasons.push({rank:r.rank,priority:3,text:`${st.so}탈삼진 · 리그 ${r.rank}위`});
+    const why=bestReason(reasons); if(!why) return;
+    const cur=salaryOf(p,false);
+    const raise=+(cur*(0.2+Math.random()*0.3)).toFixed(1);
+    const pidx=my.pit.findIndex(x=>x[0]===name);
+    demands.push({kind:'pit',idx:pidx,name,cur,raise,why});
+  });
+
+  // 같은 시즌에 요구가 너무 많아지지 않도록 성적 순위가 높은 선수부터 최대 6명.
+  const rankOf=d=>{ const m=(d.why||'').match(/리그\s*(\d+)위/); return m?+m[1]:999; };
+  state.season.demands=demands.sort((a,b)=>rankOf(a)-rankOf(b) || b.raise-a.raise).slice(0,6);
+  state.season.demandResults={};
   save();
 }
 function acceptDemand(i){
