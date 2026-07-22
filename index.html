@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.22.6</title>
-<!-- v0.22.6 — 하단 메뉴 높이 104px 고정, 과도한 검정 영역 제거 -->
+<title>우리팀을 만들자 v0.22.7</title>
+<!-- v0.22.7 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
 <!-- v0.22.5 — 하단 메뉴 아이콘/글자를 홈 인디케이터 바로 위로 하단 정렬 -->
 <!-- v0.22.4 — visualViewport 기준 앱 높이 고정, 하단 메뉴 전체를 실제 화면 최하단에 배치 -->
 <!-- v0.22.3 — html/body 배경을 내비게이션 색으로 고정, 테마 배경을 main 내부로 제한 -->
@@ -29,7 +29,7 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{width:100%;height:100%;overflow:hidden;background:#0A130D;color-scheme:dark}
 body{
-  position:fixed;left:0;top:var(--app-top,0px);width:100%;height:var(--app-height,100dvh);overflow:hidden;
+  position:fixed;inset:0;width:auto;height:auto;overflow:hidden;
   background:#0A130D; color:var(--chalk);
   font-family:'IBM Plex Sans KR',sans-serif; font-size:15px;
   display:flex; flex-direction:column;
@@ -377,7 +377,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.22.6</span>
+    <span class="ver">v0.22.7</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -3834,20 +3834,6 @@ document.getElementById('rtabPlayer').onclick = ()=>{
 };
 
 /* ───────────── 시작 ───────────── */
-function syncVisualViewport(){
-  const vv = window.visualViewport;
-  const h = vv ? vv.height : window.innerHeight;
-  const top = vv ? vv.offsetTop : 0;
-  document.documentElement.style.setProperty('--app-height', `${Math.round(h)}px`);
-  document.documentElement.style.setProperty('--app-top', `${Math.round(top)}px`);
-}
-syncVisualViewport();
-window.addEventListener('resize', syncVisualViewport, {passive:true});
-window.addEventListener('orientationchange', ()=>setTimeout(syncVisualViewport, 120), {passive:true});
-if(window.visualViewport){
-  window.visualViewport.addEventListener('resize', syncVisualViewport, {passive:true});
-  window.visualViewport.addEventListener('scroll', syncVisualViewport, {passive:true});
-}
 (function(){
   const mainEl=document.querySelector('main'), btn=document.getElementById('scrollTopBtn');
   if(mainEl&&btn) mainEl.addEventListener('scroll',()=>{ btn.style.display = mainEl.scrollTop>400?'block':'none'; });
