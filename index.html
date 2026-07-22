@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.20.2</title>
+<title>우리팀을 만들자 v0.20.5</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -228,6 +228,19 @@ nav button.lock{opacity:.38}
 .speedbar button{flex:1;padding:9px 0;border-radius:9px;border:1px solid var(--line);
   background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
 .speedbar button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
+
+.manager-box{margin:12px 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.manager-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.manager-head b{color:var(--amber);font-size:14px}
+.manager-toggle{display:flex;gap:6px}
+.manager-toggle button,.manager-choice button{border:1px solid var(--line);background:var(--panel2);color:var(--dim);font-family:inherit;font-weight:700;border-radius:8px;padding:7px 10px;font-size:12px}
+.manager-toggle button.on,.manager-choice button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
+.manager-plan{border-top:1px dashed var(--line);padding-top:10px}
+.manager-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+.manager-row:first-child{margin-top:0}
+.manager-row .mlabel{width:66px;flex:none;color:var(--dim);font-size:12px;font-weight:700}
+.manager-choice{display:flex;gap:6px;flex:1;overflow-x:auto}
+.manager-note{margin-top:9px;color:var(--dim);font-size:11.5px;line-height:1.5}
 .opp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
 .opp-grid button{padding:10px 4px;border-radius:9px;border:1px solid var(--line);background:var(--panel);
   color:var(--chalk);font-family:inherit;font-size:12px;font-weight:700}
@@ -302,6 +315,18 @@ body.theme-rain #rainLayer{display:block;
 .mode-btns button.primary{background:var(--amber);border-color:var(--amber);color:#20180A}
 .mode-btns button.primary small{color:#5A4415}
 
+.mode-guide{margin-top:14px;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:14px}
+.mode-guide-title{font-size:13px;font-weight:700;color:var(--amber);margin-bottom:10px}
+.mode-compare{display:grid;grid-template-columns:76px 1fr 1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.mode-compare div{padding:9px 7px;font-size:11.5px;line-height:1.45;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.mode-compare div:nth-child(3n){border-right:none}
+.mode-compare div:nth-last-child(-n+3){border-bottom:none}
+.mode-compare .hd{background:#0A130D;color:var(--amber);font-weight:700;text-align:center}
+.mode-compare .key{color:var(--dim);font-weight:700;background:rgba(10,19,13,.45)}
+.mode-compare .val{color:var(--chalk);text-align:center}
+.mode-note{margin-top:10px;font-size:12px;line-height:1.55;color:var(--dim)}
+.mode-note b{color:var(--chalk)}
+
 
 .other-results{margin-top:14px}
 .rr-title{font-size:14px;font-weight:700;color:var(--chalk);margin-bottom:8px}
@@ -339,7 +364,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.20.2</span>
+    <span class="ver">v0.20.5</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -401,6 +426,27 @@ body.theme-rain #rainLayer{display:block;
   <h2 class="sec" id="gameTitle">경기</h2>
   <div id="gameSetup">
     <div class="season-info" id="seasonInfo"></div>
+    <div class="manager-box" id="managerBox">
+      <div class="manager-head"><b>감독 방식</b>
+        <div class="manager-toggle">
+          <button id="mgrAuto" class="on" onclick="setManagerControl('auto')">자동 감독</button>
+          <button id="mgrDirect" onclick="setManagerControl('direct')">직접 감독</button>
+        </div>
+      </div>
+      <div class="manager-plan" id="managerPlan" style="display:none">
+        <div class="manager-row"><span class="mlabel">공격 작전</span><div class="manager-choice">
+          <button data-mgr-attack="balanced" onclick="setManagerAttack('balanced')">정공</button>
+          <button data-mgr-attack="power" onclick="setManagerAttack('power')">강공</button>
+          <button data-mgr-attack="small" onclick="setManagerAttack('small')">번트·기동</button>
+        </div></div>
+        <div class="manager-row"><span class="mlabel">투수 교체</span><div class="manager-choice">
+          <button data-mgr-bullpen="quick" onclick="setManagerBullpen('quick')">빠르게</button>
+          <button data-mgr-bullpen="normal" onclick="setManagerBullpen('normal')">보통</button>
+          <button data-mgr-bullpen="late" onclick="setManagerBullpen('late')">길게</button>
+        </div></div>
+        <div class="manager-note">1차 감독모드: 경기 전에 공격 성향과 투수 교체 시점을 지시합니다. 작전은 해당 경기 전체에 적용됩니다.</div>
+      </div>
+    </div>
     <div class="speedbar">
       <button data-spd="pa" class="on">타석별</button>
       <button data-spd="inn">이닝별</button>
@@ -499,7 +545,7 @@ function showConfirm(msg, onYes){
 const SAVE_KEY = 'ourteam_slots_v1';
 const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
-const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[]});
+const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -1118,9 +1164,20 @@ function openModeSheet(t){
       <button class="primary" onclick="openEcoSheet('${t.id}','live')">📡 실황 모드
         <small>데이터 기준 ${DATA_DATE} 선수단 · 한 시즌 집중 · 성장/노쇠 없음 · 원본 실제 선수 보호</small></button>
       <button onclick="openEcoSheet('${t.id}','sim')">🎮 시뮬레이션 모드
-        <small>다년 운영 · 선수 성장/노쇠 · 포스트시즌 후 다음 시즌</small></button>
-      <button onclick="closeSheet()">취소</button>
-    </div>`;
+        <small>다년 운영 · 선수 성장/노쇠 · 은퇴와 세대교체 · 포스트시즌 후 다음 시즌</small></button>
+    </div>
+    <div class="mode-guide">
+      <div class="mode-guide-title">두 모드의 차이</div>
+      <div class="mode-compare">
+        <div class="hd">구분</div><div class="hd">📡 실황</div><div class="hd">🎮 시뮬레이션</div>
+        <div class="key">진행 기간</div><div class="val">한 시즌 중심</div><div class="val">여러 시즌</div>
+        <div class="key">선수 변화</div><div class="val">성장·노쇠 없음</div><div class="val">성장·노쇠 적용</div>
+        <div class="key">실제 선수</div><div class="val">원본 선수 보호</div><div class="val">은퇴·세대교체</div>
+        <div class="key">추천 대상</div><div class="val">현재 전력 체험</div><div class="val">장기 구단 운영</div>
+      </div>
+      <div class="mode-note"><b>선택한 운영 모드는 해당 저장 슬롯에서 유지됩니다.</b><br>실황 로스터는 새 게임을 시작한 시점의 데이터 기준으로 고정됩니다.</div>
+    </div>
+    <button class="btn ghost" onclick="closeSheet()">취소</button>`;
   document.getElementById('mask').classList.add('on');
 }
 function openEcoSheet(teamId, mode){
@@ -1148,6 +1205,8 @@ function startWithMode(teamId, mode, eco){
   state.money = eco==='free' ? 0 : 100;   // 단위: 억
   state.bankrupt = false;
   state.year = 1;
+  state.gameControl = 'auto';
+  state.managerPlan = {attack:'balanced',bullpen:'normal'};
   state.startedAt = new Date().toISOString().slice(0,10).replaceAll('-','.');
   state.players = snapshotTeams();
   save();
@@ -1401,19 +1460,23 @@ function renderLineup(){
 
 /* ═══════════ 시뮬레이션 엔진 ═══════════ */
 function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
-function paResult(bat, batTid, pit, pitTid){
+function paResult(bat, batTid, pit, pitTid, tactic){
   const con=b(bat[4],bat,batTid,true), pow=b(bat[5],bat,batTid,true),
         spd=b(bat[6],bat,batTid,true), eye=b(bat[8],bat,batTid,true);
   const velo=bv(pit[4],pit,pitTid), ctrl=b(pit[5],pit,pitTid,false), brk=b(pit[6],pit,pitTid,false);
-  const kP  = clamp(.125 + (brk-72)*.004 + (velo-146)*.006 - (con-72)*.004 - (eye-70)*.002, .06, .34);
+  tactic = tactic || 'balanced';
+  const kAdj = tactic==='power' ? .022 : tactic==='small' ? -.012 : 0;
+  const hitAdj = tactic==='power' ? .008 : tactic==='small' ? .018 : 0;
+  const hrAdj = tactic==='power' ? .018 : tactic==='small' ? -.012 : 0;
+  const kP  = clamp(.125 + (brk-72)*.004 + (velo-146)*.006 - (con-72)*.004 - (eye-70)*.002 + kAdj, .05, .37);
   const bbP = clamp(.085 + (eye-70)*.003 - (ctrl-76)*.004, .03, .17);
   let r = Math.random();
   if(r < kP) return {t:'K'};
   r -= kP;
   if(r < bbP) return {t:'BB'};
-  const hitP = clamp(.365 + (con-72)*.005 - (brk-72)*.003 - (ctrl-76)*.002, .20, .42);
+  const hitP = clamp(.365 + (con-72)*.005 - (brk-72)*.003 - (ctrl-76)*.002 + hitAdj, .20, .44);
   if(Math.random() < hitP){
-    const hrP = clamp(.042 + (pow-70)*.0045 - (velo-146)*.002, .004, .16);
+    const hrP = clamp(.042 + (pow-70)*.0045 - (velo-146)*.002 + hrAdj, .004, .18);
     if(Math.random() < hrP) return {t:'HR'};
     const r2 = Math.random();
     const dbl = clamp(.19 + (pow-70)*.003, .12, .30);
@@ -1527,13 +1590,21 @@ function simGame(myId, oppId, mySp, oppSp){
     away:{order:awayLu.order, team:away, idx:0, pit:away.pit[oppSp], pitPa:0},
     home:{order:homeLu.order, team:home, idx:0, pit:home.pit[mySp], pitPa:0}
   };
+  const mgrDirect = state.gameControl==='direct';
+  const mgrPlan = state.managerPlan || {attack:'balanced',bullpen:'normal'};
+  const tacticFor = teamId => (mgrDirect && teamId===state.myTeam) ? mgrPlan.attack : 'balanced';
+  const bullpenFactorFor = teamId => {
+    if(!(mgrDirect && teamId===state.myTeam)) return 1;
+    return mgrPlan.bullpen==='quick' ? .78 : mgrPlan.bullpen==='late' ? 1.18 : 1;
+  };
   function pitcherFor(defSide){
     const s = st[defSide];
     const sta = s.pit[7];
     const role = s.pit[2];
-    const maxPa = role==='선발' ? Math.round(22 + (sta-70)*0.35)
-                : role==='불펜' ? Math.round(5 + (sta-45)*0.12)
-                : 99;   // 마무리는 끝까지
+    const baseMaxPa = role==='선발' ? Math.round(22 + (sta-70)*0.35)
+                    : role==='불펜' ? Math.round(5 + (sta-45)*0.12)
+                    : 99;
+    const maxPa = Math.max(3, Math.round(baseMaxPa * bullpenFactorFor(s.team.id)));   // 감독 교체 성향 반영
     if(s.pitPa >= maxPa){
       let next=null;
       const relievers = s.team.pit.filter(p=>p[2]==='불펜');
@@ -1564,7 +1635,21 @@ function simGame(myId, oppId, mySp, oppSp){
       const batter = atk.team.bat[bi];
       const pit = pitcherFor(defSide);
       st[defSide].pitPa++;
-      const res = paResult(batter, atk.team.id, pit, st[defSide].team.id);
+      const tactic = tacticFor(atk.team.id);
+      // 번트·기동 작전: 주자가 있고 2아웃 전이면 일부 타석에서 희생번트
+      if(tactic==='small' && outs<2 && bases.some(x=>x) && Math.random()<.22){
+        let moved=0;
+        for(let i=2;i>=0;i--){
+          if(!bases[i]) continue;
+          if(i===2){ runs++; moved++; bases[i]=null; }
+          else if(!bases[i+1]){ bases[i+1]=bases[i]; bases[i]=null; moved++; }
+        }
+        outs++;
+        ev.push({inn, half, text:`🎯 감독 작전: ${batter[0]} 희생번트 성공${moved?'! 주자 진루':''} (${outs}아웃)`, cls:'scoreev'});
+        atk.idx++;
+        continue;
+      }
+      const res = paResult(batter, atk.team.id, pit, st[defSide].team.id, tactic);
       if(atk.team.id === state.myTeam)
         ev.push({inn, half, text: chantFor(batter, atk.team), cls:'chant'});
       pitchLines(pit, st[defSide].team.id, res).forEach(t=>
@@ -1585,7 +1670,7 @@ function simGame(myId, oppId, mySp, oppSp){
           else if(bases[0]) bases[1]=bases[0];
           bases[0]=batter;
           text=`${batter[0]}, 볼넷 출루`; break;
-        case '1B': runnersAdv(1+(Math.random()<.25?1:0)); bases[0]=batter; text=`${batter[0]}, 안타!`; break;
+        case '1B': runnersAdv(1+(Math.random()<(tactic==='small'?.43:.25)?1:0)); bases[0]=batter; text=`${batter[0]}, 안타!`; break;
         case '2B': runnersAdv(2); bases[1]=batter; text=`${batter[0]}, 2루타!!`; break;
         case '3B': runnersAdv(3); bases[2]=batter; text=`${batter[0]}, 3루타!!!`; break;
         case 'HR':{
@@ -1746,6 +1831,24 @@ function finishDay(myResultText, otherResults){
   save();
 }
 
+/* ═══════════ 감독모드 1차 ═══════════ */
+function ensureManagerSettings(){
+  if(!state.gameControl) state.gameControl='auto';
+  if(!state.managerPlan) state.managerPlan={attack:'balanced',bullpen:'normal'};
+}
+function renderManagerSettings(){
+  ensureManagerSettings();
+  const direct = state.gameControl==='direct';
+  const a=document.getElementById('mgrAuto'), d=document.getElementById('mgrDirect'), plan=document.getElementById('managerPlan');
+  if(!a||!d||!plan) return;
+  a.classList.toggle('on',!direct); d.classList.toggle('on',direct); plan.style.display=direct?'':'none';
+  document.querySelectorAll('[data-mgr-attack]').forEach(b=>b.classList.toggle('on',b.dataset.mgrAttack===state.managerPlan.attack));
+  document.querySelectorAll('[data-mgr-bullpen]').forEach(b=>b.classList.toggle('on',b.dataset.mgrBullpen===state.managerPlan.bullpen));
+}
+function setManagerControl(v){ state.gameControl=v; save(); renderManagerSettings(); }
+function setManagerAttack(v){ ensureManagerSettings(); state.managerPlan.attack=v; save(); renderManagerSettings(); }
+function setManagerBullpen(v){ ensureManagerSettings(); state.managerPlan.bullpen=v; save(); renderManagerSettings(); }
+
 /* ═══════════ 경기 화면 ═══════════ */
 let spdSel='pa', gTimer=null, curGame=null;
 function renderGameSetup(){
@@ -1770,6 +1873,7 @@ function renderGameSetup(){
   }
   document.getElementById('seasonDone').style.display='none';
   document.getElementById('gameSetup').style.display='';
+  renderManagerSettings();
   const m = myMatchToday();
   const oppId = m.home===state.myTeam ? m.away : m.home;
   const opp = getTeam(oppId);
@@ -1781,7 +1885,8 @@ function renderGameSetup(){
     `<b>${state.season.day+1}차전 / 36경기</b> · ${rec.w}승 ${rec.l}패 ${rec.t}무${ecoOn()?' · 잔고 '+fmtMoney()+(state.eco==='normal'&&state.money<0?' ⚠️보정감소':''):''}<br>
      ${isHome?'🏠 홈':'✈️ 원정'} vs <b>${opp.name}</b><br>
      내 선발: <b>${mySp[0]}</b> (${pitOvr(mySp,my.id)}) — 라인업 탭에서 변경 가능<br>
-     상대 선발: ${oppSp[0]} (${pitOvr(oppSp,opp.id)})`;
+     상대 선발: ${oppSp[0]} (${pitOvr(oppSp,opp.id)})<br>
+     감독: <b>${state.gameControl==='direct'?'직접 감독':'자동 감독'}</b>${state.gameControl==='direct'?` · 공격 ${state.managerPlan.attack==='power'?'강공':state.managerPlan.attack==='small'?'번트·기동':'정공'} · 교체 ${state.managerPlan.bullpen==='quick'?'빠르게':state.managerPlan.bullpen==='late'?'길게':'보통'}`:''}`;
 }
 document.querySelectorAll('.speedbar button').forEach(btn=>{
   btn.onclick=()=>{
@@ -1883,9 +1988,23 @@ document.getElementById('newSeasonBtn').onclick = ()=>{
 /* ═══════════ 자금/경영 (v0.7) ═══════════ */
 function ecoOn(){ return state.eco==='normal' || state.eco==='hard'; }
 function fmtMoney(){ return (state.money<0?'-':'') + Math.abs(state.money).toFixed(1) + '억'; }
+function salaryKey(p, isBat){ return (isBat?'bat:':'pit:') + p[0]; }
+function salaryBonusOf(p, isBat){
+  if(!state.salaryAdjustments) state.salaryAdjustments = {};
+  return +(state.salaryAdjustments[salaryKey(p,isBat)] || 0);
+}
+function addSalaryRaise(p, isBat, amount){
+  if(!state.salaryAdjustments) state.salaryAdjustments = {};
+  const key = salaryKey(p,isBat);
+  state.salaryAdjustments[key] = +((state.salaryAdjustments[key]||0) + amount).toFixed(1);
+}
+function clearSalaryRaise(p, isBat){
+  if(state.salaryAdjustments) delete state.salaryAdjustments[salaryKey(p,isBat)];
+}
 function salaryOf(p, isBat){
   const ovr = isBat ? batOvr(p, state.myTeam) : pitOvr(p, state.myTeam);
-  return Math.max(0.5, Math.pow(Math.max(0,ovr-50)/10, 2.1)*0.9);   // OVR 기반 연봉(억, 고능력치일수록 급증)
+  const base = Math.max(0.5, Math.pow(Math.max(0,ovr-50)/10, 2.1)*0.9);
+  return base + salaryBonusOf(p,isBat);   // OVR 기본 연봉 + 협상으로 누적된 실제 인상분
 }
 function teamSalary(){
   const t = getTeam(state.myTeam);
@@ -2198,7 +2317,7 @@ function renderOffseason(t){
     if(dm.length){
       const pend = countPendingDemands();
       h += `<h2 class="sec" style="margin-top:14px">💵 연봉 협상 <small>우수 선수의 인상 요구</small></h2>
-        <div class="hint">수락(만족·연봉↑) / 거절(불만·능력치 소폭↓) / 재협상(성적 따라 확률로 인상폭 절반 합의). ${pend>0?`<b style="color:var(--amber)">미처리 ${pend}명 — 전부 처리해야 새 시즌 시작 가능</b>`:'<b style="color:#3FD99A">✅ 모두 처리 완료</b>'}</div>`;
+        <div class="hint">수락(실제 연봉↑) / 거절(불만·능력치 소폭↓) / 재협상(성적 따라 확률로 인상폭 절반 합의). ${pend>0?`<b style="color:var(--amber)">미처리 ${pend}명 — 전부 처리해야 새 시즌 시작 가능</b>`:'<b style="color:#3FD99A">✅ 모두 처리 완료</b>'}</div>`;
       dm.forEach((d,i)=>{
         const res = state.season.demandResults?.[i];
         const renegUsed = state.season.demandResults?.['reneg_used_'+i];
@@ -2557,6 +2676,7 @@ function proposeTrade(){
     return out;
   };
   const myOut = takeOut(myT, tradeMyPicks);
+  myOut.forEach(o=>clearSalaryRaise(o.player,o.kind==='bat'));
   const oppOut = takeOut(oppT, tradeOppPicks);
   // 서로 상대 팀에 추가 (원래 kind 유지)
   const putIn = (T, list)=>{
@@ -2818,6 +2938,7 @@ function doCut(kind, i){
   const arr = isBat?t.bat:t.pit;
   const p = arr[i];
   if(isLiveCorePlayer(state.myTeam,p,kind)){ showAlert('실황 모드의 원본 실제 선수는 방출할 수 없습니다.'); return; }
+  clearSalaryRaise(p,isBat);
   arr.splice(i,1);
   if(isBat) t.age.bat.splice(i,1); else t.age.pit.splice(i,1);
   state.lineups[state.myTeam]=null; state.rotOrder[state.myTeam]=null;
@@ -2913,8 +3034,10 @@ function buildSalaryDemands(){
 }
 function acceptDemand(i){
   const d = state.season.demands[i]; if(!d) return;
+  const t = getTeam(state.myTeam);
+  const p = (d.kind==='bat'?t.bat:t.pit)[d.idx];
+  if(p) addSalaryRaise(p, d.kind==='bat', d.raise);
   state.season.demandResults[i] = 'accept';
-  // 연봉 인상은 선수 능력치를 소폭 올려 동기부여 표현(간이) — 실제 연봉은 OVR기반 자동이므로 만족도만
   save(); renderFront();
 }
 function rejectDemand(i){
@@ -2956,8 +3079,11 @@ function renegoDemand(i){
   const ok = Math.random() < acceptChance;
   res['reneg_used_'+i] = true;
   if(ok){
-    // 절반만 인상하는 선에서 합의 — 만족(페널티 없음)
+    // 절반만 인상하는 선에서 합의 — 실제 다음 연봉 정산에 반영
     d.raise = +(d.raise*0.5).toFixed(1);
+    const t = getTeam(state.myTeam);
+    const p = (d.kind==='bat'?t.bat:t.pit)[d.idx];
+    if(p) addSalaryRaise(p, d.kind==='bat', d.raise);
     res[i] = 'renego_ok';
     showAlert(`재협상 성공!\n${d.name} 선수가 인상폭을 절반(+${d.raise}억)으로 조정하는 데 합의했습니다.`);
   }else{
