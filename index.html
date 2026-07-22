@@ -10,11 +10,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.22.8</title>
-<!-- v0.22.8 — 선수 카드 완전 불투명 처리, 시뮬레이션 오프시즌 내 팀 전 선수 방출 허용 -->
-<!-- v0.22.7 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
-<!-- v0.22.5 — 하단 메뉴 아이콘/글자를 홈 인디케이터 바로 위로 하단 정렬 -->
-<!-- v0.22.4 — visualViewport 기준 앱 높이 고정, 하단 메뉴 전체를 실제 화면 최하단에 배치 -->
+<title>우리팀을 만들자 v0.23.1</title>
+<!-- v0.23.1 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
+<!-- v0.24.0 — 장기 구단 운영 통합: 계약·FA·2군·만족도·구단주·구장·뉴스·기록실 -->
+<!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
+<!-- v0.24.0 — 하단 메뉴 아이콘/글자를 홈 인디케이터 바로 위로 하단 정렬 -->
+<!-- v0.24.0 — visualViewport 기준 앱 높이 고정, 하단 메뉴 전체를 실제 화면 최하단에 배치 -->
 <!-- v0.22.3 — html/body 배경을 내비게이션 색으로 고정, 테마 배경을 main 내부로 제한 -->
 <!-- v0.22.2 — 하단 내비게이션 화면 하단 고정, 빈 공간 제거 -->
 <!-- v0.22.1 — 포지션 엄격 배치, 5인 선발 로테이션, 선수 카드 경계선 제거, 화면 고정 레이아웃 -->
@@ -378,7 +379,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.22.8</span>
+    <span class="ver">v0.23.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -567,7 +568,7 @@ function showConfirm(msg, onYes){
 const SAVE_KEY = 'ourteam_slots_v1';
 const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
-const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}, health:{}});
+const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}, health:{}, retired:[], retirementNews:[], squadLevel:{}, faGames:{}, faSeasonGames:{}});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -766,18 +767,82 @@ function getTeam(id){
   return base;
 }
 
-/* ───────────── 오프시즌 성장/노쇠 (시뮬레이션 모드) ───────────── */
-function growVal(v, age, isVelo){
-  let d;
-  if(age<=23)      d = [0,1,1,2,2,3,4][Math.floor(Math.random()*7)];
-  else if(age<=26) d = [0,0,1,1,2,3][Math.floor(Math.random()*6)];
-  else if(age<=31) d = [-1,0,0,0,1,2][Math.floor(Math.random()*6)];
-  else if(age<=35) d = [-3,-2,-1,-1,0,1][Math.floor(Math.random()*6)];
-  else             d = [-5,-4,-3,-2,-1][Math.floor(Math.random()*5)];
-  if(isVelo) d = Math.round(d/2);
+/* ───────────── 성장 유형·전성기·쇠퇴·은퇴 (시뮬레이션 모드) ───────────── */
+function careerHash(name){
+  let h=2166136261;
+  for(let i=0;i<name.length;i++){ h^=name.charCodeAt(i); h=Math.imul(h,16777619); }
+  return Math.abs(h>>>0);
+}
+function careerTypeOf(p){
+  const types=['초고속 성장형','조숙형','보통형','만성형','대기만성형'];
+  return types[careerHash((p&&p[1])||(p&&p[0])||'선수')%types.length];
+}
+function careerWindow(p){
+  const type=careerTypeOf(p);
+  if(type==='초고속 성장형') return {growEnd:23,peakStart:24,peakEnd:28,decline:31};
+  if(type==='조숙형') return {growEnd:24,peakStart:25,peakEnd:29,decline:32};
+  if(type==='만성형') return {growEnd:28,peakStart:29,peakEnd:33,decline:36};
+  if(type==='대기만성형') return {growEnd:30,peakStart:31,peakEnd:35,decline:38};
+  return {growEnd:26,peakStart:27,peakEnd:31,decline:34};
+}
+function careerStageOf(p,age){
+  const w=careerWindow(p);
+  if(age<=w.growEnd) return '성장기';
+  if(age<=w.peakEnd) return '전성기';
+  if(age<w.decline) return '유지기';
+  if(age<39) return '쇠퇴기';
+  return '은퇴 검토';
+}
+function careerStageColor(stage){
+  return stage==='성장기'?'#8FD3FF':stage==='전성기'?'#FFD36A':stage==='유지기'?'#9ED69A':stage==='쇠퇴기'?'#E9A06F':'#D58A8A';
+}
+function growthDeltaFor(p,age,isVelo){
+  const stage=careerStageOf(p,age), type=careerTypeOf(p);
+  let pool;
+  if(stage==='성장기') pool= type==='대기만성형' ? [0,0,1,1,2,2] : [0,1,1,2,2,3,4];
+  else if(stage==='전성기') pool=[-1,0,0,0,1,1,2];
+  else if(stage==='유지기') pool=[-2,-1,0,0,0,1];
+  else if(stage==='쇠퇴기') pool=[-4,-3,-2,-1,-1,0];
+  else pool=[-6,-5,-4,-3,-2];
+  let d=pool[Math.floor(Math.random()*pool.length)];
+  if(type==='초고속 성장형' && stage==='성장기') d+=1;
+  if(type==='대기만성형' && age>=31 && age<=35 && d>0) d+=1;
+  if(isVelo) d=Math.round(d/2);
+  return d;
+}
+function growVal(v, age, isVelo, p){
+  const d=growthDeltaFor(p,age,isVelo);
   return Math.max(isVelo?128:30, Math.min(isVelo?160:99, v+d));
 }
 function offseasonGrowth(){ applyGrowthWithTraining([]); }
+function retirementChance(p,age,ovr){
+  if(age<35) return 0;
+  let c=age===35?.01:age===36?.03:age===37?.08:age===38?.16:age===39?.30:age===40?.48:.68;
+  if(ovr>=80)c*=.45; else if(ovr>=72)c*=.7; else if(ovr<60)c*=1.45;
+  if(careerTypeOf(p)==='대기만성형')c*=.75;
+  return Math.min(.92,c);
+}
+function processRetirements(){
+  if(state.mode!=='sim'||!state.players) return [];
+  const news=[];
+  if(!state.retired) state.retired=[];
+  Object.keys(state.players).forEach(id=>{
+    const t=state.players[id];
+    [['bat',true],['pit',false]].forEach(([kind,isBat])=>{
+      const arr=t[kind], ages=t.age[kind];
+      for(let i=arr.length-1;i>=0;i--){
+        const pl=arr[i], age=ages[i], ovr=isBat?batOvr(pl,id):pitOvr(pl,id);
+        if(Math.random()<retirementChance(pl,age,ovr)){
+          const rec={name:pl[0],real:pl[1],team:id,kind,age,ovr,year:state.year,type:careerTypeOf(pl)};
+          state.retired.push(rec); news.push(`${getTeam(id).name} ${pl[0]}(${age}세)`);
+          arr.splice(i,1); ages.splice(i,1);
+        }
+      }
+    });
+  });
+  state.retirementNews=news;
+  return news;
+}
 function raiseGrowthStat(p, isBat, k){
   if(!isBat && k===4) p[k]=Math.min(158,p[k]+1);
   else p[k]=Math.min(99,p[k]+1);
@@ -808,7 +873,7 @@ function applyGrowthWithTraining(trained){
     s.bat.forEach((p,i)=>{
       const age = s.age.bat[i];
       const focused = isMy && trained.includes('b'+i);
-      for(let k=4;k<=8;k++) p[k] = growVal(p[k], age, false);
+      for(let k=4;k<=8;k++) p[k] = growVal(p[k], age, false, p);
       if(focused) applyFocusedTraining(p,true);
       if(isMy) applyCoachGrowthBonus(p,true);
       if(focused) applyTrainingFacilityBonus(p,true);
@@ -817,8 +882,8 @@ function applyGrowthWithTraining(trained){
     s.pit.forEach((p,i)=>{
       const age = s.age.pit[i];
       const focused = isMy && trained.includes('p'+i);
-      p[4] = growVal(p[4], age, true);
-      for(let k=5;k<=7;k++) p[k] = growVal(p[k], age, false);
+      p[4] = growVal(p[4], age, true, p);
+      for(let k=5;k<=7;k++) p[k] = growVal(p[k], age, false, p);
       if(focused) applyFocusedTraining(p,false);
       if(isMy) applyCoachGrowthBonus(p,false);
       if(focused) applyTrainingFacilityBonus(p,false);
@@ -1173,7 +1238,8 @@ function renderRoster(tab){
     const ovr = tab==='bat' ? batOvr(p,t.id) : pitOvr(p,t.id);
     const isBat = tab==='bat';
     const age = t.age ? (isBat?t.age.bat[i]:t.age.pit[i]) : ageOf(p[1]);
-    const hand = (isBat ? `${p[3]}타` : `${p[3]}투 · ${p[2]}`) + ` · ${age}세`;
+    const stage=careerStageOf(p,age);
+    const hand = (isBat ? `${p[3]}타` : `${p[3]}투 · ${p[2]}`) + ` · ${age}세 · <span style="color:${careerStageColor(stage)}">${stage}</span>`;
     const f = flagOf(p, isBat);
     const bo = bonusOf(p, t.id, isBat);
     const ci = conditionInfo(t.id,isBat?'bat':'pit',p);
@@ -1222,11 +1288,11 @@ function openSheet(team, tab, idx){
   const age = team.age ? (isBat?team.age.bat[idx]:team.age.pit[idx]) : ageOf(p[1]);
   let statsHtml, meta;
   if(isBat){
-    meta = `${p[2]} · ${p[3]}타 · ${age}세 · OVR <b class="num">${batOvr(p,team.id)}</b> ${gradeBadge(batOvr(p,team.id))}`;
+    meta = `${p[2]} · ${p[3]}타 · ${age}세 · <span style="color:${careerStageColor(careerStageOf(p,age))}">${careerStageOf(p,age)}</span> · OVR <b class="num">${batOvr(p,team.id)}</b> ${gradeBadge(batOvr(p,team.id))}`;
     statsHtml = statRow2('컨택', p[4], p, team.id, true) + statRow2('파워', p[5], p, team.id, true)
       + statRow2('주루', p[6], p, team.id, true) + statRow2('수비', p[7], p, team.id, true) + statRow2('선구', p[8], p, team.id, true);
   }else{
-    meta = `${p[2]} · ${p[3]}투 · ${age}세 · OVR <b class="num">${pitOvr(p,team.id)}</b> ${gradeBadge(pitOvr(p,team.id))}`;
+    meta = `${p[2]} · ${p[3]}투 · ${age}세 · <span style="color:${careerStageColor(careerStageOf(p,age))}">${careerStageOf(p,age)}</span> · OVR <b class="num">${pitOvr(p,team.id)}</b> ${gradeBadge(pitOvr(p,team.id))}`;
     statsHtml = `<div class="stat"><div class="sl"><span>구속</span><span class="v">${bv(p[4],p,team.id)} km/h</span></div>
       <div class="bar"><i style="width:${Math.min(100,(bv(p[4],p,team.id)-125)*2.4)}%"></i></div></div>`
       + statRow2('제구', p[5], p, team.id, false) + statRow2('변화구', p[6], p, team.id, false) + statRow2('체력', p[7], p, team.id, false);
@@ -1249,7 +1315,7 @@ function openSheet(team, tab, idx){
   sheet.innerHTML = `
     <div class="top"><div class="pname">${p[0]}</div>
       <button class="close" onclick="closeSheet()">✕</button></div>
-    <div class="meta">${meta}</div>
+    <div class="meta">${meta}<br><span style="color:var(--dim)">성장 유형: ${careerTypeOf(p)}</span></div>
     <div class="reveal"><div class="lbl">MODEL PLAYER</div>
       실제 모델: <b>${p[1]}</b> (${team.real})<br>
       ${bonusLine}<br>
@@ -2364,8 +2430,8 @@ function salaryOf(p, isBat){
 function teamSalary(){
   const t = getTeam(state.myTeam);
   let s = 0;
-  t.bat.forEach(p=>s+=salaryOf(p,true));
-  t.pit.forEach(p=>s+=salaryOf(p,false));
+  t.bat.forEach(p=>{ const c=state.contracts?.['bat:'+p[0]]; s+=c?.salary||salaryOf(p,true); });
+  t.pit.forEach(p=>{ const c=state.contracts?.['pit:'+p[0]]; s+=c?.salary||salaryOf(p,false); });
   return s;
 }
 function updateDebtStatus(countGame=false){
@@ -2879,7 +2945,9 @@ function doOffseasonEnd(){
   if(state.mode==='sim'){
     // 훈련받은 선수는 성장 폭 보너스
     applyGrowthWithTraining(trained);
+    const retiredNow=processRetirements();
     state.year++;
+    if(retiredNow.length) setTimeout(()=>showAlert('은퇴 발표\n\n'+retiredNow.slice(0,12).join('\n')+(retiredNow.length>12?`\n외 ${retiredNow.length-12}명`:'')),120);
   }
   state.season = null; state.rot={}; state.spLast={};
   newSeason();
@@ -3834,6 +3902,282 @@ document.getElementById('rtabPlayer').onclick = ()=>{
   document.getElementById('rankPlayerWrap').style.display='';
   renderLeaderboard();
 };
+
+
+
+/* ═══════════ 1군·2군·FA 등록 경기 (v0.23.1) ═══════════ */
+const FIRST_TEAM_LIMIT=28, FA_SEASON_GAMES=24, FA_YEARS=7, FA_TOTAL_GAMES=FA_SEASON_GAMES*FA_YEARS;
+function squadKey(kind,p){ return kind+':'+(p?.[0]||''); }
+function ensureSquadState(){
+  if(!state.squadLevel) state.squadLevel={};
+  if(!state.faGames) state.faGames={};
+  if(!state.faSeasonGames) state.faSeasonGames={};
+  if(!state.players) return;
+  Object.keys(state.players).forEach(id=>{
+    if(!state.squadLevel[id]) state.squadLevel[id]={};
+    const t=state.players[id];
+    ['bat','pit'].forEach(kind=>t[kind].forEach(pl=>{
+      const k=squadKey(kind,pl);
+      if(!state.squadLevel[id][k]) state.squadLevel[id][k]='first';
+      if(!Number.isFinite(state.faGames[k])) state.faGames[k]=0;
+      if(!Number.isFinite(state.faSeasonGames[k])) state.faSeasonGames[k]=0;
+    }));
+  });
+}
+function squadLevelOf(teamId,kind,p){ ensureSquadState(); return state.squadLevel?.[teamId]?.[squadKey(kind,p)]||'first'; }
+function isFirstTeam(teamId,kind,p){ return squadLevelOf(teamId,kind,p)==='first'; }
+function firstTeamCount(teamId){
+  const t=getTeam(teamId); let n=0;
+  t.bat.forEach(p=>{if(isFirstTeam(teamId,'bat',p))n++;});
+  t.pit.forEach(p=>{if(isFirstTeam(teamId,'pit',p))n++;});
+  return n;
+}
+function firstTeamIndexes(teamId,kind){
+  const t=getTeam(teamId), arr=kind==='bat'?t.bat:t.pit;
+  return arr.map((p,i)=>isFirstTeam(teamId,kind,p)?i:-1).filter(i=>i>=0);
+}
+function faGamesOf(kind,p){ ensureSquadState(); return state.faGames[squadKey(kind,p)]||0; }
+function faRemaining(kind,p){ return Math.max(0,FA_TOTAL_GAMES-faGamesOf(kind,p)); }
+function addDailyFaRegistration(){
+  if(state.mode!=='sim'||!state.myTeam) return;
+  ensureSquadState(); const t=getTeam(state.myTeam);
+  ['bat','pit'].forEach(kind=>{
+    const arr=kind==='bat'?t.bat:t.pit;
+    arr.forEach(pl=>{
+      if(!isFirstTeam(state.myTeam,kind,pl)) return;
+      const k=squadKey(kind,pl), season=state.faSeasonGames[k]||0;
+      if(season>=FA_SEASON_GAMES) return;
+      state.faSeasonGames[k]=season+1;
+      state.faGames[k]=(state.faGames[k]||0)+1;
+    });
+  });
+}
+const _finishDayV231=finishDay;
+finishDay=function(myResultText,otherResults){ addDailyFaRegistration(); return _finishDayV231(myResultText,otherResults); };
+const _newSeasonV231=newSeason;
+newSeason=function(){
+  ensureSquadState(); state.faSeasonGames={};
+  const r=_newSeasonV231(); ensureSquadState(); return r;
+};
+function setSquadLevel(kind,idx,level){
+  ensureSquadState(); const t=getTeam(state.myTeam), arr=kind==='bat'?t.bat:t.pit, pl=arr[idx]; if(!pl)return;
+  if(level==='first'&&firstTeamCount(state.myTeam)>=FIRST_TEAM_LIMIT){showAlert('1군 등록 한도는 28명입니다. 먼저 다른 선수를 2군으로 내려야 합니다.');return;}
+  if(level==='second'){
+    const firstBat=firstTeamIndexes(state.myTeam,'bat').length, firstPit=firstTeamIndexes(state.myTeam,'pit').length;
+    if(kind==='bat'&&firstBat<=9){showAlert('경기를 위해 1군 타자 9명은 남겨야 합니다.');return;}
+    if(kind==='pit'&&firstPit<=5){showAlert('경기를 위해 1군 투수 5명은 남겨야 합니다.');return;}
+  }
+  state.squadLevel[state.myTeam][squadKey(kind,pl)]=level;
+  state.lineups[state.myTeam]=null; state.rotOrder[state.myTeam]=null; save(); renderFront();
+}
+function rosterManagementHtml(){
+  ensureSquadState(); const t=getTeam(state.myTeam), count=firstTeamCount(state.myTeam);
+  let h=`<h2 class="sec" style="margin-top:14px">👥 1군·2군 관리 <small>1군 ${count}/${FIRST_TEAM_LIMIT}</small></h2>
+  <div class="hint">1군 선수만 경기와 FA 등록 경기 누적에 포함됩니다. 2군 선수는 훈련과 성장만 진행합니다.</div>`;
+  ['bat','pit'].forEach(kind=>{
+    const arr=kind==='bat'?t.bat:t.pit;
+    h+=`<h2 class="sec" style="font-size:14px;margin-top:10px">${kind==='bat'?'타자':'투수'}</h2>`;
+    arr.forEach((pl,i)=>{
+      const lv=squadLevelOf(t.id,kind,pl), rem=faRemaining(kind,pl), age=t.age?.[kind]?.[i]||ageOf(pl[1]);
+      h+=`<div class="prow"><div class="pos">${kind==='bat'?pl[2]:(pl[2]==='선발'?'SP':pl[2]==='마무리'?'CL':'RP')}</div>
+      <div class="mid"><div class="nm">${pl[0]} <span class="boost" style="color:${lv==='first'?'#3FD99A':'#8FA396'}">${lv==='first'?'1군':'2군'}</span></div>
+      <div class="hand">${age}세 · FA까지 ${rem===0?'자격 충족':rem+'등록 경기'}</div></div>
+      <button class="${lv==='first'?'cutbtn':'signbtn'}" onclick="setSquadLevel('${kind}',${i},'${lv==='first'?'second':'first'}')">${lv==='first'?'2군':'1군'}</button></div>`;
+    });
+  });
+  return h;
+}
+const _renderFrontV231=renderFront;
+renderFront=function(){ _renderFrontV231(); const body=document.getElementById('frontBody'); if(body) body.insertAdjacentHTML('afterbegin',rosterManagementHtml()); };
+const _autoAssignV231=autoAssignLineup;
+autoAssignLineup=function(teamId){
+  const t=getTeam(teamId); if(teamId!==state.myTeam) return _autoAssignV231(teamId);
+  let pool=t.bat.map((p,i)=>({i,p,ovr:batOvr(p,teamId)})).filter(x=>isFirstTeam(teamId,'bat',x.p)&&!isInjured(teamId,'bat',x.p)).sort((a,b)=>b.ovr-a.ovr);
+  if(pool.length<9) pool=t.bat.map((p,i)=>({i,p,ovr:batOvr(p,teamId)})).filter(x=>isFirstTeam(teamId,'bat',x.p)).sort((a,b)=>b.ovr-a.ovr);
+  const used=new Set(), assign={};
+  BAT_POSITIONS.forEach(slot=>{if(slot==='DH')return; const pick=pool.find(x=>!used.has(x.i)&&x.p[2]===slot); if(pick){assign[slot]=pick.i;used.add(pick.i);}});
+  const dh=pool.find(x=>!used.has(x.i)); if(dh){assign.DH=dh.i;used.add(dh.i);} return assign;
+};
+const _benchBattersV231=benchBatters;
+benchBatters=function(teamId){ return _benchBattersV231(teamId).filter(i=>teamId!==state.myTeam||isFirstTeam(teamId,'bat',getTeam(teamId).bat[i])); };
+const _rotOrderOfV231=rotOrderOf;
+rotOrderOf=function(teamId){
+  if(teamId!==state.myTeam) return _rotOrderOfV231(teamId);
+  const t=getTeam(teamId), sp=spIdxList(t).filter(i=>isFirstTeam(teamId,'pit',t.pit[i]));
+  if(!state.rotOrder)state.rotOrder={}; let ro=Array.isArray(state.rotOrder[teamId])?state.rotOrder[teamId].filter(i=>sp.includes(i)):[];
+  const remain=sp.filter(i=>!ro.includes(i)).sort((a,b)=>pitOvr(t.pit[b],teamId)-pitOvr(t.pit[a],teamId)); ro=ro.concat(remain).slice(0,5); state.rotOrder[teamId]=ro; return ro;
+};
+ensureSquadState();
+
+
+/* ═══════════ 장기 구단 운영 통합 (v0.24.0) ═══════════ */
+function longKey(kind,p){ return kind+':'+(p?.[0]||''); }
+function ensureLongTermState(){
+  if(!state.contracts) state.contracts={};
+  if(!state.morale) state.morale={};
+  if(!state.owner) state.owner={trust:70,goal:null,lastResult:null};
+  if(!state.stadiumBiz) state.stadiumBiz={seats:12000,ticket:1.5,shop:1,parking:1,vip:0,dome:0};
+  if(!state.news) state.news=[];
+  if(!state.clubHistory) state.clubHistory=[];
+  if(!state.hallOfFame) state.hallOfFame=[];
+  if(!state.transactionHistory) state.transactionHistory=[];
+  if(!state.myTeam||!state.players) return;
+  const t=getTeam(state.myTeam);
+  ['bat','pit'].forEach(kind=>{
+    const arr=kind==='bat'?t.bat:t.pit;
+    arr.forEach(pl=>{
+      const k=longKey(kind,pl);
+      if(!state.contracts[k]) state.contracts[k]={salary:+salaryOf(pl,kind==='bat').toFixed(1),years:1,bonus:0,option:'없음'};
+      if(!Number.isFinite(state.morale[k])) state.morale[k]=70;
+    });
+  });
+  if(!state.owner.goal) state.owner.goal=makeOwnerGoal();
+}
+function makeOwnerGoal(){
+  const y=state.year||1, goals=[
+    {type:'wins',target:16+Math.min(4,Math.floor(y/4)),label:'정규시즌 '+(16+Math.min(4,Math.floor(y/4)))+'승 달성'},
+    {type:'rank',target:5,label:'정규시즌 5위 이상'},
+    {type:'money',target:0,label:'시즌 종료 시 흑자 유지'},
+    {type:'attendance',target:180000,label:'시즌 누적 관중 18만 명'}
+  ];
+  return goals[(y-1)%goals.length];
+}
+function playerMorale(kind,p){ensureLongTermState();return state.morale[longKey(kind,p)]??70;}
+function teamMood(){
+  ensureLongTermState(); const vals=Object.values(state.morale); if(!vals.length)return 70;
+  return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+}
+function moodLabel(v){return v>=85?'최상':v>=70?'좋음':v>=50?'보통':v>=30?'불안':'최악';}
+function contractOf(kind,p){ensureLongTermState();return state.contracts[longKey(kind,p)];}
+function ownerGoalProgress(){
+  ensureLongTermState(); const g=state.owner.goal, rec=state.season?.rec?.[state.myTeam]||{w:0,l:0,t:0};
+  if(g.type==='wins') return {value:rec.w,done:rec.w>=g.target,text:rec.w+'/'+g.target+'승'};
+  if(g.type==='rank'){
+    const rows=state.season?.rec?TEAMS.map(t=>({id:t.id,...state.season.rec[t.id]})).sort((a,b)=>((b.w/(b.w+b.l||1))-(a.w/(a.w+a.l||1)))):[];
+    const rank=Math.max(1,rows.findIndex(x=>x.id===state.myTeam)+1); return {value:rank,done:rank<=g.target,text:rank+'위'};
+  }
+  if(g.type==='money') return {value:state.money,done:!ecoOn()||state.money>=0,text:fmtMoney()};
+  const att=state.season?.attendanceTotal||0; return {value:att,done:att>=g.target,text:att.toLocaleString()+'명'};
+}
+function evaluateOwnerGoal(){
+  ensureLongTermState(); if(!state.owner.goal)return;
+  const p=ownerGoalProgress(), delta=p.done?10:-12;
+  state.owner.trust=Math.max(0,Math.min(100,(state.owner.trust||70)+delta));
+  state.owner.lastResult={year:state.year||1,label:state.owner.goal.label,done:p.done,progress:p.text};
+  pushClubNews(p.done?'구단주 목표 달성':'구단주 목표 실패',`${state.owner.goal.label} · ${p.text} · 신뢰도 ${delta>0?'+':''}${delta}`);
+  state.owner.goal=makeOwnerGoal();
+}
+function stadiumCapacity(){ensureLongTermState();return state.stadiumBiz.seats||12000;}
+function ticketDemandFactor(){ensureLongTermState();return Math.max(.55,1-(state.stadiumBiz.ticket-1.5)*.13);}
+function stadiumDailyIncome(){
+  if(!ecoOn()||!state.myTeam||!state.season)return;
+  ensureLongTermState(); const m=state.season.sched?.[state.season.day]; if(!m)return;
+  const home=m.find(x=>x.home===state.myTeam); if(!home)return;
+  const base=typeof estimateAttendance==='function'?estimateAttendance():8000;
+  const crowd=Math.max(1000,Math.min(stadiumCapacity(),Math.round(base*ticketDemandFactor())));
+  const b=state.stadiumBiz;
+  const gross=crowd*(b.ticket||1.5)/10000 + crowd*(.000012*(b.shop||1)+.000006*(b.parking||1)+.00001*(b.vip||0));
+  const upkeep=(stadiumCapacity()/12000)*.08+(b.shop+b.parking+b.vip+b.dome)*.018;
+  state.money+=(gross-upkeep); state.lastAttendance=crowd;
+  state.season.attendanceTotal=(state.season.attendanceTotal||0)+crowd;
+}
+function stadiumUpgradeCost(key){const b=state.stadiumBiz; if(key==='seats')return 8+(b.seats-12000)/2000*2;return 3+(b[key]||0)*3;}
+function upgradeStadium(key){
+  ensureLongTermState(); const c=stadiumUpgradeCost(key);
+  if(ecoOn()&&state.money<c){showAlert('자금이 부족합니다. 필요 '+c.toFixed(1)+'억');return;}
+  if(ecoOn())state.money-=c;
+  if(key==='seats')state.stadiumBiz.seats+=2000; else state.stadiumBiz[key]=(state.stadiumBiz[key]||0)+1;
+  save();renderFront();
+}
+function setTicketPrice(v){ensureLongTermState();state.stadiumBiz.ticket=Math.max(.5,Math.min(4,+v));save();renderFront();}
+function pushClubNews(title,body){
+  ensureLongTermState(); state.news.unshift({year:state.year||1,day:(state.season?.day||0)+1,title,body});
+  state.news=state.news.slice(0,80);
+}
+function randomClubEvent(){
+  if(state.mode!=='sim'||Math.random()>.08)return;
+  ensureLongTermState(); const mood=teamMood(), events=[
+    ['지역 팬 행사 성황','구단 인기와 선수단 분위기가 올랐습니다.',()=>{state.popularity=Math.min(100,(state.popularity||50)+2);Object.keys(state.morale).forEach(k=>state.morale[k]=Math.min(100,state.morale[k]+2));}],
+    ['시설 긴급 보수','예상하지 못한 보수 비용이 발생했습니다.',()=>{if(ecoOn())state.money-=.8;}],
+    ['신인 인터뷰 화제','젊은 선수의 인터뷰가 팬들에게 좋은 반응을 얻었습니다.',()=>{state.popularity=Math.min(100,(state.popularity||50)+1.5);}],
+    ['선수단 미팅',mood<50?'불안한 분위기를 다잡았습니다.':'좋은 팀 분위기를 확인했습니다.',()=>{Object.keys(state.morale).forEach(k=>state.morale[k]=Math.min(100,state.morale[k]+1));}]
+  ];
+  const e=events[Math.floor(Math.random()*events.length)];e[2]();pushClubNews(e[0],e[1]);
+}
+function updateMoraleDaily(){
+  if(state.mode!=='sim'||!state.myTeam)return;ensureLongTermState();
+  const t=getTeam(state.myTeam), won=(state.season?.last?.[0]||'').includes('승');
+  ['bat','pit'].forEach(kind=>{const arr=kind==='bat'?t.bat:t.pit;arr.forEach(pl=>{
+    const k=longKey(kind,pl); let d=won?.35:-.18;
+    if(!isFirstTeam(state.myTeam,kind,pl))d-=.12;
+    state.morale[k]=Math.max(0,Math.min(100,(state.morale[k]??70)+d));
+  });});
+}
+function seasonContractTick(){
+  ensureLongTermState(); const t=getTeam(state.myTeam);
+  ['bat','pit'].forEach(kind=>{const arr=kind==='bat'?t.bat:t.pit;arr.forEach(pl=>{const c=contractOf(kind,pl);c.years=Math.max(0,(c.years||1)-1);});});
+}
+function offerContract(kind,idx,years,salary,bonus,option){
+  ensureLongTermState();const t=getTeam(state.myTeam),p=(kind==='bat'?t.bat:t.pit)[idx];if(!p)return;
+  const current=contractOf(kind,p), demand=Math.max(current.salary,+(salaryOf(p,kind==='bat')*(1+(100-playerMorale(kind,p))/250)).toFixed(1));
+  salary=+salary;bonus=+bonus;years=+years;
+  const score=(salary/demand)*70+years*4+bonus*3+playerMorale(kind,p)*.15;
+  const accept=score>=85||Math.random()<Math.max(.05,(score-60)/40);
+  if(accept){state.contracts[longKey(kind,p)]={salary,years,bonus,option};if(ecoOn())state.money-=bonus;state.morale[longKey(kind,p)]=Math.min(100,playerMorale(kind,p)+5);pushClubNews('계약 연장',`${p[0]}와 ${years}년 계약에 합의했습니다.`);showAlert('계약에 합의했습니다.');}
+  else{state.morale[longKey(kind,p)]=Math.max(0,playerMorale(kind,p)-8);showAlert('선수가 제안을 거절했습니다.');}
+  save();closeSheet();renderFront();
+}
+function openContractSheet(kind,idx){
+  ensureLongTermState();const t=getTeam(state.myTeam),p=(kind==='bat'?t.bat:t.pit)[idx],c=contractOf(kind,p),rem=faRemaining(kind,p);
+  document.getElementById('sheet').innerHTML=`<div class="top"><div class="pname">${p[0]} 계약 협상</div><button class="close" onclick="closeSheet()">✕</button></div>
+  <div class="reveal"><div class="lbl">현재 계약</div>연봉 <b>${c.salary.toFixed(1)}억</b> · 잔여 ${c.years}년 · 만족도 ${Math.round(playerMorale(kind,p))}<br>FA까지 ${rem===0?'자격 충족':rem+'등록 경기'}</div>
+  <label class="hint">계약 기간 <select id="ctYears"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>년</label>
+  <label class="hint">연봉 <input id="ctSalary" type="number" step="0.1" value="${Math.max(c.salary,+salaryOf(p,kind==='bat').toFixed(1))}">억</label>
+  <label class="hint">계약금 <input id="ctBonus" type="number" step="0.1" value="0">억</label>
+  <label class="hint">옵션 <select id="ctOption"><option>없음</option><option>출전 보너스</option><option>성적 보너스</option><option>우승 보너스</option></select></label>
+  <button class="btn" onclick="offerContract('${kind}',${idx},ctYears.value,ctSalary.value,ctBonus.value,ctOption.value)">계약 제안</button>`;
+  document.getElementById('mask').classList.add('on');
+}
+function longTermPanel(){
+  ensureLongTermState();const g=state.owner.goal,pr=ownerGoalProgress(),b=state.stadiumBiz,last=state.owner.lastResult;
+  return `<h2 class="sec" style="margin-top:14px">🏢 장기 구단 운영</h2>
+  <div class="notice"><b>구단주 신뢰도 ${Math.round(state.owner.trust)}/100</b><br>목표: ${g.label} · 현재 ${pr.text} ${pr.done?'✅':''}${last?`<br><span style="color:var(--dim)">지난 평가: ${last.done?'달성':'실패'} · ${last.progress}</span>`:''}</div>
+  <div class="notice"><b>선수단 분위기 ${teamMood()}/100 · ${moodLabel(teamMood())}</b><br>출전 기회·연봉·팀 성적에 따라 재계약과 FA 의사가 달라집니다.</div>
+  <h2 class="sec" style="font-size:14px;margin-top:12px">🏟️ 구장 경영</h2>
+  <div class="hint">좌석 ${b.seats.toLocaleString()}석 · 입장료 ${b.ticket.toFixed(1)}만원 · 시즌 관중 ${(state.season?.attendanceTotal||0).toLocaleString()}명</div>
+  <div class="seg" style="margin-bottom:8px"><button onclick="setTicketPrice(${Math.max(.5,b.ticket-.2)})">입장료 −</button><button class="on">${b.ticket.toFixed(1)}만</button><button onclick="setTicketPrice(${Math.min(4,b.ticket+.2)})">입장료 +</button></div>
+  <div class="seg"><button onclick="upgradeStadium('seats')">좌석 확장</button><button onclick="upgradeStadium('shop')">팬숍 Lv.${b.shop}</button><button onclick="upgradeStadium('parking')">주차장 Lv.${b.parking}</button><button onclick="upgradeStadium('vip')">VIP Lv.${b.vip}</button></div>
+  <button class="btn" style="margin-top:10px" onclick="openHistoryRoom()">📖 구단 기록실·뉴스</button>`;
+}
+function contractListHtml(){
+  const t=getTeam(state.myTeam);let h='<h2 class="sec" style="margin-top:14px">📝 선수 계약</h2>';
+  ['bat','pit'].forEach(kind=>{(kind==='bat'?t.bat:t.pit).forEach((pl,i)=>{const c=contractOf(kind,pl),rem=faRemaining(kind,pl);h+=`<div class="prow" onclick="openContractSheet('${kind}',${i})" style="cursor:pointer"><div class="pos">${kind==='bat'?pl[2]:'P'}</div><div class="mid"><div class="nm">${pl[0]} <span style="font-size:11px;color:var(--dim)">만족 ${Math.round(playerMorale(kind,pl))}</span></div><div class="hand">${c.salary.toFixed(1)}억 · ${c.years}년 · FA ${rem===0?'자격':rem+'경기 남음'}</div></div><button class="signbtn">협상</button></div>`;});});return h;
+}
+function openHistoryRoom(){
+  ensureLongTermState(); const hist=state.clubHistory.slice().reverse(), news=state.news.slice(0,20), retired=state.retired||[];
+  document.getElementById('sheet').innerHTML=`<div class="top"><div class="pname">📖 구단 기록실</div><button class="close" onclick="closeSheet()">✕</button></div>
+  <div class="reveal"><div class="lbl">시즌 연혁</div>${hist.length?hist.map(x=>`${x.year}년차 · ${x.rank}위 · ${x.w}승 ${x.l}패 · 관중 ${x.attendance.toLocaleString()}명`).join('<br>'):'아직 완료된 시즌이 없습니다.'}</div>
+  <div class="reveal"><div class="lbl">은퇴 선수</div>${retired.length?retired.slice(-15).reverse().map(x=>`${x.name||x[0]||'선수'} ${x.age?x.age+'세':''}`).join('<br>'):'등록된 은퇴 선수가 없습니다.'}</div>
+  <div class="reveal"><div class="lbl">구단 뉴스</div>${news.length?news.map(x=>`<b>${x.title}</b> <span style="color:var(--dim)">${x.year}년 ${x.day}일</span><br>${x.body}`).join('<hr style="border:0;border-top:1px solid rgba(255,255,255,.08);margin:8px 0">'):'아직 뉴스가 없습니다.'}</div>`;
+  document.getElementById('mask').classList.add('on');
+}
+function snapshotSeasonHistory(){
+  if(!state.season?.rec||!seasonOver())return;
+  ensureLongTermState();const rows=TEAMS.map(t=>({id:t.id,...state.season.rec[t.id]})).sort((a,b)=>((b.w/(b.w+b.l||1))-(a.w/(a.w+a.l||1))));
+  const me=rows.find(x=>x.id===state.myTeam),rank=rows.findIndex(x=>x.id===state.myTeam)+1;
+  if(state.clubHistory.some(x=>x.year===(state.year||1)))return;
+  state.clubHistory.push({year:state.year||1,rank,w:me.w,l:me.l,t:me.t,attendance:state.season.attendanceTotal||0,money:state.money});
+  evaluateOwnerGoal(); seasonContractTick();
+}
+const _finishDayV240=finishDay;
+finishDay=function(myResultText,otherResults){stadiumDailyIncome();const r=_finishDayV240(myResultText,otherResults);updateMoraleDaily();randomClubEvent();snapshotSeasonHistory();save();return r;};
+const _newSeasonV240=newSeason;
+newSeason=function(){snapshotSeasonHistory();const r=_newSeasonV240();ensureLongTermState();state.owner.goal=state.owner.goal||makeOwnerGoal();save();return r;};
+const _openSheetV240=openSheet;
+openSheet=function(team,tab,idx){_openSheetV240(team,tab,idx);if(team.id===state.myTeam&&state.mode==='sim'){const p=(tab==='bat'?team.bat:team.pit)[idx],c=contractOf(tab,p),rem=faRemaining(tab,p);document.getElementById('sheet').insertAdjacentHTML('beforeend',`<div class="reveal"><div class="lbl">계약·FA</div>연봉 ${c.salary.toFixed(1)}억 · 잔여 ${c.years}년 · 만족도 ${Math.round(playerMorale(tab,p))}<br>FA까지 ${rem===0?'자격 충족':rem+'등록 경기'}</div><button class="btn" onclick="openContractSheet('${tab}',${idx})">계약 협상</button>`);}};
+const _renderFrontV240=renderFront;
+renderFront=function(){ensureLongTermState();_renderFrontV240();const body=document.getElementById('frontBody');if(body){body.insertAdjacentHTML('afterbegin',longTermPanel());body.insertAdjacentHTML('beforeend',contractListHtml());}};
+ensureLongTermState();
 
 /* ───────────── 시작 ───────────── */
 (function(){
