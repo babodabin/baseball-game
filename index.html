@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.21.8</title>
+<title>우리팀을 만들자 v0.21.9</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -366,7 +366,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.21.8</span>
+    <span class="ver">v0.21.9</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -383,7 +383,7 @@ body.theme-rain #rainLayer{display:block;
   <div id="slotStatus"></div>
   <div id="teamPicker" style="display:none">
     <div class="notice" style="margin-top:16px">
-      <b>새 구단 선택</b> (2026 로스터 기준) · 보정: 원래팀 <b>+3</b> · 올해 <b>+2</b> · 신규 <b>+1</b> · FA·타팀 레전드 제외.
+      <b>새 구단 선택</b> (2026 로스터 기준) · 보정: 원래팀 <b>+2</b> · 올해 <b>+1</b> · 신규 추가 보정 없음 · FA·타팀 레전드 제외.
     </div>
     <div class="team-grid" id="teamGrid"></div>
   </div>
@@ -612,9 +612,9 @@ function isLiveCorePlayer(teamId, p, kind){
   return LIVE_CORE_PLAYERS[teamId][kind].has(p[0]);
 }
 
-const BOOST_MY = 3;   // 내 구단 보정
-const BOOST_CUR = 2;  // 올해(2026) 시즌 보정
-const BOOST_NEW = 1;  // 신규 영입/신인 추가 보정
+const BOOST_MY = 2;   // 원래팀 소속 보정
+const BOOST_CUR = 1;  // 올해(2026) 시즌 보정
+const BOOST_NEW = 0;  // 신규 영입/신인 추가 보정 없음
 // FA 이적 선수('fa')는 모든 보정 제외
 
 /* ───────────── 나이 데이터 (2026 기준, 실제 모델 참고 추정) ───────────── */
@@ -766,6 +766,28 @@ function growVal(v, age, isVelo){
   return Math.max(isVelo?128:30, Math.min(isVelo?160:99, v+d));
 }
 function offseasonGrowth(){ applyGrowthWithTraining([]); }
+function raiseGrowthStat(p, isBat, k){
+  if(!isBat && k===4) p[k]=Math.min(158,p[k]+1);
+  else p[k]=Math.min(99,p[k]+1);
+}
+function applyFocusedTraining(p,isBat){
+  const pool = isBat ? [4,5,6,7,8] : [4,5,6,7];
+  const count = Math.random()<0.4 ? 2 : 1;  // 기본 1개, 40% 확률로 2개
+  for(let n=0;n<count && pool.length;n++){
+    const at=Math.floor(Math.random()*pool.length);
+    raiseGrowthStat(p,isBat,pool.splice(at,1)[0]);
+  }
+}
+function applyCoachGrowthBonus(p,isBat){
+  if(!state.staff || Math.random()>=0.35) return; // 전 선수 확정 +1 대신 35% 확률
+  if(isBat){
+    const map={contact:4,power:5,eye:8};
+    raiseGrowthStat(p,true,map[state.staff.batCoach]??4);
+  }else{
+    const map={control:5,breaking:6,stamina:7};
+    raiseGrowthStat(p,false,map[state.staff.pitCoach]??5);
+  }
+}
 function applyGrowthWithTraining(trained){
   if(!state.players) return;
   Object.keys(state.players).forEach(id=>{
@@ -773,31 +795,25 @@ function applyGrowthWithTraining(trained){
     const isMy = id===state.myTeam;
     s.bat.forEach((p,i)=>{
       const age = s.age.bat[i];
-      const boost = (isMy && trained.includes('b'+i)) ? 3 : 0;  // 훈련 보너스
-      for(let k=4;k<=8;k++){
-        p[k] = growVal(p[k], age, false);
-        if(boost) p[k] = Math.min(99, p[k] + Math.floor(Math.random()*boost)+1);
-        if(isMy && state.staff){ const c=state.staff.batCoach; if((c==='contact'&&k===4)||(c==='power'&&k===5)||(c==='eye'&&k===8)) p[k]=Math.min(99,p[k]+1); }
-      }
-      if(isMy) applyTrainingFacilityBonus(p,true);
+      const focused = isMy && trained.includes('b'+i);
+      for(let k=4;k<=8;k++) p[k] = growVal(p[k], age, false);
+      if(focused) applyFocusedTraining(p,true);
+      if(isMy) applyCoachGrowthBonus(p,true);
+      if(focused) applyTrainingFacilityBonus(p,true);
       s.age.bat[i]++;
     });
     s.pit.forEach((p,i)=>{
       const age = s.age.pit[i];
-      const boost = (isMy && trained.includes('p'+i)) ? 3 : 0;
+      const focused = isMy && trained.includes('p'+i);
       p[4] = growVal(p[4], age, true);
-      if(boost) p[4] = Math.min(158, p[4] + Math.floor(Math.random()*2));
-      for(let k=5;k<=7;k++){
-        p[k] = growVal(p[k], age, false);
-        if(boost) p[k] = Math.min(99, p[k] + Math.floor(Math.random()*boost)+1);
-        if(isMy && state.staff){ const c=state.staff.pitCoach; if((c==='control'&&k===5)||(c==='breaking'&&k===6)||(c==='stamina'&&k===7)) p[k]=Math.min(99,p[k]+1); }
-      }
-      if(isMy) applyTrainingFacilityBonus(p,false);
+      for(let k=5;k<=7;k++) p[k] = growVal(p[k], age, false);
+      if(focused) applyFocusedTraining(p,false);
+      if(isMy) applyCoachGrowthBonus(p,false);
+      if(focused) applyTrainingFacilityBonus(p,false);
       s.age.pit[i]++;
     });
   });
 }
-
 
 
 /* ───────────── 상태 (슬롯 3개) ───────────── */
@@ -986,13 +1002,13 @@ function bonusOf(p, teamId, isBat){
   const f = flagOf(p, isBat);
   if(f === 'fa') return 0;
   if(f === 'foreign' || f === 'asia') return foreignAdaptBonus(p,isBat);                     // FA 이적: 원래팀 떠남 → 보정 없음
-  if(f === 'legend'){                          // 레전드: 원래팀에 영입했을 때만 +3
+  if(f === 'legend'){                          // 레전드: 원래팀에 영입했을 때만 소속 보정
     const origin = p[isBat?10:9];             // 레전드 원래팀
     return (origin && origin === teamId) ? BOOST_MY : 0;
   }
-  let bo = BOOST_CUR;                          // 올해(현재시즌) 보정 +2 · 전 팀 공통
-  if(f === 'new') bo += BOOST_NEW;             // 신규 영입/신인 +1
-  // 원래팀 소속(=현재 팀에 그대로 남은) 선수 +3 — 모든 팀 공통(FA만 제외)
+  let bo = BOOST_CUR;                          // 올해(현재시즌) 보정 · 전 팀 공통
+  if(f === 'new') bo += BOOST_NEW;             // 현재는 신규 추가 보정 없음
+  // 원래팀 소속(=현재 팀에 그대로 남은) 선수 보정 — 모든 팀 공통(FA만 제외)
   let loyalty = BOOST_MY;
   // 내 구단이 파산 위기(경영 일반·잔고 마이너스)면 내 팀만 페널티
   if(typeof state!=='undefined' && state.eco==='normal' && state.money<0 && isMine(teamId)) loyalty = 1;
@@ -1108,7 +1124,7 @@ function statRow2(label, base, p, teamId, isBat){
     if(f==='legend'){ parts.push('원래팀+'+BOOST_MY); }
     else if(f!=='fa'){
       parts.push('올해+'+BOOST_CUR);
-      if(f==='new') parts.push('신규+'+BOOST_NEW);
+      if(f==='new' && BOOST_NEW>0) parts.push('신규+'+BOOST_NEW);
       const loyalty = (typeof state!=='undefined' && state.eco==='normal' && state.money<0 && isMine(teamId)) ? 1 : BOOST_MY;
       parts.push('원래팀+'+loyalty);
     }
@@ -1145,7 +1161,7 @@ function openSheet(team, tab, idx){
   }
   else{
     const parts = ['올해 시즌 +'+BOOST_CUR];
-    if(f==='new') parts.push('신규 영입 +'+BOOST_NEW);
+    if(f==='new' && BOOST_NEW>0) parts.push('신규 영입 +'+BOOST_NEW);
     const loyalty = (state.eco==='normal' && state.money<0 && isMine(team.id)) ? 1 : BOOST_MY;
     parts.push('원래팀 +'+loyalty);
     bonusLine = '<span class="boost">보정: '+parts.join(' · ')+'</span>';
@@ -1950,7 +1966,7 @@ function setManagerBullpen(v){ ensureManagerSettings(); state.managerPlan.bullpe
 
 /* ═══════════ 구단 시설 시스템 (v0.21.8) ═══════════ */
 const FACILITY_INFO = {
-  training:{name:'🏋️ 훈련장',desc:'오프시즌 성장 보너스 확률 상승',cost:[0,20,40]},
+  training:{name:'🏋️ 훈련장',desc:'집중 훈련 선수의 추가 성장 확률 상승',cost:[0,20,40]},
   analytics:{name:'📊 분석실',desc:'경기 중 공격·투수 운영 보정',cost:[0,18,36]},
   stadium:{name:'🏟️ 구장 편의시설',desc:'홈 예상 관중과 수입 증가',cost:[0,25,50]},
   scouting:{name:'🛰️ 스카우트 센터',desc:'신인 후보 증가·정보 오차 감소',cost:[0,22,44]}
@@ -1976,7 +1992,7 @@ function upgradeFacility(k){
 }
 function facilityPanel(){
   ensureFacilities();
-  let h=`<div class="notice" style="margin-top:12px"><b>🏗️ 구단 시설</b><br>최대 Lv.3 · 업그레이드 효과는 즉시 적용되며 훈련장은 다음 오프시즌 성장부터 적용됩니다.</div>`;
+  let h=`<div class="notice" style="margin-top:12px"><b>🏗️ 구단 시설</b><br>최대 Lv.3 · 훈련장은 집중 훈련 선수에게만 적용되며 Lv.2/3에서 추가 +1 확률이 30%/60%입니다.</div>`;
   Object.entries(FACILITY_INFO).forEach(([k,f])=>{
     const lv=facilityLevel(k), max=lv>=3, cost=facilityCost(k);
     h+=`<div class="prow" style="cursor:default"><div class="mid"><div class="nm">${f.name} <span class="boost">Lv.${lv}</span></div><div class="hand">${f.desc}</div></div>`+
@@ -1985,9 +2001,11 @@ function facilityPanel(){
   return h;
 }
 function applyTrainingFacilityBonus(p,isBat){
-  const lv=facilityLevel('training'); if(lv<=1 || Math.random()>=0.35*(lv-1)) return;
-  if(isBat){ const k=4+Math.floor(Math.random()*5); p[k]=Math.min(99,p[k]+1); }
-  else{ const k=5+Math.floor(Math.random()*3); p[k]=Math.min(99,p[k]+1); }
+  const lv=facilityLevel('training');
+  const chance=lv===2?0.30:lv===3?0.60:0;
+  if(!chance || Math.random()>=chance) return;
+  const pool=isBat?[4,5,6,7,8]:[4,5,6,7];
+  raiseGrowthStat(p,isBat,pool[Math.floor(Math.random()*pool.length)]);
 }
 
 /* ═══════════ 감독·코치 시스템 (v0.21.5) ═══════════ */
@@ -3231,7 +3249,7 @@ function openTrainSheet(key){
     <div class="reveal"><div class="lbl">훈련 배정</div>
       ${already? '✅ 이미 훈련 배정된 선수입니다.' :
         `이 선수를 집중 훈련시켜 다음 시즌 성장 확률을 높입니다.<br>
-         나이 ${age}세 → 성장 기대 효과: <b>${effect}</b><br>
+         나이 ${age}세 → 기본 성장 기대: <b>${effect}</b><br>집중 훈련 효과: <b>능력치 1개 +1, 40% 확률로 1개 추가</b><br>훈련장 Lv.2/3은 추가 +1 확률 30%/60%<br>
          ${ecoOn()? '훈련 비용 <b>5억</b> (현재 잔고 '+fmtMoney()+')':'비용 없음'}<br>
          현재 배정 ${(state.season.trained||[]).length}/3명`}</div>
     ${playerStatsHtml(p, isBat, t.id)}
