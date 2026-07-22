@@ -10,7 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.22.7</title>
+<title>우리팀을 만들자 v0.22.8</title>
+<!-- v0.22.8 — 선수 카드 완전 불투명 처리, 시뮬레이션 오프시즌 내 팀 전 선수 방출 허용 -->
 <!-- v0.22.7 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
 <!-- v0.22.5 — 하단 메뉴 아이콘/글자를 홈 인디케이터 바로 위로 하단 정렬 -->
 <!-- v0.22.4 — visualViewport 기준 앱 높이 고정, 하단 메뉴 전체를 실제 화면 최하단에 배치 -->
@@ -99,7 +100,7 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
 .plist{display:flex;flex-direction:column;gap:8px}
 .prow{
   display:flex;align-items:center;gap:10px;
-  background:var(--panel);border:none;border-radius:11px;
+  background:#1A261E;border:none;border-radius:11px;
   padding:11px 12px;cursor:pointer;
 }
 .prow:active{background:var(--panel2)}
@@ -210,7 +211,7 @@ nav button.lock{opacity:.38}
 
 /* ── 라인업 ── */
 .lrow.sel{outline:3px solid var(--amber);background:rgba(240,180,60,.18)!important;transform:scale(1.01)}
-.lrow{display:flex;align-items:center;gap:10px;background:var(--panel);border:none;
+.lrow{display:flex;align-items:center;gap:10px;background:#1A261E;border:none;
   border-radius:11px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
 .lrow.selDUMMY{border-color:var(--amber);background:var(--panel2)}
 .lrow .ord{width:26px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:var(--amber);text-align:center}
@@ -377,7 +378,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.22.7</span>
+    <span class="ver">v0.22.8</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -2667,9 +2668,10 @@ function playerRows(t, isBat){
     const ovr = isBat ? batOvr(p,t.id) : pitOvr(p,t.id);
     const sal = salaryOf(p, isBat);
     const age = t.age ? (isBat?t.age.bat[i]:t.age.pit[i]) : ageOf(p[1]);
-    const isStarter = isBat ? i<9 : (p[2]==='선발'||p[2]==='마무리');
     const liveProtected = isLiveCorePlayer(t.id, p, isBat?'bat':'pit');
-    const canCut = isOffseason() && !isStarter && !liveProtected;   // 실황 원본 선수는 방출 불가
+    // 시뮬레이션에서는 현재 내 팀 선수라면 주전/후보 구분 없이 방출 가능.
+    // 실황 모드의 최초 실제 선수만 보호한다.
+    const canCut = isOffseason() && !liveProtected;
     html += `<div class="prow" ${canCut?`style="cursor:pointer" data-cutrow="${isBat?'bat':'pit'}" data-cri="${i}"`:'style="cursor:default"'}>
       <div class="pos">${isBat?p[2]:(p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP')}</div>
       <div class="mid"><div class="nm">${p[0]} ${liveProtected?'<span class="boost">🔒 실황 보호</span>':''}${foreignFlag(p,isBat)?'<span class="boost"> 🌍 외국인</span>':''} <span style="font-size:11px;color:var(--dim)">${age}세</span></div>
@@ -2812,7 +2814,7 @@ function renderOffseason(t){
     h += `</div>`;
   }
   h += `<h2 class="sec" style="margin-top:16px">선수단 · 방출</h2>
-    <div class="hint">비주전 선수만 방출할 수 있습니다. 방출하면 다음 시즌부터 연봉이 빠집니다.</div>
+    <div class="hint">시뮬레이션에서는 내 팀의 주전·후보 선수를 모두 방출할 수 있습니다. 방출하면 다음 시즌부터 연봉이 빠집니다.</div>
     <h2 class="sec" style="margin-top:10px;font-size:14px">타자</h2>${playerRows(t,true)}
     <h2 class="sec" style="margin-top:10px;font-size:14px">투수</h2>${playerRows(t,false)}
     <div style="height:20px"></div>`;
