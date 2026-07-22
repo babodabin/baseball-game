@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>우리팀을 만들자 v0.20.1</title>
+<title>우리팀을 만들자 v0.20.2</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -339,7 +339,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.20.1</span>
+    <span class="ver">v0.20.2</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -543,6 +543,18 @@ const TEAMS = [
  bat:[['송성운','송성문','3B','좌',80,78,66,74,74],['이주혁','이주형','CF','좌',74,66,74,74,66],['브룩즈','트렌튼 브룩스','1B','좌',70,74,50,64,60,'new'],['김건히','김건희','C','우',66,74,45,68,58],['최주완','최주환','DH','좌',66,68,45,62,64],['임지엽','임지열','RF','우',64,72,58,62,56],['박수존','박수종','LF','우',72,44,76,72,64],['김태신','김태진','2B','좌',66,44,64,70,60],['어준석','어준서','SS','좌',62,40,72,74,58]],
  pit:[['안우신','안우진','선발','우',155,78,88,80],['데헤이수즈','엔마누엘 데 헤이수스','선발','좌',149,74,80,76],['요키쉬','에릭 요키시','선발','좌',144,80,76,74],['하영빈','하영민','선발','우',144,74,72,72],['가나쿠부','가나쿠보 유토 (아시아쿼터)','선발','우',143,72,70,66,'new'],['주승욱','주승우','마무리','우',146,72,72,58]]}
 ];
+
+/* ───────────── 실황 모드 원본 선수 보호 명단 ─────────────
+   각 구단의 최초 TEAMS 데이터에 등록된 선수만 보호한다.
+   이후 영입한 FA·레전드·신인·자동 생성 선수는 보호 대상이 아니다. */
+const LIVE_CORE_PLAYERS = Object.fromEntries(TEAMS.map(t=>[t.id,{
+  bat:new Set(t.bat.map(p=>p[0])),
+  pit:new Set(t.pit.map(p=>p[0]))
+}]));
+function isLiveCorePlayer(teamId, p, kind){
+  if(state.mode!=='live' || !p || !LIVE_CORE_PLAYERS[teamId]) return false;
+  return LIVE_CORE_PLAYERS[teamId][kind].has(p[0]);
+}
 
 const BOOST_MY = 3;   // 내 구단 보정
 const BOOST_CUR = 2;  // 올해(2026) 시즌 보정
@@ -1104,7 +1116,7 @@ function openModeSheet(t){
     <div class="meta">${t.real} · 원래팀 소속 선수 보정 +${BOOST_MY}</div>
     <div class="mode-btns">
       <button class="primary" onclick="openEcoSheet('${t.id}','live')">📡 실황 모드
-        <small>데이터 기준 ${DATA_DATE} 선수단 · 한 시즌 집중 · 성장/노쇠 없음</small></button>
+        <small>데이터 기준 ${DATA_DATE} 선수단 · 한 시즌 집중 · 성장/노쇠 없음 · 원본 실제 선수 보호</small></button>
       <button onclick="openEcoSheet('${t.id}','sim')">🎮 시뮬레이션 모드
         <small>다년 운영 · 선수 성장/노쇠 · 포스트시즌 후 다음 시즌</small></button>
       <button onclick="closeSheet()">취소</button>
@@ -2130,11 +2142,12 @@ function playerRows(t, isBat){
     const sal = salaryOf(p, isBat);
     const age = t.age ? (isBat?t.age.bat[i]:t.age.pit[i]) : ageOf(p[1]);
     const isStarter = isBat ? i<9 : (p[2]==='선발'||p[2]==='마무리');
-    const canCut = isOffseason() && !isStarter;   // 오프시즌에 비주전만 방출 가능
+    const liveProtected = isLiveCorePlayer(t.id, p, isBat?'bat':'pit');
+    const canCut = isOffseason() && !isStarter && !liveProtected;   // 실황 원본 선수는 방출 불가
     html += `<div class="prow" ${canCut?`style="cursor:pointer" data-cutrow="${isBat?'bat':'pit'}" data-cri="${i}"`:'style="cursor:default"'}>
       <div class="pos">${isBat?p[2]:(p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP')}</div>
-      <div class="mid"><div class="nm">${p[0]} <span style="font-size:11px;color:var(--dim)">${age}세</span></div>
-        <div class="hand">OVR ${ovr} · 연봉 ${sal.toFixed(1)}억</div></div>
+      <div class="mid"><div class="nm">${p[0]} ${liveProtected?'<span class="boost">🔒 실황 보호</span>':''} <span style="font-size:11px;color:var(--dim)">${age}세</span></div>
+        <div class="hand">OVR ${ovr} · 연봉 ${sal.toFixed(1)}억${liveProtected?' · 방출/FA/트레이드 제외':''}</div></div>
       ${canCut? `<button class="cutbtn" data-cut="${isBat?'bat':'pit'}" data-ci="${i}">방출</button>`
               : `<div class="ovr num" style="font-size:15px">${sal.toFixed(1)}</div>`}</div>`;
   });
@@ -2169,7 +2182,7 @@ function renderOffseason(t){
   buildOffseasonMarket();
   const m = state.season.market;
   let h = `<div class="notice" style="border-color:var(--amber)"><b>⚾ 오프시즌 ${state.mode==='sim'?state.year+'년차':''}</b><br>
-    FA 영입·신인 지명·방출·훈련을 진행하고, 끝나면 아래 버튼으로 다음 시즌을 시작합니다.</div>`;
+    FA 영입·신인 지명·방출·훈련을 진행하고, 끝나면 아래 버튼으로 다음 시즌을 시작합니다.${state.mode==='live'?'<br>🔒 최초 실제 선수는 실황 보호 대상으로 유지됩니다.':''}</div>`;
   // ── 필수 체크리스트 + 새 시즌 시작 (상단 고정) ──
   const cl = offseasonChecklist();
   const nextLabel = state.mode==='sim'?(state.year+1)+'년차 시즌 시작':'새 시즌 시작';
@@ -2428,9 +2441,10 @@ function tradeColumns(){
       const ov = kind==='bat'?batOvr(p,teamId):pitOvr(p,teamId);
       const age = kind==='bat'? t.age.bat[i] : t.age.pit[i];
       const on = has(kind,i);
-      s += `<div class="prow" style="cursor:pointer;${on?'border-color:var(--amber);background:#23361F':''}" onclick="pickTrade('${which}','${kind}',${i})">
+      const liveProtected = isLiveCorePlayer(teamId,p,kind);
+      s += `<div class="prow" style="cursor:${liveProtected?'default':'pointer'};${liveProtected?'opacity:.58;':''}${on?'border-color:var(--amber);background:#23361F':''}" ${liveProtected?'':`onclick="pickTrade('${which}','${kind}',${i})"`}>
         <div class="pos">${kind==='bat'?p[2]:(p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP')}</div>
-        <div class="mid"><div class="nm">${p[0]} ${gradeBadge(ov)} <span style="font-size:11px;color:var(--dim)">${age}세</span></div><div class="hand">OVR ${ov}</div></div>
+        <div class="mid"><div class="nm">${p[0]} ${gradeBadge(ov)} ${liveProtected?'<span class="boost">🔒 보호</span>':''} <span style="font-size:11px;color:var(--dim)">${age}세</span></div><div class="hand">OVR ${ov}${liveProtected?' · 실황 원본 선수':''}</div></div>
         ${on?'<div class="ovr num" style="font-size:14px;color:var(--amber)">✓</div>':''}</div>`;
     });
     return s;
@@ -2459,6 +2473,10 @@ function pickName(which, x){
   return p? p[0] : '?';
 }
 function pickTrade(which, kind, idx){
+  const teamId = which==='my'?state.myTeam:tradeOppId;
+  const t = getTeam(teamId);
+  const p = (kind==='bat'?t.bat:t.pit)[idx];
+  if(isLiveCorePlayer(teamId,p,kind)){ showAlert('실황 모드의 원본 실제 선수는 트레이드할 수 없습니다.'); return; }
   const picks = which==='my'? tradeMyPicks : tradeOppPicks;
   const at = picks.findIndex(x=>x.kind===kind && x.idx===idx);
   if(at>=0) picks.splice(at,1);        // 재터치 → 해제
@@ -2579,12 +2597,12 @@ function buildOffseasonMarket(){
     const s = state.players[id];
     s.bat.forEach((p,i)=>{
       const age=s.age.bat[i], ovr=batOvr(p,id);
-      if(age>=30 && ovr>=68 && Math.random()<0.14)
+      if(!isLiveCorePlayer(id,p,'bat') && age>=30 && ovr>=68 && Math.random()<0.14)
         market.fa.push({from:id, kind:'bat', data:[...p], age, ovr});
     });
     s.pit.forEach((p,i)=>{
       const age=s.age.pit[i], ovr=pitOvr(p,id);
-      if(age>=30 && ovr>=68 && Math.random()<0.14)
+      if(!isLiveCorePlayer(id,p,'pit') && age>=30 && ovr>=68 && Math.random()<0.14)
         market.fa.push({from:id, kind:'pit', data:[...p], age, ovr});
     });
   });
@@ -2777,6 +2795,7 @@ function doTrain(key){
 function openCutSheet(isBat, i){
   const t = getTeam(state.myTeam);
   const p = (isBat?t.bat:t.pit)[i];
+  if(isLiveCorePlayer(state.myTeam,p,isBat?'bat':'pit')){ showAlert('실황 모드의 원본 실제 선수는 방출할 수 없습니다.'); return; }
   const ovr = isBat?batOvr(p,t.id):pitOvr(p,t.id);
   const age = isBat?t.age.bat[i]:t.age.pit[i];
   const sheet = document.getElementById('sheet');
@@ -2797,6 +2816,8 @@ function doCut(kind, i){
   const isBat = kind==='bat';
   const t = state.players[state.myTeam];
   const arr = isBat?t.bat:t.pit;
+  const p = arr[i];
+  if(isLiveCorePlayer(state.myTeam,p,kind)){ showAlert('실황 모드의 원본 실제 선수는 방출할 수 없습니다.'); return; }
   arr.splice(i,1);
   if(isBat) t.age.bat.splice(i,1); else t.age.pit.splice(i,1);
   state.lineups[state.myTeam]=null; state.rotOrder[state.myTeam]=null;
