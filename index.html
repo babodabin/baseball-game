@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.21.7</title>
+<title>우리팀을 만들자 v0.21.8</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -21,15 +21,14 @@
   --red:#E4573D;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{width:100%;height:100%;min-height:100%;overflow:hidden;background:#0A130D;color-scheme:dark}
+html,body{width:100%;height:100%;min-height:100%;overflow:hidden;background:#0A130D;color-scheme:dark}
 body{
-  position:fixed;inset:0;width:100%;height:100vh;height:100dvh;min-height:100%;overflow:hidden;
   background:var(--bg); color:var(--chalk);
   font-family:'IBM Plex Sans KR',sans-serif; font-size:15px;
   display:flex; flex-direction:column;
   overscroll-behavior:none;
 }
-main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+main{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .num{font-family:'IBM Plex Mono',monospace}
 
 /* ── 전광판 헤더 ── */
@@ -176,17 +175,9 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
 
 /* ── 하단 내비 ── */
 nav{
-  flex:none;z-index:30;position:relative;
+  flex:0 0 auto;z-index:30;
   background:#0A130D;border-top:1px solid var(--line);
-  display:flex;
-  /* iOS 파일 미리보기는 웹 문서 아래에 별도 캔버스를 남길 수 있다.
-     배경 상자를 아래로 연장하되 메뉴 위치는 유지한다. */
-  padding-bottom:calc(env(safe-area-inset-bottom) + 180px);
-  margin-bottom:-180px;
-}
-nav::after{
-  content:'';position:absolute;left:0;right:0;top:100%;height:240px;
-  background:#0A130D;pointer-events:none;
+  display:flex;padding-bottom:env(safe-area-inset-bottom);
 }
 nav button{
   flex:1;background:none;border:none;color:var(--dim);
@@ -375,7 +366,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.21.7</span>
+    <span class="ver">v0.21.8</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -564,7 +555,7 @@ function showConfirm(msg, onYes){
 const SAVE_KEY = 'ourteam_slots_v1';
 const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
-const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}});
+const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -788,6 +779,7 @@ function applyGrowthWithTraining(trained){
         if(boost) p[k] = Math.min(99, p[k] + Math.floor(Math.random()*boost)+1);
         if(isMy && state.staff){ const c=state.staff.batCoach; if((c==='contact'&&k===4)||(c==='power'&&k===5)||(c==='eye'&&k===8)) p[k]=Math.min(99,p[k]+1); }
       }
+      if(isMy) applyTrainingFacilityBonus(p,true);
       s.age.bat[i]++;
     });
     s.pit.forEach((p,i)=>{
@@ -800,6 +792,7 @@ function applyGrowthWithTraining(trained){
         if(boost) p[k] = Math.min(99, p[k] + Math.floor(Math.random()*boost)+1);
         if(isMy && state.staff){ const c=state.staff.pitCoach; if((c==='control'&&k===5)||(c==='breaking'&&k===6)||(c==='stamina'&&k===7)) p[k]=Math.min(99,p[k]+1); }
       }
+      if(isMy) applyTrainingFacilityBonus(p,false);
       s.age.pit[i]++;
     });
   });
@@ -1955,6 +1948,48 @@ function setManagerBullpen(v){ ensureManagerSettings(); state.managerPlan.bullpe
 
 
 
+/* ═══════════ 구단 시설 시스템 (v0.21.8) ═══════════ */
+const FACILITY_INFO = {
+  training:{name:'🏋️ 훈련장',desc:'오프시즌 성장 보너스 확률 상승',cost:[0,20,40]},
+  analytics:{name:'📊 분석실',desc:'경기 중 공격·투수 운영 보정',cost:[0,18,36]},
+  stadium:{name:'🏟️ 구장 편의시설',desc:'홈 예상 관중과 수입 증가',cost:[0,25,50]},
+  scouting:{name:'🛰️ 스카우트 센터',desc:'신인 후보 증가·정보 오차 감소',cost:[0,22,44]}
+};
+function ensureFacilities(){
+  if(!state.facilities) state.facilities={training:1,analytics:1,stadium:1,scouting:1};
+  Object.keys(FACILITY_INFO).forEach(k=>{
+    let v=+state.facilities[k]; if(!Number.isFinite(v)) v=1;
+    state.facilities[k]=Math.max(1,Math.min(3,v));
+  });
+}
+function facilityLevel(k){ ensureFacilities(); return state.facilities[k]||1; }
+function facilityCost(k){ const lv=facilityLevel(k); return lv>=3?0:FACILITY_INFO[k].cost[lv]; }
+function upgradeFacility(k){
+  ensureFacilities(); const f=FACILITY_INFO[k]; if(!f) return;
+  const lv=facilityLevel(k); if(lv>=3){ showAlert('이미 최고 수준의 시설입니다.'); return; }
+  const cost=facilityCost(k);
+  if(ecoOn() && state.money<cost){ showAlert(`${f.name} 업그레이드 비용 ${cost}억이 부족합니다.`); return; }
+  showConfirm(`${f.name}을(를) Lv.${lv+1}로 확장할까요?${ecoOn()?`\n비용 ${cost}억 · 현재 잔고 ${fmtMoney()}`:'\n자유 모드에서는 비용이 들지 않습니다.'}`,()=>{
+    if(ecoOn()) state.money-=cost;
+    state.facilities[k]=lv+1; save(); refreshHeader(); renderFront();
+  });
+}
+function facilityPanel(){
+  ensureFacilities();
+  let h=`<div class="notice" style="margin-top:12px"><b>🏗️ 구단 시설</b><br>최대 Lv.3 · 업그레이드 효과는 즉시 적용되며 훈련장은 다음 오프시즌 성장부터 적용됩니다.</div>`;
+  Object.entries(FACILITY_INFO).forEach(([k,f])=>{
+    const lv=facilityLevel(k), max=lv>=3, cost=facilityCost(k);
+    h+=`<div class="prow" style="cursor:default"><div class="mid"><div class="nm">${f.name} <span class="boost">Lv.${lv}</span></div><div class="hand">${f.desc}</div></div>`+
+      (max?`<span class="boost" style="color:#3FD99A">최고</span>`:`<button class="signbtn" onclick="upgradeFacility('${k}')">${ecoOn()?cost+'억':'확장'}</button>`)+`</div>`;
+  });
+  return h;
+}
+function applyTrainingFacilityBonus(p,isBat){
+  const lv=facilityLevel('training'); if(lv<=1 || Math.random()>=0.35*(lv-1)) return;
+  if(isBat){ const k=4+Math.floor(Math.random()*5); p[k]=Math.min(99,p[k]+1); }
+  else{ const k=5+Math.floor(Math.random()*3); p[k]=Math.min(99,p[k]+1); }
+}
+
 /* ═══════════ 감독·코치 시스템 (v0.21.5) ═══════════ */
 const STAFF_INFO = {
   manager:{
@@ -1987,8 +2022,8 @@ function staffPanel(){
   return `<div class="notice" style="margin-top:12px"><b>🧢 감독·코치진</b><br>선택은 즉시 저장되며 경기 보정은 이번 경기부터, 성장 보정은 다음 오프시즌부터 적용됩니다.</div>`+
     section('manager','감독 성향')+section('batCoach','타격 코치')+section('pitCoach','투수 코치');
 }
-function managerAttackBonus(teamId){ ensureStaff(); return teamId===state.myTeam ? STAFF_INFO.manager[state.staff.manager].attack : 0; }
-function managerPitchBonus(teamId){ ensureStaff(); return teamId===state.myTeam ? STAFF_INFO.manager[state.staff.manager].pitch : 0; }
+function managerAttackBonus(teamId){ ensureStaff(); return teamId===state.myTeam ? STAFF_INFO.manager[state.staff.manager].attack + (facilityLevel('analytics')-1)*0.002 : 0; }
+function managerPitchBonus(teamId){ ensureStaff(); return teamId===state.myTeam ? STAFF_INFO.manager[state.staff.manager].pitch + (facilityLevel('analytics')-1)*0.002 : 0; }
 
 
 /* ═══════════ 스카우트 시스템 (v0.21.5) ═══════════ */
@@ -1998,6 +2033,10 @@ const SCOUT_INFO = {
   elite:{name:'수석 스카우트',desc:'후보 10명 · 잠재력과 현재 능력을 정확히 파악',count:10,potErr:0,ovrErr:0}
 };
 function ensureScout(){ if(!SCOUT_INFO[state.scout]) state.scout='standard'; }
+function effectiveScoutCount(){ ensureScout(); return SCOUT_INFO[state.scout].count + (facilityLevel('scouting')-1); }
+function effectiveScoutOvrErr(){ ensureScout(); return Math.max(0,SCOUT_INFO[state.scout].ovrErr-(facilityLevel('scouting')-1)); }
+function effectiveScoutPotErr(){ ensureScout(); return Math.max(0,SCOUT_INFO[state.scout].potErr-(facilityLevel('scouting')>=3?1:0)); }
+
 function setScout(key){
   ensureScout();
   if(!SCOUT_INFO[key]) return;
@@ -2005,17 +2044,17 @@ function setScout(key){
 }
 function scoutPanel(){
   ensureScout();
-  const cur=SCOUT_INFO[state.scout];
+  const cur=SCOUT_INFO[state.scout]; const fc=facilityLevel('scouting');
   const locked=isOffseason() && state.season?.market;
   return `<div class="notice" style="margin-top:12px"><b>🔎 신인 스카우트</b><br>${locked?'현재 드래프트 후보는 이미 확정되었습니다. 변경한 스카우트는 다음 시즌 후보부터 적용됩니다.':'선택한 스카우트가 다음 오프시즌 신인 후보 수와 정보 정확도에 적용됩니다.'}</div>
     <div class="lb-cat">${Object.entries(SCOUT_INFO).map(([k,v])=>`<button class="${state.scout===k?'on':''}" onclick="setScout('${k}')">${v.name}</button>`).join('')}</div>
-    <div class="hint">${cur.desc}</div>`;
+    <div class="hint">${cur.desc} · 시설 Lv.${fc} 적용 후 후보 ${effectiveScoutCount()}명, OVR 오차 ±${effectiveScoutOvrErr()}</div>`;
 }
 function starCount(pot){ return Math.max(1,Math.min(5,(pot||'★').length)); }
 function stars(n){ return '★'.repeat(Math.max(1,Math.min(5,n))); }
 function prepareScoutReport(d,idx){
   ensureScout();
-  const sc=SCOUT_INFO[state.scout];
+  const sc={...SCOUT_INFO[state.scout],ovrErr:effectiveScoutOvrErr(),potErr:effectiveScoutPotErr()};
   if(!d.truePot) d.truePot=d.pot||'★';
   if(d.scoutSeed===undefined) d.scoutSeed=(nameHash(d.data[0]+':'+idx)%1000)/1000;
   const signed=d.scoutSeed<.5?-1:1;
@@ -2028,7 +2067,7 @@ function prepareScoutReport(d,idx){
   return d;
 }
 function scoutRange(val){
-  ensureScout(); const e=SCOUT_INFO[state.scout].ovrErr;
+  ensureScout(); const e=effectiveScoutOvrErr();
   return e===0?String(val):`${Math.max(0,val-e)}~${Math.min(99,val+e)}`;
 }
 
@@ -2228,7 +2267,7 @@ function estimateAttendance(){
   const stars = starPlayerCount();
   const streakBonus = Math.max(0,state.winStreak||0) * 500;
   return Math.round(Math.max(8000, Math.min(30000,
-    7000 + state.popularity*180 + stars*650 + streakBonus
+    7000 + state.popularity*180 + stars*650 + streakBonus + (facilityLevel('stadium')-1)*1000
   )));
 }
 function updateFanState(won, isHome){
@@ -2519,7 +2558,7 @@ function renderFront(){
   const salTotal = teamSalary();
   if(ecoOn()){
     ensureFanState();
-    info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b><br>구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>` +
+    info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b><br>시설 평균 <b>Lv.${(Object.values((ensureFacilities(),state.facilities)).reduce((a,b)=>a+b,0)/4).toFixed(1)}</b> · 구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>` +
       (state.eco==='hard'?' · 하드(적자 3경기 유예)':state.eco==='normal'?' · 일반':'') +
       (state.money<0 && state.eco==='normal'?'<br>⚠️ 잔고 마이너스 — 내 팀 원래팀 보정 감소 중':'') +
       (state.eco==='hard' && state.money<0 && !state.bankrupt?`<br>⚠️ 적자 유예 중 — ${Math.max(0,3-(state.debtGames||0))}경기 안에 흑자 전환 필요 · -20억 이하 즉시 파산`:'');
@@ -2528,10 +2567,10 @@ function renderFront(){
   }
 
   if(isOffseason()){
-    body.innerHTML = staffPanel() + scoutPanel() + renderOffseason(t);
+    body.innerHTML = facilityPanel() + staffPanel() + scoutPanel() + renderOffseason(t);
     bindOffseason();
   }else{
-    body.innerHTML = staffPanel() + scoutPanel() + `
+    body.innerHTML = facilityPanel() + staffPanel() + scoutPanel() + `
       <div class="hint">시즌 중에는 선수단 현황과 연봉을 확인할 수 있습니다. 재계약·방출·훈련·FA는 시즌 종료 후 오프시즌에 진행합니다.</div>
       <h2 class="sec" style="margin-top:14px">타자</h2>${playerRows(t,true)}
       <h2 class="sec" style="margin-top:14px">투수</h2>${playerRows(t,false)}`;
@@ -3034,7 +3073,7 @@ function buildOffseasonMarket(){
     market.legends.push(pick);
   }
   // 스카우트 수준에 따라 신인 후보 6~10명 생성
-  const draftCount=SCOUT_INFO[state.scout].count;
+  const draftCount=effectiveScoutCount();
   const posPool=['C','1B','2B','3B','SS','LF','CF','RF'];
   for(let i=0;i<draftCount;i++){
     const isBat = Math.random()<0.55;
