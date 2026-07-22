@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.21.9</title>
+<title>우리팀을 만들자 v0.22.0</title>
 <!-- v0.19 — 팀선택 뒤로가기, 낮 배경 밝게(야구장 안 느낌), 비효과 SVG 개선, 라인업 정원 고정(9/5/1/불펜), 선발 5명 보장, 계열 멀티포지션 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -366,7 +366,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.21.9</span>
+    <span class="ver">v0.22.0</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -555,7 +555,7 @@ function showConfirm(msg, onYes){
 const SAVE_KEY = 'ourteam_slots_v1';
 const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
-const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}});
+const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}, health:{}});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -1075,6 +1075,75 @@ function hexToSoft(hex){
   return `linear-gradient(145deg, rgba(${r},${g},${b},.28), rgba(${r},${g},${b},.10))`;
 }
 
+/* ═══════════ 컨디션·피로·부상 시스템 (v0.22.0) ═══════════ */
+function ensureHealth(){ if(!state.health) state.health={}; }
+function healthKey(kind,p){ return kind+':'+p[0]; }
+function playerHealth(teamId,kind,p){
+  ensureHealth();
+  if(!state.health[teamId]) state.health[teamId]={};
+  const k=healthKey(kind,p);
+  if(!state.health[teamId][k]) state.health[teamId][k]={fatigue:0,injury:0};
+  return state.health[teamId][k];
+}
+function conditionInfo(teamId,kind,p){
+  const h=playerHealth(teamId,kind,p), f=Math.max(0,Math.min(100,h.fatigue||0));
+  if(h.injury>0) return {label:`🤕 부상 ${h.injury}경기`,color:'#E4573D',mod:-8};
+  if(f<=15) return {label:'🔥 최상',color:'#FFB63B',mod:2};
+  if(f<=35) return {label:'🙂 좋음',color:'#77D69B',mod:1};
+  if(f<=60) return {label:'➖ 보통',color:'#C9D6CD',mod:0};
+  if(f<=80) return {label:'😓 피곤',color:'#E7B65B',mod:-2};
+  return {label:'🥵 매우 피곤',color:'#E4573D',mod:-4};
+}
+function isInjured(teamId,kind,p){ return playerHealth(teamId,kind,p).injury>0; }
+function healthMod(teamId,kind,p){ return conditionInfo(teamId,kind,p).mod; }
+function ensureHealthyLineup(teamId){
+  const t=getTeam(teamId), lu=getLineup(teamId);
+  const used=new Set(lu.order);
+  for(let pos=0;pos<lu.order.length;pos++){
+    const cur=lu.order[pos], cp=t.bat[cur];
+    if(cp && !isInjured(teamId,'bat',cp)) continue;
+    const slot=lu.pos[pos];
+    let pick=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId)}))
+      .filter(x=>!used.has(x.i)&&!isInjured(teamId,'bat',x.p)&&canPlay(x.p[2],slot))
+      .sort((a,b)=>b.o-a.o)[0];
+    if(!pick) pick=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId)}))
+      .filter(x=>!used.has(x.i)&&!isInjured(teamId,'bat',x.p)).sort((a,b)=>b.o-a.o)[0];
+    if(pick){ used.delete(cur); used.add(pick.i); lu.order[pos]=pick.i; }
+  }
+  state.lineups[teamId]=lu;
+  return lu;
+}
+function updateDailyHealth(){
+  if(!state.players||!state.season) return;
+  const today=pitchingDay(), news=[];
+  Object.keys(state.players).forEach(teamId=>{
+    const t=getTeam(teamId), lu=getLineup(teamId), starters=new Set(lu.order);
+    const process=(kind,p,i,active,load)=>{
+      const h=playerHealth(teamId,kind,p);
+      if(h.injury>0){ h.injury--; h.fatigue=Math.max(0,(h.fatigue||0)-12); return; }
+      h.fatigue=Math.max(0,Math.min(100,(h.fatigue||0)+(active?load:-10)));
+      const chance=h.fatigue>=90?.04:h.fatigue>=78?.015:0;
+      if(chance&&Math.random()<chance){
+        h.injury=2+Math.floor(Math.random()*4); h.fatigue=Math.max(45,h.fatigue-20);
+        if(teamId===state.myTeam) news.push(`🤕 ${p[0]} ${h.injury}경기 부상`);
+      }
+    };
+    t.bat.forEach((p,i)=>process('bat',p,i,starters.has(i),starters.has(i)?10:0));
+    t.pit.forEach((p,i)=>{
+      const last=state.spLast&&state.spLast[teamId]?state.spLast[teamId][i]:undefined;
+      process('pit',p,i,last===today,last===today?28:0);
+    });
+  });
+  state.season.healthNews=news;
+}
+function healthSummary(){
+  if(!state.myTeam) return '';
+  const t=getTeam(state.myTeam); let inj=0,tired=0;
+  t.bat.forEach(p=>{const h=playerHealth(t.id,'bat',p); if(h.injury>0)inj++; else if(h.fatigue>60)tired++;});
+  t.pit.forEach(p=>{const h=playerHealth(t.id,'pit',p); if(h.injury>0)inj++; else if(h.fatigue>60)tired++;});
+  return `부상 ${inj}명 · 피로주의 ${tired}명`;
+}
+
 /* ───────────── 로스터 ───────────── */
 let rosterTab = 'bat';
 function renderRoster(tab){
@@ -1097,9 +1166,10 @@ function renderRoster(tab){
     const hand = (isBat ? `${p[3]}타` : `${p[3]}투 · ${p[2]}`) + ` · ${age}세`;
     const f = flagOf(p, isBat);
     const bo = bonusOf(p, t.id, isBat);
-    let tag = '';
-    if(f==='fa') tag = ' <span class="boost" style="color:#8FA396">FA이적 보정없음</span>';
-    else if(bo>0) tag = ' <span class="boost">+'+bo+(f==='new'?' 신규':'')+'</span>';
+    const ci = conditionInfo(t.id,isBat?'bat':'pit',p);
+    let tag = ` <span class="boost" style="color:${ci.color}">${ci.label}</span>`;
+    if(f==='fa') tag += ' <span class="boost" style="color:#8FA396">FA이적 보정없음</span>';
+    else if(bo>0) tag += ' <span class="boost">+'+bo+(f==='new'?' 신규':'')+'</span>';
     row.innerHTML = `<div class="pos">${pos==='선발'?'SP':pos==='마무리'?'CL':pos}</div>
       <div class="mid"><div class="nm">${p[0]}</div><div class="hand">${hand}${tag}</div></div>
       <div class="ovr num">${ovr}</div>`;
@@ -1174,6 +1244,7 @@ function openSheet(team, tab, idx){
       실제 모델: <b>${p[1]}</b> (${team.real})<br>
       ${bonusLine}<br>
       괄호 안은 기본 능력치와 보정 내역입니다.</div>
+    <div class="reveal"><div class="lbl">컨디션</div>${(()=>{const h=playerHealth(team.id,isBat?'bat':'pit',p),c=conditionInfo(team.id,isBat?'bat':'pit',p);return `<b style="color:${c.color}">${c.label}</b> · 피로 ${h.fatigue||0}/100${h.injury>0?' · 경기 출전 불가':''}`;})()}</div>
     ${statsHtml}`;
   document.getElementById('mask').classList.add('on');
 }
@@ -1376,6 +1447,7 @@ function teamStatusHtml(){
   const topBat = [...t.bat].map((p,i)=>({n:p[0],o:batOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
   const topPit = [...t.pit].map((p,i)=>({n:p[0],o:pitOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
   s += `간판 타자: ${topBat.n} (OVR ${topBat.o}) · 에이스: ${topPit.n} (OVR ${topPit.o})`;
+  s += `<br>선수 상태: ${healthSummary()}`;
   if(ecoOn()){
     ensureFanState();
     s += `<br>잔고 ${fmtMoney()} · 연간 총연봉 ${teamSalary().toFixed(1)}억`;
@@ -1472,7 +1544,7 @@ function setLuMode(m){ luMode=m; luSel=-1;
 }
 function renderLineup(){
   const t = getTeam(state.myTeam);
-  const lu = getLineup(t.id);
+  const lu = ensureHealthyLineup(t.id);
   const list = document.getElementById('lineupList');
   list.innerHTML = '';
   if(luSel>=0){
@@ -1490,7 +1562,7 @@ function renderLineup(){
     d.className = 'lrow' + (luSel===pos?' sel':'');
     const posOk = canPlay(p[2], slotPos);
     d.innerHTML = `<div class="ord">${pos+1}</div><div class="lp">${slotPos}${p[2]!==slotPos&&slotPos!=='DH'?`<span style="font-size:9px;color:var(--dim)">(${p[2]})</span>`:''}</div>
-      <div class="ln">${p[0]} ${gradeBadge(batOvr(p,t.id))}${!posOk?' <span style="color:#C77;font-size:10px">수비부적합</span>':''}</div><div class="lo num">${batOvr(p,t.id)}</div>`;
+      <div class="ln">${p[0]} ${gradeBadge(batOvr(p,t.id))}${!posOk?' <span style="color:#C77;font-size:10px">수비부적합</span>':''}<br><span style="font-size:10px;color:${conditionInfo(t.id,'bat',p).color}">${conditionInfo(t.id,'bat',p).label}</span></div><div class="lo num">${batOvr(p,t.id)}</div>`;
     d.onclick = ()=>{
       if(luSel<0){ luSel = pos; }
       else if(luSel===pos){ luSel = -1; }
@@ -1523,9 +1595,12 @@ function renderLineup(){
       const d = document.createElement('div');
       d.className = 'lrow';
       d.style.opacity = '.75';
+      const ci=conditionInfo(t.id,'bat',p), injured=isInjured(t.id,'bat',p);
       d.innerHTML = `<div class="ord">–</div><div class="lp">${p[2]}</div>
-        <div class="ln">${p[0]} ${gradeBadge(batOvr(p,t.id))}</div><div class="lo num">${batOvr(p,t.id)}</div>`;
+        <div class="ln">${p[0]} ${gradeBadge(batOvr(p,t.id))}<br><span style="font-size:10px;color:${ci.color}">${ci.label}</span></div><div class="lo num">${batOvr(p,t.id)}</div>`;
+      if(injured) d.style.opacity='.42';
       d.onclick = ()=>{
+        if(injured){ showAlert('부상 중인 선수는 라인업에 넣을 수 없습니다.'); return; }
         if(luSel<0){ showAlert('먼저 교체할 타순(위쪽 목록)을 선택하세요.'); return; }
         lu.order[luSel] = bi; luSel=-1; save(); renderLineup();
       };
@@ -1541,9 +1616,10 @@ function renderLineup(){
     const rest = state.season ? restOk(t.id, pi) : true;
     const d = document.createElement('div');
     d.className = 'lrow' + (rotSel===slot?' sel':'');
-    if(rest) d.style.opacity='.5';
+    const pci=conditionInfo(t.id,'pit',p), injured=isInjured(t.id,'pit',p);
+    if(rest||injured) d.style.opacity='.5';
     d.innerHTML = `<div class="ord">${slot+1}</div><div class="lp">선발</div>
-      <div class="ln">${p[0]}${pi===nxtPi?' <span class="boost">다음 등판</span>':''}${!rest?' <span style="color:#8FA396;font-size:11px">휴식중</span>':''}</div>
+      <div class="ln">${p[0]}${pi===nxtPi?' <span class="boost">다음 등판</span>':''}${!rest&&!injured?' <span style="color:#8FA396;font-size:11px">휴식중</span>':''}<br><span style="font-size:10px;color:${pci.color}">${pci.label}</span></div>
       <div class="lo num">${pitOvr(p,t.id)}</div>`;
     d.onclick = ()=>{
       if(rest){ return; }   // 등판 준비중 투수는 자리 고정
@@ -1562,9 +1638,10 @@ function renderLineup(){
 /* ═══════════ 시뮬레이션 엔진 ═══════════ */
 function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
 function paResult(bat, batTid, pit, pitTid, tactic){
-  const con=b(bat[4],bat,batTid,true), pow=b(bat[5],bat,batTid,true),
-        spd=b(bat[6],bat,batTid,true), eye=b(bat[8],bat,batTid,true);
-  const velo=bv(pit[4],pit,pitTid), ctrl=b(pit[5],pit,pitTid,false), brk=b(pit[6],pit,pitTid,false);
+  const bm=healthMod(batTid,'bat',bat), pm=healthMod(pitTid,'pit',pit);
+  const con=b(bat[4],bat,batTid,true)+bm, pow=b(bat[5],bat,batTid,true)+bm,
+        spd=b(bat[6],bat,batTid,true)+bm, eye=b(bat[8],bat,batTid,true)+bm;
+  const velo=bv(pit[4],pit,pitTid)+Math.round(pm/2), ctrl=b(pit[5],pit,pitTid,false)+pm, brk=b(pit[6],pit,pitTid,false)+pm;
   tactic = tactic || 'balanced';
   ensureStaff();
   const myBatCoach = batTid===state.myTeam ? state.staff.batCoach : null;
@@ -1687,7 +1764,7 @@ function recordPA(teamId, batIdx, res, scored, pitTeamId, pit){
 
 function simGame(myId, oppId, mySp, oppSp){
   const home = getTeam(myId), away = getTeam(oppId);
-  const homeLu = getLineup(myId), awayLu = getLineup(oppId);
+  const homeLu = ensureHealthyLineup(myId), awayLu = ensureHealthyLineup(oppId);
   const ev = [];   // {inn, half, text, cls}
   const line = {away:[], home:[]};
   let sc = {away:0, home:0};
@@ -1865,7 +1942,7 @@ function nextSpIdx(teamId){
     const idx = list[(base+k)%list.length];
     if(restOk(teamId, idx)) return idx;   // 휴식 끝난 투수를 순서대로 탐색
   }
-  return list[base];   // 전원 휴식 중이면 원래 순번 (예외 상황)
+  return list.find(i=>!isInjured(teamId,'pit',getTeam(teamId).pit[i])) ?? list[base];   // 전원 휴식 중이면 건강한 선발 우선
 }
 function advanceRot(teamId){ state.rot[teamId] = ((state.rot[teamId]||0)+1); }
 function pitchingDay(){
@@ -1880,6 +1957,8 @@ function markStart(teamId, pitIdx){
   state.spLast[teamId][pitIdx] = pitchingDay();
 }
 function restOk(teamId, pitIdx){
+  const t=getTeam(teamId), p=t.pit[pitIdx];
+  if(p && isInjured(teamId,'pit',p)) return false;
   const last = state.spLast && state.spLast[teamId] ? state.spLast[teamId][pitIdx] : undefined;
   if(last===undefined) return true;
   return (pitchingDay() - last) >= 4;   // 등판 후 3경기 휴식
@@ -1908,8 +1987,9 @@ function genSchedule(){
 function newSeason(){
   const rec = {};
   TEAMS.forEach(t=>rec[t.id]={w:0,l:0,t:0});
-  state.season = { sched: genSchedule(), day:0, rec, last:[] };
+  state.season = { sched: genSchedule(), day:0, rec, last:[], healthNews:[] };
   state.rot = {};
+  state.health = {};
   save();
 }
 function seasonOver(){ return state.season && state.season.day >= state.season.sched.length; }
@@ -1940,6 +2020,8 @@ function playOtherGames(){
 }
 function finishDay(myResultText, otherResults){
   state.season.last = [myResultText, ...otherResults];
+  updateDailyHealth();
+  if(state.season.healthNews&&state.season.healthNews.length) state.season.last.unshift(...state.season.healthNews);
   state.season.day++;
   save();
 }
@@ -2428,7 +2510,8 @@ function canPlay(playerPos, slotPos){
 // 라인업 자동 배정: 9자리에 최적 야수 채우기 (OVR 높은 순, 포지션 충족)
 function autoAssignLineup(teamId){
   const t = getTeam(teamId);
-  const pool = t.bat.map((p,i)=>({i, p, ovr:batOvr(p,teamId)})).sort((a,b)=>b.ovr-a.ovr);
+  let pool = t.bat.map((p,i)=>({i, p, ovr:batOvr(p,teamId)})).filter(x=>!isInjured(teamId,'bat',x.p)).sort((a,b)=>b.ovr-a.ovr);
+  if(pool.length<9) pool=t.bat.map((p,i)=>({i,p,ovr:batOvr(p,teamId)})).sort((a,b)=>b.ovr-a.ovr);
   const used = new Set();
   const assign = {};   // slotPos → batterIndex
   // 1) 전문 포지션(포수)부터, 그다음 각 자리에 맞는 최고 선수
