@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.24.2</title>
+<title>우리팀을 만들자 v0.24.3</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -390,7 +390,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.24.2</span>
+    <span class="ver">v0.24.3</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -4333,6 +4333,110 @@ renderFront=function(){
   }
   syncMoneyUi();
 };
+
+
+
+
+/* ═══════════ 계약·2군 육성·트레이드 보정 (v0.24.3) ═══════════ */
+// 일반 재계약은 계약금만 즉시 지급한다. 연봉은 시즌 급여에 반영한다.
+contractImmediateCost=function(years,salary,bonus){
+  return Math.max(0,+bonus||0);
+};
+
+offerContract=function(kind,idx,years,salary,bonus,option){
+  ensureLongTermState();
+  const t=getTeam(state.myTeam),p=(kind==='bat'?t.bat:t.pit)[idx];
+  if(!p)return;
+  const current=contractOf(kind,p);
+  salary=Math.max(0,+salary||0); bonus=Math.max(0,+bonus||0); years=Math.max(1,Math.min(5,+years||1));
+  const demand=Math.max(current.salary, +(salaryOf(p,kind==='bat')*(1+(100-playerMorale(kind,p))/250)).toFixed(1));
+  const immediate=contractImmediateCost(years,salary,bonus);
+  if(ecoOn()&&state.money<immediate){showAlert(`계약금 ${immediate.toFixed(1)}억이 부족합니다.`);return;}
+  // 연봉이 핵심이고, 계약금·장기계약·만족도가 보조한다.
+  const salaryRatio=demand>0?salary/demand:1;
+  const score=salaryRatio*72 + Math.min(18,bonus*4) + years*3 + playerMorale(kind,p)*.12;
+  const accept=score>=91 || Math.random()<Math.max(.03,Math.min(.9,(score-63)/42));
+  if(accept){
+    state.contracts[longKey(kind,p)]={salary,years,bonus,option};
+    if(ecoOn())state.money-=immediate;
+    state.morale[longKey(kind,p)]=Math.min(100,playerMorale(kind,p)+7);
+    state.owner.trust=Math.min(100,(state.owner.trust||70)+1);
+    pushClubNews('계약 연장',`${p[0]}와 ${years}년 계약에 합의했습니다.`);
+    showAlert(`계약에 합의했습니다.\n계약금 ${immediate.toFixed(1)}억 즉시 지급`);
+  }else{
+    state.morale[longKey(kind,p)]=Math.max(0,playerMorale(kind,p)-10);
+    showAlert('선수가 제안을 거절했습니다. 만족도가 하락했습니다.');
+  }
+  save(); syncMoneyUi(); closeSheet(); renderFront();
+};
+
+openContractSheet=function(kind,idx){
+  ensureLongTermState();
+  const t=getTeam(state.myTeam),p=(kind==='bat'?t.bat:t.pit)[idx],c=contractOf(kind,p),rem=faRemaining(kind,p);
+  const suggested=Math.max(c.salary,+salaryOf(p,kind==='bat').toFixed(1));
+  document.getElementById('sheet').innerHTML=`<div class="top"><div class="pname">${p[0]} 재계약 협상</div><button class="close" onclick="closeSheet()">✕</button></div>
+  <div class="reveal"><div class="lbl">현재 계약</div>연봉 <b>${c.salary.toFixed(1)}억</b> · 잔여 ${c.years}년 · 만족도 ${Math.round(playerMorale(kind,p))}<br>FA까지 ${rem===0?'자격 충족':rem+'등록 경기'}</div>
+  <div class="hint">일반 재계약은 계약금만 즉시 지출됩니다. 연봉은 시즌 급여에 반영됩니다.</div>
+  <label class="hint">계약 기간 <select id="ctYears" onchange="updateContractCostPreview()"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>년</label>
+  <label class="hint">연봉 <input id="ctSalary" type="number" step="0.1" value="${suggested}" oninput="updateContractCostPreview()">억</label>
+  <label class="hint">계약금 <input id="ctBonus" type="number" step="0.1" value="0" oninput="updateContractCostPreview()">억</label>
+  <label class="hint">옵션 <select id="ctOption"><option>없음</option><option>출전 보너스</option><option>성적 보너스</option><option>우승 보너스</option></select></label>
+  <div class="notice" id="ctCostPreview">즉시 지출 계약금 0.0억</div>
+  <button class="btn" onclick="offerContract('${kind}',${idx},ctYears.value,ctSalary.value,ctBonus.value,ctOption.value)">계약 제안</button>`;
+  document.getElementById('mask').classList.add('on');
+};
+
+updateContractCostPreview=function(){
+  const y=+document.getElementById('ctYears')?.value||1,s=+document.getElementById('ctSalary')?.value||0,b=+document.getElementById('ctBonus')?.value||0;
+  const el=document.getElementById('ctCostPreview');
+  if(el)el.textContent=`즉시 지출 계약금 ${contractImmediateCost(y,s,b).toFixed(1)}억 · 연봉 ${s.toFixed(1)}억은 시즌 급여 반영`;
+};
+
+// 2군은 실전 대신 육성에 집중한다. 어린 선수와 성장기 선수일수록 효과가 크다.
+applySecondTeamDevelopment=function(){
+  if(state.mode!=='sim'||!state.myTeam)return;
+  ensureSquadState(); ensureFacilities();
+  const t=getTeam(state.myTeam); let grownPlayers=0, statUps=0;
+  ['bat','pit'].forEach(kind=>{
+    const arr=kind==='bat'?t.bat:t.pit, ages=t.age?.[kind]||[];
+    arr.forEach((pl,i)=>{
+      if(isFirstTeam(state.myTeam,kind,pl))return;
+      const age=ages[i]||ageOf(pl[1]), stage=careerStageOf(pl,age), type=careerTypeOf(pl);
+      let chance=stage==='성장기'?.88:stage==='전성기'?.62:stage==='유지기'?.32:.12;
+      if(type==='대기만성형'&&age<=30)chance+=.08;
+      chance+=Math.min(.12,((state.facilities?.training||1)-1)*.04);
+      if(Math.random()>chance)return;
+      const gains=(stage==='성장기'&&Math.random()<.55)?2:1;
+      let did=0;
+      for(let n=0;n<gains;n++){
+        if(kind==='bat'){
+          const stat=4+Math.floor(Math.random()*5);
+          const old=pl[stat]||40; pl[stat]=Math.min(99,old+1); if(pl[stat]>old)did++;
+        }else{
+          const pool=[3,4,5,6,7], stat=pool[Math.floor(Math.random()*pool.length)];
+          const max=stat===3?160:99, old=pl[stat]||40; pl[stat]=Math.min(max,old+1); if(pl[stat]>old)did++;
+        }
+      }
+      if(did){grownPlayers++;statUps+=did;}
+    });
+  });
+  if(grownPlayers)pushClubNews('2군 성장 보고',`집중 육성으로 ${grownPlayers}명, 총 ${statUps}개 능력치가 상승했습니다.`);
+};
+
+// 트레이드는 정규시즌과 오프시즌 모두 가능하며 시즌당 최대 3회다.
+const _tradeColumnsV243=tradeColumns;
+tradeColumns=function(){
+  return _tradeColumnsV243().replace(/이번 오프시즌 트레이드/g,'이번 시즌 트레이드');
+};
+const _proposeTradeV243=proposeTrade;
+proposeTrade=function(){
+  if(state.season && (state.season.tradeCount||0)>=3){showAlert('이번 시즌에는 이미 트레이드를 3회 진행했습니다.');return;}
+  return _proposeTradeV243();
+};
+
+// 모든 즉시 지출 뒤 헤더 잔고를 같은 화면에서 갱신한다.
+const _saveV243=save;
+save=function(){ const r=_saveV243(); refreshHeader(); return r; };
 
 
 /* ───────────── 시작 ───────────── */
