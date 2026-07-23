@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.26.7</title>
+<title>우리팀을 만들자 v0.26.8</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.26.7</span>
+    <span class="ver">v0.26.8</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -594,7 +594,7 @@ function showConfirm(msg, onYes){
 const SAVE_KEY = 'ourteam_slots_v1';
 const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
-const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}, health:{}, retired:[], retirementNews:[], squadLevel:{}, faGames:{}, faSeasonGames:{}});
+const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}, health:{}, retired:[], retirementNews:[], worldHistory:[], squadLevel:{}, faGames:{}, faSeasonGames:{}});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -2636,17 +2636,108 @@ function runPostseason(){
   log.push(`한국시리즈: ${nm(t1)} vs ${nm(po.winner)} → 🏆 ${nm(ks.winner)} 우승! (${ks.hw}-${ks.lw})`);
   return {champion: ks.winner, log};
 }
+/* ═══════════ 세계대회 (시뮬레이션 4년 주기) ═══════════ */
+function worldTournamentDue(){
+  return state.mode==='sim' && state.year>0 && state.year%4===0;
+}
+function buildNationalRoster(){
+  const bats=[], pits=[];
+  TEAMS.forEach(t=>{
+    t.bat.forEach((p,i)=>bats.push({name:p[0],team:t.id,pos:p[2],ovr:batOvr(p,t.id),kind:'bat'}));
+    t.pit.forEach((p,i)=>pits.push({name:p[0],team:t.id,pos:p[2],ovr:pitOvr(p,t.id),kind:'pit'}));
+  });
+  bats.sort((a,b)=>b.ovr-a.ovr); pits.sort((a,b)=>b.ovr-a.ovr);
+  const picked=[], used=new Set();
+  ['C','1B','2B','3B','SS','LF','CF','RF'].forEach(pos=>{
+    const x=bats.find(v=>v.pos===pos && !used.has(v.name+'|'+v.team));
+    if(x){ picked.push(x); used.add(x.name+'|'+x.team); }
+  });
+  for(const x of bats){
+    if(picked.filter(v=>v.kind==='bat').length>=13) break;
+    const k=x.name+'|'+x.team; if(!used.has(k)){picked.push(x);used.add(k);}
+  }
+  const starters=pits.filter(x=>x.pos==='선발').slice(0,5);
+  starters.forEach(x=>{picked.push(x);used.add(x.name+'|'+x.team);});
+  for(const x of pits){
+    if(picked.filter(v=>v.kind==='pit').length>=10) break;
+    const k=x.name+'|'+x.team; if(!used.has(k)){picked.push(x);used.add(k);}
+  }
+  return picked;
+}
+function intlScore(powerA,powerB){
+  const edge=(powerA-powerB)/12;
+  let a=Math.max(0,Math.round(3.8+edge+randn()*2.1));
+  let b=Math.max(0,Math.round(3.8-edge+randn()*2.1));
+  if(a===b){ if(Math.random()<.5)a++; else b++; }
+  return [a,b];
+}
+function playIntl(a,b){
+  const sc=intlScore(a.power,b.power);
+  return {a:a.name,b:b.name,sa:sc[0],sb:sc[1],winner:sc[0]>sc[1]?a:b};
+}
+function runWorldTournament(){
+  const roster=buildNationalRoster();
+  const avg=roster.length?roster.reduce((n,x)=>n+x.ovr,0)/roster.length:68;
+  const korea={name:'대한민국',power:Math.max(68,Math.min(88,avg+2))};
+  const pool=[
+    {name:'일본',power:84},{name:'미국',power:86},{name:'도미니카공화국',power:83},
+    {name:'대만',power:76},{name:'멕시코',power:80},{name:'베네수엘라',power:82},
+    {name:'호주',power:72}
+  ];
+  // 조별리그: 한국 + 세 팀. 승수 상위 두 팀 진출.
+  const group=[korea,pool[0],pool[3],pool[6]], wins={}; group.forEach(x=>wins[x.name]=0);
+  const log=[];
+  for(let i=0;i<group.length;i++) for(let j=i+1;j<group.length;j++){
+    const g=playIntl(group[i],group[j]); wins[g.winner.name]++;
+    if(g.a==='대한민국'||g.b==='대한민국') log.push(`조별리그: ${g.a} ${g.sa}-${g.sb} ${g.b}`);
+  }
+  const order=[...group].sort((a,b)=>wins[b.name]-wins[a.name] || b.power-a.power);
+  const qualified=order.slice(0,2).some(x=>x.name==='대한민국');
+  let champion=order[0].name, finish=qualified?'4강':'조별리그', medal='';
+  if(qualified){
+    const semiOpp=pool[4];
+    const semi=playIntl(korea,semiOpp); log.push(`준결승: ${semi.a} ${semi.sa}-${semi.sb} ${semi.b}`);
+    if(semi.winner.name==='대한민국'){
+      finish='결승';
+      const finalOpp=pool[1];
+      const fin=playIntl(korea,finalOpp); log.push(`결승: ${fin.a} ${fin.sa}-${fin.sb} ${fin.b}`);
+      champion=fin.winner.name;
+      if(champion==='대한민국'){ finish='우승'; medal='🥇'; }
+      else { finish='준우승'; medal='🥈'; }
+    }else{
+      const bronzeOpp=pool[2];
+      const br=playIntl(korea,bronzeOpp); log.push(`3위 결정전: ${br.a} ${br.sa}-${br.sb} ${br.b}`);
+      if(br.winner.name==='대한민국'){finish='3위';medal='🥉';}
+      else finish='4위';
+      champion='미국';
+    }
+  }
+  const mvp=[...roster].sort((a,b)=>b.ovr-a.ovr)[0];
+  const result={year:state.year,finish,medal,champion,roster:roster.map(x=>x.name),mvp:mvp?.name||'',log};
+  if(!state.worldHistory) state.worldHistory=[];
+  state.worldHistory.push(result);
+  return result;
+}
+function worldTournamentHtml(w){
+  if(!w) return '';
+  return `<br><br><b>🌐 ${state.year}년차 세계대회</b><br>`+
+    `대한민국 최종 성적: <b>${w.medal||''} ${w.finish}</b> · 대회 우승 ${w.champion}<br>`+
+    (w.mvp?`대표팀 간판: ${w.mvp}<br>`:'')+
+    w.log.join('<br>');
+}
+
 function renderSeasonDone(){
   const rec = state.season.rec[state.myTeam];
   const rank = rankOrder().findIndex(id=>id===state.myTeam)+1;
   const box = document.getElementById('seasonDoneText');
   if(!state.season.post){
     state.season.post = runPostseason();
+    if(worldTournamentDue() && !state.season.worldTournament) state.season.worldTournament = runWorldTournament();
     state.season.bonus = seasonBonus();
     state.season.salaryPaid = settleSeasonSalary();
     refreshHeader();
     if(!state.history) state.history = [];
-    state.history.push({year: state.year, rank, rec:{...rec}, champion: state.season.post.champion});
+    state.history.push({year: state.year, rank, rec:{...rec}, champion: state.season.post.champion, worldFinish:state.season.worldTournament?.finish||''});
     save();
   }
   const p = state.season.post;
@@ -2655,7 +2746,8 @@ function renderSeasonDone(){
     `정규시즌 ${rank}위 (${rec.w}승 ${rec.l}패 ${rec.t}무)<br><br>` +
     p.log.join('<br>') + '<br><br>' +
     (isChamp ? '🎉 우리 팀이 우승했습니다!<br>' : '') +
-    (ecoOn() ? `💰 순위 분배금 +${(state.season.bonus?.rankMoney||0)}억, 포스트시즌 보너스 +${(state.season.bonus?.psMoney||0)}억<br>연봉 정산 -${(state.season.salaryPaid||0).toFixed(1)}억 → 잔고 ${fmtMoney()}${state.bankrupt?'<br>💸 지급 불능으로 구단 파산!':(state.eco==='hard'&&state.money<0?'<br>⚠️ 적자 유예가 시작되었습니다. 다음 경기부터 3경기 안에 흑자로 전환해야 합니다.':'')}<br>` : '') +
+    worldTournamentHtml(state.season.worldTournament) +
+    (ecoOn() ? `<br><br>💰 순위 분배금 +${(state.season.bonus?.rankMoney||0)}억, 포스트시즌 보너스 +${(state.season.bonus?.psMoney||0)}억<br>연봉 정산 -${(state.season.salaryPaid||0).toFixed(1)}억 → 잔고 ${fmtMoney()}${state.bankrupt?'<br>💸 지급 불능으로 구단 파산!':(state.eco==='hard'&&state.money<0?'<br>⚠️ 적자 유예가 시작되었습니다. 다음 경기부터 3경기 안에 흑자로 전환해야 합니다.':'')}<br>` : '') +
     (state.mode==='sim' ? '<br>다음 시즌으로 넘어가면 선수들이 성장/노쇠합니다.' : '');
   document.getElementById('newSeasonBtn').textContent = '구단운영 · 오프시즌으로';
 }
