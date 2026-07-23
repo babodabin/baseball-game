@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.27.2</title>
+<title>우리팀을 만들자 v0.27.3</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.27.2</span>
+    <span class="ver">v0.27.3</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -6043,6 +6043,130 @@ openHistoryRoom=function(){
     <div class="reveal"><div class="lbl">📰 구단 뉴스</div>${news.length?news.map(x=>`<b>${x.title}</b> <span style="color:var(--dim)">${x.year}년 ${x.day}일</span><br>${x.body}`).join('<hr style="border:0;border-top:1px solid rgba(255,255,255,.08);margin:8px 0">'):'아직 뉴스가 없습니다.'}</div>`;
   document.getElementById('mask').classList.add('on');
 };
+
+
+// ═══════════ v0.27.3 장기 목표·왕조 시스템 ═══════════
+function ensureDynastyStateV273(){
+  ensureLongTermState();
+  if(!state.dynasty) state.dynasty={tier:0,legacy:0,unlocked:{},lastEvaluatedYear:0};
+  if(!state.dynasty.unlocked) state.dynasty.unlocked={};
+  return state.dynasty;
+}
+function completedSeasonsV273(){
+  const byYear=new Map();
+  (Array.isArray(state.history)?state.history:[]).forEach(h=>{
+    if(!h||!Number.isFinite(+h.year)) return;
+    const y=+h.year;
+    const prev=byYear.get(y)||{};
+    byYear.set(y,{...prev,...h,year:y});
+  });
+  (Array.isArray(state.clubHistory)?state.clubHistory:[]).forEach(h=>{
+    if(!h||!Number.isFinite(+h.year)) return;
+    const y=+h.year, prev=byYear.get(y)||{};
+    byYear.set(y,{...h,...prev,year:y});
+  });
+  return [...byYear.values()].sort((a,b)=>a.year-b.year);
+}
+function longestStreakV273(rows,pred){
+  let best=0,cur=0,prev=null;
+  rows.forEach(r=>{
+    if(pred(r) && (prev===null||r.year===prev+1)){cur++;}
+    else if(pred(r)){cur=1;} else cur=0;
+    best=Math.max(best,cur); prev=r.year;
+  });
+  return best;
+}
+function maxTitlesInWindowV273(rows,size){
+  let best=0;
+  rows.forEach((r,i)=>{
+    const end=r.year+size-1;
+    best=Math.max(best,rows.filter(x=>x.year>=r.year&&x.year<=end&&x.champion===state.myTeam).length);
+  });
+  return best;
+}
+function dynastySummaryV273(){
+  const rows=completedSeasonsV273();
+  const titles=rows.filter(r=>r.champion===state.myTeam).length;
+  const pennants=rows.filter(r=>+r.rank===1).length;
+  const playoffs=rows.filter(r=>+r.rank>0&&+r.rank<=5).length;
+  const totalWins=rows.reduce((n,r)=>n+(+r.rec?.w||+r.w||0),0);
+  const playoffStreak=longestStreakV273(rows,r=>+r.rank>0&&+r.rank<=5);
+  const titleStreak=longestStreakV273(rows,r=>r.champion===state.myTeam);
+  const fiveYearTitles=maxTitlesInWindowV273(rows,5);
+  const worlds=(Array.isArray(state.worldHistory)?state.worldHistory:[]);
+  const gold=worlds.filter(w=>w&&w.finish==='우승').length;
+  const medals=worlds.filter(w=>w&&['우승','준우승','3위'].includes(w.finish)).length;
+  let legacy=titles*125+pennants*45+playoffs*18+Math.floor(totalWins/10)*4+gold*35+medals*10;
+  legacy=Math.max(0,Math.min(999,legacy));
+  let tier=0,name='신생 구단',icon='🌱';
+  if(playoffs>=1||legacy>=40){tier=1;name='도전자';icon='⚾';}
+  if(titles>=1||legacy>=150){tier=2;name='명문 후보';icon='🏅';}
+  if(titles>=2&&playoffStreak>=3){tier=3;name='리그 강호';icon='🔥';}
+  if(fiveYearTitles>=3||titleStreak>=3){tier=4;name='왕조';icon='👑';}
+  if(titles>=5&&playoffStreak>=5&&legacy>=750){tier=5;name='전설의 왕조';icon='🏛️';}
+  return {rows,titles,pennants,playoffs,totalWins,playoffStreak,titleStreak,fiveYearTitles,gold,medals,legacy,tier,name,icon};
+}
+function dynastyMissionsV273(d){
+  return [
+    {id:'fall',label:'첫 가을야구',done:d.playoffs>=1,progress:`${Math.min(d.playoffs,1)}/1`},
+    {id:'firstTitle',label:'첫 한국시리즈 우승',done:d.titles>=1,progress:`${Math.min(d.titles,1)}/1`},
+    {id:'threeFall',label:'3년 연속 가을야구',done:d.playoffStreak>=3,progress:`${Math.min(d.playoffStreak,3)}/3년`},
+    {id:'repeat',label:'2년 연속 한국시리즈 우승',done:d.titleStreak>=2,progress:`${Math.min(d.titleStreak,2)}/2년`},
+    {id:'dynasty',label:'5년 안에 한국시리즈 3회 우승',done:d.fiveYearTitles>=3,progress:`${Math.min(d.fiveYearTitles,3)}/3회`},
+    {id:'legend',label:'통산 5회 우승·5년 연속 가을야구',done:d.titles>=5&&d.playoffStreak>=5,progress:`우승 ${d.titles}/5 · 연속 ${d.playoffStreak}/5`}
+  ];
+}
+function updateDynastyStateV273(announce){
+  const st=ensureDynastyStateV273(), d=dynastySummaryV273(), oldTier=+st.tier||0;
+  st.tier=d.tier; st.legacy=d.legacy;
+  dynastyMissionsV273(d).forEach(m=>{
+    if(m.done&&!st.unlocked[m.id]){
+      st.unlocked[m.id]=state.year||1;
+      if(announce) pushClubNews('장기 목표 달성',`${m.label}을 달성했습니다.`);
+    }
+  });
+  if(announce&&d.tier>oldTier) pushClubNews('구단 위상 상승',`${d.icon} ${d.name} 단계에 올랐습니다. 명성 ${d.legacy}점`);
+  save(); return d;
+}
+function dynastyPanelV273(){
+  const d=updateDynastyStateV273(false), missions=dynastyMissionsV273(d);
+  const next=missions.find(m=>!m.done);
+  return `<h2 class="sec" style="margin-top:14px">${d.icon} 장기 목표·왕조</h2>
+  <div class="notice" style="border-color:var(--amber)"><b>${d.name} · 구단 명성 ${d.legacy}/999</b><br>
+  한국시리즈 우승 ${d.titles}회 · 정규시즌 1위 ${d.pennants}회 · 가을야구 ${d.playoffs}회<br>
+  최장 가을야구 ${d.playoffStreak}년 · 최장 연속 우승 ${d.titleStreak}년
+  ${next?`<br><span style="color:var(--dim)">다음 목표: ${next.label} · ${next.progress}</span>`:'<br>모든 장기 목표를 달성했습니다. 🏆'}</div>`;
+}
+function dynastyHistoryHtmlV273(){
+  const d=updateDynastyStateV273(false), missions=dynastyMissionsV273(d);
+  return `<div class="reveal"><div class="lbl">${d.icon} 왕조·장기 목표</div>
+    <b>${d.name}</b> · 구단 명성 ${d.legacy}/999<br>
+    우승 ${d.titles}회 · 정규시즌 1위 ${d.pennants}회 · 가을야구 ${d.playoffs}회 · 통산 ${d.totalWins}승<br>
+    ${missions.map(m=>`${m.done?'✅':'⬜'} ${m.label} <span style="color:var(--dim)">${m.progress}</span>`).join('<br>')}
+  </div>`;
+}
+const _longTermPanelV273=longTermPanel;
+longTermPanel=function(){ return dynastyPanelV273()+_longTermPanelV273(); };
+const _renderSeasonDoneV273=renderSeasonDone;
+renderSeasonDone=function(){
+  const before=completedSeasonsV273().length;
+  const r=_renderSeasonDoneV273();
+  const after=completedSeasonsV273().length;
+  updateDynastyStateV273(after>before||seasonOver());
+  return r;
+};
+const _openHistoryRoomV273=openHistoryRoom;
+openHistoryRoom=function(){
+  _openHistoryRoomV273();
+  const sheet=document.getElementById('sheet');
+  if(sheet){
+    const top=sheet.querySelector('.top');
+    if(top) top.insertAdjacentHTML('afterend',dynastyHistoryHtmlV273());
+    else sheet.insertAdjacentHTML('afterbegin',dynastyHistoryHtmlV273());
+  }
+};
+ensureDynastyStateV273();
+updateDynastyStateV273(false);
 </script>
 </body>
 </html>
