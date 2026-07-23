@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.26.0</title>
+<title>우리팀을 만들자 v0.26.2</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -380,7 +380,7 @@ body.theme-rain #rainLayer{display:block;
 .biz-card button{margin-top:9px;width:100%;border:0;border-radius:10px;padding:9px 6px;background:var(--amber);color:#15120b;font-weight:900}
 .biz-card button.secondary{background:#25372c;color:#e9f1eb;border:1px solid rgba(255,255,255,.1)}
 .ops-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}.ops-actions .btn{margin:0}
-.save-flash{animation:saveFlash .45s ease}@keyframes saveFlash{0%{transform:scale(.98);opacity:.65}100%{transform:scale(1);opacity:1}}
+
 .checklist{scroll-margin-top:12px}
 
 
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.26.0</span>
+    <span class="ver">v0.26.2</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -2803,11 +2803,13 @@ function renderFront(){
 function renderOffseason(t){
   buildOffseasonMarket();
   const m = state.season.market;
-  let h = `<div class="notice" style="border-color:var(--amber)"><b>⚾ 오프시즌 ${state.mode==='sim'?state.year+'년차':''}</b><br>
-    FA 영입·신인 지명·방출·훈련을 진행하고, 끝나면 아래 버튼으로 다음 시즌을 시작합니다.${state.mode==='live'?'<br>🔒 최초 실제 선수는 실황 보호 대상으로 유지됩니다.':''}</div>`;
+  const offGuide = state.mode==='sim'
+    ? 'FA 영입·신인 지명·방출·훈련을 진행하고, 끝나면 다음 시즌을 시작합니다.'
+    : '2026 단일 시즌 정산입니다. FA 영입·외국인 영입·선수단 정리만 진행하며 성장·은퇴·신인드래프트는 적용되지 않습니다.<br>🔒 최초 실제 선수는 실황 보호 대상으로 유지됩니다.';
+  let h = `<div class="notice" style="border-color:var(--amber)"><b>⚾ ${state.mode==='sim'?'오프시즌 '+state.year+'년차':'2026 시즌 정산'}</b><br>${offGuide}</div>`;
   // ── 필수 체크리스트 + 새 시즌 시작 (상단 고정) ──
   const cl = offseasonChecklist();
-  const nextLabel = state.mode==='sim'?(state.year+1)+'년차 시즌 시작':'새 시즌 시작';
+  const nextLabel = state.mode==='sim'?(state.year+1)+'년차 시즌 시작':'2026 시즌 다시 시작';
   h += `<div class="checklist">
     <div class="cl-title">새 시즌 시작 조건</div>
     ${cl.items.map(it=>`<div class="cl-row"><span class="cl-ic">${it.ok?'✅':'⬜'}</span><span class="cl-lb">${it.label}</span><span class="cl-note ${it.ok?'ok':'todo'}">${it.note}</span></div>`).join('')}
@@ -2873,18 +2875,21 @@ function renderOffseason(t){
         <button class="signbtn">${cost}</button></div>`;
     });
   }
-  // 신인 드래프트
-  ensureScout();
-  h += `<h2 class="sec" style="margin-top:16px">신인 드래프트 <small>${m.drafted?'지명 완료':'1명 지명 가능'} · ${SCOUT_INFO[state.scout].name}</small></h2>`;
-  h += `<div class="hint">표시된 잠재력과 OVR은 스카우트 보고서입니다. 낮은 등급 스카우트의 보고서는 실제 능력과 차이가 날 수 있습니다.</div>`;
-  m.draft.forEach((raw,idx)=>{
-    const d=prepareScoutReport(raw,idx);
-    h += `<div class="prow ${m.drafted?'':''}" style="cursor:${m.drafted?'default':'pointer'};${m.drafted?'opacity:.5':''}" data-draft="${idx}">
-      <div class="pos">${d.kind==='bat'?d.data[2]:(d.data[2]==='선발'?'SP':'RP')}</div>
-      <div class="mid"><div class="nm">${d.data[0]} <span style="font-size:11px;color:var(--amber)">${d.reportPot}</span></div>
-      <div class="hand">${d.age}세 · 예상 OVR ${scoutRange(d.reportOvr)}</div></div>
-      <div class="ovr num" style="font-size:14px">${d.reportOvr}</div></div>`;
-  });
+  // 신인 드래프트 — 시뮬레이션 전용
+  if(state.mode==='sim'){
+    // 신인 드래프트
+    ensureScout();
+    h += `<h2 class="sec" style="margin-top:16px">신인 드래프트 <small>${m.drafted?'지명 완료':'1명 지명 가능'} · ${SCOUT_INFO[state.scout].name}</small></h2>`;
+    h += `<div class="hint">표시된 잠재력과 OVR은 스카우트 보고서입니다. 낮은 등급 스카우트의 보고서는 실제 능력과 차이가 날 수 있습니다.</div>`;
+    m.draft.forEach((raw,idx)=>{
+      const d=prepareScoutReport(raw,idx);
+      h += `<div class="prow ${m.drafted?'':''}" style="cursor:${m.drafted?'default':'pointer'};${m.drafted?'opacity:.5':''}" data-draft="${idx}">
+        <div class="pos">${d.kind==='bat'?d.data[2]:(d.data[2]==='선발'?'SP':'RP')}</div>
+        <div class="mid"><div class="nm">${d.data[0]} <span style="font-size:11px;color:var(--amber)">${d.reportPot}</span></div>
+        <div class="hand">${d.age}세 · 예상 OVR ${scoutRange(d.reportOvr)}</div></div>
+        <div class="ovr num" style="font-size:14px">${d.reportOvr}</div></div>`;
+    });
+  }
   // 훈련 (시뮬 모드 전용)
   if(state.mode==='sim'){
     const trained = state.season.trained || [];
@@ -2946,9 +2951,11 @@ function offseasonChecklist(){
     items.push({key:'nego', label:'연봉 협상', ok:pend===0,
       note: pend===0?'모두 처리':`${pend}명 미처리`});
   }
-  // 2) 신인 지명 (매 시즌 1명)
-  items.push({key:'draft', label:'신인 지명', ok:!!m.drafted,
-    note: m.drafted?'지명 완료':'1명 지명 필요'});
+  // 2) 신인 지명 — 시뮬레이션에서만 필수
+  if(state.mode==='sim'){
+    items.push({key:'draft', label:'신인 지명', ok:!!m.drafted,
+      note: m.drafted?'지명 완료':'1명 지명 필요'});
+  }
   // 3) 선수단 규모 — 전체 22~32명, 1군은 최대 28명
   const rosterOk = rosterNow>=TOTAL_ROSTER_MIN && rosterNow<=TOTAL_ROSTER_MAX;
   let rosterNote = `${rosterNow}명 / 허용 ${TOTAL_ROSTER_MIN}~${TOTAL_ROSTER_MAX}명`;
@@ -4222,11 +4229,6 @@ function syncMoneyUi(){
     info.innerHTML=`잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b><br>시설 평균 <b>Lv.${(Object.values((ensureFacilities(),state.facilities)).reduce((a,b)=>a+b,0)/4).toFixed(1)}</b> · 구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>`;
   }
 }
-function manualSave(){
-  save(); syncMoneyUi();
-  const b=document.getElementById('manualSaveBtn');
-  if(b){const old=b.textContent;b.textContent='✅ 저장 완료';b.classList.add('save-flash');setTimeout(()=>{b.textContent=old;b.classList.remove('save-flash');},900);}
-}
 function applySecondTeamDevelopment(){
   if(state.mode!=='sim'||!state.myTeam)return;
   ensureSquadState(); const t=getTeam(state.myTeam); let grown=0;
@@ -4323,7 +4325,7 @@ longTermPanel=function(){
   return `<h2 class="sec" style="margin-top:14px">🏢 장기 구단 운영</h2>
   <div class="notice"><b>구단주 신뢰도 ${Math.round(state.owner.trust)}/100</b><br>목표: ${g.label} · 현재 ${pr.text} ${pr.done?'✅':''}${last?`<br><span style="color:var(--dim)">지난 평가: ${last.done?'달성':'실패'} · ${last.progress}</span>`:''}</div>
   <div class="notice"><b>선수단 분위기 ${teamMood()}/100 · ${moodLabel(teamMood())}</b><br>계약 성공은 선수 만족도와 분위기, 구단주 신뢰도에 긍정적으로 반영됩니다.</div>
-  <div class="ops-actions"><button class="btn" onclick="tradeOppId=null;tradeMyPicks=[];tradeOppPicks=[];openTradeSheet()">🔄 시즌 중 트레이드</button><button class="btn ghost" id="manualSaveBtn" onclick="manualSave()">💾 지금 저장</button></div>
+  <div class="ops-actions"><button class="btn" onclick="tradeOppId=null;tradeMyPicks=[];tradeOppPicks=[];openTradeSheet()">🔄 시즌 중 트레이드</button></div>
   <h2 class="sec" style="font-size:14px;margin-top:14px">🏟️ 구장 경영</h2>
   <div class="hint">좌석 ${b.seats.toLocaleString()}석 · 입장료 ${b.ticket.toFixed(1)}만원 · 시즌 관중 ${(state.season?.attendanceTotal||0).toLocaleString()}명</div>
   <div class="biz-grid">
@@ -4496,7 +4498,7 @@ function clubStatusPanelHtml(){
   <div class="notice"><b>선수단 분위기 ${moodLabel(teamMood())}</b><br>출전 기회·계약·팀 성적에 따라 선수 만족도가 변합니다.</div>
   ${secondTeamOutlookHtml()}
   ${report.length?`<h2 class="sec" style="font-size:14px;margin-top:14px">🌱 최근 2군 육성 결과</h2><div class="growth-report">${report.slice(0,15).map(r=>`<div class="grow-row"><b>${r.name}</b> · ${r.age}세 · ${r.stage}<br>${r.changes.join(' · ')}</div>`).join('')}</div>`:`<div class="hint">2군 육성 결과는 시즌 종료 후 이곳에 표시됩니다.</div>`}
-  <div class="ops-actions"><button class="btn" onclick="openHistoryRoom()">📖 기록실·뉴스</button><button class="btn ghost" id="manualSaveBtn" onclick="manualSave()">💾 지금 저장</button></div>`;
+  <div class="ops-actions"><button class="btn" onclick="openHistoryRoom()">📖 기록실·뉴스</button></div>`;
 }
 function stadiumBusinessOnlyHtml(){
   ensureLongTermState();const b=state.stadiumBiz;
@@ -4992,7 +4994,7 @@ draftPick=function(idx){
 
 
 
-// ═══════════ v0.26.0 모드 분리·경기 실행 안정화 ═══════════
+// ═══════════ v0.26.1 모드 분리·경기 실행 안정화 ═══════════
 function removeDraftSectionForLive(html){
   if(state.mode!=='live') return html;
   const patterns=['<h2 class="sec" style="margin-top:16px">신인 드래프트','<h2 class="sec" style="margin-top:14px">신인 드래프트'];
@@ -5092,6 +5094,46 @@ openDraftSheet=function(idx){
   return _openDraftSheetV260(idx);
 };
 
+
+
+/* ═══════════ 모드 경계 정리 (v0.26.2) ═══════════ */
+function isLiveMode(){ return state.mode==='live'; }
+function isSimulationMode(){ return state.mode==='sim'; }
+
+// 실황 저장에 이전 버전의 드래프트 상태가 남아 있어도 UI와 진행 조건에서 완전히 무시한다.
+const _buildOffseasonMarketV262 = buildOffseasonMarket;
+buildOffseasonMarket = function(){
+  const result = _buildOffseasonMarketV262();
+  if(isLiveMode() && state.season && state.season.market){
+    state.season.market.draft = [];
+    state.season.market.drafted = true;
+  }
+  return result;
+};
+
+const _draftPickV262 = draftPick;
+draftPick = function(idx){
+  if(isLiveMode()){ showAlert('실황 모드에서는 신인드래프트를 진행하지 않습니다.'); return; }
+  return _draftPickV262(idx);
+};
+
+// 실황은 같은 2026 데이터로 다시 시작하며 장기 연차는 증가하지 않는다.
+const _doOffseasonEndV262 = doOffseasonEnd;
+doOffseasonEnd = function(){
+  if(isLiveMode()){
+    const cl=offseasonChecklist();
+    if(!cl.allOk){
+      const todo=cl.items.filter(it=>!it.ok).map(it=>`· ${it.label}: ${it.note}`).join('\n');
+      showAlert('2026 시즌을 다시 시작하려면 먼저 처리해야 합니다:\n\n'+todo); return;
+    }
+    state.season.offDone=true;
+    state.year=1;
+    state.season=null; state.rot={}; state.spLast={};
+    newSeason(); save(); show('game'); renderGameSetup();
+    return;
+  }
+  return _doOffseasonEndV262();
+};
 </script>
 </body>
 </html>
