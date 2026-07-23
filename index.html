@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.26.2</title>
+<title>우리팀을 만들자 v0.26.3</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.26.2</span>
+    <span class="ver">v0.26.3</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -5133,6 +5133,150 @@ doOffseasonEnd = function(){
     return;
   }
   return _doOffseasonEndV262();
+};
+
+
+// ═══════════ v0.26.3 AI FA·드래프트 안정화 ═══════════
+function aiFaKey(teamId,kind,p){ return teamId+'|'+kind+'|'+(p?.[0]||''); }
+function ensureAiFaState(){
+  if(state.mode!=='sim'||!state.players) return;
+  state.aiFaGames=state.aiFaGames||{};
+  state.aiFaSeasonGames=state.aiFaSeasonGames||{};
+  Object.keys(state.players).forEach(teamId=>{
+    if(teamId===state.myTeam) return;
+    const t=state.players[teamId];
+    ['bat','pit'].forEach(kind=>t[kind].forEach((pl,i)=>{
+      const k=aiFaKey(teamId,kind,pl);
+      if(!Number.isFinite(state.aiFaGames[k])){
+        const age=t.age?.[kind]?.[i]||ageOf(pl[1]);
+        state.aiFaGames[k]=initialFaGamesByAge(age);
+      }
+      if(!Number.isFinite(state.aiFaSeasonGames[k])) state.aiFaSeasonGames[k]=0;
+    }));
+  });
+}
+function aiFaRemaining(teamId,kind,p){
+  ensureAiFaState();
+  return Math.max(0,FA_TOTAL_GAMES-(state.aiFaGames[aiFaKey(teamId,kind,p)]||0));
+}
+
+// 기존 일일 등록 누적을 감싸 AI 선수는 팀별 키로 별도 집계한다.
+const _addDailyFaRegistrationV263=addDailyFaRegistration;
+addDailyFaRegistration=function(){
+  _addDailyFaRegistrationV263();
+  if(state.mode!=='sim'||!state.players) return;
+  ensureAiFaState();
+  Object.keys(state.players).forEach(teamId=>{
+    if(teamId===state.myTeam) return;
+    const t=state.players[teamId];
+    ['bat','pit'].forEach(kind=>t[kind].forEach(pl=>{
+      if(!isFirstTeam(teamId,kind,pl)) return;
+      const k=aiFaKey(teamId,kind,pl), season=state.aiFaSeasonGames[k]||0;
+      if(season>=FA_SEASON_GAMES) return;
+      state.aiFaSeasonGames[k]=season+1;
+      state.aiFaGames[k]=(state.aiFaGames[k]||0)+1;
+    }));
+  });
+};
+
+function stableDraftOrder(){
+  const ids=rankOrder();
+  return ids.length===TEAMS.length ? ids.slice().reverse() : TEAMS.map(t=>t.id).slice().reverse();
+}
+function repairDraftState(m){
+  if(state.mode!=='sim'||!m?.kboDraft) return;
+  const valid=new Set(TEAMS.map(t=>t.id));
+  if(!Array.isArray(m.draftOrder)||m.draftOrder.length!==TEAMS.length||new Set(m.draftOrder).size!==TEAMS.length||m.draftOrder.some(id=>!valid.has(id))){
+    m.draftOrder=stableDraftOrder(); m.draftRound=1; m.draftCursor=0;
+  }
+  m.draftRound=Math.max(1,Math.min(DRAFT_ROUNDS+1,Number(m.draftRound)||1));
+  m.draftCursor=Math.max(0,Math.min(m.draftOrder.length,Number(m.draftCursor)||0));
+  m.userDraftPicks=Array.isArray(m.userDraftPicks)?m.userDraftPicks:[];
+  m.draft=Array.isArray(m.draft)?m.draft:[];
+  if(m.userDraftPicks.length>=DRAFT_ROUNDS){ m.drafted=true; m.draftRound=DRAFT_ROUNDS+1; }
+}
+
+const _advanceDraftToUserV263=advanceDraftToUser;
+advanceDraftToUser=function(m){
+  repairDraftState(m);
+  if(m.drafted) return;
+  let guard=0;
+  while(m.draftRound<=DRAFT_ROUNDS && guard++<100){
+    if(m.draftCursor>=m.draftOrder.length){m.draftRound++;m.draftCursor=0;continue;}
+    const teamId=m.draftOrder[m.draftCursor];
+    if(teamId===state.myTeam) return;
+    const idx=aiDraftChoiceIndex(teamId,m);
+    if(idx>=0){m.draft[idx].taken=teamId;addDraftPlayer(teamId,m.draft[idx]);}
+    m.draftCursor++;
+  }
+  if(m.draftRound>DRAFT_ROUNDS){m.drafted=true;TEAMS.forEach(t=>trimAiRoster(t.id));}
+};
+
+const _buildOffseasonMarketV263=buildOffseasonMarket;
+buildOffseasonMarket=function(){
+  _buildOffseasonMarketV263();
+  const m=state.season?.market;
+  if(state.mode!=='sim'||!m) return;
+  ensureAiFaState();
+  const eligible=[];
+  Object.keys(state.players).forEach(teamId=>{
+    if(teamId===state.myTeam) return;
+    const t=state.players[teamId];
+    ['bat','pit'].forEach(kind=>t[kind].forEach((pl,i)=>{
+      if(aiFaRemaining(teamId,kind,pl)>0) return;
+      const age=t.age?.[kind]?.[i]||28;
+      const ovr=kind==='bat'?batOvr(pl,teamId):pitOvr(pl,teamId);
+      if(ovr>=58) eligible.push({from:teamId,kind,data:[...pl],age,ovr});
+    }));
+  });
+  eligible.sort((a,b)=>b.ovr-a.ovr||b.age-a.age);
+  m.fa=eligible.slice(0,12);
+  ensureKboDraftMarket(m); repairDraftState(m); advanceDraftToUser(m);
+  save();
+};
+
+// 새 시즌에는 AI의 시즌별 FA 등록 경기만 초기화한다.
+const _newSeasonV263=newSeason;
+newSeason=function(){
+  const r=_newSeasonV263();
+  if(state.mode==='sim'){state.aiFaSeasonGames={};ensureAiFaState();save();}
+  return r;
+};
+
+// 지명 후 다음 라운드의 우리 팀 차례까지 즉시 처리하며 정확히 3명 지명하면 완료한다.
+draftPick=function(idx){
+  const m=state.season?.market;
+  if(state.mode!=='sim'||!m?.kboDraft) return;
+  repairDraftState(m); advanceDraftToUser(m);
+  if(m.drafted){showAlert('이번 드래프트는 이미 완료되었습니다.');return;}
+  if(m.draftOrder[m.draftCursor]!==state.myTeam){showAlert('현재는 우리 팀 지명 순서가 아닙니다.');return;}
+  const d=m.draft[idx]; if(!d||d.taken){showAlert('이미 지명된 선수입니다.');return;}
+  const round=m.draftRound;
+  d.taken=state.myTeam; addDraftPlayer(state.myTeam,d);
+  m.userDraftPicks.push({round,name:d.data[0],kind:d.kind});
+  m.draftCursor++;
+  if(m.userDraftPicks.length>=DRAFT_ROUNDS){
+    // 남은 AI 지명을 끝까지 처리한 후 완료한다.
+    while(m.draftRound<=DRAFT_ROUNDS){
+      advanceDraftToUser(m);
+      if(m.drafted) break;
+      if(m.draftOrder[m.draftCursor]===state.myTeam){m.draftCursor++;}
+    }
+    m.drafted=true;
+  }else advanceDraftToUser(m);
+  state.lineups[state.myTeam]=null; state.rotOrder[state.myTeam]=null;
+  save(); renderFront();
+  showAlert(`신인 지명 완료!\n${round}라운드 · ${d.data[0]} · ${d.truePot||d.pot}`);
+};
+
+const _kboDraftPanelHtmlV263=kboDraftPanelHtml;
+kboDraftPanelHtml=function(){
+  const m=state.season?.market;
+  if(!m?.kboDraft) return '';
+  repairDraftState(m); advanceDraftToUser(m);
+  const html=_kboDraftPanelHtmlV263();
+  const order=(m.draftOrder||[]).map((id,i)=>`${i+1}번째 ${getTeam(id).name}`).join(' → ');
+  return html.replace('전년도 정규시즌 10위부터 1위까지 지명하며, 1~3라운드 모두 같은 순서입니다.',`전년도 최종 순위의 역순으로 지명합니다. 모든 라운드가 같은 순서입니다.<br><b>${order}</b>`);
 };
 </script>
 </body>
