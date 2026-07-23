@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.27.0</title>
+<title>우리팀을 만들자 v0.27.1</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.27.0</span>
+    <span class="ver">v0.27.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -5853,6 +5853,94 @@ renderRank=function(){
   if(box && !box.querySelector('[data-v270-history]')){
     box.insertAdjacentHTML('beforeend',`<div data-v270-history>${seasonHistoryPanelV270()}</div>`);
   }
+};
+
+
+// ═══════════ v0.27.1 오래된 슬롯의 순위 탭 안전 복구 ═══════════
+function repairRankStateV271(){
+  if(!state || !state.myTeam) return;
+  if(!state.season) newSeason();
+  if(!state.season.rec || typeof state.season.rec!=='object') state.season.rec={};
+  TEAMS.forEach(t=>{
+    const r=state.season.rec[t.id];
+    if(!r || typeof r!=='object') state.season.rec[t.id]={w:0,l:0,t:0};
+    else{
+      r.w=Number.isFinite(+r.w)?+r.w:0;
+      r.l=Number.isFinite(+r.l)?+r.l:0;
+      r.t=Number.isFinite(+r.t)?+r.t:0;
+    }
+  });
+  state.season.day=Number.isFinite(+state.season.day)?Math.max(0,+state.season.day):0;
+  if(!Array.isArray(state.season.last)) state.season.last=[];
+  if(!Array.isArray(state.history)) state.history=[];
+  if(!Array.isArray(state.worldHistory)) state.worldHistory=[];
+  state.history=state.history.filter(h=>h&&typeof h==='object').map((h,i)=>({
+    ...h,
+    year:Number.isFinite(+h.year)?+h.year:i+1,
+    rank:Number.isFinite(+h.rank)?+h.rank:'-',
+    champion:TEAMS.some(t=>t.id===h.champion)?h.champion:null
+  }));
+  state.worldHistory=state.worldHistory.filter(w=>w&&typeof w==='object').map(w=>({
+    ...w,
+    year:Number.isFinite(+w.year)?+w.year:0,
+    finish:w.finish||'기록 복구',
+    medal:w.medal||'',
+    champion:w.champion||'-'
+  }));
+}
+function safeTeamNameV271(id){
+  const t=TEAMS.find(x=>x.id===id);
+  return t?t.name:'기록 없음';
+}
+seasonHistoryPanelV270=function(){
+  if(!state || !state.myTeam) return '';
+  repairRankStateV271();
+  try{ ensureMissedWorldTournamentsV269(); }catch(err){ console.error('세계대회 기록 복구 실패:',err); }
+  const hist=(state.history||[]).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
+  const worlds=(state.worldHistory||[]).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
+  let rows='';
+  if(hist.length){
+    rows += '<div style="margin-top:8px"><b>🏆 한국시리즈·시즌 기록</b><br>' +
+      hist.slice(0,12).map(h=>{
+        const champ=safeTeamNameV271(h.champion);
+        const mine=h.champion===state.myTeam?' · <b style="color:var(--amber)">우리 팀 우승</b>':'';
+        return `${h.year}년차 · 정규시즌 ${h.rank}위 · 한국시리즈 우승 ${champ}${mine}`;
+      }).join('<br>') + '</div>';
+  }else rows += '<div style="margin-top:8px"><b>🏆 한국시리즈·시즌 기록</b><br><span class="hint">완료된 시즌이 없습니다.</span></div>';
+  if(state.mode==='sim'){
+    rows += '<div style="margin-top:12px"><b>🌐 세계대회 기록</b><br>' +
+      (worlds.length?worlds.map(w=>`${w.year}년차 · 대한민국 <b>${w.medal||''} ${w.finish||'기록 복구'}</b> · 우승 ${w.champion||'-'}`).join('<br>'):'<span class="hint">4년차 시즌 종료 후 첫 대회가 열립니다.</span>') + '</div>';
+  }
+  return `<div class="notice" style="max-width:360px;margin:14px auto 0;border-color:var(--amber)">${rows}</div>`;
+};
+
+const _renderRankV270Safe=renderRank;
+renderRank=function(){
+  repairRankStateV271();
+  try{
+    _renderRankV270Safe();
+  }catch(err){
+    console.error('순위 탭 복구:',err);
+    const rec=state.season.rec;
+    const order=TEAMS.map(t=>t.id).sort((a,b)=>{
+      const ra=rec[a],rb=rec[b];
+      const pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0;
+      const pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;
+      return pb-pa || rb.w-ra.w;
+    });
+    let html='<tr><th>#</th><th style="text-align:left;padding-left:10px">팀</th><th>경기</th><th>승</th><th>패</th><th>무</th><th>승률</th><th>게임차</th></tr>';
+    const top=rec[order[0]];
+    order.forEach((id,i)=>{
+      const r=rec[id],gp=r.w+r.l+r.t,pct=(r.w+r.l)?(r.w/(r.w+r.l)).toFixed(3).replace('0.','.'):'-';
+      const gb=i===0?'-':(((top.w-r.w)+(r.l-top.l))/2).toFixed(1);
+      html+=`<tr class="${id===state.myTeam?'me':''}"><td class="rk">${i+1}</td><td class="tm">${safeTeamNameV271(id)}</td><td>${gp}</td><td>${r.w}</td><td>${r.l}</td><td>${r.t}</td><td>${pct}</td><td>${gb}</td></tr>`;
+    });
+    document.getElementById('rankTable').innerHTML=html;
+    document.getElementById('rankTitle').textContent=`${state.mode==='sim'?state.year+'년차 ':''}순위표 — ${state.season.day}/36경기`;
+    const box=document.getElementById('lastResults');
+    if(box) box.innerHTML='<div class="hint">오래된 저장의 순위 데이터를 자동 복구했습니다.</div>'+seasonHistoryPanelV270();
+  }
+  save();
 };
 </script>
 </body>
