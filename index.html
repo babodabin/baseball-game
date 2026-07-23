@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.26.8</title>
+<title>우리팀을 만들자 v0.26.9</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.26.8</span>
+    <span class="ver">v0.26.9</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -2675,7 +2675,8 @@ function playIntl(a,b){
   const sc=intlScore(a.power,b.power);
   return {a:a.name,b:b.name,sa:sc[0],sb:sc[1],winner:sc[0]>sc[1]?a:b};
 }
-function runWorldTournament(){
+function runWorldTournament(yearOverride){
+  const tournamentYear = yearOverride || state.year;
   const roster=buildNationalRoster();
   const avg=roster.length?roster.reduce((n,x)=>n+x.ovr,0)/roster.length:68;
   const korea={name:'대한민국',power:Math.max(68,Math.min(88,avg+2))};
@@ -2713,14 +2714,14 @@ function runWorldTournament(){
     }
   }
   const mvp=[...roster].sort((a,b)=>b.ovr-a.ovr)[0];
-  const result={year:state.year,finish,medal,champion,roster:roster.map(x=>x.name),mvp:mvp?.name||'',log};
+  const result={year:tournamentYear,finish,medal,champion,roster:roster.map(x=>x.name),mvp:mvp?.name||'',log};
   if(!state.worldHistory) state.worldHistory=[];
   state.worldHistory.push(result);
   return result;
 }
 function worldTournamentHtml(w){
   if(!w) return '';
-  return `<br><br><b>🌐 ${state.year}년차 세계대회</b><br>`+
+  return `<br><br><b>🌐 ${w.year}년차 세계대회</b><br>`+
     `대한민국 최종 성적: <b>${w.medal||''} ${w.finish}</b> · 대회 우승 ${w.champion}<br>`+
     (w.mvp?`대표팀 간판: ${w.mvp}<br>`:'')+
     w.log.join('<br>');
@@ -5755,6 +5756,60 @@ playMyGame=function(){
   }
 };
 
+
+
+// ═══════════ v0.26.9 세계대회 트리거·기록 표시 보정 ═══════════
+function ensureMissedWorldTournamentsV269(){
+  if(state.mode!=='sim' || !state.myTeam || !(state.year>1)) return false;
+  if(!Array.isArray(state.worldHistory)) state.worldHistory=[];
+  let changed=false;
+  for(let y=4; y<state.year; y+=4){
+    if(!state.worldHistory.some(w=>w && w.year===y)){
+      const w=runWorldTournament(y);
+      const h=(state.history||[]).find(x=>x && x.year===y);
+      if(h) h.worldFinish=w.finish;
+      changed=true;
+    }
+  }
+  if(changed) save();
+  return changed;
+}
+
+const _renderSeasonDoneV268=renderSeasonDone;
+renderSeasonDone=function(){
+  // 구버전 저장처럼 포스트시즌 결과가 이미 만들어져 있어도 세계대회는 별도로 실행한다.
+  if(state.mode==='sim' && state.season && state.season.post && worldTournamentDue() && !state.season.worldTournament){
+    state.season.worldTournament=runWorldTournament(state.year);
+    const h=(state.history||[]).find(x=>x && x.year===state.year);
+    if(h) h.worldFinish=state.season.worldTournament.finish;
+    save();
+  }
+  _renderSeasonDoneV268();
+};
+
+function worldHistoryPanelV269(){
+  if(state.mode!=='sim') return '';
+  ensureMissedWorldTournamentsV269();
+  const arr=(state.worldHistory||[]).slice().sort((a,b)=>b.year-a.year);
+  if(!arr.length) return '<div class="hint" style="margin-top:14px">🌐 세계대회 기록 없음 · 4년차 시즌 종료 후 첫 대회가 열립니다.</div>';
+  return `<div class="notice" style="margin-top:14px;border-color:var(--amber)"><b>🌐 세계대회 기록</b><br>${arr.map(w=>`${w.year}년차 · 대한민국 <b>${w.medal||''} ${w.finish}</b> · 우승 ${w.champion}`).join('<br>')}</div>`;
+}
+
+const _renderRankV268=renderRank;
+renderRank=function(){
+  _renderRankV268();
+  const box=document.getElementById('lastResults');
+  if(box) box.insertAdjacentHTML('beforeend',worldHistoryPanelV269());
+};
+
+const _switchSlotV268=switchSlot;
+switchSlot=function(i){
+  _switchSlotV268(i);
+  ensureMissedWorldTournamentsV269();
+};
+
+// 현재 활성 저장도 한 번 보정한다.
+ensureMissedWorldTournamentsV269();
 
 </script>
 </body>
