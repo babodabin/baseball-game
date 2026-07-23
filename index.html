@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.25.1</title>
+<title>우리팀을 만들자 v0.26.0</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.25.1</span>
+    <span class="ver">v0.26.0</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -4988,6 +4988,108 @@ draftPick=function(idx){
   state.lineups[state.myTeam]=null;state.rotOrder[state.myTeam]=null;
   save();renderFront();
   showAlert(`신인 지명 완료!\n${round}라운드 · ${d.data[0]} · ${d.truePot||d.pot}`);
+};
+
+
+
+// ═══════════ v0.26.0 모드 분리·경기 실행 안정화 ═══════════
+function removeDraftSectionForLive(html){
+  if(state.mode!=='live') return html;
+  const patterns=['<h2 class="sec" style="margin-top:16px">신인 드래프트','<h2 class="sec" style="margin-top:14px">신인 드래프트'];
+  let start=-1;
+  for(const x of patterns){ const i=html.indexOf(x); if(i>=0){start=i;break;} }
+  if(start<0) return html;
+  const nextHeads=[
+    html.indexOf('<h2 class="sec" style="margin-top:14px">훈련 배정',start),
+    html.indexOf('<h2 class="sec" style="margin-top:16px">훈련 배정',start),
+    html.indexOf('<h2 class="sec"',start+10)
+  ].filter(i=>i>start);
+  const end=nextHeads.length?Math.min(...nextHeads):html.length;
+  return html.slice(0,start)+`<div class="notice" style="margin-top:14px"><b>📡 실황 모드</b><br>실황은 2026 단일 시즌 데이터이므로 신인드래프트를 진행하지 않습니다. FA·외국인 영입과 선수단 정리만 이용할 수 있습니다.</div>`+html.slice(end);
+}
+
+const _renderOffseasonV260=renderOffseason;
+renderOffseason=function(t){
+  return removeDraftSectionForLive(_renderOffseasonV260(t));
+};
+
+const _offseasonChecklistV260=offseasonChecklist;
+offseasonChecklist=function(){
+  const cl=_offseasonChecklistV260();
+  if(state.mode==='live'){
+    cl.items=(cl.items||[]).filter(x=>x.key!=='draft');
+    cl.allOk=cl.items.every(x=>x.ok);
+  }
+  return cl;
+};
+
+function ensurePlayableMyTeam(){
+  if(!state?.myTeam||!state.players?.[state.myTeam]) return;
+  ensureSquadState();
+  const id=state.myTeam, t=getTeam(id);
+  const promote=(kind,need,filterFn)=>{
+    const arr=kind==='bat'?t.bat:t.pit;
+    let active=arr.filter((p,i)=>isFirstTeam(id,kind,p)&&(!filterFn||filterFn(p,i))).length;
+    const candidates=arr.map((p,i)=>({p,i,o:kind==='bat'?batOvr(p,id):pitOvr(p,id)}))
+      .filter(x=>(!filterFn||filterFn(x.p,x.i))&&!isFirstTeam(id,kind,x.p))
+      .sort((a,b)=>b.o-a.o);
+    for(const x of candidates){
+      if(active>=need) break;
+      state.squadLevel[id][squadKey(kind,x.p)]='first'; active++;
+    }
+    return active;
+  };
+  promote('bat',9);
+  let starters=promote('pit',5,p=>p[2]==='선발');
+  if(starters<5){
+    const non=t.pit.map((p,i)=>({p,i,o:pitOvr(p,id)})).filter(x=>x.p[2]!=='선발').sort((a,b)=>b.o-a.o);
+    for(const x of non){
+      if(starters>=5) break;
+      x.p[2]='선발';
+      if(x.p.length>7) x.p[7]=Math.max(65,+x.p[7]||65);
+      state.squadLevel[id][squadKey('pit',x.p)]='first'; starters++;
+    }
+  }
+  // 저장 데이터에서 잘못된 라인업·로테이션 인덱스가 남았으면 자동 재구성한다.
+  const lu=state.lineups?.[id];
+  const validLu=lu&&BAT_POSITIONS.every(pos=>Number.isInteger(lu[pos])&&t.bat[lu[pos]]&&isFirstTeam(id,'bat',t.bat[lu[pos]]));
+  if(!validLu) state.lineups[id]=null;
+  const ro=state.rotOrder?.[id];
+  const validRo=Array.isArray(ro)&&ro.length===5&&ro.every(i=>t.pit[i]&&t.pit[i][2]==='선발'&&isFirstTeam(id,'pit',t.pit[i]));
+  if(!validRo) state.rotOrder[id]=null;
+}
+
+const _renderGameSetupV260=renderGameSetup;
+renderGameSetup=function(){
+  ensurePlayableMyTeam();
+  return _renderGameSetupV260();
+};
+
+const _playMyGameV260=playMyGame;
+playMyGame=function(){
+  ensurePlayableMyTeam();
+  try{
+    return _playMyGameV260();
+  }catch(err){
+    console.error('경기 실행 자동 복구:',err);
+    const id=state.myTeam;
+    state.lineups[id]=null;
+    state.rotOrder[id]=null;
+    ensurePlayableMyTeam();
+    try{return _playMyGameV260();}
+    catch(err2){
+      console.error(err2);
+      showAlert('선수단 구성을 자동 복구했지만 경기를 시작하지 못했습니다. 라인업에서 자동 배치를 한 번 눌러 주세요.');
+      throw err2;
+    }
+  }
+};
+
+// 실황 모드에서는 드래프트 관련 클릭을 완전히 차단한다.
+const _openDraftSheetV260=openDraftSheet;
+openDraftSheet=function(idx){
+  if(state.mode==='live'){showAlert('실황 모드에서는 신인드래프트를 진행하지 않습니다.');return;}
+  return _openDraftSheetV260(idx);
 };
 
 </script>
