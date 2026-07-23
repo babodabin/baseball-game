@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.26.4</title>
+<title>우리팀을 만들자 v0.26.5</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.26.4</span>
+    <span class="ver">v0.26.5</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -5333,6 +5333,142 @@ kboDraftPanelHtml=function(){
   const order=(m.draftOrder||[]).map((id,i)=>`${i+1}번째 ${getTeam(id).name}`).join(' → ');
   return html.replace('전년도 정규시즌 10위부터 1위까지 지명하며, 1~3라운드 모두 같은 순서입니다.',`전년도 최종 순위의 역순으로 지명합니다. 모든 라운드가 같은 순서입니다.<br><b>${order}</b>`);
 };
+
+
+// ═══════════ v0.26.5 AI 선수단 구성 안정화 ═══════════
+const AI_BAT_TARGET=14, AI_PIT_TARGET=12;
+const AI_BAT_MIN=12, AI_PIT_MIN=10;
+const AI_BAT_POSITIONS=['C','1B','2B','3B','SS','LF','CF','RF'];
+
+function aiGeneratedPlayer(p){
+  return !!p && (p[1]==='가상 선수' || p[1]==='신인');
+}
+function aiPushBat(teamId,pos,seed){
+  const t=state.players[teamId], base=getTeam(teamId);
+  const pl=genBackupBat(t.bat.length?t.bat:base.bat,seed);
+  pl[2]=pos;
+  t.bat.push(pl); t.age.bat.push(19+(seed%13));
+}
+function aiPushPitcher(teamId,role,seed){
+  const t=state.players[teamId], base=getTeam(teamId);
+  const pl=genRelief(t.pit.length?t.pit:base.pit,seed);
+  pl[2]=role;
+  if(role==='선발') pl[7]=Math.max(68,+pl[7]||68);
+  t.pit.push(pl); t.age.pit.push(20+(seed%12));
+}
+function aiCanRemove(teamId,kind,idx){
+  const t=state.players[teamId], arr=t[kind], p=arr[idx];
+  if(!p || !aiGeneratedPlayer(p) || foreignFlag(p,kind==='bat')) return false;
+  if(kind==='bat'){
+    if(t.bat.length<=AI_BAT_MIN) return false;
+    const pos=p[2];
+    if(AI_BAT_POSITIONS.includes(pos) && t.bat.filter(x=>x[2]===pos).length<=1) return false;
+    return true;
+  }
+  if(t.pit.length<=AI_PIT_MIN) return false;
+  const role=p[2], count=t.pit.filter(x=>x[2]===role).length;
+  if(role==='선발' && count<=5) return false;
+  if(role==='마무리' && count<=1) return false;
+  if(role==='불펜' && count<=4) return false;
+  return true;
+}
+function aiTrimBalanced(teamId,target=AI_TARGET_ROSTER){
+  const t=state.players[teamId]; if(!t) return;
+  let guard=0;
+  while(t.bat.length+t.pit.length>target && guard++<80){
+    const choices=[];
+    ['bat','pit'].forEach(kind=>t[kind].forEach((p,i)=>{
+      if(!aiCanRemove(teamId,kind,i)) return;
+      const age=t.age?.[kind]?.[i]||28;
+      const o=kind==='bat'?batOvr(p,teamId):pitOvr(p,teamId);
+      choices.push({kind,i,score:o+(age<=23?5:0)});
+    }));
+    choices.sort((a,b)=>a.score-b.score);
+    const x=choices[0]; if(!x) break;
+    t[x.kind].splice(x.i,1); t.age[x.kind].splice(x.i,1);
+  }
+}
+function rebalanceAiRoster(teamId){
+  if(state.mode!=='sim'||teamId===state.myTeam||!state.players?.[teamId]) return;
+  const t=state.players[teamId];
+  t.age=t.age||{bat:[],pit:[]}; t.age.bat=t.age.bat||[]; t.age.pit=t.age.pit||[];
+  while(t.age.bat.length<t.bat.length)t.age.bat.push(24);
+  while(t.age.pit.length<t.pit.length)t.age.pit.push(24);
+  let seed=50000+(TEAMS.findIndex(x=>x.id===teamId)+1)*500+(state.year||1)*20;
+
+  // 야수는 수비 8개 포지션을 최소 한 명씩 보유한다.
+  AI_BAT_POSITIONS.forEach(pos=>{if(!t.bat.some(p=>p[2]===pos))aiPushBat(teamId,pos,seed++);});
+  while(t.bat.length<AI_BAT_MIN) aiPushBat(teamId,['DH','C','SS','CF'][t.bat.length%4],seed++);
+
+  // 투수는 선발 5명·불펜 4명·마무리 1명을 최저선으로 유지한다.
+  while(t.pit.filter(p=>p[2]==='선발').length<5) aiPushPitcher(teamId,'선발',seed++);
+  while(t.pit.filter(p=>p[2]==='불펜').length<4) aiPushPitcher(teamId,'불펜',seed++);
+  while(t.pit.filter(p=>p[2]==='마무리').length<1) aiPushPitcher(teamId,'마무리',seed++);
+  while(t.pit.length<AI_PIT_MIN) aiPushPitcher(teamId,'불펜',seed++);
+
+  // 26명 목표: 야수 14명·투수 12명에 가깝게 보충한다.
+  while(t.bat.length<AI_BAT_TARGET && t.bat.length+t.pit.length<AI_TARGET_ROSTER)
+    aiPushBat(teamId,['DH','C','SS','CF','2B','RF'][t.bat.length%6],seed++);
+  while(t.pit.length<AI_PIT_TARGET && t.bat.length+t.pit.length<AI_TARGET_ROSTER)
+    aiPushPitcher(teamId,t.pit.filter(p=>p[2]==='선발').length<5?'선발':'불펜',seed++);
+  while(t.bat.length+t.pit.length<AI_TARGET_ROSTER){
+    if(t.pit.length<AI_PIT_TARGET) aiPushPitcher(teamId,'불펜',seed++);
+    else aiPushBat(teamId,'DH',seed++);
+  }
+  aiTrimBalanced(teamId,AI_TARGET_ROSTER);
+
+  // AI 1군도 포지션 균형을 반영해 자동 갱신한다.
+  if(state.squadLevel?.[teamId]){
+    const level=state.squadLevel[teamId];
+    t.bat.forEach(p=>level[squadKey('bat',p)]='second');
+    t.pit.forEach(p=>level[squadKey('pit',p)]='second');
+    const batFirst=[];
+    AI_BAT_POSITIONS.forEach(pos=>{
+      const x=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId)})).filter(x=>x.p[2]===pos).sort((a,b)=>b.o-a.o)[0];
+      if(x&&!batFirst.includes(x.i))batFirst.push(x.i);
+    });
+    t.bat.map((p,i)=>({i,o:batOvr(p,teamId)})).sort((a,b)=>b.o-a.o).forEach(x=>{if(batFirst.length<12&&!batFirst.includes(x.i))batFirst.push(x.i);});
+    const pitFirst=[];
+    t.pit.map((p,i)=>({p,i,o:pitOvr(p,teamId)})).filter(x=>x.p[2]==='선발').sort((a,b)=>b.o-a.o).slice(0,5).forEach(x=>pitFirst.push(x.i));
+    t.pit.map((p,i)=>({p,i,o:pitOvr(p,teamId)})).filter(x=>x.p[2]==='마무리').sort((a,b)=>b.o-a.o).slice(0,1).forEach(x=>{if(!pitFirst.includes(x.i))pitFirst.push(x.i);});
+    t.pit.map((p,i)=>({i,o:pitOvr(p,teamId)})).sort((a,b)=>b.o-a.o).forEach(x=>{if(pitFirst.length<10&&!pitFirst.includes(x.i))pitFirst.push(x.i);});
+    batFirst.forEach(i=>level[squadKey('bat',t.bat[i])]='first');
+    pitFirst.forEach(i=>level[squadKey('pit',t.pit[i])]='first');
+  }
+  state.lineups[teamId]=null;
+  if(state.rotOrder) state.rotOrder[teamId]=null;
+}
+function rebalanceAllAiRosters(){
+  if(state.mode!=='sim'||!state.players)return;
+  TEAMS.forEach(t=>rebalanceAiRoster(t.id));
+}
+
+const _aiTopUpRostersV265=aiTopUpRosters;
+aiTopUpRosters=function(){_aiTopUpRostersV265();rebalanceAllAiRosters();};
+
+const _addDraftPlayerV265=addDraftPlayer;
+addDraftPlayer=function(teamId,d){
+  _addDraftPlayerV265(teamId,d);
+  if(teamId!==state.myTeam)rebalanceAiRoster(teamId);
+};
+
+const _signFAV265=signFA;
+signFA=function(idx){
+  const from=state.season?.market?.fa?.[idx]?.from;
+  const r=_signFAV265(idx);
+  if(from)rebalanceAiRoster(from);
+  save();
+  return r;
+};
+
+const _newSeasonV265=newSeason;
+newSeason=function(){
+  const r=_newSeasonV265();
+  rebalanceAllAiRosters();
+  save();
+  return r;
+};
+
 </script>
 </body>
 </html>
