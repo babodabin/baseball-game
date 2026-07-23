@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.26.5</title>
+<title>우리팀을 만들자 v0.26.6</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.26.5</span>
+    <span class="ver">v0.26.6</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -5467,6 +5467,131 @@ newSeason=function(){
   rebalanceAllAiRosters();
   save();
   return r;
+};
+
+
+
+// ═══════════ v0.26.6 경기 시작·자동 진행 복구 ═══════════
+function validLineupV266(teamId){
+  const t=getTeam(teamId), lu=state.lineups?.[teamId];
+  if(!lu||!Array.isArray(lu.order)||!Array.isArray(lu.pos)||lu.order.length!==9||lu.pos.length!==9) return false;
+  if(new Set(lu.order).size!==9||new Set(lu.pos).size!==9) return false;
+  if(!BAT_POSITIONS.every(pos=>lu.pos.includes(pos))) return false;
+  return lu.order.every((bi,i)=>Number.isInteger(bi)&&t.bat[bi]&&canPlay(t.bat[bi][2],lu.pos[i]));
+}
+function validRotationV266(teamId){
+  const t=getTeam(teamId), ro=state.rotOrder?.[teamId];
+  return Array.isArray(ro)&&ro.length===5&&new Set(ro).size===5&&ro.every(i=>Number.isInteger(i)&&t.pit[i]&&t.pit[i][2]==='선발');
+}
+function ensureUserRosterMinimumV266(){
+  if(!state?.myTeam||!state.players?.[state.myTeam]) return false;
+  ensureSquadState();
+  const id=state.myTeam, t=getTeam(id);
+  if(!t.age) t.age={bat:[],pit:[]};
+  if(!Array.isArray(t.age.bat)) t.age.bat=[];
+  if(!Array.isArray(t.age.pit)) t.age.pit=[];
+  let changed=false, seed=66000+(TEAMS.findIndex(x=>x.id===id)+1)*100+(state.year||1);
+  const positions=['C','1B','2B','3B','SS','LF','CF','RF'];
+  positions.forEach(pos=>{ if(!t.bat.some(p=>p[2]===pos)){ aiPushBat(id,pos,seed++); changed=true; } });
+  while(t.bat.length<12){ aiPushBat(id,['DH','C','SS','CF','2B','RF'][t.bat.length%6],seed++); changed=true; }
+  while(t.pit.filter(p=>p[2]==='선발').length<5){ aiPushPitcher(id,'선발',seed++); changed=true; }
+  while(t.pit.filter(p=>p[2]==='불펜').length<4){ aiPushPitcher(id,'불펜',seed++); changed=true; }
+  while(t.pit.filter(p=>p[2]==='마무리').length<1){ aiPushPitcher(id,'마무리',seed++); changed=true; }
+  while(t.pit.length<10){ aiPushPitcher(id,'불펜',seed++); changed=true; }
+  while(t.age.bat.length<t.bat.length)t.age.bat.push(24);
+  while(t.age.pit.length<t.pit.length)t.age.pit.push(24);
+
+  const level=state.squadLevel[id]||(state.squadLevel[id]={});
+  // 경기 가능한 핵심 인원은 반드시 1군으로 올린다.
+  const batFirst=[];
+  positions.forEach(pos=>{
+    const best=t.bat.map((p,i)=>({p,i,o:batOvr(p,id)})).filter(x=>x.p[2]===pos).sort((a,b)=>b.o-a.o)[0];
+    if(best&&!batFirst.includes(best.i)) batFirst.push(best.i);
+  });
+  t.bat.map((p,i)=>({i,o:batOvr(p,id)})).sort((a,b)=>b.o-a.o).forEach(x=>{if(batFirst.length<12&&!batFirst.includes(x.i))batFirst.push(x.i);});
+  const pitFirst=[];
+  t.pit.map((p,i)=>({p,i,o:pitOvr(p,id)})).filter(x=>x.p[2]==='선발').sort((a,b)=>b.o-a.o).slice(0,5).forEach(x=>pitFirst.push(x.i));
+  t.pit.map((p,i)=>({p,i,o:pitOvr(p,id)})).filter(x=>x.p[2]==='마무리').sort((a,b)=>b.o-a.o).slice(0,1).forEach(x=>{if(!pitFirst.includes(x.i))pitFirst.push(x.i);});
+  t.pit.map((p,i)=>({i,o:pitOvr(p,id)})).sort((a,b)=>b.o-a.o).forEach(x=>{if(pitFirst.length<10&&!pitFirst.includes(x.i))pitFirst.push(x.i);});
+  batFirst.forEach(i=>level[squadKey('bat',t.bat[i])]='first');
+  pitFirst.forEach(i=>level[squadKey('pit',t.pit[i])]='first');
+  return changed;
+}
+
+ensurePlayableMyTeam=function(){
+  if(!state?.myTeam||!state.players?.[state.myTeam]) return;
+  const changed=ensureUserRosterMinimumV266();
+  const id=state.myTeam;
+  if(changed||!validLineupV266(id)) state.lineups[id]=null;
+  // getLineup이 실제 저장 형식 {order,pos,sp}으로 9자리를 재구성한다.
+  const lu=getLineup(id);
+  if(!validLineupV266(id)){
+    state.lineups[id]=null;
+    getLineup(id);
+  }
+  if(changed||!validRotationV266(id)) state.rotOrder[id]=null;
+  rotOrderOf(id);
+  save();
+};
+
+const _playMyGameV266=playMyGame;
+playMyGame=function(){
+  ensurePlayableMyTeam();
+  try{ return _playMyGameV266(); }
+  catch(err){
+    console.error('v0.26.6 경기 자동 복구 1차:',err);
+    const id=state.myTeam;
+    state.lineups[id]=null; state.rotOrder[id]=null;
+    ensurePlayableMyTeam();
+    try{ return _playMyGameV266(); }
+    catch(err2){
+      console.error('v0.26.6 경기 자동 복구 2차:',err2);
+      showAlert('경기 구성을 다시 만들었습니다. 경기 버튼을 한 번 더 눌러 주세요.');
+      return null;
+    }
+  }
+};
+
+// 경기 화면의 자동 진행 버튼은 항상 보이고 눌릴 수 있게 유지한다.
+const _renderGameSetupV266=renderGameSetup;
+renderGameSetup=function(){
+  ensurePlayableMyTeam();
+  const r=_renderGameSetupV266();
+  const b=document.getElementById('skip5Btn');
+  if(b){ b.style.display=''; b.disabled=false; b.textContent='다음 5경기 자동 진행 (결과만)'; }
+  return r;
+};
+
+// 단일 경기와 5경기 자동 진행 모두 실패한 경기에서는 화면 전환을 하지 않는다.
+document.getElementById('playBtn').onclick = ()=>{
+  const g=playMyGame(); if(!g) return;
+  document.getElementById('gameSetup').style.display='none';
+  document.getElementById('gameLive').style.display='';
+  document.getElementById('newGameBtn').style.display='none';
+  document.getElementById('skipBtn').style.display='';
+  const log=document.getElementById('gamelog'); log.innerHTML='';
+  const evs=spdSel==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant');
+  let i=0; const innDone={a:0,h:0};
+  function push(n){
+    for(let k=0;k<n&&i<evs.length;k++,i++){
+      const e=evs[i],d=document.createElement('div'); if(e.cls)d.className=e.cls; d.textContent=e.text; log.appendChild(d);
+      if(e.cls==='inn'){if(e.half==='초'){innDone.a=e.inn-1;innDone.h=e.inn-1;}else innDone.a=e.inn;}
+      if(e.cls==='final'){innDone.a=99;innDone.h=99;}
+    }
+    drawScore(g,innDone); log.scrollTop=log.scrollHeight; if(i>=evs.length)finish();
+  }
+  function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='';}
+  if(spdSel==='fast')push(evs.length);else{const step=spdSel==='pa'?2:8,ms=spdSel==='pa'?750:700;push(step);gTimer=setInterval(()=>push(step),ms);}
+  document.getElementById('skipBtn').onclick=()=>push(evs.length);
+  document.getElementById('newGameBtn').onclick=()=>renderGameSetup();
+};
+
+document.getElementById('skip5Btn').onclick=()=>{
+  let done=0;
+  while(done<5&&!seasonOver()){
+    const g=playMyGame(); if(!g) break; done++;
+  }
+  refreshHeader(); renderGameSetup();
 };
 
 </script>
