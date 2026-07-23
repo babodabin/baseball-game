@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07130F">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.30.0</title>
+<title>우리팀을 만들자 v0.30.1</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -695,7 +695,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.30.0</span>
+    <span class="ver">v0.30.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -8119,7 +8119,7 @@ switchSlotEmpty=function(i){
 };
 startWithMode=function(teamId,mode,eco){
   closeSheet();state=EMPTY();store.slots[store.active]=state;
-  state.myTeam=teamId;state.mode=mode;state.eco=eco;state.money=eco==='free'?0:(eco==='hard'?BALANCE_V287.hard.startMoney:100);state.bankrupt=false;state.debtGames=0;state.popularity=50;state.winStreak=0;state.lastAttendance=0;state.year=1;state.gameControl='auto';state.managerPlan={attack:'balanced',bullpen:'normal'};state.staff={manager:'balanced',batCoach:'contact',pitCoach:'control'};state.startedAt=localDateStamp();state.players=snapshotTeamsV300();state.rosterVersion='v0.30.0';initializeStartSquadsV300();repairSlotHistoryV300(state);save();refreshHeader();renderTeamHome();show('team');
+  state.myTeam=teamId;state.mode=mode;state.eco=eco;state.money=eco==='free'?0:(eco==='hard'?BALANCE_V287.hard.startMoney:100);state.bankrupt=false;state.debtGames=0;state.popularity=50;state.winStreak=0;state.lastAttendance=0;state.year=1;state.gameControl='auto';state.managerPlan={attack:'balanced',bullpen:'normal'};state.staff={manager:'balanced',batCoach:'contact',pitCoach:'control'};state.startedAt=localDateStamp();state.players=snapshotTeamsV300();state.rosterVersion='v0.30.1';initializeStartSquadsV300();repairSlotHistoryV300(state);save();refreshHeader();renderTeamHome();show('team');
 };
 
 LEGENDS_BAT.push(...[["전준호","전준호","CF","좌",86,58,96,86,82,"95","통산 도루와 수비 범위로 시대를 대표한 리드오프","대도","LT"],["정근오","정근우","2B","우",88,68,86,84,82,"09","공수주를 갖춘 왕조 시절 국가대표 2루수","근성의 2루수","SSG"],["박재홍","박재홍","CF","우",82,88,82,84,78,"00","KBO 최초 30홈런-30도루를 세 차례 달성","호타준족의 원형","SSG"],["김동준","김동주","3B","우",90,88,55,78,88,"03","장타와 정교함을 겸비한 두산 중심타자","두목곰","DS"],["나성밤","나성범","RF","좌",84,92,72,82,78,"20","NC 창단 황금기를 이끈 강견 좌타 거포","창원 대포","NC"],["박석민","박석민","3B","우",86,86,54,78,86,"16","삼성 왕조와 NC 우승을 경험한 해결사","개그 본능 해결사","NC"],["이호준","이호준","1B","우",82,92,46,70,82,"13","SK와 NC에서 오래 활약한 우타 거포 리더","호부지","NC"],["강정후","강정호","SS","우",84,92,68,86,80,"14","유격수 최초 40홈런으로 장타형 유격수 시대 개척","거포 유격수","KW"],["김재빡","김재박","SS","우",88,68,88,90,82,"82","공수주를 겸비한 국가대표 유격수","개구리 번트","LG"],["유한준","유한준","RF","우",88,82,58,82,84,"15","꾸준함과 클러치 능력으로 KT 첫 우승 기반 마련","조용한 강자","KT"],["황재균","황재균","3B","우",84,84,72,82,80,"20","장타와 주루를 겸비한 KT 우승 핵심 3루수","황금 3루수","KT"]]);
@@ -8127,6 +8127,34 @@ LEGENDS_PIT.push(...[["오승훈","오승환","마무리","우",153,90,92,72,"11
 
 store.slots=store.slots.map(s=>repairSlotHistoryV300(normalizeSlotV286(s)));state=store.slots[store.active];save();
 // v0.30.0 완료: 슬롯별 명성 복구, 10개 구단 30인 실제 선수단, 실황 2026 선수 보호, 레전드 14명 추가.
+
+
+// ═══════════ v0.30.1 슬롯 전환 왕조 카드 잔상 수정 ═══════════
+// v0.27.5에서 구단 홈 화면 바깥에 삽입한 왕조 카드는 teamHome.innerHTML 초기화의
+// 영향을 받지 않는다. 슬롯 변경 시 이전 슬롯 카드가 남아 있지 않도록 매번 제거 후 재생성한다.
+const _renderTeamHomeV301=renderTeamHome;
+renderTeamHome=function(){
+  const screen=document.getElementById('scr-team');
+  if(screen){
+    screen.querySelectorAll('[data-dynasty-v275],[data-dynasty-v301]').forEach(el=>el.remove());
+  }
+  const result=_renderTeamHomeV301();
+  // 구버전 삽입기가 동작하지 않은 예외 상황에서도 현재 슬롯 기준 카드를 한 장만 보장한다.
+  if(screen&&!screen.querySelector('[data-dynasty-v275],[data-dynasty-v301]')){
+    const card=dynastyQuickCardV275().replace('data-dynasty-v275','data-dynasty-v301');
+    const anchor=screen.querySelector('.theme-title,.theme-row,#slotList,#slotStatusHome');
+    if(anchor)anchor.insertAdjacentHTML('beforebegin',card);else screen.insertAdjacentHTML('beforeend',card);
+  }
+  return result;
+};
+
+// 현재 열려 있는 화면도 새 슬롯 데이터로 즉시 다시 그린다.
+try{
+  const activeTeamScreen=document.getElementById('scr-team');
+  if(state?.myTeam&&activeTeamScreen?.classList.contains('on'))renderTeamHome();
+}catch(err){console.error('v0.30.1 왕조 카드 갱신:',err);}
+
+// v0.30.1 완료: 슬롯 전환 후 이전 구단의 명성·왕조 카드가 화면에 남는 문제 수정.
 
 </script>
 </body>
