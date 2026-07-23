@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.27.6</title>
+<title>우리팀을 만들자 v0.28.2</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -397,6 +397,12 @@ body.theme-rain #rainLayer{display:block;
 .growth-report .grow-row:last-child{border-bottom:0}
 .contract-total{background:#101c16;border:1px solid rgba(240,180,60,.28);border-radius:12px;padding:11px;margin:10px 0;font-size:12px;line-height:1.65}
 
+
+/* v0.28.1 특수 능력 */
+.special-card{background:linear-gradient(135deg,rgba(141,124,242,.16),rgba(255,182,59,.08));border:1px solid #8d7cf2;border-radius:12px;padding:12px;margin:10px 0;line-height:1.55}
+.special-card .special-name{font-weight:900;color:#c8bcff;font-size:14px}.special-card .special-desc{font-size:12px;color:var(--dim);margin-top:3px}
+.special-pop{color:#c8bcff;font-weight:800}
+
 </style>
 </head>
 <body>
@@ -404,7 +410,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.27.6</span>
+    <span class="ver">v0.28.2</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -594,7 +600,7 @@ function showConfirm(msg, onYes){
 const SAVE_KEY = 'ourteam_slots_v1';
 const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
 const DATA_DATE = '2026.07.19';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
-const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}, health:{}, retired:[], retirementNews:[], worldHistory:[], squadLevel:{}, faGames:{}, faSeasonGames:{}});
+const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}, health:{}, retired:[], retirementNews:[], worldHistory:[], squadLevel:{}, faGames:{}, faSeasonGames:{}, specialAbilities:{}, eventHistory:[], eventFlags:{lastStamp:-99}});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
@@ -1527,6 +1533,14 @@ function openEcoSheet(teamId, mode){
       <button onclick="openModeSheet(getTeam('${teamId}') && TEAMS.find(x=>x.id==='${teamId}'))">← 뒤로</button>
     </div>`;
 }
+/* v0.28.2 — UTC 변환으로 시작일이 하루 전으로 저장되는 날짜 오류 수정 */
+function localDateStamp(date = new Date()){
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  return `${y}.${m}.${d}`;
+}
+
 function startWithMode(teamId, mode, eco){
   closeSheet();
   state.myTeam = teamId;
@@ -1542,7 +1556,7 @@ function startWithMode(teamId, mode, eco){
   state.gameControl = 'auto';
   state.managerPlan = {attack:'balanced',bullpen:'normal'};
   state.staff = {manager:'balanced',batCoach:'contact',pitCoach:'control'};
-  state.startedAt = new Date().toISOString().slice(0,10).replaceAll('-','.');
+  state.startedAt = localDateStamp();
   state.players = snapshotTeams();
   save();
   refreshHeader(); renderTeamHome(); show('team');
@@ -2022,6 +2036,9 @@ function simGame(myId, oppId, mySp, oppSp){
         continue;
       }
       const res = paResult(batter, atk.team.id, pit, st[defSide].team.id, tactic);
+      if(res.specialText){
+        ev.push({inn, half, text:res.specialText, cls:'scoreev'});
+      }
       if(atk.team.id === state.myTeam)
         ev.push({inn, half, text: chantFor(batter, atk.team), cls:'chant'});
       pitchLines(pit, st[defSide].team.id, res).forEach(t=>
@@ -6344,6 +6361,219 @@ try{
   const frontScreen=document.getElementById('scr-front');
   if(frontScreen&&frontScreen.classList.contains('on')) renderFront();
 }catch(err){ console.error('v0.27.6 운영 화면 즉시 갱신:',err); }
+
+
+// ═══════════ v0.27.7 운영 화면 왕조 카드 중복 제거 ═══════════
+// 상단에 임시 삽입되던 v0.27.5 카드는 제거하고, 구단 현황 본문 안의 카드만 유지한다.
+const _renderFrontV277=renderFront;
+renderFront=function(){
+  const result=_renderFrontV277();
+  const body=document.getElementById('frontBody');
+  if(body){
+    body.querySelectorAll('[data-dynasty-v275]').forEach(el=>el.remove());
+  }
+  return result;
+};
+
+try{
+  const frontScreenV277=document.getElementById('scr-front');
+  if(frontScreenV277&&frontScreenV277.classList.contains('on')) renderFront();
+}catch(err){ console.error('v0.27.7 중복 카드 제거:',err); }
+
+
+// ═══════════ v0.28.1 특수 능력 실전 연동 ═══════════
+const SPECIAL_ABILITIES_V280={
+  clutch:{icon:'🔥',name:'해결사',desc:'중심 타선에서 타격 능력 +2',bat:2,pit:0},
+  cannon:{icon:'🚀',name:'대포',desc:'장타형 타자의 타격 능력 +2',bat:2,pit:0},
+  speedster:{icon:'⚡',name:'질주 본능',desc:'빠른 타자의 타격 능력 +1',bat:1,pit:0},
+  wizard:{icon:'🧤',name:'수비 마법사',desc:'수비형 야수의 능력 +1',bat:1,pit:0},
+  ace:{icon:'👑',name:'에이스',desc:'선발 투수 능력 +2',bat:0,pit:2},
+  fireball:{icon:'💥',name:'강속구',desc:'구속형 투수 능력 +2',bat:0,pit:2},
+  stopper:{icon:'🔒',name:'철벽',desc:'불펜·마무리 능력 +2',bat:0,pit:2},
+  ironman:{icon:'🛡️',name:'철인',desc:'꾸준한 선수 능력 +1',bat:1,pit:1},
+  legend:{icon:'🏅',name:'전설의 품격',desc:'레전드 선수 모든 능력 +3',bat:3,pit:3},
+  prospect:{icon:'🌱',name:'특급 유망주',desc:'상위 잠재력 신인 능력 +1',bat:1,pit:1}
+};
+function ensureSpecialStateV280(){
+  if(!state.specialAbilities||typeof state.specialAbilities!=='object') state.specialAbilities={};
+  if(!Array.isArray(state.eventHistory)) state.eventHistory=[];
+  if(!state.eventFlags||typeof state.eventFlags!=='object') state.eventFlags={};
+  if(!Number.isFinite(+state.eventFlags.lastStamp)) state.eventFlags.lastStamp=-99;
+}
+function specialKeyV280(teamId,isBat,p){return teamId+':' +(isBat?'bat':'pit')+':'+(p?.[0]||'');}
+function inferSpecialV280(teamId,isBat,p){
+  if(!p)return null;
+  const flag=flagOf(p,isBat);
+  if(flag==='legend')return 'legend';
+  if(p[1]==='신인'){
+    const vals=isBat?p.slice(4,9):p.slice(4,8);
+    const avg=vals.reduce((a,v)=>a+(+v||0),0)/Math.max(1,vals.length);
+    if(avg>=61)return 'prospect';
+  }
+  if(isBat){
+    const con=+p[4]||0,pow=+p[5]||0,spd=+p[6]||0,def=+p[7]||0;
+    if(pow>=82)return 'cannon'; if(con>=84)return 'clutch'; if(spd>=84)return 'speedster'; if(def>=84)return 'wizard';
+  }else{
+    const velo=+p[4]||0,ctrl=+p[5]||0,brk=+p[6]||0;
+    if(p[2]==='마무리'||p[2]==='불펜')return ctrl+brk>=155?'stopper':null;
+    if(velo>=151)return 'fireball'; if(ctrl+brk>=165)return 'ace';
+  }
+  return null;
+}
+function specialOfV280(teamId,isBat,p){
+  ensureSpecialStateV280(); const k=specialKeyV280(teamId,isBat,p);
+  if(!(k in state.specialAbilities)) state.specialAbilities[k]=inferSpecialV280(teamId,isBat,p)||'';
+  return state.specialAbilities[k]||null;
+}
+function specialBonusV280(teamId,isBat,p){const id=specialOfV280(teamId,isBat,p),a=SPECIAL_ABILITIES_V280[id];return a?(isBat?a.bat:a.pit):0;}
+const _bV280=b;
+b=function(v,p,teamId,isBat){return Math.min(99,_bV280(v,p,teamId,isBat)+specialBonusV280(teamId,isBat,p));};
+const _bvV280=bv;
+bv=function(velo,p,teamId){return _bvV280(velo,p,teamId)+Math.round(specialBonusV280(teamId,false,p)/2);};
+
+function specialBadgeV280(teamId,isBat,p){
+  const id=specialOfV280(teamId,isBat,p),a=SPECIAL_ABILITIES_V280[id];
+  return a?` <span class="boost" title="${a.desc}" style="color:var(--amber)">${a.icon} ${a.name}</span>`:'';
+}
+const _playerRowsV280=playerRows;
+playerRows=function(t,isBat){
+  refreshSpecialAbilitiesV281();
+  let html=_playerRowsV280(t,isBat);
+  try{
+    const arr=isBat?t.bat:t.pit;
+    arr.forEach(p=>{
+      const badge=specialBadgeV280(t.id,isBat,p); if(!badge)return;
+      const needle=`<div class="nm">${p[0]}`;
+      html=html.replace(needle,needle+badge);
+    });
+  }catch(err){console.error('v0.28 특수 능력 로스터:',err);}
+  return html;
+};
+
+function specialAbilityPanelV280(){
+  if(!state.myTeam||!state.players)return '';
+  ensureSpecialStateV280(); const t=getTeam(state.myTeam), found=[];
+  t.bat.forEach(p=>{const id=specialOfV280(t.id,true,p);if(id)found.push({p,id});});
+  t.pit.forEach(p=>{const id=specialOfV280(t.id,false,p);if(id)found.push({p,id});});
+  const counts={};found.forEach(x=>counts[x.id]=(counts[x.id]||0)+1);
+  const rows=Object.entries(counts).map(([id,n])=>{const a=SPECIAL_ABILITIES_V280[id];return `${a.icon} <b>${a.name}</b> ${n}명`;}).join(' · ');
+  return `<div class="notice" data-special-v280 style="margin-top:12px;border-color:#8d7cf2"><b>✨ 특수 능력</b><br>${rows||'아직 특수 능력을 가진 선수가 없습니다.'}<br><span class="hint">능력치 보너스와 경기 상황별 발동 효과가 적용됩니다.</span></div>`;
+}
+const _clubStatusPanelHtmlV280=clubStatusPanelHtml;
+clubStatusPanelHtml=function(){return _clubStatusPanelHtmlV280()+specialAbilityPanelV280()+eventHistoryPanelV280();};
+
+const CLUB_EVENTS_V280=[
+ {title:'베테랑의 특별 훈련',body:'베테랑이 후배들에게 노하우를 전수해 선수단 사기가 올랐습니다.',weight:14,run(){Object.keys(state.morale||{}).forEach(k=>state.morale[k]=Math.min(100,state.morale[k]+3));}},
+ {title:'지역 학교 야구 교실',body:'연고지 팬들의 관심이 커져 구단 인기가 상승했습니다.',weight:13,run(){state.popularity=Math.min(100,(state.popularity||50)+3);}},
+ {title:'원정 이동 지연',body:'예상치 못한 이동 문제로 선수단 피로가 조금 증가했습니다.',weight:9,run(){const t=getTeam(state.myTeam);[...t.bat,...t.pit].forEach((p,i)=>{const kind=i<t.bat.length?'bat':'pit';const h=playerHealth(state.myTeam,kind,p);h.fatigue=Math.min(100,(h.fatigue||0)+5);});}},
+ {title:'스폰서 보너스',body:'구단의 좋은 성과로 추가 후원금이 들어왔습니다.',weight:8,run(){if(ecoOn())state.money+=1.5;}},
+ {title:'시설 고장',body:'훈련 시설 긴급 수리로 비용이 발생했습니다.',weight:7,run(){if(ecoOn())state.money-=1.0;}},
+ {title:'신인 깜짝 성장',body:'코칭스태프의 집중 지도로 한 신인의 능력치가 올랐습니다.',weight:7,run(){const t=getTeam(state.myTeam),pool=[];t.bat.forEach(p=>{if(p[1]==='신인')pool.push({p,isBat:true});});t.pit.forEach(p=>{if(p[1]==='신인')pool.push({p,isBat:false});});if(pool.length){const x=pool[Math.floor(Math.random()*pool.length)],idx=x.isBat?4+Math.floor(Math.random()*5):5+Math.floor(Math.random()*3);x.p[idx]=Math.min(99,(+x.p[idx]||50)+2);}}},
+ {title:'전설의 방문',body:'구단 레전드가 라커룸을 찾아 선수단에 강한 동기를 불어넣었습니다.',weight:4,run(){Object.keys(state.morale||{}).forEach(k=>state.morale[k]=Math.min(100,state.morale[k]+5));state.popularity=Math.min(100,(state.popularity||50)+2);}}
+];
+function weightedEventV280(){let total=CLUB_EVENTS_V280.reduce((a,e)=>a+e.weight,0),r=Math.random()*total;for(const e of CLUB_EVENTS_V280){r-=e.weight;if(r<=0)return e;}return CLUB_EVENTS_V280[0];}
+const _randomClubEventV280=randomClubEvent;
+randomClubEvent=function(){
+  ensureSpecialStateV280();
+  if(state.mode!=='sim')return;
+  const day=(state.season?.day||0), year=Math.max(1,+state.year||1);
+  const stamp=(year-1)*1000+day, last=+state.eventFlags.lastStamp||-99;
+  if(stamp-last<3||Math.random()>.11)return;
+  ensureLongTermState(); const e=weightedEventV280(); e.run();
+  state.eventFlags.lastStamp=stamp; const row={year,day:day+1,title:e.title,body:e.body};
+  state.eventHistory.unshift(row);state.eventHistory=state.eventHistory.slice(0,30);pushClubNews(e.title,e.body);
+};
+function eventHistoryPanelV280(){
+  ensureSpecialStateV280();const arr=state.eventHistory.slice(0,3);
+  return `<div class="notice" data-events-v280 style="margin-top:12px"><b>🎲 최근 랜덤 이벤트</b><br>${arr.length?arr.map(e=>`${e.year}년차 ${e.day}일 · <b>${e.title}</b> — ${e.body}`).join('<br>'):'아직 발생한 이벤트가 없습니다.'}</div>`;
+}
+
+// 기존 저장 데이터도 즉시 보정하고 화면을 갱신한다.
+try{ensureSpecialStateV280();save();if(state.myTeam&&document.getElementById('scr-front')?.classList.contains('on'))renderFront();}catch(err){console.error('v0.28.1 초기화:',err);}
+
+
+// ── v0.28.1: 특수 능력을 실제 타석 결과에 연결 ──
+function specialContextV281(batTid,bat,pitTid,pit,tactic){
+  const batId=specialOfV280(batTid,true,bat), pitId=specialOfV280(pitTid,false,pit);
+  const x={batId,pitId,k:0,bb:0,hit:0,hr:0,dbl:0,trp:0,batText:'',pitText:'',activeTexts:[]};
+  // 능력 효과와 중계 문구가 동일한 발동 판정을 공유한다.
+  // 전설은 희귀하지만 강하게, 일반 능력은 약 18~24% 확률로 발동한다.
+  const batChance=batId==='legend'?.16:batId==='prospect'?.18:.22;
+  const pitChance=pitId==='legend'?.16:pitId==='prospect'?.18:.22;
+  const batOn=!!batId&&Math.random()<batChance;
+  const pitOn=!!pitId&&Math.random()<pitChance;
+  if(batOn){
+    if(batId==='clutch'){x.hit+=.018;x.bb+=.006;x.batText='🔥 해결사 집중력 발동';}
+    else if(batId==='cannon'){x.hr+=.026;x.k+=.008;x.batText='🚀 대포 장타 본능 발동';}
+    else if(batId==='speedster'){x.hit+=.012;x.trp+=.012;x.batText='⚡ 질주 본능 발동';}
+    else if(batId==='wizard'){x.hit+=.006;x.batText='🧤 수비 마법사의 안정감';}
+    else if(batId==='ironman'){x.hit+=.007;x.bb+=.003;x.batText='🛡️ 철인의 집중력';}
+    else if(batId==='legend'){x.hit+=.018;x.hr+=.012;x.bb+=.006;x.batText='🏅 전설의 품격 발동';}
+    else if(batId==='prospect'){x.hit+=.008;x.batText='🌱 특급 유망주의 패기';}
+    if(x.batText)x.activeTexts.push(x.batText);
+  }
+  if(pitOn){
+    if(pitId==='ace'){x.k+=.020;x.hit-=.014;x.pitText='👑 에이스의 위기관리';}
+    else if(pitId==='fireball'){x.k+=.026;x.bb+=.004;x.pitText='💥 강속구 능력 발동';}
+    else if(pitId==='stopper'){x.k+=.020;x.hit-=.018;x.hr-=.010;x.pitText='🔒 철벽 투구 발동';}
+    else if(pitId==='ironman'){x.k+=.007;x.hit-=.006;x.pitText='🛡️ 철인의 안정감';}
+    else if(pitId==='legend'){x.k+=.018;x.hit-=.014;x.bb-=.006;x.pitText='🏅 전설의 품격 발동';}
+    else if(pitId==='prospect'){x.k+=.008;x.pitText='🌱 특급 유망주의 패기';}
+    if(x.pitText)x.activeTexts.push(x.pitText);
+  }
+  return x;
+}
+paResult=function(bat,batTid,pit,pitTid,tactic){
+  const bm=healthMod(batTid,'bat',bat),pm=healthMod(pitTid,'pit',pit);
+  const con=b(bat[4],bat,batTid,true)+bm,pow=b(bat[5],bat,batTid,true)+bm,spd=b(bat[6],bat,batTid,true)+bm,eye=b(bat[8],bat,batTid,true)+bm;
+  const velo=bv(pit[4],pit,pitTid)+Math.round(pm/2),ctrl=b(pit[5],pit,pitTid,false)+pm,brk=b(pit[6],pit,pitTid,false)+pm;
+  tactic=tactic||'balanced';ensureStaff();
+  const myBatCoach=batTid===state.myTeam?state.staff.batCoach:null,myPitCoach=pitTid===state.myTeam?state.staff.pitCoach:null;
+  const mgrAtk=managerAttackBonus(batTid),mgrPit=managerPitchBonus(pitTid),sx=specialContextV281(batTid,bat,pitTid,pit,tactic);
+  const kAdj=(tactic==='power'?.022:tactic==='small'?-.012:0)-(myPitCoach==='breaking'?.008:0)-mgrPit+sx.k;
+  const hitAdj=(tactic==='power'?.008:tactic==='small'?.018:0)+(myBatCoach==='contact'?.010:0)+mgrAtk+sx.hit;
+  const hrAdj=(tactic==='power'?.018:tactic==='small'?-.012:0)+(myBatCoach==='power'?.012:0)+sx.hr;
+  const kP=clamp(.125+(brk-72)*.004+(velo-146)*.006-(con-72)*.004-(eye-70)*.002+kAdj,.05,.42);
+  const bbP=clamp(.085+(eye-70)*.003-(ctrl-76)*.004+(myBatCoach==='eye'?.010:0)-(myPitCoach==='control'?.010:0)+sx.bb,.02,.19);
+  const active=sx.activeTexts.join(' · ');
+  let r=Math.random();if(r<kP)return {t:'K',specialText:active};r-=kP;if(r<bbP)return {t:'BB',specialText:active};
+  const hitP=clamp(.365+(con-72)*.005-(brk-72)*.003-(ctrl-76)*.002+hitAdj,.18,.48);
+  if(Math.random()<hitP){
+    const hrP=clamp(.042+(pow-70)*.0045-(velo-146)*.002+hrAdj,.004,.22);
+    if(Math.random()<hrP)return {t:'HR',specialText:active};
+    const r2=Math.random(),dbl=clamp(.19+(pow-70)*.003+sx.dbl,.12,.33),trp=clamp(.015+(spd-75)*.001+sx.trp,.005,.075);
+    if(r2<trp)return {t:'3B',specialText:active};if(r2<trp+dbl)return {t:'2B',specialText:active};return {t:'1B',specialText:active};
+  }
+  return {t:Math.random()<.55?'GO':'FO',specialText:active};
+};
+
+// 선수 상세 화면에 특수 능력 설명 표시
+const _openSheetV281=openSheet;
+openSheet=function(team,tab,idx){
+  _openSheetV281(team,tab,idx);
+  try{
+    const isBat=tab==='bat',p=(isBat?team.bat:team.pit)[idx],id=specialOfV280(team.id,isBat,p),a=SPECIAL_ABILITIES_V280[id];
+    if(!a)return;
+    const sheet=document.getElementById('sheet'),card=document.createElement('div');
+    card.className='special-card';card.innerHTML=`<div class="special-name">${a.icon} 특수 능력 · ${a.name}</div><div class="special-desc">${a.desc}<br>경기 중 상황에 따라 확률적으로 발동하며 타석 결과에 직접 영향을 줍니다.</div>`;
+    const firstReveal=sheet.querySelector('.reveal');if(firstReveal)firstReveal.insertAdjacentElement('beforebegin',card);else sheet.appendChild(card);
+  }catch(err){console.error('v0.28.1 선수 특수 능력 표시:',err);}
+};
+
+// 특수 능력 수동 재판정: 로스터 변화·신인 성장 후에도 누락 방지
+function refreshSpecialAbilitiesV281(){
+  ensureSpecialStateV280();
+  const source=state.players&&typeof state.players==='object'?state.players:Object.fromEntries(TEAMS.map(t=>[t.id,t]));
+  Object.keys(source).forEach(teamId=>{
+    const t=source[teamId]; if(!t)return;
+    (t.bat||[]).forEach(p=>{const k=specialKeyV280(teamId,true,p);if(!(k in state.specialAbilities))state.specialAbilities[k]=inferSpecialV280(teamId,true,p)||'';});
+    (t.pit||[]).forEach(p=>{const k=specialKeyV280(teamId,false,p);if(!(k in state.specialAbilities))state.specialAbilities[k]=inferSpecialV280(teamId,false,p)||'';});
+  });
+}
+try{refreshSpecialAbilitiesV281();save();}catch(err){console.error('v0.28.1 초기화:',err);}
+
+// v0.28.1 완료: 저장 스키마·현재 로스터 자동 판정·AI 경기 효과·발동 로그·선수 상세 연동.
+// v0.28.2 완료: 시작일 현지 날짜 저장 오류 수정.
 
 </script>
 </body>
