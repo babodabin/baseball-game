@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.27.1</title>
+<title>우리팀을 만들자 v0.27.2</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.27.1</span>
+    <span class="ver">v0.27.2</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -5941,6 +5941,107 @@ renderRank=function(){
     if(box) box.innerHTML='<div class="hint">오래된 저장의 순위 데이터를 자동 복구했습니다.</div>'+seasonHistoryPanelV270();
   }
   save();
+};
+
+
+// ═══════════ v0.27.2 순위 진입·구단 기록실 통합 ═══════════
+function compactHistorySummaryV272(){
+  repairRankStateV271();
+  const hist=Array.isArray(state.history)?state.history:[];
+  const worlds=Array.isArray(state.worldHistory)?state.worldHistory:[];
+  const ks=hist.filter(h=>h&&h.champion===state.myTeam).length;
+  return `<div class="notice" style="margin-top:14px;border-color:var(--amber)">
+    <b>📚 구단 기록 요약</b><br>
+    완료 시즌 ${hist.length}회 · 한국시리즈 우승 ${ks}회 · 세계대회 ${worlds.length}회
+    <button class="btn ghost" style="margin-top:10px" onclick="openHistoryRoom()">구단 기록실 열기</button>
+  </div>`;
+}
+
+function renderRankCoreV272(){
+  repairRankStateV271();
+  const rec=state.season.rec;
+  const order=TEAMS.map(t=>t.id).sort((a,b)=>{
+    const ra=rec[a]||{w:0,l:0,t:0}, rb=rec[b]||{w:0,l:0,t:0};
+    const pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0, pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;
+    return pb-pa || rb.w-ra.w || ra.l-rb.l;
+  });
+  const top=rec[order[0]]||{w:0,l:0,t:0};
+  let html='<tr><th>#</th><th style="text-align:left;padding-left:10px">팀</th><th>경기</th><th>승</th><th>패</th><th>무</th><th>승률</th><th>게임차</th></tr>';
+  order.forEach((id,i)=>{
+    const r=rec[id]||{w:0,l:0,t:0};
+    const gp=r.w+r.l+r.t;
+    const pct=(r.w+r.l)?(r.w/(r.w+r.l)).toFixed(3).replace('0.','.'):'-';
+    const gb=i===0?'-':(((top.w-r.w)+(r.l-top.l))/2).toFixed(1);
+    html+=`<tr class="${id===state.myTeam?'me':''}"><td class="rk">${i+1}</td><td class="tm">${safeTeamNameV271(id)}</td><td>${gp}</td><td>${r.w}</td><td>${r.l}</td><td>${r.t}</td><td>${pct}</td><td>${gb}</td></tr>`;
+  });
+  const table=document.getElementById('rankTable');
+  if(table) table.innerHTML=html;
+  const title=document.getElementById('rankTitle');
+  if(title) title.textContent=`${state.mode==='sim'?state.year+'년차 ':''}순위표 — ${state.season.day}/36경기`;
+  const box=document.getElementById('lastResults');
+  if(box){
+    let rh='<div class="rr-title">최근 경기 결과</div>';
+    const last=Array.isArray(state.season.last)?state.season.last:[];
+    if(!last.length) rh+='<div class="hint">아직 치른 경기가 없습니다.</div>';
+    else last.slice(-5).forEach(txt=>{
+      const mt=String(txt).match(/^(.+?)\s+(\d+)\s*:\s*(\d+)\s+(.+)$/);
+      if(mt){
+        const [,away,as,hs,home]=mt, av=+as, hv=+hs;
+        const mine=away===safeTeamNameV271(state.myTeam)||home===safeTeamNameV271(state.myTeam);
+        rh+=`<div class="rr-card ${mine?'mine':''}"><span class="rt ${av>hv?'win':''}">${away}</span><span class="rs">${as} : ${hs}</span><span class="rt r ${hv>av?'win':''}">${home}</span></div>`;
+      }else rh+=`<div class="rr-card">${String(txt)}</div>`;
+    });
+    box.innerHTML=rh+compactHistorySummaryV272();
+  }
+}
+
+// 순위 화면을 먼저 연 뒤 렌더링한다. 렌더 오류가 나도 이전 화면에 남지 않는다.
+function openRankSafeV272(){
+  show('rank');
+  try{ renderRankCoreV272(); }
+  catch(err){
+    console.error('순위 화면 최종 복구:',err);
+    const box=document.getElementById('lastResults');
+    if(box) box.innerHTML='<div class="hint">순위 데이터를 복구하는 중입니다.</div>'+compactHistorySummaryV272();
+  }
+  const mainEl=document.querySelector('main');
+  if(mainEl) mainEl.scrollTop=0;
+  save();
+}
+
+const rankBtnV272=document.querySelector('nav button[data-nav="rank"]');
+if(rankBtnV272){
+  rankBtnV272.onclick=()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+    rankBtnV272.classList.add('on');
+    if(!state.myTeam){ show('select'); return; }
+    openRankSafeV272();
+  };
+}
+
+openHistoryRoom=function(){
+  ensureLongTermState();
+  repairRankStateV271();
+  try{ ensureMissedWorldTournamentsV269(); }catch(err){ console.error(err); }
+  const club=(state.clubHistory||[]).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
+  const seasons=(state.history||[]).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
+  const worlds=(state.worldHistory||[]).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
+  const retired=(state.retired||[]).slice(-15).reverse();
+  const news=(state.news||[]).slice(0,15);
+  const seasonRows=seasons.length?seasons.map(h=>{
+    const champ=safeTeamNameV271(h.champion);
+    const mine=h.champion===state.myTeam?' · <b style="color:var(--amber)">우리 팀 우승</b>':'';
+    return `${h.year}년차 · 정규시즌 ${h.rank??'-'}위 · 한국시리즈 ${champ}${mine}`;
+  }).join('<br>'):'완료된 시즌이 없습니다.';
+  const clubRows=club.length?club.map(x=>`${x.year}년차 · ${x.rank}위 · ${x.w}승 ${x.l}패${Number.isFinite(+x.attendance)?` · 관중 ${(+x.attendance).toLocaleString()}명`:''}`).join('<br>'):'완료된 시즌이 없습니다.';
+  const worldRows=worlds.length?worlds.map(w=>`${w.year}년차 · 대한민국 <b>${w.medal||''} ${w.finish||'-'}</b> · 우승 ${w.champion||'-'}`).join('<br>'):'4년차 시즌 종료 후 첫 대회가 열립니다.';
+  document.getElementById('sheet').innerHTML=`<div class="top"><div class="pname">📖 구단 기록실</div><button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="reveal"><div class="lbl">🏆 시즌·한국시리즈</div>${seasonRows}</div>
+    <div class="reveal"><div class="lbl">📊 구단 시즌 성적</div>${clubRows}</div>
+    ${state.mode==='sim'?`<div class="reveal"><div class="lbl">🌐 세계대회</div>${worldRows}</div>`:''}
+    <div class="reveal"><div class="lbl">🎖 은퇴 선수</div>${retired.length?retired.map(x=>`${x.name||x[0]||'선수'}${x.age?' · '+x.age+'세':''}`).join('<br>'):'등록된 은퇴 선수가 없습니다.'}</div>
+    <div class="reveal"><div class="lbl">📰 구단 뉴스</div>${news.length?news.map(x=>`<b>${x.title}</b> <span style="color:var(--dim)">${x.year}년 ${x.day}일</span><br>${x.body}`).join('<hr style="border:0;border-top:1px solid rgba(255,255,255,.08);margin:8px 0">'):'아직 뉴스가 없습니다.'}</div>`;
+  document.getElementById('mask').classList.add('on');
 };
 </script>
 </body>
