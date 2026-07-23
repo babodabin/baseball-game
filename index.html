@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.24.5</title>
+<title>우리팀을 만들자 v0.24.6</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -384,7 +384,7 @@ body.theme-rain #rainLayer{display:block;
 .checklist{scroll-margin-top:12px}
 
 
-/* v0.24.5 구단 관리 화면 분리 */
+/* v0.24.6 구단 관리 화면 분리 */
 .front-subtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;position:sticky;top:-1px;z-index:8;background:var(--bg);padding:4px 0 10px;margin-bottom:8px}
 .front-subtabs button{border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--dim);padding:10px 4px;font-family:inherit;font-size:13px;font-weight:800}
 .front-subtabs button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.24.5</span>
+    <span class="ver">v0.24.6</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -511,8 +511,9 @@ body.theme-rain #rainLayer{display:block;
 <section class="screen" id="scr-rank">
   <h2 class="sec" id="rankTitle">순위표</h2>
   <div class="tabs">
-    <button id="rtabTeam" class="on">팀 순위</button>
-    <button id="rtabPlayer">선수 기록</button>
+    <button id="rtabTeam" class="on">전체 팀 순위</button>
+    <button id="rtabPlayer">전체 선수 순위</button>
+    <button id="rtabMyPlayer">우리 팀 순위</button>
   </div>
   <div id="rankTeamWrap">
     <table class="rank-table" id="rankTable"></table>
@@ -3767,6 +3768,7 @@ const STAT_INFO = {
   'SV':'세이브 = 리드를 지키며 경기를 마무리한 횟수.'
 };
 let lbCat = 'AVG';
+let lbScope = 'all';
 function collectBatLeaders(){
   const arr = [];
   TEAMS.forEach(t=>{
@@ -3802,7 +3804,7 @@ function renderLeaderboard(){
   const wrap = document.getElementById('rankPlayerWrap');
   const cats = ['AVG','HR','RBI','OPS','W','ERA','SO','SV'];
   const labels = {AVG:'타율',HR:'홈런',RBI:'타점',OPS:'OPS',W:'다승',ERA:'방어율',SO:'탈삼진',SV:'세이브'};
-  let h = `<div class="sortbar" style="margin-top:6px"><span class="sbl">기록 부문</span><div class="sbrow">`;
+  let h = `<div class="notice"><b>${lbScope==='my'?'우리 팀 선수 순위':'전체 선수 순위'}</b><br>${lbScope==='my'?'내 구단 선수끼리의 기록 순위입니다.':'리그 전체 선수 기록 순위입니다.'}</div><div class="sortbar" style="margin-top:6px"><span class="sbl">기록 부문</span><div class="sbrow">`;
   cats.forEach(c=> h += `<button class="${lbCat===c?'on':''}" data-cat="${c}">${labels[c]}</button>`);
   h += `</div></div>`;
   h += `<div style="margin:0 0 10px 2px"><span class="lb-help" id="statHelp">${labels[lbCat]}(${lbCat}) 설명 ⓘ</span></div>`;
@@ -3819,8 +3821,8 @@ function renderLeaderboard(){
     if(lbCat==='ERA') list.sort((a,b)=>a.era-b.era);
     else{ const key={W:'w',SO:'so',SV:'sv'}[lbCat]; list.sort((a,b)=>b[key]-a[key]); }
   }
-  // 선수 기록은 내 구단 선수만 표시한다.
-  list = list.filter(x=>x.teamId===state.myTeam);
+  // 전체 선수 순위와 우리 팀 선수 순위를 분리한다.
+  if(lbScope==='my') list = list.filter(x=>x.teamId===state.myTeam);
   const fmt = (x)=>{
     if(lbCat==='AVG') return x.avg.toFixed(3).replace('0.','.');
     if(lbCat==='OPS') return x.ops.toFixed(3).replace('0.','.');
@@ -3918,19 +3920,19 @@ function toggleRankSort(k){
 document.getElementById('resetSeasonBtn').onclick = ()=>{
   showConfirm('시즌 기록을 초기화하고 새로 시작할까요?', ()=>{ newSeason(); renderRank(); });
 };
-document.getElementById('rtabTeam').onclick = ()=>{
-  document.getElementById('rtabTeam').classList.add('on');
-  document.getElementById('rtabPlayer').classList.remove('on');
-  document.getElementById('rankTeamWrap').style.display='';
-  document.getElementById('rankPlayerWrap').style.display='none';
-};
-document.getElementById('rtabPlayer').onclick = ()=>{
-  document.getElementById('rtabPlayer').classList.add('on');
-  document.getElementById('rtabTeam').classList.remove('on');
-  document.getElementById('rankTeamWrap').style.display='none';
-  document.getElementById('rankPlayerWrap').style.display='';
-  renderLeaderboard();
-};
+function setRankTab(tab){
+  const team=tab==='team';
+  lbScope=tab==='my'?'my':'all';
+  document.getElementById('rtabTeam').classList.toggle('on',team);
+  document.getElementById('rtabPlayer').classList.toggle('on',tab==='all');
+  document.getElementById('rtabMyPlayer').classList.toggle('on',tab==='my');
+  document.getElementById('rankTeamWrap').style.display=team?'':'none';
+  document.getElementById('rankPlayerWrap').style.display=team?'none':'';
+  if(!team)renderLeaderboard();
+}
+document.getElementById('rtabTeam').onclick=()=>setRankTab('team');
+document.getElementById('rtabPlayer').onclick=()=>setRankTab('all');
+document.getElementById('rtabMyPlayer').onclick=()=>setRankTab('my');
 
 
 
@@ -4456,7 +4458,7 @@ save=function(){ const r=_saveV243(); refreshHeader(); return r; };
 
 
 
-/* ═══════════ 구단 관리 3분할·계약 총액·2군 성장 보고 (v0.24.5) ═══════════ */
+/* ═══════════ 구단 관리 3분할·계약 총액·2군 성장 보고 (v0.24.6) ═══════════ */
 let frontSubTab='status';
 function setFrontSubTab(tab){
   frontSubTab=tab;
@@ -4473,7 +4475,8 @@ function secondTeamOutlookHtml(){
       const age=ages[i]||ageOf(pl[1]),stage=careerStageOf(pl,age),type=careerTypeOf(pl);
       let grade=stage==='성장기'?'매우 높음':stage==='전성기'?'높음':stage==='유지기'?'보통':'낮음';
       if(type==='대기만성형'&&age<=30&&grade==='보통')grade='높음';
-      rows.push(`<div class="grow-row"><b>${pl[0]}</b> · ${age}세 · ${stage}<br>2군 육성 효과 <b>${grade}</b> · ${type}</div>`);
+      const trainPts=grade==='매우 높음'?2:grade==='높음'?1.5:grade==='보통'?1:.5;
+      rows.push(`<div class="grow-row"><b>${pl[0]}</b> · ${age}세 · ${stage}<br>2군 육성 효과 <b>${grade}</b> · 보정 <b>훈련(2군) +${trainPts}점</b> · ${type}</div>`);
     });
   });
   return rows.length?`<h2 class="sec" style="font-size:14px;margin-top:14px">🌱 현재 2군 육성 전망</h2><div class="growth-report">${rows.slice(0,20).join('')}</div>`:`<div class="hint">현재 2군 선수가 없습니다.</div>`;
@@ -4537,18 +4540,23 @@ openContractSheet=function(kind,idx){
   const suggested=Math.max(c.salary,+salaryOf(p,kind==='bat').toFixed(1));
   document.getElementById('sheet').innerHTML=`<div class="top"><div class="pname">${p[0]} 재계약 협상</div><button class="close" onclick="closeSheet()">✕</button></div>
   <div class="reveal"><div class="lbl">현재 계약</div>연봉 <b>${c.salary.toFixed(1)}억</b> · 잔여 ${c.years}년 · 만족도 ${Math.round(playerMorale(kind,p))}<br>FA까지 ${rem===0?'자격 충족':rem+'등록 경기'}</div>
-  <label class="hint">계약 기간 <select id="ctYears" onchange="updateContractCostPreview()"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>년</label>
-  <label class="hint">연봉 <input id="ctSalary" type="number" step="0.1" value="${suggested}" oninput="updateContractCostPreview()">억</label>
-  <label class="hint">계약금 <input id="ctBonus" type="number" step="0.1" value="${suggested.toFixed(1)}" oninput="updateContractCostPreview()">억 <small>(기본: 연봉 1년분)</small></label>
+  <label class="hint">계약 기간 <select id="ctYears" onchange="syncContractBonus()"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>년</label>
+  <label class="hint">연봉 <input id="ctSalary" type="number" step="0.1" value="${suggested}" oninput="syncContractBonus()">억</label>
+  <label class="hint">계약금 <input id="ctBonus" type="number" step="0.1" value="${suggested.toFixed(1)}" oninput="updateContractCostPreview()">억 <small>(기본: 연봉 × 계약기간)</small></label>
   <label class="hint">옵션 <select id="ctOption"><option>없음</option><option>출전 보너스</option><option>성적 보너스</option><option>우승 보너스</option></select></label>
   <div class="contract-total" id="ctCostPreview"></div>
   <button class="btn" onclick="offerContract('${kind}',${idx},ctYears.value,ctSalary.value,ctBonus.value,ctOption.value)">계약 제안</button>`;
-  document.getElementById('mask').classList.add('on');updateContractCostPreview();
+  document.getElementById('mask').classList.add('on');syncContractBonus();
 };
+function syncContractBonus(){
+  const y=+document.getElementById('ctYears')?.value||1,s=+document.getElementById('ctSalary')?.value||0;
+  const bonus=document.getElementById('ctBonus');if(bonus)bonus.value=(s*y).toFixed(1);
+  updateContractCostPreview();
+}
 updateContractCostPreview=function(){
   const y=+document.getElementById('ctYears')?.value||1,s=+document.getElementById('ctSalary')?.value||0,b=+document.getElementById('ctBonus')?.value||0;
   const guaranteed=s*y,total=guaranteed+b,el=document.getElementById('ctCostPreview');
-  if(el)el.innerHTML=`매 시즌 연봉 <b>${s.toFixed(1)}억</b><br>총 보장 연봉 <b>${guaranteed.toFixed(1)}억</b> (${y}년)<br>계약금 즉시 지출 <b>${b.toFixed(1)}억</b> <small>(연봉 1년분 권장)</small><br>총 계약 규모 <b>${total.toFixed(1)}억</b>`;
+  if(el)el.innerHTML=`매 시즌 연봉 <b>${s.toFixed(1)}억</b><br>총 보장 연봉 <b>${guaranteed.toFixed(1)}억</b> (${y}년)<br>계약금 즉시 지출 <b>${b.toFixed(1)}억</b> <small>(기본: 연봉 × 계약기간)</small><br>총 계약 규모 <b>${total.toFixed(1)}억</b>`;
 };
 
 applySecondTeamDevelopment=function(){
