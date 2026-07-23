@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.26.3</title>
+<title>우리팀을 만들자 v0.26.4</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.26.3</span>
+    <span class="ver">v0.26.4</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -639,6 +639,58 @@ const TEAMS = [
  pit:[['안우신','안우진','선발','우',155,78,88,80],['데헤이수즈','엔마누엘 데 헤이수스','선발','좌',149,74,80,76],['요키쉬','에릭 요키시','선발','좌',144,80,76,74],['하영빈','하영민','선발','우',144,74,72,72],['가나쿠부','가나쿠보 유토 (아시아쿼터)','선발','우',143,72,70,66,'new'],['주승욱','주승우','마무리','우',146,72,72,58]]}
 ];
 
+
+/* ───────────── 2026 공식 등록·기록 확인 선수 보충 ─────────────
+   KBO 공식 등록/기록에서 2026 소속이 확인된 선수만 우선 보충한다.
+   능력치는 게임 밸런스용 추정치이며, 이후 업데이트에서 조정할 수 있다. */
+const REAL_2026_SUPPLEMENTS = {
+  LG:{
+    bat:[
+      ['송찬의','송찬의','1B','우',72,76,58,66,64,'current'],
+      ['구본혁','구본혁','SS','우',70,48,66,82,68,'current']
+    ],
+    pit:[
+      ['이정용','이정용','선발','우',147,76,76,72,'current']
+    ]
+  },
+  KIA:{
+    bat:[
+      ['오선우','오선우','1B','좌',68,74,48,64,62,'current']
+    ],
+    pit:[
+      ['김범수','김범수','불펜','좌',148,74,72,54,'current'],
+      ['조상우','조상우','불펜','우',150,76,74,56,'current'],
+      ['이의리','이의리','선발','좌',148,72,78,70,'current'],
+      ['김건국','김건국','불펜','우',143,70,68,56,'current']
+    ]
+  },
+  SSG:{
+    bat:[
+      ['신범수','신범수','C','좌',64,62,42,72,60,'current'],
+      ['전의산','전의산','1B','좌',68,78,48,66,60,'current']
+    ],
+    pit:[]
+  },
+  DS:{
+    bat:[
+      ['박준순','박준순','SS','우',68,58,70,76,64,'current'],
+      ['조수행','조수행','CF','좌',72,42,90,84,66,'current']
+    ],
+    pit:[
+      ['이병헌','이병헌','불펜','좌',149,72,74,52,'current'],
+      ['최민석','최민석','선발','우',147,72,76,72,'current']
+    ]
+  }
+};
+function appendVerified2026(teamId, bat, pit){
+  const add=REAL_2026_SUPPLEMENTS[teamId];
+  if(!add) return;
+  const batNames=new Set(bat.map(x=>x[1]));
+  const pitNames=new Set(pit.map(x=>x[1]));
+  (add.bat||[]).forEach(x=>{ if(!batNames.has(x[1])){ bat.push([...x]); batNames.add(x[1]); } });
+  (add.pit||[]).forEach(x=>{ if(!pitNames.has(x[1])){ pit.push([...x]); pitNames.add(x[1]); } });
+}
+
 /* ───────────── 실황 모드 원본 선수 보호 명단 ─────────────
    각 구단의 최초 TEAMS 데이터에 등록된 선수만 보호한다.
    이후 영입한 FA·레전드·신인·자동 생성 선수는 보호 대상이 아니다. */
@@ -765,6 +817,8 @@ function snapshotTeams(){
   TEAMS.forEach((t,ti)=>{
     const bat = t.bat.map(p=>[...p]);
     const pit = t.pit.map(p=>[...p]);
+    // 공식 2026 소속 확인 선수를 가상 선수보다 먼저 보충
+    appendVerified2026(t.id, bat, pit);
     // 선발 5명 보장 (부족하면 생성)
     let spCount = pit.filter(p=>p[2]==='선발').length;
     let g = 0;
@@ -773,10 +827,11 @@ function snapshotTeams(){
       sp[2] = '선발'; sp[7] = 70 + Math.floor(Math.random()*10);   // 선발용 체력
       pit.push(sp); spCount++; g++;
     }
-    // 백업 야수 4명
-    for(let i=0;i<4;i++) bat.push(genBackupBat(t.bat, ti*20+i));
-    // 불펜 투수 4명
-    for(let i=0;i<4;i++) pit.push(genRelief(t.pit, ti*20+i));
+    // 최소 구성: 타자 12명·투수 10명. 확인된 실존 선수를 먼저 쓰고 부족분만 가상 선수로 채운다.
+    let bi=0;
+    while(bat.length < 12) bat.push(genBackupBat(t.bat, ti*20+(bi++)));
+    let pi=0;
+    while(pit.length < 10) pit.push(genRelief(t.pit, ti*20+(pi++)));
     snap[t.id] = {
       bat, pit,
       age: { bat: bat.map(p=>ageOf(p[1])), pit: pit.map(p=>ageOf(p[1])) }
