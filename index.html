@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07130F">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.29.0</title>
+<title>우리팀을 만들자 v0.30.0</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -695,7 +695,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.29.0</span>
+    <span class="ver">v0.30.0</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1693,6 +1693,7 @@ function renderRoster(tab){
     const ci = conditionInfo(t.id,isBat?'bat':'pit',p);
     let tag = ` <span class="boost" style="color:${ci.color}">${ci.label}</span>`;
     if(f==='fa') tag += ' <span class="boost" style="color:#8FA396">FA이적 보정없음</span>';
+    else if(f==='archive') tag += ' <span class="boost" style="color:#9EC5FF">과거시즌 +'+bo+'</span>';
     else if(bo>0) tag += ' <span class="boost">+'+bo+(f==='new'?' 신규':'')+'</span>';
     row.innerHTML = `<div class="pos">${pos==='선발'?'SP':pos==='마무리'?'CL':pos}</div>
       <div class="mid"><div class="nm">${p[0]}</div><div class="hand">${hand}${tag}</div></div>
@@ -1716,6 +1717,10 @@ function statRow2(label, base, p, teamId, isBat){
   if(bo>0){
     const parts = [];
     if(f==='legend'){ parts.push('원래팀+'+BOOST_MY); }
+    else if(f==='archive'){
+      const loyalty = (typeof state!=='undefined' && state.eco==='normal' && state.money<0 && isMine(teamId)) ? 1 : BOOST_MY;
+      parts.push('원래팀+'+loyalty);
+    }
     else if(f!=='fa'){
       parts.push('올해+'+BOOST_CUR);
       if(f==='new' && BOOST_NEW>0) parts.push('신규+'+BOOST_NEW);
@@ -1752,6 +1757,10 @@ function openSheet(team, tab, idx){
     bonusLine = (origin===team.id)
       ? '<span class="boost">🏅 레전드 · 원래팀 복귀 +'+BOOST_MY+'</span>'
       : '<span style="color:#8FA396">🏅 레전드 · 타팀 영입(원래팀 '+(TEAMS.find(t=>t.id===origin)?.name||origin)+') · 보정 없음</span>';
+  }
+  else if(f==='archive'){
+    const loyalty = (state.eco==='normal' && state.money<0 && isMine(team.id)) ? 1 : BOOST_MY;
+    bonusLine = '<span class="boost" style="color:#9EC5FF">과거 시즌 실제 선수 · 원래팀 +'+loyalty+'</span>';
   }
   else{
     const parts = ['올해 시즌 +'+BOOST_CUR];
@@ -1872,7 +1881,7 @@ function openModeSheet(t){
         <div class="key">실제 선수</div><div class="val">원본 선수 보호</div><div class="val">은퇴·세대교체</div>
         <div class="key">추천 대상</div><div class="val">현재 전력 체험</div><div class="val">장기 구단 운영</div>
       </div>
-      <div class="mode-note"><b>선택한 운영 모드는 해당 저장 슬롯에서 유지됩니다.</b><br>실황 로스터는 새 게임을 시작한 시점의 데이터 기준으로 고정됩니다.</div>
+      <div class="mode-note"><b>모든 구단은 2026 선수와 2024·2025 등 과거 시즌 실제 선수를 합친 30인 선수단으로 시작합니다.</b><br>실황은 2026 보호 선수의 방출을 제한하고, 시뮬레이션은 전 선수를 자유롭게 운영할 수 있습니다.</div>
     </div>
     <button class="btn ghost" onclick="closeSheet()">취소</button>`;
   document.getElementById('mask').classList.add('on');
@@ -4038,7 +4047,7 @@ function doTrain(key){
 function openCutSheet(isBat, i){
   const t = getTeam(state.myTeam);
   const p = (isBat?t.bat:t.pit)[i];
-  if(isLiveCorePlayer(state.myTeam,p,isBat?'bat':'pit')){ showAlert('실황 모드의 원본 실제 선수는 방출할 수 없습니다.'); return; }
+  if(isLiveCorePlayer(state.myTeam,p,isBat?'bat':'pit')){ showAlert('실황 모드의 2026 보호 선수는 방출할 수 없습니다.'); return; }
   const ovr = isBat?batOvr(p,t.id):pitOvr(p,t.id);
   const age = isBat?t.age.bat[i]:t.age.pit[i];
   const sheet = document.getElementById('sheet');
@@ -4060,7 +4069,7 @@ function doCut(kind, i){
   const t = state.players[state.myTeam];
   const arr = isBat?t.bat:t.pit;
   const p = arr[i];
-  if(isLiveCorePlayer(state.myTeam,p,kind)){ showAlert('실황 모드의 원본 실제 선수는 방출할 수 없습니다.'); return; }
+  if(isLiveCorePlayer(state.myTeam,p,kind)){ showAlert('실황 모드의 2026 보호 선수는 방출할 수 없습니다.'); return; }
   clearSalaryRaise(p,isBat);
   if(foreignFlag(p,isBat)){ ensureForeignState(); delete state.foreignContracts[foreignKey(p,isBat)]; }
   arr.splice(i,1);
@@ -7973,6 +7982,152 @@ try{save();}catch(err){console.error('v0.28.7 밸런스 저장:',err);}
 // v0.28.7 완료: 하드 경기 보정, 중복 수입 제거, 모드별 재정 규칙, 성장 기대치·잠재 상한, 2군·코치 성장 속도 조정.
 
 // v0.29.0 완료: 전체 비주얼 리디자인, 구단 홈 대시보드, 전광판 헤더, 도크 내비게이션.
+
+
+/* ═══════════ v0.30.0 실제 선수단·슬롯 명성·레전드 확장 ═══════════ */
+const START_BAT_TARGET_V300=16, START_PIT_TARGET_V300=14, START_ROSTER_TARGET_V300=30;
+const HISTORICAL_ROSTER_V300={"LG":{"bat":[["김민성","3B","우",68,64,48,74,68,38],["허도환","C","우",56,58,38,74,60,42],["이재원","1B","우",64,72,50,66,60,27],["안익훈","CF","좌",68,46,78,78,66,30],["이영빈","SS","좌",66,52,72,76,64,24],["최승민","CF","좌",62,42,88,76,58,30],["서건창","2B","좌",72,52,72,72,72,37],["정주현","2B","우",64,48,66,72,62,36]],"pit":[["케이시 켈리","선발","우",146,82,82,82,37],["디트릭 엔스","선발","좌",148,76,80,78,35],["아담 플럿코","선발","우",147,80,80,76,35],["정우영","불펜","우",151,72,76,54,27],["함덕주","불펜","좌",145,80,82,56,31],["김진성","불펜","우",144,82,78,54,41],["박명근","불펜","우",150,70,74,52,22],["백승현","불펜","우",147,72,72,54,31],["이우찬","불펜","좌",146,70,74,58,34],["고우석","마무리","우",153,76,82,58,28]]},"HH":{"bat":[["요나단 페라자","LF","양",76,82,68,70,72,28],["하주석","SS","좌",68,62,72,78,62,32],["이도윤","SS","좌",70,48,76,80,68,30],["김인환","1B","좌",68,76,50,64,62,32],["장진혁","CF","좌",68,54,80,76,64,33],["이원석","CF","우",62,48,82,76,58,27],["권광민","RF","좌",64,72,64,68,60,29],["정은원","2B","좌",72,52,70,74,76,26]],"pit":[["김민우","선발","우",144,72,76,74,31],["황준서","선발","좌",148,68,76,68,21],["박상원","불펜","우",149,74,76,54,32],["김서현","불펜","우",156,66,74,50,22],["장시환","불펜","우",149,70,72,54,39],["윤대경","불펜","우",145,76,74,58,32],["펠릭스 페냐","선발","우",148,76,80,78,36],["리카르도 산체스","선발","좌",149,70,78,72,29],["하이메 바리아","선발","우",150,74,78,74,30],["이민우","불펜","우",147,72,72,58,33]]},"KIA":{"bat":[["소크라테스 브리토","CF","좌",80,76,72,76,68,34],["김태군","C","우",66,60,42,78,64,37],["변우혁","1B","우",68,78,50,70,62,26],["이창진","LF","우",72,58,72,72,70,35],["고종욱","LF","좌",74,48,84,68,66,37],["최정용","2B","좌",66,50,68,72,62,30],["이창용","1B","우",62,72,46,64,58,26],["한승택","C","우",58,56,40,78,60,32]],"pit":[["황동하","선발","우",145,72,74,72,24],["임기영","선발","우",143,80,78,76,33],["전상현","불펜","우",148,78,80,56,30],["장현식","불펜","우",151,72,76,54,31],["곽도규","불펜","좌",148,70,76,52,22],["윤중현","불펜","우",144,74,72,58,31],["김도현","선발","우",147,70,74,70,26],["이준영","불펜","좌",145,76,74,54,34],["김대유","불펜","좌",143,74,72,52,35],["토마스 파노니","선발","좌",146,80,80,78,32]]},"SS":{"bat":[["박병호","1B","우",70,88,42,66,70,40],["김헌곤","LF","우",72,58,68,76,68,38],["전병우","3B","우",66,74,54,72,62,34],["공민규","1B","좌",64,70,50,68,60,30],["김성윤","CF","좌",70,50,84,82,66,27],["김재상","2B","좌",64,48,76,72,62,22],["이병헌","C","우",62,64,42,74,58,27],["호세 피렐라","LF","우",78,82,66,70,72,37]],"pit":[["백정현","선발","좌",143,82,78,78,39],["오승환","마무리","우",147,80,82,56,44],["최지광","불펜","우",149,72,76,52,28],["김태훈","불펜","우",146,76,74,54,34],["이승현(좌완)","선발","좌",146,72,78,70,24],["이승현(우완)","불펜","우",150,70,74,52,35],["김대우","불펜","우",142,82,76,58,38],["이상민","불펜","좌",144,76,74,54,36],["육선엽","선발","우",150,66,74,68,21],["코너 시볼드","선발","우",149,76,82,78,30],["데니 레예스","선발","우",148,78,80,80,30]]},"DS":{"bat":[["김민혁(두산)","1B","우",66,72,50,68,62,30],["이유찬","SS","우",66,48,82,78,62,28],["김대한","RF","우",64,70,76,72,58,26],["김기연","C","우",64,62,44,76,60,29],["안승한","C","우",56,54,40,74,58,34],["헨리 라모스","RF","양",70,76,66,70,64,34],["양찬열","LF","좌",64,68,62,70,58,29],["홍성호","1B","좌",62,72,48,64,58,29]],"pit":[["라울 알칸타라","선발","우",151,82,82,84,34],["브랜든 와델","선발","좌",148,78,82,78,32],["조던 발라조빅","선발","우",153,70,78,74,28],["이영하","선발","우",149,72,78,74,29],["홍건희","불펜","우",149,76,76,56,34],["최원준(투수)","선발","우",144,80,76,76,32],["박치국","불펜","우",144,78,74,56,28],["김강률","불펜","우",148,74,76,52,38],["정철원","불펜","우",150,72,78,54,27],["김유성","불펜","우",151,68,74,52,24]]},"KT":{"bat":[["배정대","CF","우",72,62,82,84,68,31],["멜 로하스 주니어","RF","양",78,86,64,72,74,36],["황재균","3B","우",72,70,64,76,68,39],["오윤석","2B","우",68,64,58,72,62,34],["신본기","SS","우",64,52,66,78,64,37],["조용호","LF","좌",72,48,72,70,72,37],["김민혁(KT)","LF","좌",74,50,80,72,70,31],["정준영","CF","좌",64,46,82,76,60,23]],"pit":[["윌리엄 쿠에바스","선발","우",148,82,84,84,36],["웨스 벤자민","선발","좌",149,76,82,80,33],["엄상백","선발","우",146,80,80,78,30],["원상현","선발","우",150,68,76,70,22],["손동현","불펜","우",148,76,76,56,25],["김민","불펜","우",151,68,74,54,27],["우규민","불펜","우",143,84,78,56,41],["이상동","불펜","우",147,72,74,54,31],["박시영","불펜","우",148,74,74,52,37],["배제성","선발","우",145,74,76,74,30]]},"SSG":{"bat":[["추신수","DH","좌",76,74,58,58,84,44],["김성현","2B","우",70,50,62,78,70,39],["하재훈","RF","우",68,78,72,74,62,36],["김민식","C","좌",64,58,44,76,64,37],["최준우","2B","좌",68,52,68,72,68,27],["최상민","CF","좌",62,42,88,78,58,26],["안상현","SS","우",62,48,74,76,60,29],["박지환","2B","우",68,58,76,74,64,21]],"pit":[["로에니스 엘리아스","선발","좌",148,78,82,80,38],["드류 앤더슨","선발","우",154,72,82,76,32],["오원석","선발","좌",146,72,78,74,25],["문승원","선발","우",148,78,78,76,37],["노경은","불펜","우",146,82,80,58,42],["서진용","마무리","우",147,76,78,56,34],["고효준","불펜","좌",145,74,76,52,43],["이로운","불펜","우",151,68,74,50,22],["박종훈","선발","우",142,76,80,74,35],["김택형","불펜","좌",149,70,76,54,30],["이건욱","선발","우",147,70,76,70,31]]},"LT":{"bat":[["정훈","1B","우",72,62,54,70,72,39],["손성빈","C","우",64,66,46,78,60,24],["정보근","C","우",60,54,40,76,62,27],["박승욱","SS","좌",68,48,72,78,68,34],["이학주","SS","좌",66,58,74,76,62,36],["김민석","CF","좌",70,54,82,76,64,22],["이정훈","LF","좌",72,58,60,68,70,32],["한동희","3B","우",66,82,52,70,60,27]],"pit":[["찰리 반즈","선발","좌",148,80,84,82,31],["애런 윌커슨","선발","우",147,82,82,82,37],["한현희","선발","우",147,74,76,74,33],["나균안","선발","우",146,72,80,74,28],["최준용","불펜","우",150,74,78,56,25],["구승민","불펜","우",148,78,76,54,36],["전미르","불펜","우",151,68,74,52,21],["김진욱","선발","좌",148,68,78,70,24],["박진","불펜","우",148,72,74,54,27],["이인복","선발","우",143,78,74,74,35],["진승현","불펜","우",149,70,74,52,23]]},"NC":{"bat":[["손아섭","RF","좌",82,60,68,70,82,38],["박세혁","C","좌",66,62,58,76,68,36],["도태훈","2B","좌",68,50,68,76,68,33],["김휘집","3B","우",70,72,62,74,64,24],["천재환","CF","우",66,60,80,76,60,32],["김한별","SS","우",62,48,76,78,58,25],["박시원","LF","좌",64,58,78,72,60,25],["제이슨 마틴","CF","좌",72,82,76,74,66,31]],"pit":[["에릭 페디","선발","우",153,86,90,86,33],["카일 하트","선발","좌",150,82,86,82,34],["다니엘 카스타노","선발","좌",147,78,80,78,32],["이용찬","마무리","우",149,78,80,58,37],["김시훈","선발","우",147,72,78,72,27],["김영규","불펜","좌",147,78,78,56,26],["임정호","불펜","좌",143,82,76,54,36],["김재열","불펜","우",148,74,76,54,30],["송명기","선발","우",148,70,78,72,26],["최성영","선발","좌",143,78,74,72,29],["배재환","불펜","우",149,70,74,52,31]]},"KW":{"bat":[["김혜성","2B","좌",84,60,90,84,80,27],["로니 도슨","LF","좌",78,70,74,72,72,31],["이형종","RF","우",70,72,64,72,68,37],["이용규","CF","좌",76,44,82,76,80,41],["변상권","LF","좌",68,62,68,70,64,29],["김재현","C","우",62,56,42,76,60,33],["임병욱","CF","좌",66,62,84,82,58,31],["주성원","RF","우",64,70,66,70,58,26]],"pit":[["김윤하","선발","우",148,70,78,72,21],["김선기","선발","우",144,76,74,72,35],["문성현","불펜","우",146,78,74,56,35],["김성민","불펜","좌",145,80,76,54,32],["김동욱","불펜","우",148,70,74,52,25],["장재영","선발","우",157,62,72,68,24],["양현","불펜","우",142,82,74,58,34],["오주원","불펜","좌",142,84,76,54,41],["제이크 브리검","선발","우",148,80,82,80,38],["타일러 애플러","선발","우",147,76,78,76,33]]}};
+const HISTORICAL_AGE_V300=new Map();
+Object.values(HISTORICAL_ROSTER_V300).forEach(pool=>{
+  (pool.bat||[]).forEach(x=>HISTORICAL_AGE_V300.set(String(x[0]).replace(/ \(.*\)$/,''),+x[8]||28));
+  (pool.pit||[]).forEach(x=>HISTORICAL_AGE_V300.set(String(x[0]).replace(/ \(.*\)$/,''),+x[7]||28));
+});
+const _ageOfV300=ageOf;
+ageOf=function(realName){
+  const raw=String(realName||'선수'),clean=raw.replace(/ \(.*\)$/,'');
+  return HISTORICAL_AGE_V300.get(raw)??HISTORICAL_AGE_V300.get(clean)??_ageOfV300(raw);
+};
+function archiveBatV300(x){return[x[0],x[0],x[1],x[2],x[3],x[4],x[5],x[6],x[7],'archive'];}
+function archivePitV300(x){return[x[0],x[0],x[1],x[2],x[3],x[4],x[5],x[6],'archive'];}
+function appendHistoricalPlayersV300(teamId,bat,pit,batTarget=START_BAT_TARGET_V300,pitTarget=START_PIT_TARGET_V300){
+  const pool=HISTORICAL_ROSTER_V300[teamId]||{bat:[],pit:[]};
+  const batNames=new Set(bat.map(p=>p?.[1]||p?.[0])),pitNames=new Set(pit.map(p=>p?.[1]||p?.[0]));
+  for(const x of pool.bat||[]){if(bat.length>=batTarget)break;if(batNames.has(x[0]))continue;bat.push(archiveBatV300(x));batNames.add(x[0]);}
+  for(const x of pool.pit||[]){if(pit.length>=pitTarget)break;if(pitNames.has(x[0]))continue;pit.push(archivePitV300(x));pitNames.add(x[0]);}
+}
+function snapshotTeamsV300(){
+  const snap={};
+  TEAMS.forEach(t=>{
+    const bat=t.bat.map(p=>[...p]),pit=t.pit.map(p=>[...p]);
+    appendVerified2026(t.id,bat,pit);
+    appendHistoricalPlayersV300(t.id,bat,pit);
+    snap[t.id]={bat,pit,age:{bat:bat.map(p=>ageOf(p[1])),pit:pit.map(p=>ageOf(p[1]))}};
+  });
+  return snap;
+}
+snapshotTeams=snapshotTeamsV300;
+
+const _bonusOfV300=bonusOf;
+bonusOf=function(p,teamId,isBat){
+  if(flagOf(p,isBat)==='archive'){
+    let loyalty=BOOST_MY;
+    if(typeof state!=='undefined'&&state.eco==='normal'&&state.money<0&&isMine(teamId))loyalty=1;
+    return loyalty;
+  }
+  return _bonusOfV300(p,teamId,isBat);
+};
+function rawBatOvrV300(p){return Math.round((+p[4]||0)*.30+(+p[5]||0)*.25+(+p[8]||0)*.15+(+p[6]||0)*.15+(+p[7]||0)*.15);}
+function rawPitOvrV300(p){const v=Math.min(99,Math.max(40,((+p[4]||140)-125)*2.4));return Math.round(v*.30+(+p[5]||0)*.30+(+p[6]||0)*.25+(+p[7]||0)*.15);}
+const LIVE_PROTECTED_V300={};
+TEAMS.forEach(t=>{
+  const bat=t.bat.map(p=>[...p]),pit=t.pit.map(p=>[...p]);appendVerified2026(t.id,bat,pit);
+  const all=[...bat.map(p=>({kind:'bat',p,o:rawBatOvrV300(p)})),...pit.map(p=>({kind:'pit',p,o:rawPitOvrV300(p)}))].sort((a,b)=>b.o-a.o);
+  const chosen=all.length<=22?all:all.slice(0,22);
+  LIVE_PROTECTED_V300[t.id]={bat:new Set(chosen.filter(x=>x.kind==='bat').map(x=>x.p[1])),pit:new Set(chosen.filter(x=>x.kind==='pit').map(x=>x.p[1]))};
+});
+isLiveCorePlayer=function(teamId,p,kind){return!!(state.mode==='live'&&p&&LIVE_PROTECTED_V300[teamId]?.[kind]?.has(p[1]));};
+
+function setBalancedFirstTeamV300(teamId){
+  if(!state.players?.[teamId])return;
+  const t=state.players[teamId],levels=state.squadLevel[teamId]||(state.squadLevel[teamId]={});
+  t.bat.forEach(p=>levels[squadKey('bat',p)]='second');t.pit.forEach(p=>levels[squadKey('pit',p)]='second');
+  const bats=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId)})),batFirst=[];
+  ['C','1B','2B','3B','SS','LF','CF','RF'].forEach(pos=>{const x=bats.filter(v=>v.p[2]===pos).sort((a,b)=>b.o-a.o)[0];if(x&&!batFirst.includes(x.i))batFirst.push(x.i);});
+  bats.sort((a,b)=>b.o-a.o).forEach(x=>{if(batFirst.length<15&&!batFirst.includes(x.i))batFirst.push(x.i);});
+  const pits=t.pit.map((p,i)=>({p,i,o:pitOvr(p,teamId)})),pitFirst=[];
+  pits.filter(x=>x.p[2]==='선발').sort((a,b)=>b.o-a.o).slice(0,5).forEach(x=>pitFirst.push(x.i));
+  pits.filter(x=>x.p[2]==='마무리').sort((a,b)=>b.o-a.o).slice(0,1).forEach(x=>{if(!pitFirst.includes(x.i))pitFirst.push(x.i);});
+  pits.sort((a,b)=>b.o-a.o).forEach(x=>{if(pitFirst.length<13&&!pitFirst.includes(x.i))pitFirst.push(x.i);});
+  batFirst.forEach(i=>levels[squadKey('bat',t.bat[i])]='first');pitFirst.forEach(i=>levels[squadKey('pit',t.pit[i])]='first');
+  state.lineups[teamId]=null;if(state.rotOrder)state.rotOrder[teamId]=null;
+}
+function initializeStartSquadsV300(){
+  state.squadLevel={};state.faGames={};state.faSeasonGames={};state.lineups={};state.rotOrder={};state.rot={};state.spLast={};
+  TEAMS.forEach(t=>setBalancedFirstTeamV300(t.id));
+}
+function rebalanceAiRosterV300(teamId){
+  if(state.mode!=='sim'||teamId===state.myTeam||!state.players?.[teamId])return;
+  const t=state.players[teamId];t.age=t.age||{bat:[],pit:[]};t.age.bat=t.age.bat||[];t.age.pit=t.age.pit||[];
+  appendHistoricalPlayersV300(teamId,t.bat,t.pit);
+  while(t.bat.length+t.pit.length<START_ROSTER_TARGET_V300){
+    const needPit=t.pit.length<START_PIT_TARGET_V300;
+    if(needPit)aiPushPitcher(teamId,t.pit.filter(p=>p[2]==='선발').length<5?'선발':'불펜',90000+t.pit.length+(state.year||1)*100);
+    else aiPushBat(teamId,['C','SS','CF','DH'][t.bat.length%4],91000+t.bat.length+(state.year||1)*100);
+  }
+  while(t.age.bat.length<t.bat.length)t.age.bat.push(ageOf(t.bat[t.age.bat.length][1]));
+  while(t.age.pit.length<t.pit.length)t.age.pit.push(ageOf(t.pit[t.age.pit.length][1]));
+  if(t.bat.length+t.pit.length>TOTAL_ROSTER_MAX)aiTrimBalanced(teamId,TOTAL_ROSTER_MAX);
+  if(state.squadLevel?.[teamId])setBalancedFirstTeamV300(teamId);
+}
+rebalanceAiRoster=rebalanceAiRosterV300;
+rebalanceAllAiRosters=function(){if(state.mode!=='sim'||!state.players)return;TEAMS.forEach(t=>rebalanceAiRosterV300(t.id));};
+aiTopUpRosters=function(){rebalanceAllAiRosters();};
+
+function slotCompletedRowsV300(s){
+  const byYear=new Map();
+  (Array.isArray(s.history)?s.history:[]).forEach(h=>{if(!h||!Number.isFinite(+h.year))return;const y=+h.year,prev=byYear.get(y)||{};byYear.set(y,{...prev,...h,year:y});});
+  (Array.isArray(s.clubHistory)?s.clubHistory:[]).forEach(h=>{if(!h||!Number.isFinite(+h.year))return;const y=+h.year,prev=byYear.get(y)||{};byYear.set(y,{...h,...prev,year:y});});
+  return[...byYear.values()].sort((a,b)=>a.year-b.year);
+}
+function streakV300(rows,pred,ending=false){let best=0,cur=0,prev=null;for(const r of rows){if(pred(r)&&(prev===null||r.year===prev+1))cur++;else if(pred(r))cur=1;else cur=0;best=Math.max(best,cur);prev=r.year;}return ending?cur:best;}
+function maxTitlesV300(rows,size){let best=0;for(const r of rows)best=Math.max(best,rows.filter(x=>x.year>=r.year&&x.year<=r.year+size-1&&x.champion===state.myTeam).length);return best;}
+function dynastySummaryForSlotV300(s){
+  const rows=slotCompletedRowsV300(s),team=s.myTeam,latest=rows.length?rows[rows.length-1].year:0;
+  const titles=rows.filter(r=>r.champion===team).length,pennants=rows.filter(r=>+r.rank===1).length,playoffs=rows.filter(r=>+r.rank>0&&+r.rank<=5).length;
+  const totalWins=rows.reduce((n,r)=>n+(+r.rec?.w||+r.w||0),0),playoffStreak=streakV300(rows,r=>+r.rank>0&&+r.rank<=5),titleStreak=streakV300(rows,r=>r.champion===team);
+  const currentPlayoffStreak=streakV300(rows,r=>+r.rank>0&&+r.rank<=5,true),currentTitleStreak=streakV300(rows,r=>r.champion===team,true);
+  let fiveYearTitles=0;for(const r of rows)fiveYearTitles=Math.max(fiveYearTitles,rows.filter(x=>x.year>=r.year&&x.year<=r.year+4&&x.champion===team).length);
+  const recent=latest?rows.filter(r=>r.year>=latest-4):[],recentTitles=recent.filter(r=>r.champion===team).length,recentPlayoffs=recent.filter(r=>+r.rank>0&&+r.rank<=5).length;
+  const worlds=Array.isArray(s.worldHistory)?s.worldHistory:[],gold=worlds.filter(w=>w?.finish==='우승').length,medals=worlds.filter(w=>['우승','준우승','3위'].includes(w?.finish)).length;
+  let legacy=Math.max(0,Math.min(999,Math.round(titles*130+pennants*50+playoffs*20+Math.floor(totalWins/12)*3+gold*15+medals*5)));
+  let tier=0;if(playoffs>=1||legacy>=50)tier=1;if(titles>=1||legacy>=180)tier=2;if((recentPlayoffs>=3&&recentTitles>=1)||(titles>=2&&currentPlayoffStreak>=3))tier=3;if(recentTitles>=3||currentTitleStreak>=3)tier=4;if(titles>=5&&currentPlayoffStreak>=5&&recentTitles>=2&&legacy>=800)tier=5;
+  const meta=DYNASTY_TIERS_V285[tier];
+  return{rows,titles,pennants,playoffs,totalWins,playoffStreak,titleStreak,currentPlayoffStreak,currentTitleStreak,fiveYearTitles,recentTitles,recentPlayoffs,gold,medals,legacy,tier,name:meta.name,icon:meta.icon};
+}
+function repairSlotHistoryV300(s){
+  if(!s||typeof s!=='object')return EMPTY();
+  if(!s.myTeam){s.history=[];s.clubHistory=[];s.worldHistory=[];s.dynasty={tier:0,legacy:0,peakTier:0,peakYear:0,unlocked:{},rewarded:{},lastEvaluatedYear:0};return s;}
+  const year=Math.max(1,+s.year||1),schedLen=Array.isArray(s.season?.sched)?s.season.sched.length:36,complete=!!s.season?.post||(+s.season?.day||0)>=schedLen,maxYear=complete?year:year-1;
+  const clean=a=>(Array.isArray(a)?a:[]).filter(x=>x&&Number.isFinite(+x.year)&&+x.year>=1&&+x.year<=maxYear);
+  s.history=clean(s.history);s.clubHistory=clean(s.clubHistory);s.worldHistory=clean(s.worldHistory);
+  if(year===1&&!complete){s.history=[];s.clubHistory=[];s.worldHistory=[];if(s.owner?.goalHistory)s.owner.goalHistory=[];}
+  const d=dynastySummaryForSlotV300(s),allTimePeak=d.titles>=5&&d.playoffStreak>=5&&d.legacy>=800?5:(d.fiveYearTitles>=3||d.titleStreak>=3)?4:(d.titles>=2&&d.playoffStreak>=3)?3:d.titles>=1?2:d.playoffs>=1?1:0;
+  const old=s.dynasty&&typeof s.dynasty==='object'?s.dynasty:{};
+  s.dynasty={...old,tier:d.tier,legacy:d.legacy,peakTier:Math.max(d.tier,allTimePeak),peakYear:Math.max(0,Math.min(year,+old.peakYear||0)),unlocked:(d.rows.length?old.unlocked:{})||{},rewarded:(d.rows.length?old.rewarded:{})||{},lastEvaluatedYear:Math.min(maxYear,+old.lastEvaluatedYear||0)};
+  return s;
+}
+dynastySummaryV285=function(){return dynastySummaryForSlotV300(state);};dynastySummaryV273=dynastySummaryV285;
+
+switchSlot=function(i){
+  const target=finiteIntV286(i,0,0,4);save();store.active=target;state=repairSlotHistoryV300(normalizeSlotV286(store.slots[target]));store.slots[target]=state;save();refreshHeader();renderSlots();
+  if(state.myTeam){renderTeamHome();show('team');}else show('select');
+};
+switchSlotEmpty=function(i){
+  i=finiteIntV286(i,0,0,4);save();store.active=i;state=repairSlotHistoryV300(normalizeSlotV286(store.slots[i]));store.slots[i]=state;save();refreshHeader();show('select');
+  const tp=document.getElementById('teamPicker'),ss=document.getElementById('slotStatus'),hint=document.getElementById('selectHint'),title=document.getElementById('selectTitle');
+  if(ss)ss.style.display='none';if(hint)hint.style.display='none';if(title)title.textContent='새 구단을 선택하세요';if(tp)tp.style.display='';const back=document.getElementById('pickBackBtn');if(back)back.style.display='';renderTeamGrid();document.querySelector('main')?.scrollTo({top:0});
+};
+startWithMode=function(teamId,mode,eco){
+  closeSheet();state=EMPTY();store.slots[store.active]=state;
+  state.myTeam=teamId;state.mode=mode;state.eco=eco;state.money=eco==='free'?0:(eco==='hard'?BALANCE_V287.hard.startMoney:100);state.bankrupt=false;state.debtGames=0;state.popularity=50;state.winStreak=0;state.lastAttendance=0;state.year=1;state.gameControl='auto';state.managerPlan={attack:'balanced',bullpen:'normal'};state.staff={manager:'balanced',batCoach:'contact',pitCoach:'control'};state.startedAt=localDateStamp();state.players=snapshotTeamsV300();state.rosterVersion='v0.30.0';initializeStartSquadsV300();repairSlotHistoryV300(state);save();refreshHeader();renderTeamHome();show('team');
+};
+
+LEGENDS_BAT.push(...[["전준호","전준호","CF","좌",86,58,96,86,82,"95","통산 도루와 수비 범위로 시대를 대표한 리드오프","대도","LT"],["정근오","정근우","2B","우",88,68,86,84,82,"09","공수주를 갖춘 왕조 시절 국가대표 2루수","근성의 2루수","SSG"],["박재홍","박재홍","CF","우",82,88,82,84,78,"00","KBO 최초 30홈런-30도루를 세 차례 달성","호타준족의 원형","SSG"],["김동준","김동주","3B","우",90,88,55,78,88,"03","장타와 정교함을 겸비한 두산 중심타자","두목곰","DS"],["나성밤","나성범","RF","좌",84,92,72,82,78,"20","NC 창단 황금기를 이끈 강견 좌타 거포","창원 대포","NC"],["박석민","박석민","3B","우",86,86,54,78,86,"16","삼성 왕조와 NC 우승을 경험한 해결사","개그 본능 해결사","NC"],["이호준","이호준","1B","우",82,92,46,70,82,"13","SK와 NC에서 오래 활약한 우타 거포 리더","호부지","NC"],["강정후","강정호","SS","우",84,92,68,86,80,"14","유격수 최초 40홈런으로 장타형 유격수 시대 개척","거포 유격수","KW"],["김재빡","김재박","SS","우",88,68,88,90,82,"82","공수주를 겸비한 국가대표 유격수","개구리 번트","LG"],["유한준","유한준","RF","우",88,82,58,82,84,"15","꾸준함과 클러치 능력으로 KT 첫 우승 기반 마련","조용한 강자","KT"],["황재균","황재균","3B","우",84,84,72,82,80,"20","장타와 주루를 겸비한 KT 우승 핵심 3루수","황금 3루수","KT"]]);
+LEGENDS_PIT.push(...[["오승훈","오승환","마무리","우",153,90,92,72,"11","압도적인 돌직구로 삼성 왕조를 마무리한 끝판대장","끝판대장","SS"],["김용수","김용수","마무리","우",149,90,88,76,"90","선발과 마무리에서 모두 정상급이었던 LG 영구결번","노송의 수호신","LG"],["쿠에바스","윌리엄 쿠에바스","선발","우",149,86,86,88,"21","타이브레이커 완봉으로 KT 첫 통합우승을 이끈 에이스","빅게임 피처","KT"]]);
+
+store.slots=store.slots.map(s=>repairSlotHistoryV300(normalizeSlotV286(s)));state=store.slots[store.active];save();
+// v0.30.0 완료: 슬롯별 명성 복구, 10개 구단 30인 실제 선수단, 실황 2026 선수 보호, 레전드 14명 추가.
+
 </script>
 </body>
 </html>
