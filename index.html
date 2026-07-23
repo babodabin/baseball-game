@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.24.6</title>
+<title>우리팀을 만들자 v0.24.7</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -384,7 +384,7 @@ body.theme-rain #rainLayer{display:block;
 .checklist{scroll-margin-top:12px}
 
 
-/* v0.24.6 구단 관리 화면 분리 */
+/* v0.24.7 구단 관리 화면 분리 */
 .front-subtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;position:sticky;top:-1px;z-index:8;background:var(--bg);padding:4px 0 10px;margin-bottom:8px}
 .front-subtabs button{border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--dim);padding:10px 4px;font-family:inherit;font-size:13px;font-weight:800}
 .front-subtabs button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.24.6</span>
+    <span class="ver">v0.24.7</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -4458,7 +4458,7 @@ save=function(){ const r=_saveV243(); refreshHeader(); return r; };
 
 
 
-/* ═══════════ 구단 관리 3분할·계약 총액·2군 성장 보고 (v0.24.6) ═══════════ */
+/* ═══════════ 구단 관리 3분할·계약 총액·2군 성장 보고 (v0.24.7) ═══════════ */
 let frontSubTab='status';
 function setFrontSubTab(tab){
   frontSubTab=tab;
@@ -4598,6 +4598,38 @@ refreshHeader();
 renderSlots();
 if(state.myTeam){ renderTeamHome(); show('team'); }
 else show('select');
+
+
+// v0.24.7 — 새 시즌 조건을 구단 관리 탭 위에 고정
+function seasonStartConditionHtml(){
+  if(!isOffseason()) return '';
+  const cl=offseasonChecklist();
+  const nextLabel=state.mode==='sim'?(state.year+1)+'년차 시즌 시작':'새 시즌 시작';
+  return `<div class="checklist season-start-global">
+    <div class="cl-title">새 시즌 시작 조건</div>
+    ${cl.items.map(it=>`<div class="cl-row"><span class="cl-ic">${it.ok?'✅':'⬜'}</span><span class="cl-lb">${it.label}</span><span class="cl-note ${it.ok?'ok':'todo'}">${it.note}</span></div>`).join('')}
+    <button class="btn cl-start ${cl.allOk?'ready':'locked'}" id="startNextTop" ${cl.allOk?'':'disabled'}>${cl.allOk?'▶ '+nextLabel:'🔒 '+nextLabel}</button>
+  </div>`;
+}
+function stripEmbeddedStartChecklist(html){
+  return String(html||'').replace(/<div class="checklist">[\s\S]*?<button class="btn cl-start[\s\S]*?<\/button>\s*<\/div>/,'');
+}
+renderFront=function(){
+  ensureLongTermState();ensureSquadState();
+  const t=getTeam(state.myTeam),body=document.getElementById('frontBody'),info=document.getElementById('frontInfo');
+  document.getElementById('frontTitle').textContent=`구단 관리 — ${t.name}`;
+  syncMoneyUi();
+  const squad=`${rosterManagementHtml()}${contractListHtml()}${isOffseason()?`<h2 class="sec" style="margin-top:16px">🗑️ 선수 방출</h2><div class="hint">오프시즌에만 방출할 수 있습니다.</div><h2 class="sec" style="font-size:14px">타자</h2>${playerRows(t,true)}<h2 class="sec" style="font-size:14px">투수</h2>${playerRows(t,false)}`:''}`;
+  let market=isOffseason()?stripOffseasonRelease(stripEmbeddedStartChecklist(renderOffseason(t))):`<div class="notice"><b>정규시즌 프런트</b><br>트레이드·직원·시설·구장 경영을 진행할 수 있습니다.</div><button class="btn" onclick="tradeOppId=null;tradeMyPicks=[];tradeOppPicks=[];openTradeSheet()">🔄 시즌 중 트레이드</button>`;
+  const front=`${facilityPanel()}${staffPanel()}${scoutPanel()}${stadiumBusinessOnlyHtml()}${market}`;
+  body.innerHTML=`${seasonStartConditionHtml()}<div class="front-subtabs"><button data-ftab="status" onclick="setFrontSubTab('status')">구단 현황</button><button data-ftab="squad" onclick="setFrontSubTab('squad')">선수단</button><button data-ftab="front" onclick="setFrontSubTab('front')">프런트</button></div>
+  <div class="front-pane" data-fpane="status">${clubStatusPanelHtml()}</div>
+  <div class="front-pane" data-fpane="squad">${squad}</div>
+  <div class="front-pane" data-fpane="front">${front}</div>`;
+  setFrontSubTab(frontSubTab);
+  if(isOffseason())bindOffseason();
+  syncMoneyUi();
+};
 </script>
 </body>
 </html>
