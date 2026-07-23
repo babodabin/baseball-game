@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.27.4</title>
+<title>우리팀을 만들자 v0.27.5</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.27.4</span>
+    <span class="ver">v0.27.5</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1430,7 +1430,17 @@ document.querySelectorAll('nav button').forEach(btn=>{
     }else if(nv==='front'){
       renderFront(); show('front');
     }else if(nv==='rank'){
-      renderRank(); show('rank');
+      // 순위 화면을 먼저 연다. 데이터 렌더 오류가 나도 이전 화면에 남지 않는다.
+      show('rank');
+      try{
+        if(typeof renderRankStableV275==='function') renderRankStableV275();
+        else if(typeof renderRankStableV274==='function') renderRankStableV274();
+        else renderRank();
+      }catch(err){
+        console.error('순위 탭 직접 진입:',err);
+        const box=document.getElementById('lastResults');
+        if(box) box.innerHTML='<div class="hint">순위 데이터를 복구했습니다. 탭을 다시 누르지 않아도 이 화면에서 계속 이용할 수 있습니다.</div>';
+      }
     }
   };
 });
@@ -6261,6 +6271,58 @@ openHistoryRoom=function(){
     if(top) top.insertAdjacentHTML('afterend',guide);
   }
 };
+
+
+// ═══════════ v0.27.5 순위 본문 강제 전환·왕조 패널 고정 ═══════════
+function renderRankStableV275(){
+  // 화면 전환을 렌더보다 먼저 확정한다.
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('on'));
+  const rankScreen=document.getElementById('scr-rank');
+  if(rankScreen) rankScreen.classList.add('on');
+  document.querySelectorAll('nav button').forEach(el=>el.classList.toggle('on',el.dataset.nav==='rank'));
+  try{ renderRankStableV274(); }
+  catch(err){
+    console.error('v0.27.5 안정 순위:',err);
+    try{ repairRankStateV271(); renderRank(); }catch(inner){ console.error(inner); }
+  }
+}
+
+// 구단 홈과 운영 화면에서 장기 목표가 항상 눈에 보이도록 고정한다.
+function dynastyQuickCardV275(){
+  try{
+    const d=updateDynastyStateV273(false), missions=dynastyMissionsV273(d), next=missions.find(m=>!m.done);
+    return `<div data-dynasty-v275 class="notice" style="border-color:var(--amber);margin:12px 0"><b>${d.icon} ${d.name} · 명성 ${d.legacy}/999</b><br>한국시리즈 우승 ${d.titles}회 · 정규시즌 1위 ${d.pennants}회 · 가을야구 ${d.playoffs}회${next?`<br><span style="color:var(--dim)">다음 목표: ${next.label} · ${next.progress}</span>`:'<br>모든 장기 목표 달성 🏆'}</div>`;
+  }catch(err){ return '<div data-dynasty-v275 class="notice"><b>🏟️ 장기 목표·왕조</b><br>시즌 기록을 계산 중입니다.</div>'; }
+}
+const _renderTeamHomeV275=renderTeamHome;
+renderTeamHome=function(){
+  const r=_renderTeamHomeV275();
+  const screen=document.getElementById('scr-team');
+  if(screen&&!screen.querySelector('[data-dynasty-v275]')){
+    const anchor=screen.querySelector('.theme-title, .theme-row, #slotList');
+    if(anchor) anchor.insertAdjacentHTML('beforebegin',dynastyQuickCardV275());
+    else screen.insertAdjacentHTML('beforeend',dynastyQuickCardV275());
+  }
+  return r;
+};
+const _renderFrontV275=renderFront;
+renderFront=function(){
+  const r=_renderFrontV275();
+  const body=document.getElementById('frontBody');
+  if(body&&!body.querySelector('[data-dynasty-v275]')) body.insertAdjacentHTML('afterbegin',dynastyQuickCardV275());
+  return r;
+};
+
+// iOS 웹뷰에서도 onclick 속성 경로로 확실히 진입한다.
+const rankNavV275=document.querySelector('nav button[data-nav="rank"]');
+if(rankNavV275){
+  rankNavV275.onclick=function(e){
+    if(e){ e.preventDefault(); e.stopPropagation(); }
+    if(!state||!state.myTeam){ show('select'); return; }
+    renderRankStableV275();
+    try{ save(); }catch(err){ console.error('v0.27.5 순위 저장:',err); }
+  };
+}
 
 </script>
 </body>
