@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.25.0</title>
+<title>우리팀을 만들자 v0.25.1</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -384,7 +384,7 @@ body.theme-rain #rainLayer{display:block;
 .checklist{scroll-margin-top:12px}
 
 
-/* v0.25.0 구단 관리 화면 분리 */
+/* v0.25.1 구단 관리 화면 분리 */
 .front-subtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;position:sticky;top:-1px;z-index:8;background:var(--bg);padding:4px 0 10px;margin-bottom:8px}
 .front-subtabs button{border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--dim);padding:10px 4px;font-family:inherit;font-size:13px;font-weight:800}
 .front-subtabs button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.25.0</span>
+    <span class="ver">v0.25.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -4458,7 +4458,7 @@ save=function(){ const r=_saveV243(); refreshHeader(); return r; };
 
 
 
-/* ═══════════ 구단 관리 3분할·계약 총액·2군 성장 보고 (v0.25.0) ═══════════ */
+/* ═══════════ 구단 관리 3분할·계약 총액·2군 성장 보고 (v0.25.1) ═══════════ */
 let frontSubTab='status';
 function setFrontSubTab(tab){
   frontSubTab=tab;
@@ -4600,7 +4600,7 @@ if(state.myTeam){ renderTeamHome(); show('team'); }
 else show('select');
 
 
-// v0.25.0 — 새 시즌 조건을 구단 관리 탭 위에 고정
+// v0.25.1 — 새 시즌 조건을 구단 관리 탭 위에 고정
 function seasonStartConditionHtml(){
   if(!isOffseason()) return '';
   const cl=offseasonChecklist();
@@ -4632,7 +4632,7 @@ renderFront=function(){
 };
 
 
-// ═══════════ AI 선수단·FA·한국식 3라운드 드래프트 (v0.25.0) ═══════════
+// ═══════════ AI 선수단·FA·한국식 3라운드 드래프트 (v0.25.1) ═══════════
 const AI_TARGET_ROSTER = 26;
 const DRAFT_ROUNDS = 3;
 
@@ -4863,6 +4863,132 @@ renderOffseason=function(t){
   return html;
 };
 
+
+
+// ═══════════ 드래프트 순서·선택·실황 FA 보정 (v0.25.1) ═══════════
+function draftOrderForMarket(){
+  const rec=state.season?.rec||{};
+  const games=Object.values(rec).reduce((sum,r)=>sum+((r?.w||0)+(r?.l||0)+(r?.t||0)),0);
+  if(games>0){
+    // rankOrder()는 1위→10위이므로 반드시 뒤집어 10위→1위로 고정한다.
+    return rankOrder().slice().reverse();
+  }
+  // 순위 기록이 없는 첫 초기화 상황에서는 실제 기준 순위 10위→1위.
+  return TEAMS.slice().sort((a,b)=>(RANK2025[b.id]||0)-(RANK2025[a.id]||0)).map(t=>t.id);
+}
+
+function ensureLiveFaCandidates(m){
+  if(state.mode!=='live'||!m) return;
+  if((m.fa||[]).length>=4) return;
+  m.fa=m.fa||[];
+  const used=new Set(m.fa.map(x=>x.data?.[0]));
+  const candidates=[];
+  TEAMS.forEach((tm,ti)=>{
+    if(tm.id===state.myTeam) return;
+    const t=state.players[tm.id]; if(!t) return;
+    ['bat','pit'].forEach(kind=>{
+      t[kind].forEach((pl,i)=>{
+        if(used.has(pl[0])||isLiveCorePlayer(tm.id,pl,kind)) return;
+        const age=t.age[kind][i]||28;
+        const ovr=kind==='bat'?batOvr(pl,tm.id):pitOvr(pl,tm.id);
+        if(age>=27&&ovr>=58) candidates.push({from:tm.id,kind,data:[...pl],age,ovr});
+      });
+    });
+  });
+  candidates.sort((a,b)=>b.ovr-a.ovr);
+  for(const fa of candidates){
+    if(m.fa.length>=6) break;
+    if(!used.has(fa.data[0])){m.fa.push(fa);used.add(fa.data[0]);}
+  }
+  // 실황 원본 선수는 보호하면서, 시장이 비면 가상 자유계약 선수를 보충한다.
+  let serial=0;
+  while(m.fa.length<4){
+    const teams=TEAMS.filter(t=>t.id!==state.myTeam);
+    const owner=teams[(state.year*7+serial)%teams.length];
+    const t=state.players[owner.id];
+    const isBat=serial%2===0;
+    const age=27+(serial%6), base=60+(serial%8);
+    let data,kind,ovr;
+    if(isBat){
+      const pos=['C','1B','2B','3B','SS','LF','CF','RF'][serial%8];
+      data=[genName(52000+state.year*20+serial),'가상 선수',pos,serial%3?'우':'좌',base,base+2,base-2,base+1,base];
+      kind='bat'; t.bat.push(data);t.age.bat.push(age);ovr=batOvr(data,owner.id);
+    }else{
+      const role=serial%3===0?'선발':'불펜';
+      data=[genName(53000+state.year*20+serial),'가상 선수',role,serial%3?'우':'좌',143+serial%8,base+1,base,role==='선발'?base:52];
+      kind='pit'; t.pit.push(data);t.age.pit.push(age);ovr=pitOvr(data,owner.id);
+    }
+    m.fa.push({from:owner.id,kind,data:[...data],age,ovr});
+    serial++;
+  }
+}
+
+const _buildOffseasonMarketV251=buildOffseasonMarket;
+buildOffseasonMarket=function(){
+  _buildOffseasonMarketV251();
+  ensureLiveFaCandidates(state.season?.market);
+  save();
+};
+
+function draftOrderStatusHtml(m){
+  const order=m.draftOrder||[];
+  const chips=order.map((id,i)=>{
+    const current=!m.drafted&&m.draftRound<=DRAFT_ROUNDS&&m.draftCursor===i;
+    return `<span style="display:inline-block;margin:2px 3px;padding:4px 7px;border-radius:8px;border:1px solid ${current?'var(--amber)':'var(--line)'};color:${current?'var(--amber)':'var(--dim)'}">${10-i}위 ${getTeam(id).name}</span>`;
+  }).join('');
+  return `<div class="notice"><b>지명 순서 — 10위 → 1위</b><br>${chips}<br><span style="color:var(--dim)">모든 라운드가 이 순서로 반복됩니다.</span></div>`;
+}
+
+kboDraftPanelHtml=function(){
+  const m=state.season?.market; if(!m?.kboDraft) return '';
+  // 저장 데이터의 순서가 잘못되었거나 비어 있으면 다시 계산한다.
+  if(!Array.isArray(m.draftOrder)||m.draftOrder.length!==TEAMS.length){m.draftOrder=draftOrderForMarket();m.draftCursor=0;m.draftRound=1;}
+  advanceDraftToUser(m);
+  const myTurn=!m.drafted&&m.draftOrder[m.draftCursor]===state.myTeam;
+  const available=m.draft.map((d,i)=>({d,i})).filter(x=>!x.d.taken);
+  let h=`<h2 class="sec" style="margin-top:16px">신인 드래프트 <small>${m.drafted?'3라운드 완료':`${m.draftRound}라운드 · ${myTurn?'우리 팀 차례':getTeam(m.draftOrder[m.draftCursor]).name+' 차례'}`} · ${SCOUT_INFO[state.scout].name}</small></h2>
+  <div class="hint">전년도 정규시즌 10위부터 1위까지 지명하며, 1~3라운드 모두 같은 순서입니다.</div>${draftOrderStatusHtml(m)}`;
+  if(m.userDraftPicks?.length) h+=`<div class="notice"><b>우리 팀 지명</b><br>${m.userDraftPicks.map(x=>`${x.round}R ${x.name}`).join(' · ')}</div>`;
+  if(!myTurn&&!m.drafted) h+=`<div class="hint">AI 팀 지명을 처리하고 있습니다. 창을 다시 열면 우리 팀 차례로 진행됩니다.</div>`;
+  available.slice(0,18).forEach(({d,i})=>{const r=prepareScoutReport(d,i);h+=`<div class="prow" role="button" tabindex="0" onclick="openDraftSheet(${i})" style="cursor:${myTurn?'pointer':'default'};${myTurn?'':'opacity:.58'}"><div class="pos">${r.kind==='bat'?r.data[2]:(r.data[2]==='선발'?'SP':'RP')}</div><div class="mid"><div class="nm">${r.data[0]} <span style="font-size:11px;color:var(--amber)">${r.reportPot}</span></div><div class="hand">${r.age}세 · 예상 OVR ${scoutRange(r.reportOvr)}</div></div><div class="ovr num" style="font-size:14px">${r.reportOvr}</div></div>`;});
+  return h;
+};
+
+const _openDraftSheetV251=openDraftSheet;
+openDraftSheet=function(idx){
+  const m=state.season?.market;
+  if(state.mode!=='sim'||!m?.kboDraft) return _openDraftSheetV251(idx);
+  advanceDraftToUser(m);
+  if(m.drafted){showAlert('이번 드래프트는 3라운드까지 완료되었습니다.');return;}
+  if(m.draftOrder[m.draftCursor]!==state.myTeam){showAlert('현재는 우리 팀 지명 순서가 아닙니다.');return;}
+  const d=m.draft[idx]; if(!d||d.taken){showAlert('이미 앞 팀이 지명한 선수입니다.');return;}
+  const report=prepareScoutReport(d,idx), isBat=report.kind==='bat', exact=SCOUT_INFO[state.scout].ovrErr===0;
+  const sheet=document.getElementById('sheet');
+  sheet.innerHTML=`<div class="top"><div class="pname">${report.data[0]}</div><button class="close" onclick="closeSheet()">✕</button></div>
+  <div class="meta">${m.draftRound}라운드 · ${report.data[2]} · ${report.age}세 · 예상 OVR ${scoutRange(report.reportOvr)}</div>
+  <div class="reveal"><div class="lbl">한국식 전면 드래프트 · 잠재력 ${report.reportPot}</div>우리 팀의 ${m.draftRound}라운드 지명 선수로 선택합니다.</div>
+  ${exact?playerStatsHtml(report.data,isBat,state.myTeam):`<div class="notice">세부 능력치는 지명 후 공개됩니다.<br>현재 능력 예상치: <b>OVR ${scoutRange(report.reportOvr)}</b></div>`}
+  <button class="btn" onclick="closeSheet();draftPick(${idx})">${m.draftRound}라운드 지명</button><button class="btn ghost" onclick="closeSheet()">취소</button>`;
+  document.getElementById('mask').classList.add('on');
+};
+
+draftPick=function(idx){
+  const m=state.season?.market;
+  if(state.mode!=='sim'||!m?.kboDraft) return;
+  advanceDraftToUser(m);
+  if(m.drafted){showAlert('이번 드래프트는 이미 완료되었습니다.');return;}
+  if(m.draftOrder[m.draftCursor]!==state.myTeam){showAlert('현재는 우리 팀 지명 순서가 아닙니다.');return;}
+  const d=m.draft[idx]; if(!d||d.taken){showAlert('이미 지명된 선수입니다.');return;}
+  const round=m.draftRound;
+  d.taken=state.myTeam;addDraftPlayer(state.myTeam,d);
+  m.userDraftPicks=m.userDraftPicks||[];
+  m.userDraftPicks.push({round,name:d.data[0],kind:d.kind});
+  m.draftCursor++;
+  advanceDraftToUser(m);
+  state.lineups[state.myTeam]=null;state.rotOrder[state.myTeam]=null;
+  save();renderFront();
+  showAlert(`신인 지명 완료!\n${round}라운드 · ${d.data[0]} · ${d.truePot||d.pot}`);
+};
 
 </script>
 </body>
