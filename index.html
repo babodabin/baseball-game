@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A130D">
 <meta name="color-scheme" content="dark">
-<title>우리팀을 만들자 v0.26.9</title>
+<title>우리팀을 만들자 v0.27.0</title>
 <!-- v0.24.2 — 성장 유형·전성기·쇠퇴·은퇴 시스템 -->
 <!-- v0.24.2 — 장기 운영 보완: 2군 자동훈련·선발 5인 보호·시즌중 트레이드·계약/저장/구장 UI -->
 <!-- v0.24.0 — visualViewport 강제 높이 제거, 앱을 실제 화면 inset 0에 고정 -->
@@ -404,7 +404,7 @@ body.theme-rain #rainLayer{display:block;
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.26.9</span>
+    <span class="ver">v0.27.0</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -5758,7 +5758,7 @@ playMyGame=function(){
 
 
 
-// ═══════════ v0.26.9 세계대회 트리거·기록 표시 보정 ═══════════
+// ═══════════ v0.27.0 세계대회 트리거·기록 표시 보정 ═══════════
 function ensureMissedWorldTournamentsV269(){
   if(state.mode!=='sim' || !state.myTeam || !(state.year>1)) return false;
   if(!Array.isArray(state.worldHistory)) state.worldHistory=[];
@@ -5811,6 +5811,49 @@ switchSlot=function(i){
 // 현재 활성 저장도 한 번 보정한다.
 ensureMissedWorldTournamentsV269();
 
+
+
+// ═══════════ v0.27.0 한국시리즈·세계대회 기록 항상 표시 ═══════════
+function seasonHistoryPanelV270(){
+  if(!state || !state.myTeam) return '';
+  ensureMissedWorldTournamentsV269();
+  const hist=(state.history||[]).slice().sort((a,b)=>(b.year||0)-(a.year||0));
+  const worlds=(state.worldHistory||[]).slice().sort((a,b)=>(b.year||0)-(a.year||0));
+  let rows='';
+  if(hist.length){
+    rows += '<div style="margin-top:8px"><b>🏆 한국시리즈·시즌 기록</b><br>' +
+      hist.slice(0,12).map(h=>{
+        const champ=h.champion ? getTeam(h.champion).name : '-';
+        const mine=h.champion===state.myTeam ? ' · <b style="color:var(--amber)">우리 팀 우승</b>' : '';
+        return `${h.year}년차 · 정규시즌 ${h.rank}위 · 한국시리즈 우승 ${champ}${mine}`;
+      }).join('<br>') + '</div>';
+  }else{
+    rows += '<div style="margin-top:8px"><b>🏆 한국시리즈·시즌 기록</b><br><span class="hint">완료된 시즌이 없습니다.</span></div>';
+  }
+  if(state.mode==='sim'){
+    rows += '<div style="margin-top:12px"><b>🌐 세계대회 기록</b><br>' +
+      (worlds.length ? worlds.map(w=>`${w.year}년차 · 대한민국 <b>${w.medal||''} ${w.finish}</b> · 우승 ${w.champion}`).join('<br>')
+                     : '<span class="hint">4년차 시즌 종료 후 첫 대회가 열립니다.</span>') + '</div>';
+  }
+  return `<div class="notice" style="max-width:360px;margin:14px auto 0;border-color:var(--amber)">${rows}</div>`;
+}
+
+const _renderTeamHomeV269=renderTeamHome;
+renderTeamHome=function(){
+  _renderTeamHomeV269();
+  const box=document.getElementById('teamHome');
+  if(box) box.insertAdjacentHTML('beforeend',seasonHistoryPanelV270());
+};
+
+// 순위 탭에서도 최근 경기 아래에 기록을 확실히 붙인다.
+const _renderRankV269=renderRank;
+renderRank=function(){
+  _renderRankV269();
+  const box=document.getElementById('lastResults');
+  if(box && !box.querySelector('[data-v270-history]')){
+    box.insertAdjacentHTML('beforeend',`<div data-v270-history>${seasonHistoryPanelV270()}</div>`);
+  }
+};
 </script>
 </body>
 </html>
