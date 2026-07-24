@@ -11606,5 +11606,344 @@ body.theme-night main::after{
 })();
 </script>
 
+
+<!-- v0.34.14 player individuality completion: clutch, pinch hitting, bunt/steal traits, leadership, fielding proficiency -->
+<style>
+.player-archetype-v3414{margin-top:12px;padding:12px;border:1px solid rgba(119,214,155,.22);border-radius:12px;background:rgba(119,214,155,.045);font-size:12px;line-height:1.58}
+.player-archetype-v3414 .pa-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:7px}
+.player-archetype-v3414 .pa-title{font-weight:900;color:#77d69b}.player-archetype-v3414 .pa-note{font-size:11px;color:var(--dim)}
+.player-archetype-v3414 .pa-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:7px;color:var(--dim)}
+.player-archetype-v3414 .pa-grid b{color:var(--text)}
+</style>
+<script>
+(function(){
+  'use strict';
+  const VERSION='v0.34.14';
+  const META='playerMetaV326';
+  const FIELD=['C','1B','2B','3B','SS','LF','CF','RF'];
+  const INF=new Set(['1B','2B','3B','SS']);
+  const OUTF=new Set(['LF','CF','RF']);
+  const cap=(v,a,b)=>Math.max(a,Math.min(b,Number(v)||0));
+  function hash(s){let h=2166136261;for(const ch of String(s||'')){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+  function meta(p){
+    if(!Array.isArray(p))return null;
+    let m=p.find(v=>v&&typeof v==='object'&&!Array.isArray(v)&&v._schema===META);
+    if(!m){m={_schema:META,version:1};p.push(m);}
+    return m;
+  }
+  function tendencies(p){try{return window.playerTendenciesV334?.(p,true)||p?.tendencies||{};}catch(_){return p?.tendencies||{};}}
+  function secondaries(p){
+    try{if(typeof multiPositionsOfV314==='function')return multiPositionsOfV314(p).filter(Boolean);}catch(_){}
+    return Array.isArray(meta(p)?.secondaryPositions)?meta(p).secondaryPositions.filter(Boolean):[];
+  }
+  function ensureTraits(p,isBat){
+    if(!Array.isArray(p))return null;
+    const m=meta(p);if(!m)return null;
+    if(!m.gameTraitsV3414||typeof m.gameTraitsV3414!=='object'){
+      const h=hash(`${p[0]}|${p[1]}|${p[2]}|${p[3]}|${isBat?'B':'P'}|v3414`);
+      if(isBat){
+        const t=tendencies(p),con=Number(p.skills?.contact??p[4]??65),pow=Number(p.skills?.power??p[5]??65),spd=Number(p.skills?.running??p[6]??65),def=Number(p.skills?.defense??p[7]??65),eye=Number(p.skills?.eye??p[8]??65);
+        const bunt=cap(Math.round(con*.34+eye*.22+spd*.28+(h%19)-8),28,94);
+        const steal=cap(Math.round(spd*.66+(Number(t.aggression)||50)*.22+((h>>>5)%17)-6),25,96);
+        const pinchScore=cap(Math.round(con*.34+pow*.32+eye*.24-def*.10+((h>>>9)%21)-5),35,94);
+        const pinchHitter=pinchScore>=72||h%100<16;
+        const pos={};secondaries(p).forEach((x,i)=>{pos[x]=cap(82+((hash(`${p[0]}|${x}|${i}`)%13)),82,94);});
+        m.gameTraitsV3414={version:1,bunt,steal,pinchScore,pinchHitter,positionProficiency:pos,createdVersion:'0.34.14'};
+      }else m.gameTraitsV3414={version:1,createdVersion:'0.34.14'};
+    }
+    return m.gameTraitsV3414;
+  }
+  function ensureAll(){
+    let changed=false;
+    Object.values(state?.players||{}).forEach(t=>{
+      (t?.bat||[]).forEach(p=>{const m=meta(p);if(!m?.gameTraitsV3414){ensureTraits(p,true);changed=true;}});
+      (t?.pit||[]).forEach(p=>{const m=meta(p);if(!m?.gameTraitsV3414){ensureTraits(p,false);changed=true;}});
+    });
+    return changed;
+  }
+  function proficiency(p,slot){
+    if(!Array.isArray(p))return 0;
+    if(slot==='DH')return 1;
+    const primary=String(p[2]||'');
+    if(primary===slot)return 1;
+    const tr=ensureTraits(p,true),v=Number(tr?.positionProficiency?.[slot]);
+    if(Number.isFinite(v))return cap(v/100,.78,.96);
+    if(INF.has(primary)&&INF.has(slot))return primary==='1B'||slot==='1B'?.60:.64;
+    if(OUTF.has(primary)&&OUTF.has(slot))return .67;
+    if(primary==='C'&&slot==='1B')return .58;
+    return 0;
+  }
+  window.positionProficiencyV3414=proficiency;
+  window.playerGameTraitsV3414=(p,isBat)=>ensureTraits(p,isBat);
+
+  // 수비 마법사의 상시 타격 +1은 제거하고 실제 수비 판정에서 보정한다.
+  const previousSpecialBonus=window.specialBonusV280;
+  if(typeof previousSpecialBonus==='function')window.specialBonusV280=function(teamId,isBat,p){
+    try{if(isBat&&specialOfV280(teamId,true,p)==='wizard')return 0;}catch(_){}
+    return previousSpecialBonus.apply(this,arguments);
+  };
+
+  // 해결사 발동은 득점권 또는 경기 후반 접전으로 제한하고, 수비 마법사의 타격 발동은 제거한다.
+  const previousSpecialContext=window.specialContextV281;
+  if(typeof previousSpecialContext==='function')window.specialContextV281=function(){
+    const x=previousSpecialContext.apply(this,arguments)||{};
+    const ctx=window.GAME_CONTEXT_V3414||null;
+    const active=Array.isArray(x.activeTexts)?x.activeTexts:[];
+    if(x.batId==='clutch'&&active.some(v=>String(v).includes('해결사'))&&!ctx?.clutch){
+      x.hit=(Number(x.hit)||0)-.018;x.bb=(Number(x.bb)||0)-.006;
+      x.activeTexts=active.filter(v=>!String(v).includes('해결사'));x.batText='';
+    }
+    if(x.batId==='wizard'&&active.some(v=>String(v).includes('수비 마법사'))){
+      x.hit=(Number(x.hit)||0)-.006;
+      x.activeTexts=(x.activeTexts||[]).filter(v=>!String(v).includes('수비 마법사'));x.batText='';
+    }
+    return x;
+  };
+
+  const previousCanPlay=window.canPlay;
+  window.canPlay=function(player,slotPos){
+    if(slotPos==='DH')return true;
+    return proficiency(player,slotPos)>=.58 || (typeof previousCanPlay==='function'&&previousCanPlay(player,slotPos));
+  };
+
+  function isFirstEligible(teamId,p){
+    try{return teamId!==state.myTeam||typeof isFirstTeam!=='function'||isFirstTeam(teamId,'bat',p);}catch(_){return true;}
+  }
+  function lineupPool(teamId){
+    const t=getTeam(teamId),all=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId)}));
+    let pool=all.filter(x=>isFirstEligible(teamId,x.p)&&!isInjured(teamId,'bat',x.p));
+    if(pool.length<9)pool=all.filter(x=>isFirstEligible(teamId,x.p));
+    if(pool.length<9)pool=all.filter(x=>!isInjured(teamId,'bat',x.p));
+    if(pool.length<9)pool=all;
+    return pool;
+  }
+  window.autoAssignLineup=function(teamId){
+    const pool=lineupPool(teamId),used=new Set(),assign={};
+    const priority=['C','SS','CF','2B','3B','RF','LF','1B'];
+    priority.forEach(slot=>{
+      const pick=pool.filter(x=>!used.has(x.i)&&proficiency(x.p,slot)>0).map(x=>{
+        const pr=proficiency(x.p,slot),def=Number(x.p.skills?.defense??x.p[7]??65),arm=Number(x.p.skills?.arm??def);
+        return {...x,score:x.o+(pr-1)*34+(def-70)*.055+(arm-70)*.018};
+      }).sort((a,b)=>b.score-a.score)[0];
+      if(pick){assign[slot]=pick.i;used.add(pick.i);}
+    });
+    // 비정상 로스터에서도 9명이 되도록 남은 자리에 가장 숙련도가 높은 선수를 넣는다.
+    FIELD.forEach(slot=>{
+      if(Number.isInteger(assign[slot]))return;
+      const pick=pool.filter(x=>!used.has(x.i)).map(x=>({...x,pr:proficiency(x.p,slot)})).sort((a,b)=>b.pr-a.pr||b.o-a.o)[0];
+      if(pick){assign[slot]=pick.i;used.add(pick.i);}
+    });
+    const dh=pool.filter(x=>!used.has(x.i)).sort((a,b)=>b.o-a.o)[0];
+    if(dh){assign.DH=dh.i;used.add(dh.i);}
+    return assign;
+  };
+  window.ensureHealthyLineup=function(teamId){
+    const t=getTeam(teamId);let lu=getLineup(teamId);
+    if(!lu||lu.order?.length!==9||lu.pos?.length!==9){state.lineups[teamId]=null;return getLineup(teamId);}
+    const used=new Set(lu.order);
+    for(let n=0;n<9;n++){
+      const cur=lu.order[n],p=t.bat[cur],slot=lu.pos[n];
+      if(p&&!isInjured(teamId,'bat',p)&&proficiency(p,slot)>0)continue;
+      const pick=lineupPool(teamId).filter(x=>!used.has(x.i)&&!isInjured(teamId,'bat',x.p)&&proficiency(x.p,slot)>0)
+        .map(x=>({...x,score:x.o+(proficiency(x.p,slot)-1)*34})).sort((a,b)=>b.score-a.score)[0];
+      if(pick){used.delete(cur);used.add(pick.i);lu.order[n]=pick.i;}
+    }
+    state.lineups[teamId]=lu;return lu;
+  };
+
+  function adjustedDefense(p,teamId,key,pos){
+    if(!Array.isArray(p))return 68;
+    const legacy=Number(p[7])||68,detail=Number(p.skills?.[key]),base=(Number.isFinite(detail)?detail:legacy)*.86+legacy*.14+healthMod(teamId,'bat',p);
+    const pr=proficiency(p,pos||p[2])||.55;
+    let bonus=0;try{if(specialOfV280(teamId,true,p)==='wizard')bonus=6;}catch(_){}
+    return base*pr+bonus;
+  }
+  window.defenderRatingV336=function(p,teamId,key){return adjustedDefense(p,teamId,key,p?.[2]);};
+  window.resolveFieldingV336=function(res,defTeam,defLu,pit){
+    if(!res||!['GO','FO','1B','2B','3B'].includes(res.t))return res;
+    const map=fieldMapV336(defTeam,defLu,pit),ground=res.t==='GO';
+    const pool=ground?[['SS',28],['2B',23],['3B',17],['1B',15],['P',17]]:[['LF',28],['CF',43],['RF',29]];
+    const choices=pool.filter(([pos])=>map[pos]).map(([pos,w])=>({...map[pos],w}));if(!choices.length)return res;
+    const f=chooseWeightedV336(choices),isPitcher=f.pos==='P';
+    const def=isPitcher?pitcherDefenseV336(f.p):adjustedDefense(f.p,defTeam.id,'defense',f.pos);
+    const arm=isPitcher?pitcherDefenseV336(f.p):adjustedDefense(f.p,defTeam.id,'arm',f.pos);
+    const posWeight={C:1.03,'1B':.94,'2B':1.06,'3B':1.02,SS:1.11,LF:.96,CF:1.10,RF:1.02,P:1}[f.pos]||1;
+    const effective=(def*.78+arm*.22)*posWeight;
+    res.fielder=f.p?.[0]||'수비수';res.fieldPos=f.pos;res.fieldingScore=effective;res.positionProficiency=isPitcher?1:proficiency(f.p,f.pos);
+    if(res.t==='GO'||res.t==='FO'){
+      const errP=cap(.018-(effective-70)*.00045,.003,.060);
+      if(Math.random()<errP){res.t='E';res.error=true;return res;}
+      res.greatPlay=Math.random()<cap(.018+(effective-70)*.0011,.006,.085);
+    }else if(res.t==='1B'){
+      const robP=cap(.008+(effective-78)*.00075,.002,.042);
+      if(Math.random()<robP){res.t=ground?'GO':'FO';res.greatPlay=true;res.robbedHit=true;}
+    }
+    if(res.t==='GO'){
+      const middle=[map.SS,map['2B']].filter(Boolean).map(x=>adjustedDefense(x.p,defTeam.id,'defense',x.pos)*.65+adjustedDefense(x.p,defTeam.id,'arm',x.pos)*.35);
+      const mid=middle.length?middle.reduce((a,b)=>a+b,0)/middle.length:70;
+      res.dpChance=cap(.25+(mid-70)*.0045+(effective-70)*.0015,.10,.60);
+    }
+    if(res.t==='FO')res.sacChance=cap(.34-(arm-70)*.0025,.18,.50);
+    return res;
+  };
+  window.catcherInfoV337=function(team,lu){
+    const map=fieldMapV336(team,lu,null),c=map.C;if(!c)return{name:'포수',arm:68,defense:68};
+    return{name:c.p?.[0]||'포수',arm:adjustedDefense(c.p,team.id,'arm','C'),defense:adjustedDefense(c.p,team.id,'defense','C')};
+  };
+  window.outfieldArmV337=function(defTeam,defLu,res){
+    const map=fieldMapV336(defTeam,defLu,null),f=(res?.fieldPos&&map[res.fieldPos])||map.CF||map.RF||map.LF;
+    return{name:f?.p?.[0]||res?.fielder||'외야수',arm:f?adjustedDefense(f.p,defTeam.id,'arm',f.pos):70};
+  };
+
+  window.tryStealV337=function(atk,def,pit,bases,outs,tactic){
+    if(outs>=3)return null;let from=-1,to=-1;
+    if(bases[0]&&!bases[1]){from=0;to=1;}else if(bases[1]&&!bases[2]){from=1;to=2;}if(from<0)return null;
+    const runner=bases[from],speed=runnerSpeedV337(runner,atk.team.id),tr=ensureTraits(runner,true),sense=Number(tr?.steal)||50;
+    const aggression=tactic==='small'?.045:tactic==='power'?-.018:0;
+    const attempt=cap(.018+(speed-68)*.0025+(sense-50)*.0018+aggression-(to===2?.025:0),.006,.24);
+    if(Math.random()>=attempt)return null;
+    const c=catcherInfoV337(def.team,def.lu),hold=pitcherHoldV337(pit);
+    const success=cap(.64+(speed-72)*.0065+(sense-50)*.0035-(c.arm-72)*.006-(c.defense-72)*.0025-(hold-72)*.0025-(to===2?.06:0),.25,.93);
+    if(Math.random()<success){bases[to]=runner;bases[from]=null;const idx=atk.team.bat.indexOf(runner);if(idx>=0)statBatAdd(atk.team.id,idx,'sb');statBaserunV337(atk.team.id,runner[0],'sb');return{out:false,text:`🏃 ${runner[0]}의 빠른 스타트! ${to===1?'2루':'3루'} 도루 성공.`};}
+    bases[from]=null;const idx=atk.team.bat.indexOf(runner);if(idx>=0)statBatAdd(atk.team.id,idx,'cs');statBaserunV337(atk.team.id,runner[0],'cs');statFieldV336(def.team.id,c.name,'a');return{out:true,text:`🧤 ${c.name}의 정확한 송구! ${runner[0]} 도루 저지.`};
+  };
+
+  function personalityType(p,isBat){try{return window.playerPersonalityV340?.(p,isBat)?.type||'';}catch(_){return '';}}
+  function gameForm(p,ctx){
+    if(personalityType(p,true)!=='streaky')return 0;
+    const n=hash(`${p?.[0]}|${ctx?.gameKey||''}|streak`)%1000;
+    return (n/999-.5)*.11;
+  }
+  function leaderAura(teamId,lu){
+    try{const t=getTeam(teamId),arr=(lu?.order||[]).map(i=>t.bat[i]).filter(Boolean);return Math.min(.014,arr.filter(p=>personalityType(p,true)==='leader').length*.006);}catch(_){return 0;}
+  }
+  const previousPaResult=window.paResult;
+  window.paResult=function(bat,batTid,pit,pitTid,tactic){
+    let res=previousPaResult.apply(this,arguments),ctx=window.GAME_CONTEXT_V3414||{};
+    if(!res||!res.t)return res;
+    const bt=personalityType(bat,true),pt=personalityType(pit,false),tr=ensureTraits(bat,true);
+    let edge=0,text=[];
+    if(ctx.clutch){if(bt==='competitor')edge+=.030;if(bt==='biggame')edge+=.025;if(bt==='fragileMind')edge-=.038;if(bt==='leader')edge+=.010;}
+    if(ctx.bigGame){if(bt==='biggame')edge+=.032;if(bt==='competitor')edge+=.015;if(pt==='biggame')edge-=.025;if(pt==='competitor')edge-=.012;}
+    edge+=gameForm(bat,ctx);
+    if(ctx.isPinch&&tr?.pinchHitter){edge+=.050;text.push('🪄 대타 특화 집중력');}
+    edge+=(Number(ctx.leaderAura)||0);
+    const pForm=pt==='streaky'?((hash(`${pit?.[0]}|${ctx.gameKey||''}|pstreak`)%1000)/999-.5)*.08:0;edge-=pForm;
+    if(edge>0&&['K','GO','FO'].includes(res.t)&&Math.random()<Math.min(.16,edge*1.8))res.t=Math.random()<.22?'BB':'1B';
+    else if(edge<0&&['1B','2B','3B'].includes(res.t)&&Math.random()<Math.min(.16,-edge*1.8))res.t=Math.random()<.35?'K':'GO';
+    else if(edge>.055&&res.t==='1B'&&Math.random()<edge*.65)res.t='2B';
+    if(text.length)res.specialText=[res.specialText,...text].filter(Boolean).join(' · ');
+    return res;
+  };
+
+  function isBigGame(homeId,awayId){
+    try{
+      if(Number.isFinite(state.season?.postDay)||state.season?.post&&!state.season?.offDone)return true;
+      const sched=state.season?.sched||[],day=Number(state.season?.day)||0;if(!sched.length||day<sched.length*.72)return false;
+      const rec=state.season?.rec||{},top=Math.max(...Object.values(rec).map(x=>Number(x?.w)||0));
+      return [homeId,awayId].some(id=>top-(Number(rec[id]?.w)||0)<=3);
+    }catch(_){return false;}
+  }
+  function candidateBatScore(p,teamId,pit,slot){
+    const tr=ensureTraits(p,true),ovr=batOvr(p,teamId),hand=String(pit?.[3]||'우'),t=p.tendencies||{};
+    const split=(hand==='좌'?Number(t.vsLeft):Number(t.vsRight))||50;
+    return ovr+(tr?.pinchHitter?4:0)+(Number(tr?.pinchScore||50)-50)*.08+(split-50)*.08+(proficiency(p,slot)-1)*24+healthMod(teamId,'bat',p);
+  }
+
+  // 기존 시뮬레이션을 동일한 기록 구조로 유지하면서 상황·대타·개인 번트 특성을 연결한다.
+  window.simGame=function(myId,oppId,mySp,oppSp){
+    const home=getTeam(myId),away=getTeam(oppId),homeLu=ensureHealthyLineup(myId),awayLu=ensureHealthyLineup(oppId);
+    const ev=[],line={away:[],home:[]};let sc={away:0,home:0};
+    const st={away:{order:awayLu.order,lu:awayLu,team:away,idx:0,pit:away.pit[oppSp],pitPa:0,pinchUsed:new Set()},home:{order:homeLu.order,lu:homeLu,team:home,idx:0,pit:home.pit[mySp],pitPa:0,pinchUsed:new Set()}};
+    const mgrDirect=state.gameControl==='direct',mgrPlan=state.managerPlan||{attack:'balanced',bullpen:'normal'},gameKey=`${state.year||1}:${state.season?.day||0}:${myId}:${oppId}`;
+    const bigGame=isBigGame(myId,oppId),tacticFor=teamId=>(mgrDirect&&teamId===state.myTeam)?mgrPlan.attack:'balanced';
+    const bullpenFactorFor=teamId=>{ensureStaff();const coach=teamId===state.myTeam&&state.staff.pitCoach==='stamina'?1.10:1;if(!(mgrDirect&&teamId===state.myTeam))return coach;return(mgrPlan.bullpen==='quick'?.78:mgrPlan.bullpen==='late'?1.18:1)*coach;};
+    let curInn=1,curHalf='초';
+    function pitcherFor(defSide){
+      const s=st[defSide],legacySta=Number.isFinite(Number(s.pit&&s.pit[7]))?Number(s.pit[7]):70,detailSta=Number.isFinite(Number(s.pit?.skills?.stamina))?Number(s.pit.skills.stamina):legacySta,sta=detailSta*.82+legacySta*.18,role=s.pit[2];
+      const baseMaxPa=role==='선발'?Math.round(22+(sta-70)*.35):role==='불펜'?Math.round(5+(sta-45)*.12):99,maxPa=Math.max(3,Math.round(baseMaxPa*bullpenFactorFor(s.team.id)));
+      if(s.pitPa>=maxPa){let next=null;const bpOrder=bullpenOrderOfV310(s.team.id),closer=bpOrder.length?s.team.pit[bpOrder[0]]:null,relievers=bpOrder.slice(1).map(i=>s.team.pit[i]).filter(Boolean);
+        if(role==='선발')next=(curInn>=9&&closer)?closer:(relievers[0]||closer);else if(role==='불펜'){if(curInn>=9&&closer)next=closer;else{const cur=relievers.indexOf(s.pit);next=relievers[cur+1]||closer||s.pit;}}
+        if(next&&next!==s.pit){s.pit=next;s.pitPa=0;ev.push({inn:curInn,half:curHalf,text:`🔁 ${s.team.name} 투수 교체 → ${next[0]}`,cls:''});}}
+      return s.pit;
+    }
+    function maybePinch(atkSide,defSide,inn,bases,outs){
+      const atk=st[atkSide],slotIndex=atk.idx%9,oldIdx=atk.order[slotIndex],old=atk.team.bat[oldIdx],slot=atk.lu.pos[slotIndex],diff=sc[atkSide]-sc[defSide];
+      if(inn<7||Math.abs(diff)>3||diff>1||atk.pinchUsed.has(slotIndex))return{idx:oldIdx,p:old,isPinch:false};
+      const pit=st[defSide].pit,current=candidateBatScore(old,atk.team.id,pit,slot),used=new Set(atk.order);
+      const candidates=atk.team.bat.map((p,i)=>({p,i})).filter(x=>!used.has(x.i)&&!isInjured(atk.team.id,'bat',x.p)&&isFirstEligible(atk.team.id,x.p)&&proficiency(x.p,slot)>0)
+        .map(x=>({...x,score:candidateBatScore(x.p,atk.team.id,pit,slot),tr:ensureTraits(x.p,true)})).filter(x=>x.tr?.pinchHitter).sort((a,b)=>b.score-a.score);
+      const pick=candidates[0],leverage=!!(bases[1]||bases[2]||outs===2||diff<0);if(!pick||pick.score<current+(leverage?-1:2)||Math.random()>(leverage?.72:.42))return{idx:oldIdx,p:old,isPinch:false};
+      atk.order[slotIndex]=pick.i;atk.lu.order[slotIndex]=pick.i;atk.pinchUsed.add(slotIndex);ev.push({inn,half:curHalf,text:`🪄 ${atk.team.name} 대타 ${pick.p[0]} 투입 (${old[0]} 대신)`,cls:'scoreev'});return{idx:pick.i,p:pick.p,isPinch:true};
+    }
+    function halfInning(atkSide,defSide,inn,half){
+      curInn=inn;curHalf=half;const atk=st[atkSide];let outs=0,bases=[null,null,null],runs=0;ev.push({inn,half,text:`── ${inn}회${half} · ${atk.team.name} 공격`,cls:'inn'});
+      while(outs<3){
+        const pit=pitcherFor(defSide),tactic=tacticFor(atk.team.id),ph=maybePinch(atkSide,defSide,inn,bases,outs),bi=ph.idx,batter=ph.p;
+        const steal=tryStealV337(atk,st[defSide],pit,bases,outs,tactic);if(steal){if(steal.out)outs++;ev.push({inn,half,text:`${steal.text} (${outs}아웃)`,cls:steal.out?'':'scoreev'});if(outs>=3)break;}
+        st[defSide].pitPa++;
+        const bunt=Number(ensureTraits(batter,true)?.bunt)||50,buntAttempt=tactic==='small'&&outs<2&&bases.some(Boolean)&&Math.random()<cap(.10+(bunt-50)*.004,.05,.34);
+        if(buntAttempt){
+          const success=cap(.67+(bunt-55)*.006-(Number(pit.skills?.defense??pit[5]??68)-68)*.002,.48,.94);let moved=0;
+          if(Math.random()<success){for(let i=2;i>=0;i--){if(!bases[i])continue;if(i===2){runs++;sc[atkSide]++;moved++;bases[i]=null;}else if(!bases[i+1]){bases[i+1]=bases[i];bases[i]=null;moved++;}}outs++;ev.push({inn,half,text:`🎯 ${batter[0]} 희생번트 성공${moved?'! 주자 진루':''} (${outs}아웃)`,cls:'scoreev'});}
+          else{outs++;ev.push({inn,half,text:`⚠️ ${batter[0]} 번트 실패, 뜬공 아웃 (${outs}아웃)`,cls:''});}
+          statPitAdd(st[defSide].team.id,pit[0],'out');atk.idx++;continue;
+        }
+        window.GAME_CONTEXT_V3414={inn,half,outs,bases:bases.slice(),score:{...sc},clutch:!!(bases[1]||bases[2]||(inn>=7&&Math.abs(sc.home-sc.away)<=2)),bigGame,isPinch:ph.isPinch,gameKey,leaderAura:leaderAura(atk.team.id,atk.lu),batTeam:atk.team.id,pitTeam:st[defSide].team.id};
+        const res=resolveFieldingV336(paResult(batter,atk.team.id,pit,st[defSide].team.id,tactic),st[defSide].team,st[defSide].lu,pit);window.GAME_CONTEXT_V3414=null;
+        if(res.specialText)ev.push({inn,half,text:res.specialText,cls:'scoreev'});if(atk.team.id===state.myTeam)ev.push({inn,half,text:chantFor(batter,atk.team),cls:'chant'});pitchLines(pit,st[defSide].team.id,res).forEach(t=>ev.push({inn,half,text:t,cls:'pitch'}));
+        let text='',scored=0;const runnersAdv=n=>{for(let i=2;i>=0;i--){if(!bases[i])continue;if(i+n>=3){scored++;bases[i]=null;}else{bases[i+n]=bases[i];bases[i]=null;}}};
+        switch(res.t){
+          case'K':outs++;text=`${batter[0]}, 삼진 아웃 (${outs}아웃)`;break;
+          case'BB':if(bases[0]&&bases[1]&&bases[2])scored++;else if(bases[0]&&bases[1])bases[2]=bases[1],bases[1]=bases[0];else if(bases[0])bases[1]=bases[0];bases[0]=batter;text=`${batter[0]}, 볼넷 출루`;break;
+          case'1B':{const of=outfieldArmV337(st[defSide].team,st[defSide].lu,res);let thrownOut=null;for(let i=2;i>=0;i--){const runner=bases[i];if(!runner)continue;let step=1;if(i<2){const speed=runnerSpeedV337(runner,atk.team.id),extraP=cap((tactic==='small'?.33:.19)+(speed-70)*.006-(of.arm-70)*.004,.04,.58);if(Math.random()<extraP)step=2;if(step===2&&Math.random()<cap(.10+(of.arm-speed)*.006,.025,.31)){bases[i]=null;outs++;thrownOut=runner;statBaserunV337(st[defSide].team.id,of.name,'ofAssist');statFieldV336(st[defSide].team.id,of.name,'a');continue;}}bases[i]=null;if(i+step>=3)scored++;else bases[i+step]=runner;}bases[0]=batter;text=`${batter[0]}, 안타!`;if(thrownOut)text+=` ${of.name}의 강한 송구로 ${thrownOut[0]} 추가 진루 저지! (${outs}아웃)`;break;}
+          case'2B':{const of=outfieldArmV337(st[defSide].team,st[defSide].lu,res);let thrownOut=null;for(let i=2;i>=0;i--){const runner=bases[i];if(!runner)continue;const speed=runnerSpeedV337(runner,atk.team.id),target=i+2;bases[i]=null;if(target>=3){const challenge=cap(.76+(speed-70)*.005-(of.arm-70)*.004,.42,.94);if(Math.random()<challenge)scored++;else{outs++;thrownOut=runner;statBaserunV337(st[defSide].team.id,of.name,'ofAssist');statFieldV336(st[defSide].team.id,of.name,'a');}}else bases[target]=runner;}bases[1]=batter;text=`${batter[0]}, 2루타!!`;if(thrownOut)text+=` ${of.name}의 홈 송구로 ${thrownOut[0]} 아웃! (${outs}아웃)`;break;}
+          case'3B':runnersAdv(3);bases[2]=batter;text=`${batter[0]}, 3루타!!!`;break;
+          case'HR':{const cnt=1+bases.filter(Boolean).length;scored+=cnt;bases=[null,null,null];text=`${batter[0]}, ${cnt===1?'솔로':cnt+'점'} 홈런!!! 🎆`;break;}
+          case'E':runnersAdv(1);bases[0]=batter;text=`${batter[0]}의 타구, ${res.fieldPos||''} ${res.fielder||'수비수'} 실책!`;statFieldV336(st[defSide].team.id,res.fielder,'e');break;
+          case'GO':if(bases[0]&&outs<2&&Math.random()<(res.dpChance||.35)){outs+=2;bases[0]=null;text=`${res.fielder||'내야수'}의 빠른 처리! ${batter[0]}, 병살타 (${Math.min(outs,3)}아웃)`;statFieldV336(st[defSide].team.id,res.fielder,'dp');}else{outs++;if(outs<3&&bases[2]&&Math.random()<.3){scored++;bases[2]=null;text=`${res.fielder||'내야수'} 처리, ${batter[0]} 땅볼 아웃. 그 사이 3루주자 득점 (${outs}아웃)`;}else text=`${res.greatPlay?'🧤 호수비! ':''}${res.fielder||'내야수'} 처리, ${batter[0]} 땅볼 아웃 (${outs}아웃)`;}statFieldV336(st[defSide].team.id,res.fielder,'a');break;
+          case'FO':outs++;if(outs<3&&bases[2]&&Math.random()<(res.sacChance||.4)){scored++;bases[2]=null;text=`${res.fielder||'외야수'} 포구, ${batter[0]} 희생플라이! 3루주자 득점 (${outs}아웃)`;}else text=`${res.greatPlay?'🧤 호수비! ':''}${res.fielder||'외야수'} 포구, ${batter[0]} 뜬공 아웃 (${outs}아웃)`;statFieldV336(st[defSide].team.id,res.fielder,'po');break;
+        }
+        if(typeof STAT_SINK==='function')STAT_SINK(atk.team.id,bi,res,scored,st[defSide].team.id,pit);
+        if(state?.season){const outsAdded=(res.t==='K'||res.t==='GO'||res.t==='FO')?(res.t==='GO'&&text.includes('병살')?2:1):0;if(outsAdded)statPitAdd(st[defSide].team.id,pit[0],'out',outsAdded);if(scored>0&&res.t!=='E')statPitAdd(st[defSide].team.id,pit[0],'er',scored);}
+        atk.idx++;if(scored>0){runs+=scored;sc[atkSide]+=scored;text+=` — ${scored}점! (${away.name} ${sc.away} : ${sc.home} ${home.name})`;ev.push({inn,half,text,cls:'scoreev'});}else ev.push({inn,half,text,cls:''});
+      }
+      line[atkSide].push(runs);
+    }
+    let inn=1;while(true){halfInning('away','home',inn,'초');if(inn>=9&&sc.home>sc.away){line.home.push('-');break;}halfInning('home','away',inn,'말');if(inn>=9&&sc.home!==sc.away)break;if(inn>=12)break;inn++;}
+    if(state?.season){const wSide=sc.home>sc.away?'home':sc.home<sc.away?'away':null;if(wSide){const wTeam=st[wSide].team,lTeam=st[wSide==='home'?'away':'home'].team,wSp=wTeam.pit[wSide==='home'?mySp:oppSp],lSp=lTeam.pit[wSide==='home'?oppSp:mySp];if(wSp)statPitAdd(wTeam.id,wSp[0],'w');if(lSp)statPitAdd(lTeam.id,lSp[0],'l');const closerIdx=bullpenOrderOfV310(wTeam.id)[0],closer=closerIdx===undefined?null:wTeam.pit[closerIdx];if(closer&&Math.abs(sc.home-sc.away)<=3)statPitAdd(wTeam.id,closer[0],'sv');}}
+    const win=sc.home>sc.away?home.name:sc.home<sc.away?away.name:null;ev.push({inn,half:'말',cls:'final',text:win?`⚾ 경기 종료 — ${win} 승리! 최종 ${away.name} ${sc.away} : ${sc.home} ${home.name}`:`⚾ 경기 종료 — 12회 연장 무승부 (${sc.away} : ${sc.home})`});window.GAME_CONTEXT_V3414=null;return{ev,line,sc,home,away};
+  };
+
+  function traitHtml(p,isBat){
+    if(!isBat)return'';const tr=ensureTraits(p,true),secs=secondaries(p),posText=[`${p[2]} 100%`,...secs.map(x=>`${x} ${Math.round(proficiency(p,x)*100)}%`)].join(' · ');
+    const tags=[];if(tr.pinchHitter)tags.push(`대타 <b>${tr.pinchScore}</b>`);tags.push(`번트 <b>${tr.bunt}</b>`,`도루 센스 <b>${tr.steal}</b>`);
+    return `<div class="player-archetype-v3414"><div class="pa-head"><span class="pa-title">⚾ 경기 개성</span><span class="pa-note">상황별 실제 경기 보정</span></div><div class="pa-grid">${tags.map(x=>`<span>${x}</span>`).join('')}<span style="grid-column:1/-1">수비 숙련 <b>${posText}</b></span></div></div>`;
+  }
+  const previousStats=window.playerStatsHtml;
+  if(typeof previousStats==='function')window.playerStatsHtml=function(p,isBat,tid){const base=previousStats.apply(this,arguments);return base+(base.includes('player-archetype-v3414')?'':traitHtml(p,isBat));};
+  const previousOpen=window.openSheet;
+  if(typeof previousOpen==='function')window.openSheet=function(team,tab,idx){const r=previousOpen.apply(this,arguments);try{const isBat=tab==='bat',p=(isBat?team?.bat:team?.pit)?.[idx],el=document.getElementById('sheet');if(p&&el&&!el.querySelector('.player-archetype-v3414'))el.insertAdjacentHTML('beforeend',traitHtml(p,isBat));}catch(_){}return r;};
+
+  function normalizeTeam(teamId){
+    if(!teamId||!state?.players?.[teamId])throw new Error(teamId+' 선수단 데이터가 없습니다.');const t=getTeam(teamId);t.bat=Array.isArray(t.bat)?t.bat.filter(Array.isArray):[];t.pit=Array.isArray(t.pit)?t.pit.filter(Array.isArray):[];t.age=t.age&&typeof t.age==='object'?t.age:{bat:[],pit:[]};t.age.bat=Array.isArray(t.age.bat)?t.age.bat:[];t.age.pit=Array.isArray(t.age.pit)?t.age.pit:[];
+    let seed=341400+(TEAMS.findIndex(x=>x.id===teamId)+1)*100+(+state.year||1);FIELD.forEach(pos=>{if(!t.bat.some(p=>proficiency(p,pos)>0))aiPushBat(teamId,pos,seed++);});while(t.bat.length<9)aiPushBat(teamId,'DH',seed++);while(t.pit.filter(p=>p[2]==='선발').length<5)aiPushPitcher(teamId,'선발',seed++);while(t.pit.length<7)aiPushPitcher(teamId,'불펜',seed++);while(t.age.bat.length<t.bat.length)t.age.bat.push(24);while(t.age.pit.length<t.pit.length)t.age.pit.push(24);
+    ensureAll();state.lineups=state.lineups&&typeof state.lineups==='object'?state.lineups:{};
+    const oldLu=state.lineups[teamId],oldValid=!!(oldLu&&oldLu.order?.length===9&&oldLu.pos?.length===9&&new Set(oldLu.order).size===9&&oldLu.order.every((i,n)=>t.bat[i]&&proficiency(t.bat[i],oldLu.pos[n])>0));
+    if(!oldValid)state.lineups[teamId]=null;
+    const lu=ensureHealthyLineup(teamId);if(!lu||lu.order?.length!==9||new Set(lu.order).size!==9)throw new Error(teamId+' 라인업을 구성하지 못했습니다.');
+    const starters=t.pit.map((p,i)=>({p,i,o:pitOvr(p,teamId)})).filter(x=>x.p[2]==='선발'&&!isInjured(teamId,'pit',x.p)).sort((a,b)=>b.o-a.o).slice(0,5).map(x=>x.i);if(starters.length<5)t.pit.forEach((p,i)=>{if(p[2]==='선발'&&!starters.includes(i)&&starters.length<5)starters.push(i);});if(starters.length!==5)throw new Error(teamId+' 선발 로테이션을 구성하지 못했습니다.');
+    state.rotOrder=state.rotOrder&&typeof state.rotOrder==='object'?state.rotOrder:{};state.rotOrder[teamId]=starters;state.pitchPlan=state.pitchPlan&&typeof state.pitchPlan==='object'?state.pitchPlan:{};const bullpen=t.pit.map((p,i)=>i).filter(i=>!starters.includes(i));state.pitchPlan[teamId]={starters:starters.slice(),bullpen:bullpen.slice(),closers:bullpen.slice(0,1)};
+  }
+  window.playMyGame=function(){
+    try{if(typeof ensureSeasonRuntimeV286==='function')ensureSeasonRuntimeV286();if(!state?.season)throw new Error('진행 중인 시즌이 없습니다.');const m=myMatchToday();if(!m)throw new Error('오늘 경기 일정이 없습니다.');normalizeTeam(m.home);normalizeTeam(m.away);ensureStats();setGameRecordModeV348(FORCED_RECORD_MODE||(spdSel==='inn'?'inning':spdSel==='fast'?'result':'full'));STAT_SINK=recordPA;const homeSp=nextSpIdx(m.home),awaySp=nextSpIdx(m.away);if(!Number.isInteger(homeSp)||!Number.isInteger(awaySp))throw new Error('선발투수를 선택하지 못했습니다.');const game=simGame(m.home,m.away,homeSp,awaySp);if(!game?.sc)throw new Error('경기 결과 생성에 실패했습니다.');curGame=game;markStart(m.home,homeSp);markStart(m.away,awaySp);advanceRot(m.home);advanceRot(m.away);recordResult(m.home,m.away,game.sc);const isHome=m.home===state.myTeam,myWon=isHome?game.sc.home>game.sc.away:game.sc.away>game.sc.home;game.settle=settleGame(isHome,myWon);refreshHeader();const others=playOtherGames();finishDay(`${game.away.name} ${game.sc.away} : ${game.sc.home} ${game.home.name}`,others);save();return game;
+    }catch(err){console.error('v0.34.14 경기 시작 오류:',err);showAlert(`경기를 시작하지 못했습니다.\n원인: ${err?.message||err}`);return null;}
+  };
+
+  document.title='우리팀을 만들자 '+VERSION;document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
+  try{const changed=ensureAll();if(changed&&typeof save==='function')save();window.skillEngineV329=Object.assign({},window.skillEngineV329||{},{individualityVersion:'0.34.14'});}catch(e){console.error('v0.34.14 선수 개성 초기화:',e);}
+})();
+</script>
+
 </body>
 </html>
