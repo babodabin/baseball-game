@@ -752,7 +752,7 @@ nav button.lock{opacity:.32}
 
 .pitch-change-note-v311{margin:8px 0 10px;padding:9px 11px;border-radius:10px;background:rgba(119,214,155,.08);border:1px solid rgba(119,214,155,.28);color:#BDE8CC;font-size:12px;line-height:1.45}
 
-/* v0.32.4 라인업·로스터 카드 완전 통일 */
+/* v0.32.5 라인업·로스터 카드 완전 통일 */
 #scr-lineup .lrow{
   background:linear-gradient(145deg,rgba(25,43,34,.97),rgba(13,28,21,.98))!important;
   border:1px solid rgba(181,209,191,.11)!important;border-radius:14px!important;
@@ -780,7 +780,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.32.4</span>
+    <span class="ver">v0.32.5</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -9220,6 +9220,95 @@ body.theme-night main::after{
     renderPitchV323(spBox,t);
   };
   try{if(document.getElementById('scr-lineup')?.classList.contains('on'))renderLineup();}catch(err){console.error('v0.32.3 통합 라인업 적용:',err);}
+})();
+</script>
+
+
+<!-- v0.32.5 투수배치 탭 복구 · 로스터 카드 색상/OVR 완전 통일 -->
+<style>
+/* 전체 로스터 .prow의 실제 색상과 타이포그래피를 라인업 카드에 그대로 사용 */
+#scr-lineup .unified-player-v323{
+  background:linear-gradient(145deg,rgba(25,43,34,.97),rgba(13,28,21,.98))!important;
+  border:1px solid rgba(181,209,191,.11)!important;
+  box-shadow:0 5px 14px rgba(0,0,0,.15)!important;
+}
+#scr-lineup .unified-player-v323:active{
+  background:linear-gradient(145deg,rgba(32,52,42,.98),rgba(16,32,25,.98))!important;
+}
+#scr-lineup .unified-player-v323 .u-pos-v323{
+  background:rgba(5,14,10,.55)!important;
+  border-color:rgba(255,193,77,.18)!important;
+  color:#D2DED7!important;
+  font-family:'IBM Plex Mono',monospace!important;
+}
+#scr-lineup .unified-player-v323 .u-name-v323{
+  color:inherit!important;
+  font-size:15px!important;
+  font-weight:700!important;
+}
+#scr-lineup .unified-player-v323 .u-sub-v323{
+  color:var(--dim)!important;
+  font-size:11px!important;
+  margin-top:1px!important;
+}
+#scr-lineup .unified-player-v323 .u-ovr-v323{
+  width:44px!important;
+  color:var(--amber)!important;
+  font-family:'IBM Plex Mono',monospace!important;
+  font-size:21px!important;
+  font-weight:700!important;
+  line-height:1!important;
+  text-align:right!important;
+  text-shadow:0 0 14px rgba(255,193,77,.18)!important;
+  font-variant-numeric:tabular-nums!important;
+}
+/* 모드별로 필요한 영역만 노출 */
+#scr-lineup.pitch-mode-v325 #lineupList{display:none!important}
+#scr-lineup.pitch-mode-v325 #pitchWrap{display:block!important}
+#scr-lineup:not(.pitch-mode-v325) #lineupList{display:block!important}
+#scr-lineup:not(.pitch-mode-v325) #pitchWrap{display:none!important}
+</style>
+<script>
+(function(){
+  const previousRender=window.renderLineup;
+
+  window.setLuMode=function(m){
+    if(!['order','def','pitch'].includes(m))m='order';
+    luMode=m;luSel=-1;luBenchSel=-1;
+    const screen=document.getElementById('scr-lineup');
+    screen?.classList.toggle('pitch-mode-v325',m==='pitch');
+    document.getElementById('luModeOrder')?.classList.toggle('on',m==='order');
+    document.getElementById('luModeDef')?.classList.toggle('on',m==='def');
+    document.getElementById('luModePitch')?.classList.toggle('on',m==='pitch');
+    const hint=document.getElementById('luModeHint');
+    if(hint)hint.textContent=m==='order'
+      ?'선발과 벤치를 눌러 교체하고, ↕ 버튼으로 타순을 바꿉니다.'
+      :m==='def'
+        ?'C → 1B → 2B → 3B → SS → LF → CF → RF → DH 순서입니다.'
+        :'선발 로테이션·예비 선발·불펜을 배치합니다.';
+    window.renderLineup();
+  };
+
+  window.renderLineup=function(){
+    previousRender?.();
+    const pitch=luMode==='pitch';
+    const screen=document.getElementById('scr-lineup');
+    const list=document.getElementById('lineupList');
+    const wrap=document.getElementById('pitchWrap');
+    screen?.classList.toggle('pitch-mode-v325',pitch);
+    if(list)list.style.display=pitch?'none':'';
+    if(wrap)wrap.style.display=pitch?'':'none';
+  };
+
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest?.('#luModePitch');
+    if(!btn)return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.setLuMode('pitch');
+  },true);
+
+  try{window.setLuMode(luMode||'order');}catch(err){console.error('v0.32.5 라인업 모드 초기화:',err);}
 })();
 </script>
 
