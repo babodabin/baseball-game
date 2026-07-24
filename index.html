@@ -751,6 +751,28 @@ nav button.lock{opacity:.32}
 .pitch-divider-v313{height:1px;background:var(--line);margin:10px 0}
 
 .pitch-change-note-v311{margin:8px 0 10px;padding:9px 11px;border-radius:10px;background:rgba(119,214,155,.08);border:1px solid rgba(119,214,155,.28);color:#BDE8CC;font-size:12px;line-height:1.45}
+
+/* v0.32.4 라인업·로스터 카드 완전 통일 */
+#scr-lineup .lrow{
+  background:linear-gradient(145deg,rgba(25,43,34,.97),rgba(13,28,21,.98))!important;
+  border:1px solid rgba(181,209,191,.11)!important;border-radius:14px!important;
+  box-shadow:0 5px 14px rgba(0,0,0,.15)!important;padding:12px 13px!important;margin-bottom:9px!important;
+}
+#scr-lineup .lrow:active{background:linear-gradient(145deg,rgba(32,52,42,.98),rgba(16,32,25,.98))!important}
+#scr-lineup .lrow .lp{
+  width:38px!important;height:38px!important;border-radius:11px!important;flex:none!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  font-family:'IBM Plex Mono',monospace!important;font-size:12px!important;font-weight:700!important;
+  background:rgba(5,14,10,.55)!important;border:1px solid rgba(255,193,77,.18)!important;color:#D2DED7!important;
+}
+#scr-lineup .lrow .ln{font-size:15px!important;font-weight:700!important;min-width:0!important}
+#scr-lineup .lrow .lo{
+  font-family:'IBM Plex Mono',monospace!important;font-size:21px!important;font-weight:700!important;
+  color:var(--amber)!important;width:44px!important;text-align:right!important;flex:none!important;
+  text-shadow:0 0 14px rgba(255,193,77,.18)!important;letter-spacing:normal!important;
+}
+#scr-lineup .lrow .ord{width:26px!important;font-family:'IBM Plex Mono',monospace!important;font-size:18px!important;font-weight:700!important;color:var(--amber)!important;text-align:center!important}
+#pitchWrap .pitch-section-v313{margin-top:10px}
 </style>
 </head>
 <body>
@@ -758,7 +780,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.32.3</span>
+    <span class="ver">v0.32.4</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -798,12 +820,15 @@ nav button.lock{opacity:.32}
     <div class="lb-cat" style="margin-bottom:8px">
       <button id="luModeOrder" class="on" onclick="setLuMode('order')">타순 변경</button>
       <button id="luModeDef" onclick="setLuMode('def')">수비 배치</button>
+      <button id="luModePitch" onclick="setLuMode('pitch')">투수 배치</button>
     </div>
     <div class="hint" id="luModeHint">선발 또는 벤치를 누르면 교체 가능한 선수만 바로 열립니다. 선발끼리 타순을 바꾸려면 ↕ 버튼을 누르세요.</div>
     <div id="lineupList"></div>
-    <h2 class="sec" style="margin-top:16px">투수 운영</h2>
-    <div class="hint">선발투수와 불펜투수는 서로 다른 선수 종류입니다. 불펜 1·2번은 지정 마무리이며 불펜 안에서 자유롭게 순서를 바꿀 수 있습니다.</div><div class="pitch-change-note-v311">선발 1~5번은 로테이션, 6~7번은 예비입니다. 불펜 1·2번(★)은 마무리 1·2순위이며 자동·직접 감독 모두 이 순서를 사용합니다.</div>
-    <div id="spList"></div>
+    <div id="pitchWrap" style="display:none">
+      <h2 class="sec" style="margin-top:16px">투수 배치</h2>
+      <div class="hint">선발투수와 불펜투수는 서로 다른 선수 종류입니다. 불펜 1·2번은 지정 마무리이며 불펜 안에서 자유롭게 순서를 바꿀 수 있습니다.</div><div class="pitch-change-note-v311">선발 1~5번은 로테이션, 6~7번은 예비입니다. 불펜 1·2번(★)은 마무리 1·2순위이며 자동·직접 감독 모두 이 순서를 사용합니다.</div>
+      <div id="spList"></div>
+    </div>
   </div>
   <div id="rosterWrap" style="display:none">
     <h2 class="sec" id="rosterTitle"></h2>
@@ -2169,7 +2194,13 @@ let luMode = "order"; // order=타순, def=수비배치
 function setLuMode(m){ luMode=m; luSel=-1; luBenchSel=-1;
   document.getElementById("luModeOrder").classList.toggle("on",m==="order");
   document.getElementById("luModeDef").classList.toggle("on",m==="def");
-  document.getElementById("luModeHint").textContent = m==="order"?"선발 또는 벤치를 누르면 교체 가능한 선수만 바로 열립니다. 선발끼리 타순을 바꾸려면 ↕ 버튼을 누르세요.":"선수 두 명을 터치하면 수비 위치를 맞바꿉니다. 벤치 선수는 누르면 교체 선택창이 열립니다.";
+  document.getElementById("luModePitch").classList.toggle("on",m==="pitch");
+  const hint=document.getElementById("luModeHint");
+  hint.textContent = m==="order"
+    ? "선발 또는 벤치를 누르면 교체 가능한 선수만 바로 열립니다. 선발끼리 타순을 바꾸려면 ↕ 버튼을 누르세요."
+    : m==="def"
+      ? "선수 두 명을 터치하면 수비 위치를 맞바꿉니다. 벤치 선수는 누르면 교체 선택창이 열립니다."
+      : "선발 로테이션·예비 선발·불펜을 배치합니다. 선발은 선발끼리, 불펜은 불펜끼리만 교체됩니다.";
   renderLineup();
 }
 function restoreLineupScrollV304(top){
@@ -2355,6 +2386,10 @@ function renderLineup(){
   const t = getTeam(state.myTeam);
   const lu = ensureHealthyLineup(t.id);
   const list = document.getElementById('lineupList');
+  const pitchWrap=document.getElementById('pitchWrap');
+  const isPitchMode=luMode==='pitch';
+  list.style.display=isPitchMode?'none':'';
+  pitchWrap.style.display=isPitchMode?'':'none';
   list.innerHTML = '';
 
   if(luMode==='order'&&luSel>=0){
@@ -2389,6 +2424,7 @@ function renderLineup(){
     list.appendChild(d);
   });
 
+  if(!isPitchMode){
   const bench=benchBatters(t.id);
   const bt=document.createElement('div');
   bt.innerHTML='<div class="hint" style="margin-top:8px">벤치 — 선수를 누르면 들어갈 수 있는 선발 자리만 바로 표시됩니다.</div>';
@@ -2400,6 +2436,7 @@ function renderLineup(){
     d.onclick=()=>{if(injured){showAlert('부상 중인 선수는 라인업에 넣을 수 없습니다.');return;}openLineupExchangePickerV304('bench',bi);};
     list.appendChild(d);
   });
+  }
 
   const spBox = document.getElementById('spList');
   spBox.innerHTML = '';
