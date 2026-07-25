@@ -781,7 +781,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.34.35</span>
+    <span class="ver">v0.34.36</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -14310,7 +14310,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.35';
+  const VERSION='v0.34.36';
   document.title='우리팀을 만들자 '+VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14331,7 +14331,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.35';
+  const VERSION='v0.34.36';
   function applyVersionV3414(){
     document.title='우리팀을 만들자 '+VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14354,7 +14354,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.35';
+  const VERSION='v0.34.36';
 
   function applyVersionV3415(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14449,7 +14449,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.35';
+  const VERSION='v0.34.36';
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
@@ -14533,7 +14533,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.35';
+  const VERSION='v0.34.36';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -14677,7 +14677,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.35';
+  const VERSION='v0.34.36';
   let batchBusy=false;
 
   function forceVersionV3418(){
@@ -14820,7 +14820,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.35';
+  const VERSION='v0.34.36';
 
   function forceVersionV3419(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14981,7 +14981,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 /* ═══════════ v0.34.30 · 하단 내비게이션 화면 동기화 ═══════════ */
 (()=>{
-  const VERSION='v0.34.35';
+  const VERSION='v0.34.36';
   const screenToNav={team:'team',lineup:'lineup',game:'game',front:'front',rank:'rank'};
   function syncBottomNav(name){
     const nv=screenToNav[name];
@@ -15022,7 +15022,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 경기 탭 진입 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const VERSION='v0.34.35';
+  const VERSION='v0.34.36';
   function syncGameNav(){
     document.querySelectorAll('nav button[data-nav]').forEach(btn=>btn.classList.toggle('on',btn.dataset.nav==='game'));
   }
@@ -15087,7 +15087,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 충돌 패치 제거 후 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.35';
+  const V='v0.34.36';
 
   function version(){
     document.title='우리팀을 만들자 '+V;
@@ -15126,7 +15126,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.35';
+  const V='v0.34.36';
   // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
   // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
   const base=window.ensureSquadState;
@@ -15150,7 +15150,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.35';
+  const V='v0.34.36';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -15198,7 +15198,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.35';
+  const V='v0.34.36';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -15411,7 +15411,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.35';
+  const V='v0.34.36';
   // ensureSquadState()는 isFirstTeam 같은 사소한 조회마다 호출되는데,
   // v0.25.0에서 그 안에 aiTopUpRosters(리그 10팀 로스터 전체 재계산)가 붙으면서
   // 5경기 자동 진행 한 번에 5,400회 넘게 전 리그를 재계산하고 있었다.
@@ -15470,7 +15470,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.35';
+  const V='v0.34.36';
 
   function market(){return (typeof state!=='undefined'&&state)?state.season?.market:null;}
   function started(m){return !!m?.draftStartedV3413;}
@@ -15624,7 +15624,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
    숫자·영문 긴 토큰은 anywhere로 넘침만 막는다. */
 body,.prow,.nm,.hand,.notice,.hint,.meta,.sec,.reveal,.sheet,
 .front-pane,.draft-order-v3413,.fa-pen-v3434,.lp-guide-v3432,
-[class*="-v3413"],[class*="-v3432"],[class*="-v3434"]{
+[class*="-v3413"],[class*="-v3432"],[class*="-v3434"],[class*="-v3436"]{
   word-break:keep-all;
   overflow-wrap:anywhere;
 }
@@ -15699,7 +15699,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.35 · 마감 점검 (조작 일관성) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.35';
+  const V='v0.34.36';
 
   // button이 아닌 div/span에 onclick만 달린 곳이 남아 있다.
   // 포커스가 갔을 때 Enter·Space로도 눌리게 해 조작 방식을 통일한다.
@@ -15729,6 +15729,333 @@ main *,.sheet *{max-width:100%}
     };
   }
   syncDisabledV3435();
+
+  document.title='우리팀을 만들자 '+V;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
+  window.GAME_VERSION=V;
+})();
+</script>
+
+
+<style>
+/* ═══════════ v0.34.36 · FA 라운드제 입찰 ═══════════ */
+.bid-head-v3436{
+  background:linear-gradient(145deg,rgba(28,48,37,.97),rgba(14,30,22,.98));
+  border:1px solid rgba(255,193,77,.22);border-radius:14px;padding:12px 13px;margin:10px 0;
+}
+.bid-head-v3436 .lead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.bid-head-v3436 .who{font-weight:900;font-size:15px}
+.bid-head-v3436 .amt{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:700;color:var(--amber)}
+.bid-head-v3436 .sub{font-size:12px;color:var(--dim);margin-top:4px;line-height:1.6}
+.bid-rivals-v3436{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.bid-rivals-v3436 span{
+  font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);color:#B9CCC0;
+}
+.bid-rivals-v3436 span.out{opacity:.4;text-decoration:line-through}
+.bid-rivals-v3436 span.me{background:rgba(255,193,77,.16);border-color:rgba(255,193,77,.45);color:var(--amber)}
+.bid-log-v3436{
+  max-height:34vh;max-height:34dvh;overflow-y:auto;overscroll-behavior:contain;
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0;
+  background:rgba(5,14,10,.45);font-size:13px;line-height:1.75;
+}
+.bid-log-v3436 .r{color:var(--dim);font-size:11px;font-weight:700;margin-top:8px}
+.bid-log-v3436 .r:first-child{margin-top:0}
+.bid-log-v3436 b{color:var(--chalk)}
+.bid-log-v3436 .up{color:var(--amber)}
+.bid-log-v3436 .drop{color:#8FA396}
+.bid-log-v3436 .win{color:#7BD69B;font-weight:800}
+.bid-acts-v3436{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.bid-acts-v3436 .btn{margin-top:0;min-height:var(--tap-min,44px)}
+.bid-acts-v3436 .wide{grid-column:1 / -1}
+@media (max-width:360px){.bid-head-v3436 .amt{font-size:20px}}
+</style>
+<script>
+/* ═══════════ v0.34.36 · FA 라운드제 입찰 ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.34.36';
+  const R1=n=>Math.round(n*10)/10;
+  const money=()=>Number(state?.money)||0;
+  const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
+
+  function hashV(str){let h=0;for(let i=0;i<String(str).length;i++)h=(h*31+String(str).charCodeAt(i))>>>0;return h;}
+
+  /* ---------- AI 평가 ---------- */
+  // 그 포지션 최고 선수 대비 얼마나 나아지는가 (0~1)
+  function needScore(teamId,fa){
+    try{
+      const t=getTeam(teamId);if(!t)return .3;
+      const isBat=fa.kind==='bat',arr=isBat?t.bat:t.pit;
+      const same=(arr||[]).filter(p=>p&&p[2]===fa.data[2]);
+      const best=same.length?Math.max(...same.map(p=>isBat?batOvr(p,teamId):pitOvr(p,teamId))):48;
+      return Math.max(0,Math.min(1,((Number(fa.ovr)||60)-best+6)/18));
+    }catch(_){return .3;}
+  }
+  function lastRank(teamId){
+    try{
+      if(typeof RANK2025!=='undefined'&&RANK2025[teamId])return Number(RANK2025[teamId]);
+    }catch(_){}
+    return 5;
+  }
+  // 선수가 느끼는 매력도 — 같은 돈이면 이쪽을 택한다
+  function appealOf(teamId,fa){
+    let a=1;
+    if(teamId===fa.from)a+=.08;               // 익숙한 원소속팀
+    a+=(11-lastRank(teamId))*.008;            // 강팀 선호
+    return a;
+  }
+  // AI가 낼 수 있는 최대 금액
+  function maxBidOf(teamId,fa){
+    const base=faCost(Number(fa.ovr)||60);
+    const need=needScore(teamId,fa);
+    const home=teamId===fa.from?1.14:1;
+    const noise=.88+(hashV(teamId+'|'+fa.data[0]+'|'+(state.year||1))%30)/100;
+    // 한도가 지나치게 높으면 경매가 끝나지 않는다. 시작가의 1.55배를 넘지 않게 한다.
+    return R1(Math.min(base*1.55,base*(.78+need*.52)*home*noise));
+  }
+
+  /* ---------- 입찰 상태 ---------- */
+  let B=null;
+
+  function participants(fa){
+    const base=faCost(Number(fa.ovr)||60);
+    const list=[];
+    (typeof TEAMS!=='undefined'?TEAMS:[]).forEach(t=>{
+      if(t.id===state.myTeam)return;
+      const max=maxBidOf(t.id,fa);
+      if(max<base)return;                      // 시작가도 못 내면 불참
+      list.push({teamId:t.id,max,appeal:appealOf(t.id,fa),bid:0,out:false});
+    });
+    list.sort((a,b)=>b.max-a.max);
+    return list.slice(0,4);                    // 최대 4팀이 경쟁
+  }
+
+  function perceived(amount,appeal){return amount*appeal;}
+
+  function topAi(){
+    if(!B)return null;
+    const live=B.rivals.filter(r=>!r.out&&r.bid>0);
+    if(!live.length)return null;
+    return live.slice().sort((a,b)=>perceived(b.bid,b.appeal)-perceived(a.bid,a.appeal))[0];
+  }
+  function leader(){
+    const ai=topAi();
+    const myP=B.myBid>0?perceived(B.myBid,B.myAppeal):-1;
+    const aiP=ai?perceived(ai.bid,ai.appeal):-1;
+    if(myP<0&&aiP<0)return null;
+    return myP>=aiP?{teamId:state.myTeam,amount:B.myBid,mine:true}:{teamId:ai.teamId,amount:ai.bid,mine:false};
+  }
+  // 현재 선두를 이기려면 내가 내야 하는 최소 금액
+  function needToBeat(){
+    const ai=topAi();
+    if(!ai)return B.base;
+    return R1(Math.max(B.base,perceived(ai.bid,ai.appeal)/B.myAppeal+.1));
+  }
+
+  function log(html,cls){B.log.push(`<div class="${cls||''}">${html}</div>`);}
+
+  /* ---------- AI 응찰 ---------- */
+  function aiRespond(){
+    let raised=false;
+    B.rivals.forEach(r=>{
+      if(r.out)return;
+      const lead=leader();
+      if(lead&&lead.teamId===r.teamId)return;                 // 이미 선두면 대기
+      const target=lead?R1(perceived(lead.amount,lead.mine?B.myAppeal:(B.rivals.find(x=>x.teamId===lead.teamId)?.appeal||1))/r.appeal+.1):B.base;
+      if(target<=r.max){
+        const pad=(hashV(r.teamId+'|'+B.round)%7)/10;          // 0~0.6억 여유
+        // 찔끔 올리면 경매가 끝나지 않는다. 남은 여력의 일부를 한 번에 태운다.
+        const headroom=Math.max(0,r.max-target);
+        r.bid=R1(Math.min(r.max,target+headroom*.42+pad));
+        log(`<b>${nm(r.teamId)}</b> <span class="up">${r.bid.toFixed(1)}억</span> 제시`);
+        raised=true;
+      }else{
+        r.out=true;
+        log(`<span class="drop">${nm(r.teamId)} 예산 한계로 포기 (한도 ${r.max.toFixed(1)}억)</span>`);
+      }
+    });
+    return raised;
+  }
+
+  /* ---------- 낙찰 ---------- */
+  function finishToMe(){
+    const m=state.season?.market;
+    const idx=m?.fa?.indexOf(B.fa);
+    if(idx==null||idx<0){B.over=true;B.result='취소';render();return;}
+    const price=B.myBid,base=faCost(Number(B.fa.ovr)||60);
+    if(money()<price){log('<span class="drop">잔고가 부족해 계약이 무산되었습니다.</span>');B.over=true;B.result='무산';render();return;}
+    try{
+      window.signFA(idx);                       // 이적 처리 + 계약금(기본가) 차감 + 지명 페널티
+      const extra=R1(price-base);
+      if(extra>0)state.money=R1(money()-extra); // 입찰로 올라간 차액 추가 차감
+    }catch(e){console.error(V+' 낙찰 처리:',e);}
+    B.over=true;B.result='낙찰';B.winner=state.myTeam;B.price=price;
+    log(`<span class="win">🎉 ${B.fa.data[0]} 영입 성공 — ${price.toFixed(1)}억</span>`);
+    try{save();}catch(_){}
+    render();
+  }
+  function moveToAi(teamId,price){
+    const m=state.season?.market,fa=B.fa;
+    const idx=m?.fa?.indexOf(fa);if(idx==null||idx<0)return false;
+    const src=state.players?.[fa.from],dst=state.players?.[teamId];
+    if(!src||!dst)return false;
+    const isBat=fa.kind==='bat';
+    const sArr=isBat?src.bat:src.pit,sAge=isBat?src.age?.bat:src.age?.pit;
+    const dArr=isBat?dst.bat:dst.pit,dAge=isBat?dst.age?.bat:dst.age?.pit;
+    const si=sArr.findIndex(p=>p&&p[0]===fa.data[0]);
+    const player=si>=0?sArr[si]:fa.data,age=(si>=0&&sAge)?sAge[si]:fa.age;
+    if(si>=0){sArr.splice(si,1);if(sAge)sAge.splice(si,1);}
+    dArr.push(Array.isArray(player)?[...player]:player);
+    if(dAge)dAge.push(age);
+    m.fa.splice(idx,1);
+    if(state.lineups)state.lineups[teamId]=null;
+    if(state.rotOrder)state.rotOrder[teamId]=null;
+    // 지명 순번 페널티가 이 계약도 반영하도록 기록에 남긴다.
+    const rec={teamId,name:fa.data[0],offer:price,pos:fa.data[2],ovr:fa.ovr,viaBidV3436:true};
+    m.bidResultsV3436=Array.isArray(m.bidResultsV3436)?m.bidResultsV3436:[];
+    m.bidResultsV3436.push(rec);
+    if(!m.aiFaV3413)m.aiFaV3413={processed:false,clubs:{},interest:{},results:[]};
+    m.aiFaV3413.results=Array.isArray(m.aiFaV3413.results)?m.aiFaV3413.results:[];
+    m.aiFaV3413.results.push(rec);
+    return true;
+  }
+  function finishToAi(r,why){
+    if(r&&moveToAi(r.teamId,r.bid)){
+      // FA가 팀을 옮겼으므로 드래프트 지명 순번을 즉시 다시 계산한다.
+      try{if(typeof repairDraftState==='function')repairDraftState(state.season?.market);}catch(e){console.error(V+' 지명 순번 갱신:',e);}
+      B.over=true;B.result='실패';B.winner=r.teamId;B.price=r.bid;
+      log(`<span class="drop">${why} — <b>${nm(r.teamId)}</b>가 ${r.bid.toFixed(1)}억에 영입했습니다.</span>`);
+    }else{
+      B.over=true;B.result='유찰';
+      log('<span class="drop">계약이 성사되지 않았습니다. 선수는 시장에 남습니다.</span>');
+    }
+    try{save();}catch(_){}
+    render();
+  }
+
+  /* ---------- 사용자 행동 ---------- */
+  window.faBidRaiseV3436=function(amount){
+    if(!B||B.over)return;
+    amount=R1(amount);
+    if(money()<amount){showAlert(`잔고가 부족합니다. 현재 ${fmtMoney()}`);return;}
+    B.round++;
+    B.myBid=amount;
+    log(`<div class="r">${B.round}라운드</div>`,'');
+    log(`<b>우리 구단</b> <span class="up">${amount.toFixed(1)}억</span> 제시`);
+    aiRespond();
+    const lead=leader();
+    // AI가 이미 응찰을 마친 뒤에도 내가 선두면 아무도 넘지 못한 것이므로 바로 낙찰한다.
+    if(lead&&lead.mine){finishToMe();return;}
+    if(B.round>=B.maxRound){finishToAi(topAi(),'입찰 마감');return;}
+    render();
+  };
+  window.faBidQuitV3436=function(){
+    if(!B||B.over)return;
+    const ai=topAi();
+    if(ai)finishToAi(ai,'입찰 포기');
+    else{B.over=true;B.result='유찰';log('<span class="drop">아무도 영입하지 않았습니다.</span>');render();}
+  };
+  window.faBidCloseV3436=function(){
+    B=null;
+    try{closeSheet();}catch(_){}
+    try{renderFront();}catch(_){}
+  };
+
+  /* ---------- 화면 ---------- */
+  function render(){
+    const sheet=document.getElementById('sheet');if(!sheet||!B)return;
+    const fa=B.fa,lead=leader(),need=B.over?0:needToBeat();
+    const s2=Math.max(3,R1(B.base*.14));
+    const b1=R1(Math.max(need,B.base)),b2=R1(b1+s2);
+    const canB1=money()>=b1,canB2=money()>=b2;
+    const rivals=B.rivals.map(r=>`<span class="${r.out?'out':''}">${nm(r.teamId)}${r.bid>0&&!r.out?' '+r.bid.toFixed(1)+'억':''}</span>`).join('')
+      +`<span class="me">우리 ${B.myBid>0?B.myBid.toFixed(1)+'억':'미제시'}</span>`;
+
+    let acts;
+    if(B.over){
+      acts=`<button class="btn wide" onclick="faBidCloseV3436()">확인</button>`;
+    }else{
+      const cap=!canB1?`<div class="hint wide" style="grid-column:1/-1;margin:0 0 2px"><b class="err-text-v3435">잔고로는 ${b1.toFixed(1)}억을 낼 수 없습니다.</b> 이번 경쟁은 여기까지입니다.</div>`:'';
+      acts=cap+`
+        <button class="btn" onclick="faBidRaiseV3436(${b1})" ${canB1?'':'disabled'}>${b1.toFixed(1)}억 제시</button>
+        <button class="btn" onclick="faBidRaiseV3436(${b2})" ${canB2?'':'disabled'}>${b2.toFixed(1)}억 제시</button>
+        <button class="btn ghost wide" onclick="faBidQuitV3436()">입찰 포기</button>`;
+    }
+    sheet.innerHTML=`
+      <div class="top"><div class="pname">${fa.data[0]} 입찰</div>
+        <button class="close" onclick="faBidCloseV3436()">✕</button></div>
+      <div class="meta">${fa.data[2]} · ${fa.age}세 · OVR ${fa.ovr} · 원소속 ${nm(fa.from)}</div>
+      <div class="bid-head-v3436">
+        <div class="lead">
+          <span class="who">${lead?(lead.mine?'우리 구단 선두':nm(lead.teamId)+' 선두'):'아직 제시 없음'}</span>
+          <span class="amt">${lead?lead.amount.toFixed(1)+'억':B.base.toFixed(1)+'억'}</span>
+        </div>
+        <div class="sub">${B.over?`입찰 종료 · ${B.result}`
+          :`${B.round}/${B.maxRound}라운드 · 선두를 넘으려면 <b>${need.toFixed(1)}억</b> 이상 · 잔고 ${fmtMoney()}`}</div>
+      </div>
+      <div class="bid-rivals-v3436">${rivals}</div>
+      ${B.over?'':`<div class="hint" style="margin-top:2px">선수는 금액만 보지 않습니다. 원소속팀과 상위권 구단은 같은 금액이면 우리보다 앞섭니다.</div>`}
+      <div class="bid-log-v3436">${B.log.join('')}</div>
+      <div class="bid-acts-v3436">${acts}</div>`;
+    document.getElementById('mask')?.classList.add('on');
+    const box=sheet.querySelector('.bid-log-v3436');if(box)box.scrollTop=box.scrollHeight;
+  }
+
+  window.openFaBidV3436=function(idx){
+    const m=state.season?.market,fa=m?.fa?.[idx];
+    if(!fa){showAlert('이미 계약이 끝난 선수입니다.');return;}
+    const base=R1(faCost(Number(fa.ovr)||60));
+    B={fa,base,round:0,maxRound:6,myBid:0,myAppeal:appealOf(state.myTeam,fa),
+       rivals:participants(fa),log:[],over:false,result:''};
+    log(`<div class="r">입찰 시작 · 시작가 ${base.toFixed(1)}억</div>`,'');
+    if(!B.rivals.length)log('<span class="drop">경쟁 구단이 없습니다. 시작가로 영입할 수 있습니다.</span>');
+    else log(`경쟁 구단 ${B.rivals.length}곳: ${B.rivals.map(r=>nm(r.teamId)).join(', ')}`);
+    render();
+  };
+
+  /* ---------- 기존 FA 상세 시트에 연결 ---------- */
+  const oldFaSheet=window.openFaSheet;
+  if(typeof oldFaSheet==='function'){
+    window.openFaSheet=function(idx){
+      const r=oldFaSheet.apply(this,arguments);
+      try{
+        if(!ecoOn())return r;                    // 자유 모드는 자금이 없어 입찰이 성립하지 않는다
+        const m=state.season?.market,fa=m?.fa?.[idx];if(!fa)return r;
+        const sheet=document.getElementById('sheet');if(!sheet)return r;
+        const btn=Array.from(sheet.querySelectorAll('.btn')).find(b=>/계약 영입|영입하기/.test(b.textContent||''));
+        const rivals=participants(fa);
+        const info=`<div class="hint" style="margin-top:6px">경쟁 예상 ${rivals.length}곳${rivals.length?' · '+rivals.map(x=>nm(x.teamId)).join(', '):''}</div>`;
+        if(btn){
+          btn.textContent=`🔨 입찰 시작 (시작가 ${faCost(fa.ovr).toFixed(0)}억)`;
+          btn.setAttribute('onclick',`closeSheet();openFaBidV3436(${idx})`);
+          btn.insertAdjacentHTML('beforebegin',info);
+        }
+      }catch(e){console.error(V+' 입찰 연결:',e);}
+      return r;
+    };
+  }
+
+  /* ---------- AI 일괄 시장이 입찰 기록을 덮어쓰지 않게 ---------- */
+  const oldRun=window.runAiFaMarketV3413;
+  if(typeof oldRun==='function'){
+    window.runAiFaMarketV3413=function(){
+      const m0=state.season?.market,keep=Array.isArray(m0?.bidResultsV3436)?m0.bidResultsV3436.slice():[];
+      const r=oldRun.apply(this,arguments);
+      try{
+        const m=state.season?.market;
+        if(m&&keep.length){
+          if(!m.aiFaV3413)m.aiFaV3413={processed:true,clubs:{},interest:{},results:[]};
+          const cur=Array.isArray(m.aiFaV3413.results)?m.aiFaV3413.results:[];
+          const missing=keep.filter(k=>!cur.some(c=>c&&c.name===k.name&&c.teamId===k.teamId));
+          m.aiFaV3413.results=[...missing,...cur];
+          if(typeof repairDraftState==='function')repairDraftState(m);
+          if(typeof save==='function')save();
+        }
+      }catch(e){console.error(V+' 입찰 기록 보존:',e);}
+      return r;
+    };
+  }
 
   document.title='우리팀을 만들자 '+V;
   document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
