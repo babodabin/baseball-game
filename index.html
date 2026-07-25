@@ -781,7 +781,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.34.34</span>
+    <span class="ver">v0.34.35</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -14310,7 +14310,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.34';
+  const VERSION='v0.34.35';
   document.title='우리팀을 만들자 '+VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14331,7 +14331,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.34';
+  const VERSION='v0.34.35';
   function applyVersionV3414(){
     document.title='우리팀을 만들자 '+VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14354,7 +14354,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.34';
+  const VERSION='v0.34.35';
 
   function applyVersionV3415(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14449,7 +14449,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.34';
+  const VERSION='v0.34.35';
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
@@ -14533,7 +14533,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.34';
+  const VERSION='v0.34.35';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -14677,7 +14677,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.34';
+  const VERSION='v0.34.35';
   let batchBusy=false;
 
   function forceVersionV3418(){
@@ -14820,7 +14820,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.34';
+  const VERSION='v0.34.35';
 
   function forceVersionV3419(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14981,7 +14981,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 /* ═══════════ v0.34.30 · 하단 내비게이션 화면 동기화 ═══════════ */
 (()=>{
-  const VERSION='v0.34.34';
+  const VERSION='v0.34.35';
   const screenToNav={team:'team',lineup:'lineup',game:'game',front:'front',rank:'rank'};
   function syncBottomNav(name){
     const nv=screenToNav[name];
@@ -15022,7 +15022,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 경기 탭 진입 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const VERSION='v0.34.34';
+  const VERSION='v0.34.35';
   function syncGameNav(){
     document.querySelectorAll('nav button[data-nav]').forEach(btn=>btn.classList.toggle('on',btn.dataset.nav==='game'));
   }
@@ -15087,7 +15087,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 충돌 패치 제거 후 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.34';
+  const V='v0.34.35';
 
   function version(){
     document.title='우리팀을 만들자 '+V;
@@ -15126,7 +15126,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.34';
+  const V='v0.34.35';
   // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
   // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
   const base=window.ensureSquadState;
@@ -15150,7 +15150,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.34';
+  const V='v0.34.35';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -15198,7 +15198,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.34';
+  const V='v0.34.35';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -15411,7 +15411,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.34';
+  const V='v0.34.35';
   // ensureSquadState()는 isFirstTeam 같은 사소한 조회마다 호출되는데,
   // v0.25.0에서 그 안에 aiTopUpRosters(리그 10팀 로스터 전체 재계산)가 붙으면서
   // 5경기 자동 진행 한 번에 5,400회 넘게 전 리그를 재계산하고 있었다.
@@ -15470,7 +15470,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.34';
+  const V='v0.34.35';
 
   function market(){return (typeof state!=='undefined'&&state)?state.season?.market:null;}
   function started(m){return !!m?.draftStartedV3413;}
@@ -15609,6 +15609,126 @@ input,select,textarea{font-size:16px;max-width:100%;}
       return h;
     };
   }
+
+  document.title='우리팀을 만들자 '+V;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
+  window.GAME_VERSION=V;
+})();
+</script>
+
+
+<style>
+/* ═══════════ v0.34.35 · 마감 점검 (줄바꿈·터치·상태·넘침) ═══════════ */
+
+/* [줄바꿈] 한글은 어절 단위로 끊는다. 기존엔 단어 중간에서 잘렸다.
+   숫자·영문 긴 토큰은 anywhere로 넘침만 막는다. */
+body,.prow,.nm,.hand,.notice,.hint,.meta,.sec,.reveal,.sheet,
+.front-pane,.draft-order-v3413,.fa-pen-v3434,.lp-guide-v3432,
+[class*="-v3413"],[class*="-v3432"],[class*="-v3434"]{
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+/* 숫자·모노 표기는 줄바꿈시키지 않는다 */
+.num,.ovr,.lp-ord-v3432,.board .ver,.scorebox td,.scorebox th{
+  word-break:normal;overflow-wrap:normal;
+}
+
+/* [터치 영역] 44px 미만이던 조작 버튼 보정 */
+#lineupList .lp-swap-v3432,#spList .lp-swap-v3432{
+  width:var(--tap-min,44px);height:var(--tap-min,44px);
+  min-width:var(--tap-min,44px);min-height:var(--tap-min,44px);
+  display:grid;place-items:center;font-size:17px;
+}
+.sortbar .sbrow button,.cat-btn,.pill,.theme-pick button{min-height:var(--tap-min,44px)}
+/* 목록 안 텍스트 링크도 손가락으로 누를 만하게 */
+.front-pane a,.sheet a,#lineupList a{display:inline-block;padding:6px 2px;min-height:32px}
+
+/* [비활성·선택·오류 상태] 전역 통일 — 기존엔 규칙이 두 개뿐이었다 */
+button:disabled,button[disabled],.btn:disabled,.btn.locked,
+.signbtn:disabled,.cutbtn:disabled{
+  opacity:.42!important;
+  filter:grayscale(.4);
+  box-shadow:none!important;
+  cursor:not-allowed;
+  pointer-events:auto;
+}
+button:disabled:active,.btn:disabled:active{transform:none!important}
+/* 선택 상태는 색만이 아니라 형태로도 구분되게 (색약 대응) */
+button[aria-pressed="true"]{box-shadow:inset 0 0 0 2px rgba(255,193,77,.55)}
+/* 오류·경고 문구 색 단계 통일 */
+.notice b,.notice strong{color:var(--amber)}
+.err-text-v3435{color:#F0907A;font-weight:700}
+
+/* [강조 단계] 키보드·보조기기 초점 표시를 모든 조작 요소에 동일하게 */
+button:focus-visible,a:focus-visible,[role="button"]:focus-visible,
+.prow:focus-visible,[onclick]:focus-visible{
+  outline:3px solid var(--amber);
+  outline-offset:2px;
+  border-radius:10px;
+}
+
+/* [글자 크기] 10px 이하로 읽기 어렵던 보조 라벨 상향 */
+.boost{font-size:11px}
+.reveal .lbl,.club-kicker,.dashboard-title span{font-size:11px}
+
+/* [화면 넘침] 어떤 자식도 가로 스크롤을 만들지 못하게 */
+main,.front-pane,.sheet,#lineupList,#spList,#plist{max-width:100%}
+main *,.sheet *{max-width:100%}
+.prow .mid,.mid{min-width:0}
+.draft-order-v3413 .do-round{overflow-wrap:anywhere}
+
+/* [모달·바텀시트] iOS 주소창 때문에 vh가 틀어지는 문제 → dvh 병기 */
+.sheet{max-height:82vh;max-height:86dvh;overscroll-behavior:contain}
+
+/* [작은 화면] 운영 서브탭이 4개로 늘어나 좁은 폭에서 눌리는 문제 */
+@media (max-width:390px){
+  .front-subtabs button{font-size:12px;padding-left:2px;padding-right:2px;letter-spacing:-.4px}
+}
+@media (max-width:360px){
+  .front-subtabs button{font-size:11px}
+  #lineupList .lp-ord-v3432,#spList .lp-ord-v3432{width:18px}
+}
+
+/* [가로 화면] 기존 블록은 max-height 520px만 대응 → 조금 더 넓게 */
+@media (orientation:landscape) and (max-height:600px){
+  .sheet{max-height:92vh;max-height:92dvh}
+  h2.sec{margin-top:10px}
+}
+</style>
+<script>
+/* ═══════════ v0.34.35 · 마감 점검 (조작 일관성) ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.34.35';
+
+  // button이 아닌 div/span에 onclick만 달린 곳이 남아 있다.
+  // 포커스가 갔을 때 Enter·Space로도 눌리게 해 조작 방식을 통일한다.
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Enter'&&e.key!==' '&&e.key!=='Spacebar')return;
+    const t=e.target;
+    if(!t||!t.tagName)return;
+    if(/^(BUTTON|INPUT|SELECT|TEXTAREA|A)$/.test(t.tagName))return;
+    const clickable=typeof t.onclick==='function'||t.getAttribute('role')==='button';
+    if(!clickable)return;
+    e.preventDefault();
+    try{t.click();}catch(err){console.error(V+' 키보드 실행:',err);}
+  });
+
+  // 잠긴 버튼이 눌린 것처럼 보이지 않도록 상태 속성을 맞춘다.
+  function syncDisabledV3435(){
+    document.querySelectorAll('.btn.locked,button[data-locked="true"]').forEach(b=>{
+      if(!b.hasAttribute('aria-disabled'))b.setAttribute('aria-disabled','true');
+    });
+  }
+  const oldShow=window.show;
+  if(typeof oldShow==='function'){
+    window.show=function(){
+      const r=oldShow.apply(this,arguments);
+      try{syncDisabledV3435();}catch(e){console.error(V+' 상태 동기화:',e);}
+      return r;
+    };
+  }
+  syncDisabledV3435();
 
   document.title='우리팀을 만들자 '+V;
   document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
