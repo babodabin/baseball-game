@@ -14097,5 +14097,184 @@ input,select,textarea{font-size:16px;max-width:100%;}
 })();
 </script>
 
+
+
+<!-- v0.34.13 UX hotfix: faster auto progress + visible game-start feedback -->
+<style>
+#playBtn{
+  position:relative;
+  min-height:54px;
+  transition:transform .12s ease,background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+#playBtn:active,#playBtn.start-pressed{transform:scale(.975)}
+#playBtn.start-running{
+  color:#251A08!important;
+  border-color:transparent!important;
+  background:linear-gradient(180deg,#FFD574,#EFA62C)!important;
+  box-shadow:0 0 0 4px rgba(255,193,77,.14),0 8px 22px rgba(232,155,28,.24)!important;
+}
+#playBtn.start-done{
+  color:#D9F7E4!important;
+  border-color:#77D69B!important;
+  background:rgba(43,105,67,.34)!important;
+}
+</style>
+<script>
+(function(){
+  'use strict';
+
+  function paintV3413(){
+    return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  }
+
+  let gameStartingV3413=false;
+  let batchRunningV3413=false;
+
+  async function startGameVisibleV3413(){
+    if(gameStartingV3413||batchRunningV3413||seasonOver())return;
+    const btn=document.getElementById('playBtn');
+    if(!btn)return;
+    gameStartingV3413=true;
+    btn.disabled=true;
+    btn.classList.remove('start-done','start-pressed');
+    btn.classList.add('start-running');
+    btn.textContent='⏳ 경기 준비 중…';
+    await paintV3413();
+    try{
+      const g=playMyGame();
+      if(!g)throw new Error('경기 결과가 생성되지 않았습니다.');
+      btn.textContent='✓ 경기 시작됨';
+      btn.classList.remove('start-running');
+      btn.classList.add('start-done');
+      await paintV3413();
+
+      document.getElementById('gameSetup').style.display='none';
+      document.getElementById('gameLive').style.display='';
+      document.getElementById('newGameBtn').style.display='none';
+      document.getElementById('skipBtn').style.display='';
+      const log=document.getElementById('gamelog');
+      log.innerHTML='';
+      const evs=spdSel==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant');
+      let i=0;
+      const innDone={a:0,h:0};
+      function push(n){
+        for(let k=0;k<n&&i<evs.length;k++,i++){
+          const e=evs[i],d=document.createElement('div');
+          if(e.cls)d.className=e.cls;
+          d.textContent=e.text;
+          log.appendChild(d);
+          if(e.cls==='inn'){
+            if(e.half==='초'){innDone.a=e.inn-1;innDone.h=e.inn-1;}
+            else innDone.a=e.inn;
+          }
+          if(e.cls==='final'){innDone.a=99;innDone.h=99;}
+        }
+        drawScore(g,innDone);
+        log.scrollTop=log.scrollHeight;
+        if(i>=evs.length)finish();
+      }
+      function finish(){
+        if(gTimer){clearInterval(gTimer);gTimer=null;}
+        drawScore(g,{a:99,h:99});
+        document.getElementById('skipBtn').style.display='none';
+        document.getElementById('newGameBtn').style.display='';
+      }
+      if(spdSel==='fast')push(evs.length);
+      else{
+        const step=spdSel==='pa'?2:8;
+        const ms=spdSel==='pa'?750:700;
+        push(step);
+        gTimer=setInterval(()=>push(step),ms);
+      }
+      document.getElementById('skipBtn').onclick=()=>push(evs.length);
+      document.getElementById('newGameBtn').onclick=()=>renderGameSetup();
+    }catch(err){
+      console.error('v0.34.13 경기 시작 표시 보강:',err);
+      btn.classList.remove('start-running','start-done');
+      btn.textContent='경기 시작';
+      showAlert('경기를 시작하지 못했습니다.\n원인: '+(err?.message||err));
+    }finally{
+      gameStartingV3413=false;
+      if(document.body.contains(btn))btn.disabled=false;
+    }
+  }
+
+  async function fastSkip5V3413(){
+    if(batchRunningV3413||gameStartingV3413||seasonOver())return;
+    const btn=document.getElementById('skip5Btn');
+    const mainEl=document.querySelector('main');
+    if(!btn)return;
+    batchRunningV3413=true;
+    const fixedScroll=mainEl?mainEl.scrollTop:0;
+    btn.disabled=true;
+    btn.classList.remove('batch-done','tap-feedback');
+    btn.classList.add('batch-running');
+    btn.textContent='⏳ 자동 진행 중 · 0/5';
+    await paintV3413();
+    let done=0;
+    FORCED_RECORD_MODE='result';
+    try{
+      while(done<5&&!seasonOver()){
+        const g=playMyGame();
+        if(!g)break;
+        done++;
+        btn.textContent=`⏳ 자동 진행 중 · ${done}/5`;
+        // 매 경기마다 긴 시간 대기하지 않고 화면 갱신만 한 번 허용한다.
+        await paintV3413();
+        if(mainEl)mainEl.scrollTop=fixedScroll;
+      }
+      refreshHeader();
+      renderGameSetup();
+      const liveBtn=document.getElementById('skip5Btn');
+      if(liveBtn&&!seasonOver()){
+        liveBtn.disabled=true;
+        liveBtn.classList.remove('batch-running');
+        liveBtn.classList.add('batch-done');
+        liveBtn.textContent=`✓ ${done}경기 자동 진행 완료`;
+        await new Promise(r=>setTimeout(r,180));
+      }
+    }catch(err){
+      console.error('v0.34.13 빠른 자동 진행:',err);
+      showAlert('자동 진행 중 오류가 발생했습니다. 현재까지 완료된 경기 기록은 저장되었습니다.');
+    }finally{
+      FORCED_RECORD_MODE=null;
+      setGameRecordModeV348('full');
+      batchRunningV3413=false;
+      const liveBtn=document.getElementById('skip5Btn');
+      if(liveBtn&&!seasonOver()){
+        liveBtn.disabled=false;
+        liveBtn.classList.remove('batch-running','batch-done','tap-feedback');
+        liveBtn.textContent='다음 5경기 자동 진행 (승패만)';
+      }
+      if(mainEl)mainEl.scrollTop=fixedScroll;
+    }
+  }
+
+  function bindV3413(){
+    const play=document.getElementById('playBtn');
+    const skip=document.getElementById('skip5Btn');
+    if(play){
+      play.onclick=startGameVisibleV3413;
+      play.onpointerdown=()=>play.classList.add('start-pressed');
+      play.onpointerup=play.onpointercancel=()=>play.classList.remove('start-pressed');
+      play.ontouchend=play.ontouchcancel=()=>play.classList.remove('start-pressed');
+    }
+    if(skip)skip.onclick=fastSkip5V3413;
+  }
+
+  const oldRenderGameSetupV3413=window.renderGameSetup;
+  if(typeof oldRenderGameSetupV3413==='function'){
+    window.renderGameSetup=function(){
+      const result=oldRenderGameSetupV3413.apply(this,arguments);
+      bindV3413();
+      return result;
+    };
+  }
+  bindV3413();
+})();
+</script>
+
 </body>
 </html>
