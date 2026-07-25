@@ -781,7 +781,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.34.30</span>
+    <span class="ver">v0.34.32</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -14310,7 +14310,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.30';
+  const VERSION='v0.34.32';
   document.title='우리팀을 만들자 '+VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14331,7 +14331,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.30';
+  const VERSION='v0.34.32';
   function applyVersionV3414(){
     document.title='우리팀을 만들자 '+VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14354,7 +14354,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.30';
+  const VERSION='v0.34.32';
 
   function applyVersionV3415(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14449,7 +14449,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.30';
+  const VERSION='v0.34.32';
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
@@ -14533,7 +14533,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.30';
+  const VERSION='v0.34.32';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -14677,7 +14677,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.30';
+  const VERSION='v0.34.32';
   let batchBusy=false;
 
   function forceVersionV3418(){
@@ -14820,7 +14820,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.30';
+  const VERSION='v0.34.32';
 
   function forceVersionV3419(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14981,7 +14981,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 /* ═══════════ v0.34.30 · 하단 내비게이션 화면 동기화 ═══════════ */
 (()=>{
-  const VERSION='v0.34.30';
+  const VERSION='v0.34.32';
   const screenToNav={team:'team',lineup:'lineup',game:'game',front:'front',rank:'rank'};
   function syncBottomNav(name){
     const nv=screenToNav[name];
@@ -15022,7 +15022,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 경기 탭 진입 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const VERSION='v0.34.30';
+  const VERSION='v0.34.32';
   function syncGameNav(){
     document.querySelectorAll('nav button[data-nav]').forEach(btn=>btn.classList.toggle('on',btn.dataset.nav==='game'));
   }
@@ -15087,7 +15087,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 충돌 패치 제거 후 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.30';
+  const V='v0.34.32';
 
   function version(){
     document.title='우리팀을 만들자 '+V;
@@ -15126,7 +15126,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.31';
+  const V='v0.34.32';
   // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
   // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
   const base=window.ensureSquadState;
@@ -15143,6 +15143,266 @@ input,select,textarea{font-size:16px;max-width:100%;}
   document.title='우리팀을 만들자 '+V;
   document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
   window.GAME_VERSION=V;
+})();
+</script>
+
+<script>
+/* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.34.32';
+  // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
+  // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
+  function apply(){
+    document.title='우리팀을 만들자 '+V;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
+      if(el.textContent!==V)el.textContent=V;
+    });
+    window.GAME_VERSION=V;
+  }
+  [0,50,300,1100,1600,2500].forEach(ms=>setTimeout(apply,ms));
+  document.addEventListener('DOMContentLoaded',apply);
+  window.addEventListener('load',()=>setTimeout(apply,1200));
+  apply();
+})();
+</script>
+
+
+<style>
+/* ═══════════ v0.34.32 · 라인업 카드를 전체 로스터(.prow) 형식으로 통일 ═══════════ */
+#lineupList .prow, #spList .prow{margin-bottom:8px}
+#lineupList .lp-ord-v3432, #spList .lp-ord-v3432{
+  width:22px;flex:none;text-align:center;
+  font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:800;color:var(--amber);
+}
+#lineupList .lp-swap-v3432, #spList .lp-swap-v3432{
+  flex:none;width:34px;height:34px;border-radius:9px;
+  background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+  font-family:inherit;font-size:15px;font-weight:800;line-height:1;
+}
+#lineupList .lp-swap-v3432[aria-pressed="true"]{background:var(--amber);border-color:var(--amber);color:#20180A}
+#lineupList .lp-sel-v3432{outline:2px solid var(--amber);outline-offset:-2px}
+#lineupList .lp-target-v3432{border-left:3px solid rgba(255,193,77,.45)}
+#lineupList .lp-injured-v3432, #spList .lp-injured-v3432{opacity:.45}
+#lineupList .lp-guide-v3432{
+  background:rgba(255,193,77,.12);border:1px solid rgba(255,193,77,.35);
+  border-radius:11px;padding:10px 12px;margin-bottom:9px;font-size:13px;font-weight:700;color:var(--amber);
+}
+#lineupList .sec, #spList .sec{font-size:14px;margin:14px 0 8px}
+#lineupList .sec small, #spList .sec small{font-size:11px;color:var(--dim);font-weight:600;margin-left:6px}
+/* ── 운영 AI 구단 탭 ── */
+.front-subtabs.has-ai-v3432{grid-template-columns:repeat(4,1fr)}
+.ai-pane-empty-v3432{padding:16px;border:1px dashed var(--line);border-radius:13px;color:var(--dim);font-size:13px;line-height:1.6}
+</style>
+<script>
+/* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.34.32';
+  const g=n=>document.getElementById(n);
+
+  /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
+  const POS_EN={포수:'C','1루수':'1B','2루수':'2B','3루수':'3B',유격수:'SS',좌익수:'LF',중견수:'CF',우익수:'RF',지명타자:'DH'};
+  const posBox=v=>v==='선발'?'SP':v==='마무리'?'CL':(v==='불펜'?'RP':(POS_EN[v]||v||'-'));
+
+  // 전체 로스터(renderRoster)의 서브라인을 그대로 재현한다.
+  function subLine(teamId,kind,p,idx){
+    const t=getTeam(teamId),isBat=kind==='bat';
+    let age;
+    try{const a=t.age?.[kind];age=(a&&Number.isFinite(+a[idx]))?+a[idx]:ageOf(p[1]);}catch(_){age=ageOf(p[1]);}
+    let s=(isBat?`${p[3]}타`:`${p[3]}투 · ${p[2]}`)+` · ${age}세`;
+    try{const st=careerStageOf(p,age);if(st)s+=` · <span style="color:${careerStageColor(st)}">${st}</span>`;}catch(_){}
+    try{const ci=conditionInfo(teamId,kind,p);s+=` <span class="boost" style="color:${ci.color}">${ci.label}</span>`;}catch(_){}
+    try{
+      const f=flagOf(p,isBat),bo=bonusOf(p,teamId,isBat);
+      if(f==='fa')s+=' <span class="boost" style="color:#8FA396">FA이적 보정없음</span>';
+      else if(f==='archive')s+=' <span class="boost" style="color:#9EC5FF">과거시즌 +'+bo+'</span>';
+      else if(bo>0)s+=' <span class="boost">+'+bo+(f==='new'?' 신규':'')+'</span>';
+    }catch(_){}
+    return s;
+  }
+
+  // 전체 로스터와 완전히 같은 .prow 카드. 타순 번호와 ↕ 버튼만 라인업용으로 덧붙인다.
+  function prowCard(o){
+    const d=document.createElement('div');
+    d.className='prow'+(o.selected?' lp-sel-v3432':'')+(o.target?' lp-target-v3432':'')+(o.injured?' lp-injured-v3432':'');
+    d.innerHTML=
+      (o.ord!=null?`<div class="lp-ord-v3432">${o.ord}</div>`:'')+
+      `<div class="pos">${o.pos}</div>`+
+      `<div class="mid"><div class="nm">${o.name}</div><div class="hand">${o.sub||''}</div></div>`+
+      (o.onAction?`<button type="button" class="lp-swap-v3432" aria-label="타순 교환" aria-pressed="${o.selected?'true':'false'}">↕</button>`:'')+
+      `<div class="ovr num">${o.ovr}</div>`;
+    const b=d.querySelector('.lp-swap-v3432');
+    if(b)b.onclick=e=>{e.stopPropagation();o.onAction();};
+    d.onclick=()=>o.onClick&&o.onClick();
+    return d;
+  }
+  function sec(list,text,count){
+    const h=document.createElement('h2');h.className='sec';
+    h.innerHTML=`${text}${count?` <small>${count}</small>`:''}`;list.appendChild(h);
+  }
+
+  function renderPitchers(box,t){
+    let plan;try{plan=pitchPlanOfV310(t.id);}catch(e){console.error(V+' 투수 운용표:',e);return;}
+    if(!plan)return;
+    let nxt=null;try{nxt=(state.season&&!isOffseason())?nextSpIdx(t.id):null;}catch(_){}
+    const row=(pi,slot,notes,group)=>{
+      const p=t.pit[pi];if(!p)return;
+      let inj=false;try{inj=isInjured(t.id,'pit',p);}catch(_){}
+      box.appendChild(prowCard({
+        ord:slot+1,pos:posBox(p[2]),name:p[0],
+        sub:[subLine(t.id,'pit',p,pi)].concat(notes.filter(Boolean)).join(' · '),
+        ovr:pitOvr(p,t.id),injured:inj,
+        onClick:()=>openPitchStaffPickerV310(group,slot)
+      }));
+    };
+    sec(box,'선발 로테이션',`${Math.min(5,plan.starters.length)}/5`);
+    plan.starters.slice(0,5).forEach((pi,slot)=>{
+      let rest=0;try{rest=starterRestRemainingV312(t.id,pi)||0;}catch(_){}
+      row(pi,slot,[pi===nxt?'당일 선발 · 교체불가':'',rest>0?`휴식 ${rest}경기`:''],'starters');
+    });
+    if(plan.starters.length>5){
+      sec(box,'예비 선발',`${plan.starters.length-5}명`);
+      plan.starters.slice(5).forEach((pi,k)=>{
+        let rest=0;try{rest=starterRestRemainingV312(t.id,pi)||0;}catch(_){}
+        row(pi,k+5,['예비',rest>0?`휴식 ${rest}경기`:''],'starters');
+      });
+    }
+    sec(box,'불펜',`${plan.bullpen.length}명`);
+    plan.bullpen.forEach((pi,slot)=>{
+      row(pi,slot,[slot===0?'Closer 1':slot===1?'Closer 2':`Bullpen ${slot+1}`],'bullpen');
+    });
+  }
+
+  window.renderLineup=function(){
+    const list=g('lineupList'),spBox=g('spList');
+    if(!list||!spBox||typeof state==='undefined'||!state?.myTeam)return;
+    const mode=(typeof luMode!=='undefined'&&luMode)?luMode:'order';
+    const selIdx=(typeof luSel!=='undefined'&&Number.isInteger(luSel))?luSel:-1;
+    const screen=g('scr-lineup'),wrap=g('pitchWrap'),pitch=mode==='pitch';
+    screen&&screen.classList.toggle('pitch-mode-v325',pitch);
+    list.style.display=pitch?'none':'';
+    if(wrap)wrap.style.display=pitch?'':'none';
+    list.innerHTML='';spBox.innerHTML='';
+
+    const t=getTeam(state.myTeam);
+    try{renderPitchers(spBox,t);}catch(e){console.error(V+' 투수 렌더:',e);}
+    if(pitch)return;
+
+    let lu=null;try{lu=ensureHealthyLineup(t.id);}catch(e){console.error(V+' 라인업 확보:',e);}
+    if(!lu||!Array.isArray(lu.order)||lu.order.length!==9){
+      list.innerHTML='<div class="notice"><b>라인업을 구성할 수 없습니다.</b><br>1군 야수 구성을 확인하세요.</div>';
+      return;
+    }
+    if(mode==='order'&&selIdx>=0){
+      const gd=document.createElement('div');gd.className='lp-guide-v3432';
+      gd.textContent=`↕ ${selIdx+1}번 타순 선택됨 — 바꿀 다른 선발 선수를 누르세요.`;
+      list.appendChild(gd);
+    }
+
+    const addStarter=(pos,ord)=>{
+      const bi=lu.order[pos],p=t.bat[bi];if(!p)return;
+      let inj=false;try{inj=isInjured(t.id,'bat',p);}catch(_){}
+      const selected=mode==='order'&&selIdx===pos;
+      list.appendChild(prowCard({
+        ord,pos:posBox(lu.pos[pos]),name:p[0],sub:subLine(t.id,'bat',p,bi),
+        ovr:batOvr(p,t.id),selected,target:mode==='order'&&selIdx>=0&&!selected,injured:inj,
+        onAction:mode==='order'?()=>selectStarterSwapV304(pos):null,
+        onClick:()=>openLineupExchangePickerV304('starter',pos)
+      }));
+    };
+    sec(list,mode==='def'?'수비 배치':'타순','9명');
+    if(mode==='def'){
+      DEFENSE_ORDER_V315.forEach((slot,n)=>{const pos=lu.pos.indexOf(slot);if(pos>=0)addStarter(pos,n+1);});
+    }else{
+      lu.order.forEach((_,pos)=>addStarter(pos,pos+1));
+    }
+
+    let bench=[];try{bench=benchBatters(t.id)||[];}catch(e){console.error(V+' 벤치:',e);}
+    bench=bench.slice().sort((a,b)=>{
+      const pa=DEFENSE_ORDER_V315.indexOf(posBox(t.bat[a]?.[2])),pb=DEFENSE_ORDER_V315.indexOf(posBox(t.bat[b]?.[2]));
+      return (pa<0?99:pa)-(pb<0?99:pb)||batOvr(t.bat[b],t.id)-batOvr(t.bat[a],t.id);
+    });
+    sec(list,'타자 후보',`${bench.length}명`);
+    if(!bench.length){
+      const e=document.createElement('div');e.className='hint';e.textContent='등록된 타자 후보가 없습니다.';list.appendChild(e);
+    }
+    bench.forEach((bi,n)=>{
+      const p=t.bat[bi];if(!p)return;
+      let inj=false;try{inj=isInjured(t.id,'bat',p);}catch(_){}
+      list.appendChild(prowCard({
+        ord:n+1,pos:posBox(p[2]),name:p[0],sub:subLine(t.id,'bat',p,bi),
+        ovr:batOvr(p,t.id),injured:inj,
+        onClick:()=>{if(inj){showAlert('부상 중인 선수는 라인업에 넣을 수 없습니다.');return;}openLineupExchangePickerV304('bench',bi);}
+      }));
+    });
+  };
+
+  /* ---------- B. 운영 → 🤖 AI 구단 탭 ---------- */
+  const AI_SEL=['philosophy','style','trade','core','roster','contract','manager','longterm',
+    'finance','foreign','stability','staff','facility','tactic','ecosystem','gm']
+    .map(k=>`.ai-${k}-v3413`).join(',');
+
+  function buildAiTab(){
+    const anyPane=document.querySelector('.front-pane');
+    const tabs=document.querySelector('.front-subtabs');
+    if(!anyPane||!tabs)return;
+    const host=anyPane.parentElement;if(!host)return;
+
+    const panels=Array.from(host.querySelectorAll(AI_SEL))
+      .filter(el=>!el.closest('.front-pane[data-fpane="ai"]'))
+      // 다른 AI 패널 안에 들어 있는 요소는 부모와 함께 움직여야 한다.
+      .filter((el,_,arr)=>!arr.some(o=>o!==el&&o.contains(el)));
+    const existing=host.querySelector('.front-pane[data-fpane="ai"]');
+    if(!panels.length&&!existing){
+      // AI 패널이 하나도 없으면(실황 모드 등) 빈 탭을 만들지 않는다.
+      if(typeof frontSubTab!=='undefined'&&frontSubTab==='ai'&&typeof setFrontSubTab==='function')setFrontSubTab('status');
+      return;
+    }
+    let pane=existing;
+    if(!pane){
+      pane=document.createElement('div');
+      pane.className='front-pane';pane.dataset.fpane='ai';
+      host.appendChild(pane);
+    }
+    if(!tabs.querySelector('[data-ftab="ai"]')){
+      const b=document.createElement('button');
+      b.dataset.ftab='ai';b.type='button';b.textContent='🤖 AI 구단';
+      b.onclick=()=>setFrontSubTab('ai');
+      tabs.appendChild(b);
+    }
+    tabs.classList.add('has-ai-v3432');
+    // 프런트 탭에 붙어 있던 AI 패널을 순서를 지키며 옮긴다.
+    panels.forEach(el=>{el.style.marginTop='14px';pane.appendChild(el);});
+    if(!pane.children.length){
+      pane.innerHTML='<div class="ai-pane-empty-v3432">이번 시즌에는 표시할 AI 구단 정보가 없습니다.<br>시뮬 모드에서 시즌이 진행되면 상대 구단의 감독·재정·계약 운영이 여기에 표시됩니다.</div>';
+    }
+    if(typeof frontSubTab!=='undefined'&&typeof setFrontSubTab==='function')setFrontSubTab(frontSubTab);
+  }
+
+  const oldFront=window.renderFront;
+  if(typeof oldFront==='function'){
+    window.renderFront=function(){
+      const out=oldFront.apply(this,arguments);
+      try{buildAiTab();}catch(e){console.error(V+' AI 탭:',e);}
+      return out;
+    };
+  }
+  document.addEventListener('click',e=>{
+    if(e.target?.closest?.('nav button[data-nav="front"]'))setTimeout(()=>{try{buildAiTab();}catch(_){}},0);
+  },false);
+
+  /* ---------- 버전 ---------- */
+  function ver(){
+    document.title='우리팀을 만들자 '+V;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{if(el.textContent!==V)el.textContent=V;});
+    window.GAME_VERSION=V;
+  }
+  [0,50,300,1100,1600,2500].forEach(ms=>setTimeout(ver,ms));
+  window.addEventListener('load',()=>setTimeout(ver,1200));
+  ver();
+
+  try{if(g('scr-lineup')?.classList.contains('on'))window.renderLineup();}catch(e){console.error(V+' 초기 렌더:',e);}
 })();
 </script>
 
