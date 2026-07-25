@@ -775,12 +775,6 @@ nav button.lock{opacity:.32}
 #scr-lineup .lrow .ord{width:26px!important;font-family:'IBM Plex Mono',monospace!important;font-size:18px!important;font-weight:700!important;color:var(--amber)!important;text-align:center!important}
 #pitchWrap .pitch-section-v313{margin-top:10px}
 </style>
-<style id="v0351-rescue-style">#rescueSlots{display:grid;gap:9px;margin:12px 0}.slot-card.empty{width:100%;min-height:54px;border:1px solid var(--line);border-radius:13px;background:var(--panel);color:var(--text);padding:10px 13px;text-align:left;display:flex;justify-content:space-between;align-items:center}.slot-card.empty span{font-size:12px;color:var(--dim)}</style>
-<script>
-window.addEventListener('error',e=>{console.error(e.error||e.message);document.body.innerHTML='<pre style="white-space:pre-wrap;padding:16px">JS ERROR\n'+(e.error&&e.error.stack||e.message)+'</pre>';});
-window.addEventListener('unhandledrejection',e=>{document.body.innerHTML='<pre style="white-space:pre-wrap;padding:16px">PROMISE ERROR\n'+e.reason+'</pre>';});
-</script>
-
 </head>
 <body>
 
@@ -797,20 +791,14 @@ window.addEventListener('unhandledrejection',e=>{document.body.innerHTML='<pre s
 
 <main>
 <!-- 팀 선택 -->
-<section class="screen on" id="scr-select">
+<section class="screen" id="scr-select">
   <h2 class="sec" style="margin-top:6px" id="selectTitle">우리팀을 만들자!</h2>
   <button id="pickBackBtn" class="btn ghost" style="display:none;margin-bottom:10px" onclick="backToSlots()">← 슬롯 목록으로</button>
   <div class="hint" id="selectHint">진행 중인 슬롯을 누르면 이어서 하고, 빈 슬롯을 누르면 새 구단을 선택합니다.</div>
-  <div id="slotStatus"><div class="slot-list" id="rescueSlots">
-<button class="slot-card empty" onclick="selectSlot(0)"><b>슬롯 1</b><span>새 구단 시작</span></button>
-<button class="slot-card empty" onclick="selectSlot(1)"><b>슬롯 2</b><span>새 구단 시작</span></button>
-<button class="slot-card empty" onclick="selectSlot(2)"><b>슬롯 3</b><span>새 구단 시작</span></button>
-<button class="slot-card empty" onclick="selectSlot(3)"><b>슬롯 4</b><span>새 구단 시작</span></button>
-<button class="slot-card empty" onclick="selectSlot(4)"><b>슬롯 5</b><span>새 구단 시작</span></button>
-</div></div>
-  <button class="btn custom-team-launch" onclick="openCustomTeamCreator()">✨ 직접 신생 구단 만들기</button>
-  <div class="custom-team-draft" id="customTeamDraftCard" style="display:none"></div>
+  <div id="slotStatus"></div>
   <div id="teamPicker" style="display:none">
+    <button class="btn custom-team-launch" onclick="openCustomTeamCreator()">✨ 직접 신생 구단 만들기</button>
+    <div class="custom-team-draft" id="customTeamDraftCard" style="display:none"></div>
     <div class="notice" style="margin-top:16px">
       <b>새 구단 선택</b> (2026 로스터 기준) · 보정: 원래팀 <b>+2</b> · 올해 <b>+1</b> · 신규 추가 보정 없음 · FA·타팀 레전드 제외.
     </div>
@@ -960,53 +948,6 @@ window.addEventListener('unhandledrejection',e=>{document.body.innerHTML='<pre s
   </div>
 </div>
 
-<style id="custom-team-creator-style">
-.custom-team-launch{margin:10px 0 12px;background:linear-gradient(135deg,var(--amber),#f59e0b);color:#17130a;font-weight:900;min-height:52px}
-.custom-team-draft{margin:0 0 12px;padding:12px;border:1px solid color-mix(in srgb,var(--amber) 50%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--panel) 86%,var(--amber) 14%)}
-.ct-step{display:flex;gap:6px;margin:10px 0 14px}.ct-step span{flex:1;height:5px;border-radius:99px;background:var(--line)}.ct-step span.on{background:var(--amber)}
-.ct-label{display:block;font-size:12px;color:var(--dim);font-weight:800;margin:12px 0 6px}.ct-input,.ct-select{width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);padding:0 12px;font-size:16px;box-sizing:border-box}
-.ct-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.ct-choice{min-height:54px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font-weight:800;padding:7px}.ct-choice.on{border-color:var(--amber);box-shadow:0 0 0 2px color-mix(in srgb,var(--amber) 25%,transparent);background:color-mix(in srgb,var(--card) 84%,var(--amber) 16%)}
-.ct-logo{font-size:25px;line-height:1}.ct-colors{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}.ct-color{aspect-ratio:1;border-radius:50%;border:3px solid transparent;min-width:42px}.ct-color.on{border-color:#fff;box-shadow:0 0 0 2px var(--amber)}
-.ct-preview{border-radius:18px;padding:18px;min-height:150px;display:flex;align-items:center;gap:15px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}.ct-preview-logo{width:76px;height:76px;border-radius:22px;display:grid;place-items:center;font-size:42px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25)}.ct-preview-name{font-size:22px;font-weight:950;letter-spacing:-.5px}.ct-preview-sub{font-size:12px;opacity:.78;margin-top:5px}.ct-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.ct-actions .btn{margin:0;min-height:48px}
-@media(max-width:360px){.ct-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ct-colors{grid-template-columns:repeat(5,1fr)}.ct-preview{padding:14px}.ct-preview-logo{width:64px;height:64px;font-size:36px}.ct-preview-name{font-size:19px}}
-</style>
-<script id="custom-team-creator-script">
-const CUSTOM_DRAFT_KEY='ourteam_custom_drafts_v1';
-const CUSTOM_REGIONS=['서울','부산','대구','인천','광주','대전','수원','창원','울산','제주','전주','청주'];
-const CUSTOM_LOGOS=[['🐺','울브스'],['🐻','베어스'],['🦅','이글스'],['🐉','드래곤즈'],['🦈','샤크스'],['🦁','라이온즈'],['🐆','팬서스'],['🦊','폭스'],['⚡','볼츠'],['🔥','블레이즈'],['⭐','스타즈'],['🛡️','가디언즈']];
-const CUSTOM_COLORS=['#C30452','#EA0029','#074CA1','#315288','#570514','#FC4E00','#0F766E','#6D28D9','#111827','#F59E0B','#0891B2','#BE123C'];
-let customCreator={step:0,region:'서울',nickname:'',logo:'🐺',logoName:'울브스',primary:'#C30452',secondary:'#111827'};
-function readCustomDrafts(){try{return JSON.parse(localStorage.getItem(CUSTOM_DRAFT_KEY)||'{}')}catch(e){return {}}}
-function writeCustomDrafts(v){try{localStorage.setItem(CUSTOM_DRAFT_KEY,JSON.stringify(v))}catch(e){console.error(e)}}
-function currentCustomDraft(){var a=(typeof store!=='undefined'&&store)?store.active:0;return readCustomDrafts()[String(a||0)]||null}
-function saveCustomDraft(d){const all=readCustomDrafts();var a=(typeof store!=='undefined'&&store)?store.active:0;all[String(a||0)]=d;writeCustomDrafts(all);renderCustomDraftCard()}
-function escCt(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function openCustomTeamCreator(){
- const old=currentCustomDraft(); customCreator=old?{...old,step:0}:{step:0,region:'서울',nickname:'',logo:'🐺',logoName:'울브스',primary:'#C30452',secondary:'#111827'};
- renderCustomCreator();document.getElementById('mask').classList.add('on');
-}
-function customFullName(){const n=(customCreator.nickname||customCreator.logoName).trim();return `${customCreator.region} ${n}`}
-function renderCustomCreator(){
- const s=customCreator.step; const sheet=document.getElementById('sheet');
- let body='';
- if(s===0){body=`<label class="ct-label">연고지</label><select class="ct-select" id="ctRegion" onchange="customCreator.region=this.value">${CUSTOM_REGIONS.map(x=>`<option ${x===customCreator.region?'selected':''}>${x}</option>`).join('')}</select><label class="ct-label">팀 닉네임</label><input class="ct-input" id="ctNickname" maxlength="14" placeholder="예: 웨일즈, 볼츠, 팬서스" value="${escCt(customCreator.nickname)}" oninput="customCreator.nickname=this.value"><div class="hint" style="margin-top:8px">지역과 닉네임을 합쳐 정식 팀명이 됩니다. 닉네임을 비우면 선택한 로고 이름을 사용합니다.</div>`}
- if(s===1){body=`<label class="ct-label">로고 선택</label><div class="ct-grid">${CUSTOM_LOGOS.map(([i,n])=>`<button class="ct-choice ${customCreator.logo===i?'on':''}" onclick="customCreator.logo='${i}';customCreator.logoName='${n}';renderCustomCreator()"><div class="ct-logo">${i}</div><small>${n}</small></button>`).join('')}</div>`}
- if(s===2){body=`<label class="ct-label">메인 컬러</label><div class="ct-colors">${CUSTOM_COLORS.map(c=>`<button aria-label="${c}" class="ct-color ${customCreator.primary===c?'on':''}" style="background:${c}" onclick="customCreator.primary='${c}';renderCustomCreator()"></button>`).join('')}</div><label class="ct-label">보조 컬러</label><div class="ct-colors">${CUSTOM_COLORS.map(c=>`<button aria-label="${c}" class="ct-color ${customCreator.secondary===c?'on':''}" style="background:${c}" onclick="customCreator.secondary='${c}';renderCustomCreator()"></button>`).join('')}</div>`}
- if(s===3){body=`<div class="ct-preview" style="background:linear-gradient(135deg,${customCreator.primary},${customCreator.secondary});color:#fff"><div class="ct-preview-logo">${customCreator.logo}</div><div><div class="ct-preview-name">${escCt(customFullName())}</div><div class="ct-preview-sub">KBO 신생 구단 · 창단 준비</div><div style="margin-top:10px;font-size:12px"><b>연고지</b> ${escCt(customCreator.region)} · <b>구단 색상</b> 메인/보조 적용</div></div></div><div class="notice" style="margin-top:12px"><b>이번 단계에서 저장되는 항목</b><br>팀명, 연고지, 로고, 메인·보조 색상. 다음 단계에서 선수단 생성과 KBO 11팀 일정에 연결합니다.</div>`}
- sheet.innerHTML=`<div class="top"><div class="pname">신생 구단 만들기</div><button class="close" onclick="closeSheet()">✕</button></div><div class="ct-step">${[0,1,2,3].map(i=>`<span class="${i<=s?'on':''}"></span>`).join('')}</div>${body}<div class="ct-actions">${s?`<button class="btn ghost" onclick="customCreator.step--;renderCustomCreator()">← 이전</button>`:'<button class="btn ghost" onclick="closeSheet()">취소</button>'}<button class="btn" onclick="customCreatorNext()">${s===3?'창단안 저장':'다음 →'}</button></div>`;
-}
-function customCreatorNext(){
- if(customCreator.step===0){customCreator.nickname=(document.getElementById('ctNickname')?.value||'').trim();customCreator.region=document.getElementById('ctRegion')?.value||customCreator.region;if(customCreator.nickname.length>14)return showAlert('팀 닉네임은 14자 이하로 입력하세요.');}
- if(customCreator.step<3){customCreator.step++;renderCustomCreator();return}
- const draft={region:customCreator.region,nickname:(customCreator.nickname||customCreator.logoName).trim(),logo:customCreator.logo,logoName:customCreator.logoName,primary:customCreator.primary,secondary:customCreator.secondary,fullName:customFullName(),createdAt:localDateStamp()};
- saveCustomDraft(draft);closeSheet();showAlert(`${draft.fullName} 창단안이 저장되었습니다. 다음 작업에서 선수단과 11팀 리그에 연결합니다.`)
-}
-function renderCustomDraftCard(){
- const box=document.getElementById('customTeamDraftCard');if(!box)return;const d=currentCustomDraft();
- if(!d){box.style.display='none';box.innerHTML='';return}
- box.style.display='block';box.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><div style="width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:28px;background:linear-gradient(135deg,${d.primary},${d.secondary})">${d.logo}</div><div style="min-width:0;flex:1"><b>${escCt(d.fullName)}</b><div class="hand">신생 구단 창단안 저장됨 · ${escCt(d.createdAt||'')}</div></div><button class="btn ghost" style="width:auto;margin:0;padding:0 12px" onclick="openCustomTeamCreator()">수정</button></div>`;
-}
-</script>
 <script>
 'use strict';
 /* iOS 문서 미리보기·PWA에서도 문서 루트가 전체 레이아웃 화면을 채우도록 유지 */
@@ -1512,7 +1453,7 @@ function save(){
 }
 function switchSlot(i){
   const target=finiteIntV286(i,0,0,4);
-  /* deferred startup: save(); */store.active=target;
+  save();store.active=target;
   state=normalizeSlotV286(store.slots[target]);store.slots[target]=state;
   save();refreshHeader();renderSlots();
   if(state.myTeam){renderTeamHome();show('team');}else show('select');
@@ -5010,7 +4951,7 @@ function ensureSquadState(){
     }));
   });
 }
-function squadLevelOf(teamId,kind,p){ /* deferred startup: ensureSquadState(); */ return state.squadLevel?.[teamId]?.[squadKey(kind,p)]||'first'; }
+function squadLevelOf(teamId,kind,p){ ensureSquadState(); return state.squadLevel?.[teamId]?.[squadKey(kind,p)]||'first'; }
 function isFirstTeam(teamId,kind,p){ return squadLevelOf(teamId,kind,p)==='first'; }
 function firstTeamCount(teamId){
   const t=getTeam(teamId); let n=0;
@@ -5128,7 +5069,7 @@ function makeOwnerGoal(){
   ];
   return goals[(y-1)%goals.length];
 }
-function playerMorale(kind,p){/* deferred startup: ensureLongTermState(); */return state.morale[longKey(kind,p)]??70;}
+function playerMorale(kind,p){ensureLongTermState();return state.morale[longKey(kind,p)]??70;}
 function teamMood(){
   ensureLongTermState(); const vals=Object.values(state.morale); if(!vals.length)return 70;
   return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
@@ -5641,20 +5582,12 @@ applySecondTeamDevelopment=function(){
   const mainEl=document.querySelector('main'), btn=document.getElementById('scrollTopBtn');
   if(mainEl&&btn) mainEl.addEventListener('scroll',()=>{ btn.style.display = mainEl.scrollTop>400?'block':'none'; });
 })();
-/* v0.35.1: 첫 화면 렌더링을 막지 않도록 초기화를 다음 프레임으로 이동 */
-setTimeout(function(){
-  try{
-    applyTheme();
-    renderTeamGrid();
-    refreshHeader();
-    renderSlots();
-    if(state.myTeam){ renderTeamHome(); show('team'); }
-    else show('select');
-  }catch(e){
-    console.error('startup failed',e);
-    try{ show('select'); }catch(_){}
-  }
-},50);
+applyTheme();
+renderTeamGrid();
+refreshHeader();
+renderSlots();
+if(state.myTeam){ renderTeamHome(); show('team'); }
+else show('select');
 
 
 // v0.25.1 — 새 시즌 조건을 구단 관리 탭 위에 고정
@@ -6698,7 +6631,7 @@ renderSeasonDone=function(){
 
 function worldHistoryPanelV269(){
   if(state.mode!=='sim') return '';
-  /* deferred startup: ensureMissedWorldTournamentsV269(); */
+  ensureMissedWorldTournamentsV269();
   const arr=(state.worldHistory||[]).slice().sort((a,b)=>b.year-a.year);
   if(!arr.length) return '<div class="hint" style="margin-top:14px">🌐 세계대회 기록 없음 · 4년차 시즌 종료 후 첫 대회가 열립니다.</div>';
   return `<div class="notice" style="margin-top:14px;border-color:var(--amber)"><b>🌐 세계대회 기록</b><br>${arr.map(w=>`${w.year}년차 · 대한민국 <b>${w.medal||''} ${w.finish}</b> · 우승 ${w.champion}`).join('<br>')}</div>`;
@@ -7074,8 +7007,8 @@ openHistoryRoom=function(){
     else sheet.insertAdjacentHTML('afterbegin',dynastyHistoryHtmlV273());
   }
 };
-/* deferred startup: ensureDynastyStateV273(); */
-/* deferred startup: updateDynastyStateV273(false); */
+ensureDynastyStateV273();
+updateDynastyStateV273(false);
 
 
 // ═══════════ v0.27.4 순위 버튼 강제 진입·기록실 연결 안정화 ═══════════
@@ -7685,7 +7618,7 @@ function addVerifiedRookiesV283(){
     (rows.pit||[]).forEach(x=>LIVE_CORE_PLAYERS[teamId].pit.add(x[0]));
   });
 }
-/* deferred startup: addVerifiedRookiesV283(); */
+addVerifiedRookiesV283();
 
 function isRookie2026V283(p,isBat){return flagOf(p,isBat)==='rookie26';}
 function rookieMetaV283(p){return p?ROOKIE_2026_META_V283[p[1]]||ROOKIE_2026_META_V283[p[0]]||null:null;}
@@ -12015,7 +11948,7 @@ body.theme-night main::after{
           else{outs++;ev.push({inn,half,text:`⚠️ ${batter[0]} 번트 실패, 뜬공 아웃 (${outs}아웃)`,cls:''});}
           statPitAdd(st[defSide].team.id,pit[0],'out');atk.idx++;continue;
         }
-        const nextSlot=(atk.idx+1)%9,nextBat=atk.team.bat[atk.order[nextSlot]],batGap=nextBat?candidateBatScore(batter,atk.team.id,pit,slot)-candidateBatScore(nextBat,atk.team.id,pit,atk.lu.pos[nextSlot]):0,defLead=sc[defSide]-sc[atkSide];
+        const currentSlot=atk.lu.pos[atk.idx%9],nextSlot=(atk.idx+1)%9,nextBat=atk.team.bat[atk.order[nextSlot]],batGap=nextBat?candidateBatScore(batter,atk.team.id,pit,currentSlot)-candidateBatScore(nextBat,atk.team.id,pit,atk.lu.pos[nextSlot]):0,defLead=sc[defSide]-sc[atkSide];
         const ibbSituation=inn>=7&&outs>=1&&!bases[0]&&!!bases[1]&&(bases[2]||defLead>=0)&&Math.abs(defLead)<=2&&batGap>=7;
         if(ibbSituation&&Math.random()<(bigGame?.62:.40)){
           if(bases[1]&&bases[2])bases[0]=batter;else bases[0]=batter;
@@ -14315,24 +14248,141 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </script>
 
 
+<style id="custom-team-creator-style">
+.custom-team-launch{margin:10px 0 12px;background:linear-gradient(135deg,var(--amber),#f59e0b);color:#17130a;font-weight:900;min-height:52px}
+.custom-team-draft{margin:0 0 12px;padding:12px;border:1px solid color-mix(in srgb,var(--amber) 50%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--panel) 86%,var(--amber) 14%)}
+.ct-step{display:flex;gap:6px;margin:10px 0 14px}.ct-step span{flex:1;height:5px;border-radius:99px;background:var(--line)}.ct-step span.on{background:var(--amber)}
+.ct-label{display:block;font-size:12px;color:var(--dim);font-weight:800;margin:12px 0 6px}.ct-input,.ct-select{width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);padding:0 12px;font-size:16px;box-sizing:border-box}
+.ct-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.ct-choice{min-height:54px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font-weight:800;padding:7px}.ct-choice.on{border-color:var(--amber);box-shadow:0 0 0 2px color-mix(in srgb,var(--amber) 25%,transparent);background:color-mix(in srgb,var(--card) 84%,var(--amber) 16%)}
+.ct-logo{font-size:25px;line-height:1}.ct-colors{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}.ct-color{aspect-ratio:1;border-radius:50%;border:3px solid transparent;min-width:42px}.ct-color.on{border-color:#fff;box-shadow:0 0 0 2px var(--amber)}
+.ct-preview{border-radius:18px;padding:18px;min-height:150px;display:flex;align-items:center;gap:15px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}.ct-preview-logo{width:76px;height:76px;border-radius:22px;display:grid;place-items:center;font-size:42px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25)}.ct-preview-name{font-size:22px;font-weight:950;letter-spacing:-.5px}.ct-preview-sub{font-size:12px;opacity:.78;margin-top:5px}.ct-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.ct-actions .btn{margin:0;min-height:48px}
+@media(max-width:360px){.ct-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ct-colors{grid-template-columns:repeat(5,1fr)}.ct-preview{padding:14px}.ct-preview-logo{width:64px;height:64px;font-size:36px}.ct-preview-name{font-size:19px}}
+</style>
+<script id="custom-team-creator-script">
+const CUSTOM_DRAFT_KEY='ourteam_custom_drafts_v1';
+const CUSTOM_REGIONS=['서울','부산','대구','인천','광주','대전','수원','창원','울산','제주','전주','청주'];
+const CUSTOM_LOGOS=[['🐺','울브스'],['🐻','베어스'],['🦅','이글스'],['🐉','드래곤즈'],['🦈','샤크스'],['🦁','라이온즈'],['🐆','팬서스'],['🦊','폭스'],['⚡','볼츠'],['🔥','블레이즈'],['⭐','스타즈'],['🛡️','가디언즈']];
+const CUSTOM_COLORS=['#C30452','#EA0029','#074CA1','#315288','#570514','#FC4E00','#0F766E','#6D28D9','#111827','#F59E0B','#0891B2','#BE123C'];
+let customCreator={step:0,region:'서울',nickname:'',logo:'🐺',logoName:'울브스',primary:'#C30452',secondary:'#111827'};
+function readCustomDrafts(){try{return JSON.parse(localStorage.getItem(CUSTOM_DRAFT_KEY)||'{}')}catch(e){return {}}}
+function writeCustomDrafts(v){localStorage.setItem(CUSTOM_DRAFT_KEY,JSON.stringify(v))}
+function currentCustomDraft(){return readCustomDrafts()[String(store?.active||0)]||null}
+function saveCustomDraft(d){const all=readCustomDrafts();all[String(store?.active||0)]=d;writeCustomDrafts(all);renderCustomDraftCard()}
+function escCt(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function openCustomTeamCreator(){
+ const old=currentCustomDraft(); customCreator=old?{...old,step:0}:{step:0,region:'서울',nickname:'',logo:'🐺',logoName:'울브스',primary:'#C30452',secondary:'#111827'};
+ renderCustomCreator();document.getElementById('mask').classList.add('on');
+}
+function customFullName(){const n=(customCreator.nickname||customCreator.logoName).trim();return `${customCreator.region} ${n}`}
+function renderCustomCreator(){
+ const s=customCreator.step; const sheet=document.getElementById('sheet');
+ let body='';
+ if(s===0){body=`<label class="ct-label">연고지</label><select class="ct-select" id="ctRegion" onchange="customCreator.region=this.value">${CUSTOM_REGIONS.map(x=>`<option ${x===customCreator.region?'selected':''}>${x}</option>`).join('')}</select><label class="ct-label">팀 닉네임</label><input class="ct-input" id="ctNickname" maxlength="14" placeholder="예: 웨일즈, 볼츠, 팬서스" value="${escCt(customCreator.nickname)}" oninput="customCreator.nickname=this.value"><div class="hint" style="margin-top:8px">지역과 닉네임을 합쳐 정식 팀명이 됩니다. 닉네임을 비우면 선택한 로고 이름을 사용합니다.</div>`}
+ if(s===1){body=`<label class="ct-label">로고 선택</label><div class="ct-grid">${CUSTOM_LOGOS.map(([i,n])=>`<button class="ct-choice ${customCreator.logo===i?'on':''}" onclick="customCreator.logo='${i}';customCreator.logoName='${n}';renderCustomCreator()"><div class="ct-logo">${i}</div><small>${n}</small></button>`).join('')}</div>`}
+ if(s===2){body=`<label class="ct-label">메인 컬러</label><div class="ct-colors">${CUSTOM_COLORS.map(c=>`<button aria-label="${c}" class="ct-color ${customCreator.primary===c?'on':''}" style="background:${c}" onclick="customCreator.primary='${c}';renderCustomCreator()"></button>`).join('')}</div><label class="ct-label">보조 컬러</label><div class="ct-colors">${CUSTOM_COLORS.map(c=>`<button aria-label="${c}" class="ct-color ${customCreator.secondary===c?'on':''}" style="background:${c}" onclick="customCreator.secondary='${c}';renderCustomCreator()"></button>`).join('')}</div>`}
+ if(s===3){body=`<div class="ct-preview" style="background:linear-gradient(135deg,${customCreator.primary},${customCreator.secondary});color:#fff"><div class="ct-preview-logo">${customCreator.logo}</div><div><div class="ct-preview-name">${escCt(customFullName())}</div><div class="ct-preview-sub">KBO 신생 구단 · 창단 준비</div><div style="margin-top:10px;font-size:12px"><b>연고지</b> ${escCt(customCreator.region)} · <b>구단 색상</b> 메인/보조 적용</div></div></div><div class="notice" style="margin-top:12px"><b>이번 단계에서 저장되는 항목</b><br>팀명, 연고지, 로고, 메인·보조 색상. 다음 단계에서 선수단 생성과 KBO 11팀 일정에 연결합니다.</div>`}
+ sheet.innerHTML=`<div class="top"><div class="pname">신생 구단 만들기</div><button class="close" onclick="closeSheet()">✕</button></div><div class="ct-step">${[0,1,2,3].map(i=>`<span class="${i<=s?'on':''}"></span>`).join('')}</div>${body}<div class="ct-actions">${s?`<button class="btn ghost" onclick="customCreator.step--;renderCustomCreator()">← 이전</button>`:'<button class="btn ghost" onclick="closeSheet()">취소</button>'}<button class="btn" onclick="customCreatorNext()">${s===3?'창단안 저장':'다음 →'}</button></div>`;
+}
+function customCreatorNext(){
+ if(customCreator.step===0){customCreator.nickname=(document.getElementById('ctNickname')?.value||'').trim();customCreator.region=document.getElementById('ctRegion')?.value||customCreator.region;if(customCreator.nickname.length>14)return showAlert('팀 닉네임은 14자 이하로 입력하세요.');}
+ if(customCreator.step<3){customCreator.step++;renderCustomCreator();return}
+ const draft={region:customCreator.region,nickname:(customCreator.nickname||customCreator.logoName).trim(),logo:customCreator.logo,logoName:customCreator.logoName,primary:customCreator.primary,secondary:customCreator.secondary,fullName:customFullName(),createdAt:localDateStamp()};
+ saveCustomDraft(draft);closeSheet();showAlert(`${draft.fullName} 창단안이 저장되었습니다. 다음 작업에서 선수단과 11팀 리그에 연결합니다.`)
+}
+function renderCustomDraftCard(){
+ const box=document.getElementById('customTeamDraftCard');if(!box)return;const d=currentCustomDraft();
+ if(!d){box.style.display='none';box.innerHTML='';return}
+ box.style.display='block';box.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><div style="width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:28px;background:linear-gradient(135deg,${d.primary},${d.secondary})">${d.logo}</div><div style="min-width:0;flex:1"><b>${escCt(d.fullName)}</b><div class="hand">신생 구단 창단안 저장됨 · ${escCt(d.createdAt||'')}</div></div><button class="btn ghost" style="width:auto;margin:0;padding:0 12px" onclick="openCustomTeamCreator()">수정</button></div>`;
+}
+const _renderSlotStatusCustom=renderSlotStatus;renderSlotStatus=function(boxId){_renderSlotStatusCustom(boxId);setTimeout(renderCustomDraftCard,0)};
+window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,0));
+</script>
 
 
-
-
-<script id="v0351-controlled-boot">
+<script id="v0351-startup-repair">
+/* v0.35.1 startup recovery: 최신 화면 진입 및 창단 제작기 안전화 */
 (function(){
- function run(){
-  try{ if(typeof ensureSquadState==='function')ensureSquadState(); }catch(e){console.error(e)}
-  try{ if(typeof ensureLongTermState==='function')ensureLongTermState(); }catch(e){console.error(e)}
-  try{ if(typeof ensureMissedWorldTournamentsV269==='function')ensureMissedWorldTournamentsV269(); }catch(e){console.error(e)}
-  try{ if(typeof ensureDynastyStateV273==='function')ensureDynastyStateV273(); }catch(e){console.error(e)}
-  try{ if(typeof updateDynastyStateV273==='function')updateDynastyStateV273(false); }catch(e){console.error(e)}
-  try{ if(typeof addVerifiedRookiesV283==='function')addVerifiedRookiesV283(); }catch(e){console.error(e)}
-  try{ applyTheme();renderTeamGrid();refreshHeader();renderSlots();if(state&&state.myTeam){renderTeamHome();show('team')}else show('select'); }catch(e){console.error('controlled boot',e);try{show('select')}catch(_){}}
-  try{renderCustomDraftCard()}catch(e){}
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(run,30)},{once:true});else setTimeout(run,30);
+  'use strict';
+  const VERSION='v0.35.1';
+  function logError(where,error){
+    try{console.error(VERSION,where,error);}catch(_){}
+  }
+  function validStoreShape(v){
+    return !!v&&typeof v==='object'&&Array.isArray(v.slots);
+  }
+  function backupBrokenSave(raw){
+    try{
+      if(raw)localStorage.setItem('ourteam_slots_broken_backup_'+Date.now(),raw);
+    }catch(_){}
+  }
+  function recoverStoreIfNeeded(){
+    try{
+      const raw=localStorage.getItem(typeof SAVE_KEY==='string'?SAVE_KEY:'ourteam_slots_v1');
+      if(!raw)return false;
+      let parsed;
+      try{parsed=JSON.parse(raw);}catch(e){backupBrokenSave(raw);localStorage.removeItem(typeof SAVE_KEY==='string'?SAVE_KEY:'ourteam_slots_v1');return true;}
+      if(!validStoreShape(parsed)){backupBrokenSave(raw);localStorage.removeItem(typeof SAVE_KEY==='string'?SAVE_KEY:'ourteam_slots_v1');return true;}
+    }catch(e){logError('save recovery',e);}
+    return false;
+  }
+  function safeShow(name){
+    try{if(typeof window.show==='function')window.show(name);}catch(e){logError('show '+name,e);}
+  }
+  function ensureCreatorButton(){
+    try{
+      const status=document.getElementById('slotStatus');
+      if(!status)return;
+      let btn=document.querySelector('.custom-team-launch');
+      if(!btn){
+        btn=document.createElement('button');
+        btn.className='btn custom-team-launch';
+        btn.type='button';
+        btn.textContent='✨ 직접 신생 구단 만들기';
+        btn.addEventListener('click',function(){
+          if(typeof window.openCustomTeamCreator==='function')window.openCustomTeamCreator();
+          else if(typeof window.showAlert==='function')window.showAlert('신생 구단 제작기를 불러오지 못했습니다. 파일을 다시 열어 주세요.');
+        });
+        status.insertAdjacentElement('afterend',btn);
+      }
+      btn.style.display='';
+    }catch(e){logError('creator button',e);}
+  }
+  function boot(){
+    try{
+      const recovered=recoverStoreIfNeeded();
+      if(recovered&&typeof window.loadStore==='function'){
+        window.store=window.loadStore();
+        window.state=window.store.slots[window.store.active];
+      }
+      if(typeof window.refreshHeader==='function')window.refreshHeader();
+      if(typeof window.renderSlots==='function')window.renderSlots();
+      ensureCreatorButton();
+      if(window.state&&window.state.myTeam){
+        if(typeof window.renderTeamHome==='function')window.renderTeamHome();
+        safeShow('team');
+      }else{
+        safeShow('select');
+      }
+      document.documentElement.dataset.bootedV0351='1';
+    }catch(e){
+      logError('boot',e);
+      try{
+        safeShow('select');
+        ensureCreatorButton();
+        const hint=document.getElementById('selectHint');
+        if(hint)hint.innerHTML='저장 데이터를 안전하게 복구했습니다. 빈 슬롯을 선택하거나 신생 구단을 만들어 주세요.';
+      }catch(_){}
+    }
+  }
+  window.addEventListener('error',function(ev){logError('runtime',ev.error||ev.message);});
+  window.addEventListener('unhandledrejection',function(ev){logError('promise',ev.reason);});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(boot,0);},{once:true});
+  else setTimeout(boot,0);
+  setTimeout(function(){
+    if(document.documentElement.dataset.bootedV0351!=='1')boot();
+  },700);
 })();
 </script>
+
 </body>
 </html>
