@@ -781,7 +781,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.34.32</span>
+    <span class="ver">v0.34.33</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -14310,7 +14310,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.32';
+  const VERSION='v0.34.33';
   document.title='우리팀을 만들자 '+VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14331,7 +14331,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.32';
+  const VERSION='v0.34.33';
   function applyVersionV3414(){
     document.title='우리팀을 만들자 '+VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14354,7 +14354,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.32';
+  const VERSION='v0.34.33';
 
   function applyVersionV3415(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14449,7 +14449,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.32';
+  const VERSION='v0.34.33';
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
@@ -14533,7 +14533,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.32';
+  const VERSION='v0.34.33';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -14677,7 +14677,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.32';
+  const VERSION='v0.34.33';
   let batchBusy=false;
 
   function forceVersionV3418(){
@@ -14820,7 +14820,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.32';
+  const VERSION='v0.34.33';
 
   function forceVersionV3419(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14981,7 +14981,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 /* ═══════════ v0.34.30 · 하단 내비게이션 화면 동기화 ═══════════ */
 (()=>{
-  const VERSION='v0.34.32';
+  const VERSION='v0.34.33';
   const screenToNav={team:'team',lineup:'lineup',game:'game',front:'front',rank:'rank'};
   function syncBottomNav(name){
     const nv=screenToNav[name];
@@ -15022,7 +15022,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 경기 탭 진입 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const VERSION='v0.34.32';
+  const VERSION='v0.34.33';
   function syncGameNav(){
     document.querySelectorAll('nav button[data-nav]').forEach(btn=>btn.classList.toggle('on',btn.dataset.nav==='game'));
   }
@@ -15087,7 +15087,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 충돌 패치 제거 후 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.32';
+  const V='v0.34.33';
 
   function version(){
     document.title='우리팀을 만들자 '+V;
@@ -15126,7 +15126,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.32';
+  const V='v0.34.33';
   // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
   // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
   const base=window.ensureSquadState;
@@ -15150,7 +15150,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.32';
+  const V='v0.34.33';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -15198,7 +15198,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.32';
+  const V='v0.34.33';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -15403,6 +15403,58 @@ input,select,textarea{font-size:16px;max-width:100%;}
   ver();
 
   try{if(g('scr-lineup')?.classList.contains('on'))window.renderLineup();}catch(e){console.error(V+' 초기 렌더:',e);}
+})();
+</script>
+
+
+<script>
+/* ═══════════ v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱) ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.34.33';
+  // ensureSquadState()는 isFirstTeam 같은 사소한 조회마다 호출되는데,
+  // v0.25.0에서 그 안에 aiTopUpRosters(리그 10팀 로스터 전체 재계산)가 붙으면서
+  // 5경기 자동 진행 한 번에 5,400회 넘게 전 리그를 재계산하고 있었다.
+  // 로스터가 실제로 달라졌을 때만 재계산하도록 상태 서명으로 캐싱한다.
+  const base=window.aiTopUpRosters;
+  if(typeof base!=='function')return;
+  let lastSig=null;
+
+  function signature(){
+    if(typeof state==='undefined'||!state)return 'none';
+    const P=state.players;
+    if(!P||typeof P!=='object')return 'none';
+    let n=0,teams=0;
+    for(const k in P){
+      const t=P[k];if(!t)continue;
+      teams++;
+      n+=(t.bat?.length||0)+(t.pit?.length||0);
+    }
+    return [state.myTeam||'',state.mode||'',state.year||0,
+            state.season?.day||0,state.season?.phase||'',
+            state.season?.market?.processedV3433?1:0,
+            teams,n].join('|');
+  }
+
+  window.aiTopUpRosters=function(force){
+    const sig=signature();
+    if(force!==true&&sig===lastSig)return;
+    lastSig=sig;
+    return base.apply(this,arguments);
+  };
+  // 로스터가 바뀌는 지점에서는 다음 호출에 반드시 다시 계산하도록 캐시를 비운다.
+  window.invalidateAiRosterCacheV3433=function(){lastSig=null;};
+  ['signFA','draftPick','doTrade','executeTrade','releasePlayer','signLegend','startWithMode',
+   'newSeason','buildOffseasonMarket','doOffseasonEnd','switchSlot','switchSlotEmpty','load']
+   .forEach(function(n){
+     const f=window[n];
+     if(typeof f!=='function')return;
+     window[n]=function(){lastSig=null;try{return f.apply(this,arguments);}finally{lastSig=null;}};
+   });
+
+  document.title='우리팀을 만들자 '+V;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
+  window.GAME_VERSION=V;
 })();
 </script>
 
