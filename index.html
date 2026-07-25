@@ -781,7 +781,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.34.33</span>
+    <span class="ver">v0.34.34</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -14310,7 +14310,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.33';
+  const VERSION='v0.34.34';
   document.title='우리팀을 만들자 '+VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14331,7 +14331,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.33';
+  const VERSION='v0.34.34';
   function applyVersionV3414(){
     document.title='우리팀을 만들자 '+VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14354,7 +14354,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.33';
+  const VERSION='v0.34.34';
 
   function applyVersionV3415(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14449,7 +14449,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.33';
+  const VERSION='v0.34.34';
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
@@ -14533,7 +14533,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.33';
+  const VERSION='v0.34.34';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -14677,7 +14677,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.33';
+  const VERSION='v0.34.34';
   let batchBusy=false;
 
   function forceVersionV3418(){
@@ -14820,7 +14820,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.34.33';
+  const VERSION='v0.34.34';
 
   function forceVersionV3419(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14981,7 +14981,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 /* ═══════════ v0.34.30 · 하단 내비게이션 화면 동기화 ═══════════ */
 (()=>{
-  const VERSION='v0.34.33';
+  const VERSION='v0.34.34';
   const screenToNav={team:'team',lineup:'lineup',game:'game',front:'front',rank:'rank'};
   function syncBottomNav(name){
     const nv=screenToNav[name];
@@ -15022,7 +15022,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 경기 탭 진입 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const VERSION='v0.34.33';
+  const VERSION='v0.34.34';
   function syncGameNav(){
     document.querySelectorAll('nav button[data-nav]').forEach(btn=>btn.classList.toggle('on',btn.dataset.nav==='game'));
   }
@@ -15087,7 +15087,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 충돌 패치 제거 후 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.33';
+  const V='v0.34.34';
 
   function version(){
     document.title='우리팀을 만들자 '+V;
@@ -15126,7 +15126,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.33';
+  const V='v0.34.34';
   // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
   // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
   const base=window.ensureSquadState;
@@ -15150,7 +15150,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.33';
+  const V='v0.34.34';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -15198,7 +15198,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.33';
+  const V='v0.34.34';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -15411,7 +15411,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.34.33';
+  const V='v0.34.34';
   // ensureSquadState()는 isFirstTeam 같은 사소한 조회마다 호출되는데,
   // v0.25.0에서 그 안에 aiTopUpRosters(리그 10팀 로스터 전체 재계산)가 붙으면서
   // 5경기 자동 진행 한 번에 5,400회 넘게 전 리그를 재계산하고 있었다.
@@ -15451,6 +15451,164 @@ input,select,textarea{font-size:16px;max-width:100%;}
      if(typeof f!=='function')return;
      window[n]=function(){lastSig=null;try{return f.apply(this,arguments);}finally{lastSig=null;}};
    });
+
+  document.title='우리팀을 만들자 '+V;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
+  window.GAME_VERSION=V;
+})();
+</script>
+
+
+<style>
+/* v0.34.34 · FA 영입에 따른 지명 순번 페널티 표시 */
+.fa-pen-v3434{margin-top:6px;font-size:12px;line-height:1.7;color:var(--dim)}
+.fa-pen-v3434 b{color:var(--amber)}
+.fa-pen-v3434 .down{color:#E9A06F;font-weight:800}
+.fa-pen-v3434 .none{color:var(--dim)}
+</style>
+<script>
+/* ═══════════ v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로 ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.34.34';
+
+  function market(){return (typeof state!=='undefined'&&state)?state.season?.market:null;}
+  function started(m){return !!m?.draftStartedV3413;}
+
+  // 페널티는 누적 기록이 아니라 실제 계약 내역에서 매번 계산한다.
+  // (AI 시장이 어떤 경로로 처리되든 빠짐없이 반영되도록)
+  function computePen(m){
+    const pen={};
+    if(!m)return pen;
+    const my=Math.max(0,Number(m.myFaSignCountV3434)||0);
+    if(my>0&&state?.myTeam)pen[state.myTeam]=my;
+    const res=m.aiFaV3413?.results;
+    if(Array.isArray(res))res.forEach(x=>{if(x&&x.teamId)pen[x.teamId]=(pen[x.teamId]||0)+1;});
+    return pen;
+  }
+  function penMap(m){
+    if(!m)return {};
+    m.faPenaltyV3434=computePen(m);
+    return m.faPenaltyV3434;
+  }
+  function baseOrder(){
+    try{
+      if(typeof stableDraftOrder==='function')return stableDraftOrder();
+      if(typeof draftOrderForMarket==='function')return draftOrderForMarket();
+    }catch(_){}
+    return (typeof TEAMS!=='undefined'?TEAMS.map(t=>t.id).slice().reverse():[]);
+  }
+  // FA 1명당 한 칸씩 뒤로.
+  // 한 팀씩 밀어내면 순서에 따라 결과가 달라지므로,
+  // "기본 순번 + 페널티"를 정렬 키로 써서 결정적으로 계산한다.
+  // 뒤 팀도 같이 밀리면 실제 이동 칸수는 줄어들 수 있다(상대적 페널티).
+  function orderWithPenalty(m){
+    const base=baseOrder(),pen=penMap(m);
+    // 키가 같으면 페널티가 없는 팀을 앞에 둔다(페널티 받은 팀이 앞서는 역전 방지).
+    return base
+      .map((id,i)=>({id,i,p:Math.max(0,Number(pen[id])||0),k:i+Math.max(0,Number(pen[id])||0)}))
+      .sort((a,b)=>a.k-b.k||a.p-b.p||a.i-b.i)
+      .map(x=>x.id);
+  }
+  function rebuildSlots(m){
+    if(!m||started(m))return;
+    // 보상 지명은 폐지했으므로 정규 지명만 3라운드로 구성한다.
+    m.compensationClaimsV3413=[];
+    const order=orderWithPenalty(m),slots=[];
+    [1,2,3].forEach(r=>order.forEach(id=>slots.push({round:r,teamId:id,type:'regular'})));
+    slots.forEach((x,i)=>x.overall=i+1);
+    m.draftSlotsV3413=slots;
+    if(!Number.isFinite(+m.draftSlotCursorV3413))m.draftSlotCursorV3413=0;
+    m.draftOrderV3434=order;
+  }
+  window.faDraftPenaltyV3434=function(teamId){
+    const m=market();return m?(Number(penMap(m)[teamId])||0):0;
+  };
+
+  /* --- 내가 FA 영입 --- */
+  const oldSignFA=window.signFA;
+  if(typeof oldSignFA==='function'){
+    window.signFA=function(idx){
+      const m=market(),before=m?.fa?.length||0;
+      const r=oldSignFA.apply(this,arguments);
+      try{
+        const m2=market();
+        if(m2&&!started(m2)&&(m2.fa?.length||0)<before){
+          m2.myFaSignCountV3434=(Number(m2.myFaSignCountV3434)||0)+1;
+          rebuildSlots(m2);
+        }
+        if(typeof save==='function')save();
+        if(typeof renderFront==='function')renderFront();
+      }catch(e){console.error(V+' FA 지명 페널티:',e);}
+      return r;
+    };
+  }
+
+  /* --- AI가 FA 영입 --- */
+  const oldAiFa=window.runAiFaMarketV3413;
+  if(typeof oldAiFa==='function'){
+    window.runAiFaMarketV3413=function(){
+      const r=oldAiFa.apply(this,arguments);
+      try{
+        const m=market();
+        if(m&&!started(m)){rebuildSlots(m);if(typeof save==='function')save();if(typeof renderFront==='function')renderFront();}
+      }catch(e){console.error(V+' AI FA 지명 페널티:',e);}
+      return r;
+    };
+  }
+
+  /* --- 드래프트 상태 복구 시 페널티 반영 보장 --- */
+  const oldRepair=window.repairDraftState;
+  if(typeof oldRepair==='function'){
+    window.repairDraftState=function(m){
+      try{
+        if(m&&!started(m)){
+          const want=JSON.stringify(orderWithPenalty(m));
+          if(JSON.stringify(m.draftOrderV3434||[])!==want)rebuildSlots(m);
+        }
+      }catch(e){console.error(V+' 지명 순번 갱신:',e);}
+      return oldRepair.apply(this,arguments);
+    };
+  }
+
+  /* --- 순번 표시 --- */
+  window.draftOrderStatusHtml=function(m){
+    if(!m)return '';
+    const base=baseOrder(),order=started(m)?(m.draftOrderV3434||orderWithPenalty(m)):orderWithPenalty(m),pen=penMap(m);
+    const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
+    const line=order.map((id,i)=>{
+      const moved=base.indexOf(id)-i;
+      const tag=moved<0?` <span class="down">▼${-moved}</span>`:'';
+      return `${i+1}. ${nm(id)}${tag}`;
+    }).join(' → ');
+    const list=Object.keys(pen).filter(id=>pen[id]>0)
+      .sort((a,b)=>base.indexOf(a)-base.indexOf(b));
+    const penHtml=list.length
+      ? list.map(id=>{
+          const moved=base.indexOf(id)-order.indexOf(id);
+          const actual=moved<0?`실제 <span class="down">${-moved}칸</span> 하락`:'앞 순번도 함께 밀려 변동 없음';
+          return `<b>${nm(id)}</b> FA ${pen[id]}명 · 페널티 ${pen[id]}칸 · ${actual}`;
+        }).join('<br>')
+      : '<span class="none">아직 FA 영입에 따른 순번 변동이 없습니다.</span>';
+    return `<div class="draft-order-v3413">
+      <div class="do-round"><b>지명 순서${started(m)?' (확정)':''}</b><br>${line}</div>
+      <div class="do-round"><b>FA 영입 페널티</b><div class="fa-pen-v3434">${penHtml}</div></div>
+    </div>`;
+  };
+
+  /* --- 안내 문구 교체 --- */
+  const oldPanel=window.kboDraftPanelHtml;
+  if(typeof oldPanel==='function'){
+    window.kboDraftPanelHtml=function(){
+      let h=oldPanel.apply(this,arguments);
+      try{
+        h=h.replace('FA 영입을 먼저 진행하면 원 소속팀에 보상 지명이 생길 수 있습니다. 드래프트를 시작하면 순번이 확정됩니다.',
+          'FA를 영입한 구단은 영입 1명당 지명 순번이 한 칸씩 뒤로 밀립니다. 우리 구단과 AI 구단 모두 동일하게 적용되며, 드래프트를 시작하면 순번이 확정됩니다.');
+        h=h.replace(/보상 지명/g,'정규 지명');
+      }catch(e){console.error(V+' 안내 문구:',e);}
+      return h;
+    };
+  }
 
   document.title='우리팀을 만들자 '+V;
   document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
