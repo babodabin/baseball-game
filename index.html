@@ -11946,7 +11946,7 @@ body.theme-night main::after{
           else{outs++;ev.push({inn,half,text:`⚠️ ${batter[0]} 번트 실패, 뜬공 아웃 (${outs}아웃)`,cls:''});}
           statPitAdd(st[defSide].team.id,pit[0],'out');atk.idx++;continue;
         }
-        const nextSlot=(atk.idx+1)%9,nextBat=atk.team.bat[atk.order[nextSlot]],batGap=nextBat?candidateBatScore(batter,atk.team.id,pit,slot)-candidateBatScore(nextBat,atk.team.id,pit,atk.lu.pos[nextSlot]):0,defLead=sc[defSide]-sc[atkSide];
+        const currentSlot=atk.lu.pos[atk.idx%9],nextSlot=(atk.idx+1)%9,nextBat=atk.team.bat[atk.order[nextSlot]],batGap=nextBat?candidateBatScore(batter,atk.team.id,pit,currentSlot)-candidateBatScore(nextBat,atk.team.id,pit,atk.lu.pos[nextSlot]):0,defLead=sc[defSide]-sc[atkSide];
         const ibbSituation=inn>=7&&outs>=1&&!bases[0]&&!!bases[1]&&(bases[2]||defLead>=0)&&Math.abs(defLead)<=2&&batGap>=7;
         if(ibbSituation&&Math.random()<(bigGame?.62:.40)){
           if(bases[1]&&bases[2])bases[0]=batter;else bases[0]=batter;
