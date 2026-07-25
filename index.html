@@ -781,7 +781,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.35.0</span>
+    <span class="ver">v0.35.1</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -14296,6 +14296,92 @@ function renderCustomDraftCard(){
 }
 const _renderSlotStatusCustom=renderSlotStatus;renderSlotStatus=function(boxId){_renderSlotStatusCustom(boxId);setTimeout(renderCustomDraftCard,0)};
 window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,0));
+</script>
+
+
+<script id="v0351-startup-repair">
+/* v0.35.1 startup recovery: 최신 화면 진입 및 창단 제작기 안전화 */
+(function(){
+  'use strict';
+  const VERSION='v0.35.1';
+  function logError(where,error){
+    try{console.error(VERSION,where,error);}catch(_){}
+  }
+  function validStoreShape(v){
+    return !!v&&typeof v==='object'&&Array.isArray(v.slots);
+  }
+  function backupBrokenSave(raw){
+    try{
+      if(raw)localStorage.setItem('ourteam_slots_broken_backup_'+Date.now(),raw);
+    }catch(_){}
+  }
+  function recoverStoreIfNeeded(){
+    try{
+      const raw=localStorage.getItem(typeof SAVE_KEY==='string'?SAVE_KEY:'ourteam_slots_v1');
+      if(!raw)return false;
+      let parsed;
+      try{parsed=JSON.parse(raw);}catch(e){backupBrokenSave(raw);localStorage.removeItem(typeof SAVE_KEY==='string'?SAVE_KEY:'ourteam_slots_v1');return true;}
+      if(!validStoreShape(parsed)){backupBrokenSave(raw);localStorage.removeItem(typeof SAVE_KEY==='string'?SAVE_KEY:'ourteam_slots_v1');return true;}
+    }catch(e){logError('save recovery',e);}
+    return false;
+  }
+  function safeShow(name){
+    try{if(typeof window.show==='function')window.show(name);}catch(e){logError('show '+name,e);}
+  }
+  function ensureCreatorButton(){
+    try{
+      const status=document.getElementById('slotStatus');
+      if(!status)return;
+      let btn=document.querySelector('.custom-team-launch');
+      if(!btn){
+        btn=document.createElement('button');
+        btn.className='btn custom-team-launch';
+        btn.type='button';
+        btn.textContent='✨ 직접 신생 구단 만들기';
+        btn.addEventListener('click',function(){
+          if(typeof window.openCustomTeamCreator==='function')window.openCustomTeamCreator();
+          else if(typeof window.showAlert==='function')window.showAlert('신생 구단 제작기를 불러오지 못했습니다. 파일을 다시 열어 주세요.');
+        });
+        status.insertAdjacentElement('afterend',btn);
+      }
+      btn.style.display='';
+    }catch(e){logError('creator button',e);}
+  }
+  function boot(){
+    try{
+      const recovered=recoverStoreIfNeeded();
+      if(recovered&&typeof window.loadStore==='function'){
+        window.store=window.loadStore();
+        window.state=window.store.slots[window.store.active];
+      }
+      if(typeof window.refreshHeader==='function')window.refreshHeader();
+      if(typeof window.renderSlots==='function')window.renderSlots();
+      ensureCreatorButton();
+      if(window.state&&window.state.myTeam){
+        if(typeof window.renderTeamHome==='function')window.renderTeamHome();
+        safeShow('team');
+      }else{
+        safeShow('select');
+      }
+      document.documentElement.dataset.bootedV0351='1';
+    }catch(e){
+      logError('boot',e);
+      try{
+        safeShow('select');
+        ensureCreatorButton();
+        const hint=document.getElementById('selectHint');
+        if(hint)hint.innerHTML='저장 데이터를 안전하게 복구했습니다. 빈 슬롯을 선택하거나 신생 구단을 만들어 주세요.';
+      }catch(_){}
+    }
+  }
+  window.addEventListener('error',function(ev){logError('runtime',ev.error||ev.message);});
+  window.addEventListener('unhandledrejection',function(ev){logError('promise',ev.reason);});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(boot,0);},{once:true});
+  else setTimeout(boot,0);
+  setTimeout(function(){
+    if(document.documentElement.dataset.bootedV0351!=='1')boot();
+  },700);
+})();
 </script>
 
 </body>
