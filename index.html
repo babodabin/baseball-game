@@ -14583,7 +14583,12 @@ input,select,textarea{font-size:16px;max-width:100%;}
   // 새 팀은 포지션별 주전, 벤치, 선발, 불펜을 먼저 채우고 남는 선수만 2군으로 보낸다.
   window.setBalancedFirstTeamV300=setBalancedFirstTeamV300=function(teamId){
     if(!state.players?.[teamId])return;
-    ensureSquadState();
+    // v0.34.31: ensureSquadState()를 여기서 부르면
+    // ensureSquadState → aiTopUpRosters → rebalanceAllAiRosters → rebalanceAiRosterV300
+    // → setBalancedFirstTeamV300 → ensureSquadState 로 무한 재귀가 된다.
+    // 이 함수에 실제로 필요한 것은 squadLevel 객체 존재 보장뿐이므로 인라인으로 처리한다.
+    if(!state.squadLevel||typeof state.squadLevel!=='object')state.squadLevel={};
+    if(!state.lineups||typeof state.lineups!=='object')state.lineups={};
     const t=state.players[teamId],levels=state.squadLevel[teamId]||(state.squadLevel[teamId]={});
     t.bat.forEach(p=>levels[squadKey('bat',p)]='second');
     t.pit.forEach(p=>levels[squadKey('pit',p)]='second');
@@ -14811,7 +14816,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </script>
 
 
-<!-- v0.34.30 save migration + guaranteed lineup recovery -->
+<!-- v0.34.31 save migration + guaranteed lineup recovery -->
 <script>
 (function(){
   'use strict';
@@ -14913,7 +14918,8 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
   window.benchBatters=benchBatters=function(teamId){
     const t=getTeam(teamId),lu=getLineup(teamId),used=new Set(lu.order);
-    return t.bat.map((p,i)=>i).filter(i=>!used.has(i)&&(teamId!==state.myTeam||isFirstTeam(teamId,'bat',p)));
+    // v0.34.31: filter 콜백 안에서 p는 스코프에 없다. 인덱스로 선수를 다시 꺼내야 한다.
+    return t.bat.map((p,i)=>i).filter(i=>!used.has(i)&&(teamId!==state.myTeam||isFirstTeam(teamId,'bat',t.bat[i])));
   };
 
   function migrateAllV3419(){
@@ -15113,6 +15119,30 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
   version();
   setTimeout(version,0);
+})();
+</script>
+
+<script>
+/* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.34.31';
+  // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
+  // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
+  const base=window.ensureSquadState;
+  if(typeof base==='function'){
+    let busy=false;
+    window.ensureSquadState=function(){
+      if(busy)return;
+      busy=true;
+      try{return base.apply(this,arguments);}
+      catch(err){console.error(V+' ensureSquadState:',err);}
+      finally{busy=false;}
+    };
+  }
+  document.title='우리팀을 만들자 '+V;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
+  window.GAME_VERSION=V;
 })();
 </script>
 
