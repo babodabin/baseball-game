@@ -781,7 +781,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.46.2</span>
+    <span class="ver">v0.46.5</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1240,28 +1240,47 @@ function legendPool(){
 
 /* ───────────── 살아있는 선수단 ───────────── */
 // 시즌 시작 시 TEAMS를 저장 데이터로 복사. 이후 모든 참조는 getTeam() 사용.
-const SURNAMES = ['김','이','박','최','정','강','조','윤','장','임','한','신','서','권','황','안','송','류','전','고','문','손','배','백','허','노','심','곽','성','차'];
+const SURNAMES = ['김','이','박','최','정','강','조','윤','장','임','한','신','서','권','황','안','송','류','전','고','문','손','배','백','허','노','심','곽','성','차','주','우','구','민','진','지','엄','채','원','천'];
+const GIVEN_NAMES = [
+  '민준','서준','도윤','예준','시우','하준','주원','지호','지후','준서',
+  '건우','우진','현우','선우','연우','유준','정우','승우','승현','시윤',
+  '민재','현준','지훈','재윤','태윤','성민','동현','준혁','민성','재현',
+  '도현','태현','수현','정민','상현','우빈','현서','민찬','재훈','태호',
+  '동하','준영','성현','지환','건희','진우','민혁','승민','영준','정현',
+  '준호','우성','찬우','성준','재민','민수','지성','태민','정훈','동욱',
+  '시훈','재원','성우','도훈','현석','정환','승준','주영','준수','동민',
+  '현민','진혁','재성','태성','규민','기현','상민','영민','성훈','진호',
+  '민호','태훈','승호','정호','동준','지완','재욱','현진','민규','성재',
+  '우현','준희','태준','정원','민우','승원','도영','지민','하민','시현',
+  '윤호','준원','성윤','민기','재호','태우','승재','동우'
+];
 const GIVENS = ['민','현','준','성','우','진','호','재','석','훈','규','태','승','원','건','하','수','영','찬','기','동','병','종','상','정','욱'];
 function genName(seed){
-  const s = SURNAMES[seed % SURNAMES.length];
-  const g1 = GIVENS[(seed*7) % GIVENS.length];
-  const g2 = GIVENS[(seed*13+3) % GIVENS.length];
-  return s+g1+g2;
+  const n=Math.abs(Math.trunc(Number(seed)||0));
+  // 연속된 seed에서 '성만 바뀌고 이름은 전부 같은' 패턴이 나오지 않도록
+  // 성과 이름을 서로 다른 주기로 섞는다.
+  const s=SURNAMES[n%SURNAMES.length];
+  const given=GIVEN_NAMES[(n*37 + Math.floor(n/SURNAMES.length)*13)%GIVEN_NAMES.length];
+  return s+given;
 }
 function genBackupBat(teamBat, seed){
   // 주전 평균에서 약간 낮춘 백업 야수
   const avg = k => Math.round(teamBat.reduce((s,p)=>s+p[k],0)/teamBat.length);
   const posPool = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];
   const jit = (b,d)=> Math.max(35, Math.min(88, b - 6 - Math.floor(Math.random()*d)));
-  return [genName(seed), '가상 선수', posPool[seed%posPool.length], Math.random()<.5?'우':'좌',
+  const p=[genName(seed), '가상 선수', posPool[seed%posPool.length], Math.random()<.5?'우':'좌',
     jit(avg(4),10), jit(avg(5),12), jit(avg(6),12), jit(avg(7),8), jit(avg(8),10)];
+  if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(p,'bat','가상 야수 보충');
+  return p;
 }
 function genRelief(teamPit, seed){
   const avgV = Math.round(teamPit.reduce((s,p)=>s+p[4],0)/teamPit.length);
   const jit = (b,d)=> Math.max(35, Math.min(90, b - 4 - Math.floor(Math.random()*d)));
   const velo = Math.max(138, Math.min(157, avgV - 2 + Math.floor(Math.random()*6)));
-  return [genName(seed+100), '가상 선수', '불펜', Math.random()<.7?'우':'좌',
-    velo, jit(72,14), jit(72,14), Math.max(40,55-Math.floor(Math.random()*15))];  // 불펜은 체력 낮음
+  const p=[genName(seed+100), '가상 선수', '불펜', Math.random()<.7?'우':'좌',
+    velo, jit(72,14), jit(72,14), Math.max(40,55-Math.floor(Math.random()*15))];
+  if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(p,'pit','가상 투수 보충');
+  return p;  // 불펜은 체력 낮음
 }
 function snapshotTeams(){
   const snap = {};
@@ -1662,7 +1681,10 @@ const FOREIGN_FIRST = ['마이클','브랜든','카를로스','루이스','타�
 const FOREIGN_LAST = ['존슨','밀러','가르시아','로페즈','윌슨','브라운','데이비스','마르티네스','톰슨','로빈슨','다나카','사토','스즈키','린','왕'];
 function foreignFlag(p,isBat){ return flagOf(p,isBat)==='foreign' || flagOf(p,isBat)==='asia'; }
 function foreignType(p,isBat){ const f=flagOf(p,isBat); return f==='asia'?'asia':f==='foreign'?'regular':null; }
-function foreignKey(p,isBat){ return (isBat?'b:':'p:')+p[0]; }
+function foreignKey(p,isBat){
+  const id=typeof window.playerIdentityV463==='function'?window.playerIdentityV463(p):null;
+  return (isBat?'b:':'p:')+(id||p[0]);
+}
 function ensureForeignState(){ if(!state.foreignContracts) state.foreignContracts={}; }
 function foreignCounts(teamId){
   const t=getTeam(teamId); let regular=0,asia=0;
@@ -1682,10 +1704,12 @@ function genForeignCandidate(i){
   if(isBat){
     const pos=['C','1B','2B','3B','SS','LF','CF','RF'][i%8]; const j=()=>Math.max(48,Math.min(90,base-7+Math.floor(Math.random()*15)));
     const data=[nm,nm+(asia?' (아시아쿼터)':''),pos,hand,j(),j(),j(),j(),j(),asia?'asia':'foreign'];
+    if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(data,'bat',asia?'아시아쿼터 시장':'외국인 선수 시장');
     return {kind:'bat',data,age,asia,adapt:50+Math.floor(Math.random()*36),ovr:batOvr(data,state.myTeam)};
   }
   const role=Math.random()<.7?'선발':(Math.random()<.5?'불펜':'마무리'), j=()=>Math.max(48,Math.min(90,base-7+Math.floor(Math.random()*15)));
   const data=[nm,nm+(asia?' (아시아쿼터)':''),role,hand,142+Math.floor(Math.random()*13),j(),j(),role==='선발'?j():55,asia?'asia':'foreign'];
+  if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(data,'pit',asia?'아시아쿼터 시장':'외국인 선수 시장');
   return {kind:'pit',data,age,asia,adapt:50+Math.floor(Math.random()*36),ovr:pitOvr(data,state.myTeam)};
 }
 function foreignMarketHtml(m){
@@ -1799,7 +1823,10 @@ function hexToSoft(hex){
 
 /* ═══════════ 컨디션·피로·부상 시스템 (v0.22.0) ═══════════ */
 function ensureHealth(){ if(!state.health) state.health={}; }
-function healthKey(kind,p){ return kind+':'+p[0]; }
+function healthKey(kind,p){
+  const id=typeof window.playerIdentityV463==='function'?window.playerIdentityV463(p):null;
+  return kind+':'+(id||p[0]);
+}
 function playerHealth(teamId,kind,p){
   ensureHealth();
   if(!state.health[teamId]) state.health[teamId]={};
@@ -1884,7 +1911,8 @@ function renderRoster(tab){
     const isBat = tab==='bat';
     const age = t.age ? (isBat?t.age.bat[i]:t.age.pit[i]) : ageOf(p[1]);
     const stage=careerStageOf(p,age);
-    const hand = (isBat ? `${p[3]}타` : `${p[3]}투 · ${p[2]}`) + ` · ${age}세 · <span style="color:${careerStageColor(stage)}">${stage}</span>`;
+    const intro=(typeof window.playerIntroV463==='function'?window.playerIntroV463(t.id,tab,p):'');
+    const hand = (isBat ? `${p[3]}타` : `${p[3]}투 · ${p[2]}`) + ` · ${age}세 · <span style="color:${careerStageColor(stage)}">${stage}</span>` + (intro?` · ${intro}`:'');
     const f = flagOf(p, isBat);
     const bo = bonusOf(p, t.id, isBat);
     const ci = conditionInfo(t.id,isBat?'bat':'pit',p);
@@ -1971,7 +1999,9 @@ function openSheet(team, tab, idx){
       <button class="close" onclick="closeSheet()">✕</button></div>
     <div class="meta">${meta}<br><span style="color:var(--dim)">성장 유형: ${careerTypeOf(p)}</span></div>
     <div class="reveal"><div class="lbl">MODEL PLAYER</div>
-      실제 모델: <b>${p[1]}</b> (${team.real})<br>
+      ${(typeof window.playerIntroV463==='function'&&window.playerIntroV463(team.id,isBat?'bat':'pit',p,true))
+        ?`자동 생성 선수: <b>${window.playerIntroV463(team.id,isBat?'bat':'pit',p,true)}</b><br>`
+        :`실제 모델: <b>${p[1]}</b> (${team.real})<br>`}
       ${bonusLine}<br>
       괄호 안은 기본 능력치와 보정 내역입니다.</div>
     <div class="reveal"><div class="lbl">컨디션</div>${(()=>{const h=playerHealth(team.id,isBat?'bat':'pit',p),c=conditionInfo(team.id,isBat?'bat':'pit',p);return `<b style="color:${c.color}">${c.label}</b> · 피로 ${h.fatigue||0}/100${h.injury>0?' · 경기 출전 불가':''}`;})()}</div>
@@ -3459,7 +3489,10 @@ document.getElementById('newSeasonBtn').onclick = ()=>{
 /* ═══════════ 자금/경영 (v0.7) ═══════════ */
 function ecoOn(){ return state.eco==='normal' || state.eco==='hard'; }
 function fmtMoney(){ return (state.money<0?'-':'') + Math.abs(state.money).toFixed(1) + '억'; }
-function salaryKey(p, isBat){ return (isBat?'bat:':'pit:') + p[0]; }
+function salaryKey(p, isBat){
+  const id=typeof window.playerIdentityV463==='function'?window.playerIdentityV463(p):null;
+  return (isBat?'bat:':'pit:') + (id||p[0]);
+}
 function salaryBonusOf(p, isBat){
   if(!state.salaryAdjustments) state.salaryAdjustments = {};
   return +(state.salaryAdjustments[salaryKey(p,isBat)] || 0);
@@ -3481,8 +3514,8 @@ function salaryOf(p, isBat){
 function teamSalary(){
   const t = getTeam(state.myTeam);
   let s = 0;
-  t.bat.forEach(p=>{ const c=state.contracts?.['bat:'+p[0]]; s+=c?.salary||salaryOf(p,true); });
-  t.pit.forEach(p=>{ const c=state.contracts?.['pit:'+p[0]]; s+=c?.salary||salaryOf(p,false); });
+  t.bat.forEach(p=>{ const c=state.contracts?.[longKey('bat',p)]; s+=c?.salary||salaryOf(p,true); });
+  t.pit.forEach(p=>{ const c=state.contracts?.[longKey('pit',p)]; s+=c?.salary||salaryOf(p,false); });
   return s;
 }
 function updateDebtStatus(countGame=false){
@@ -4440,14 +4473,16 @@ function buildOffseasonMarket(){
     const pot = ['★','★★','★★★','★★★★','★★★★★'][Math.min(4,Math.floor(Math.random()*3)+ (Math.random()<.2?2:0))];
     if(isBat){
       const jit=()=>Math.max(38,Math.min(80, base-6+Math.floor(Math.random()*16)));
-      market.draft.push({kind:'bat', pot, truePot:pot, age,
-        data:[genName(9000+i), '신인', posPool[i%posPool.length], Math.random()<.5?'우':'좌', jit(),jit(),jit(),jit(),jit()]});
+      {const data=[genName(9000+i), '신인', posPool[i%posPool.length], Math.random()<.5?'우':'좌', jit(),jit(),jit(),jit(),jit()];
+      if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(data,'bat',`${state.year||1}년 신인 드래프트`);
+      market.draft.push({kind:'bat', pot, truePot:pot, age,data});}
     }else{
       const role = Math.random()<.6?'선발':'불펜';
       const velo=140+Math.floor(Math.random()*12);
       const jit=()=>Math.max(38,Math.min(80, base-6+Math.floor(Math.random()*16)));
-      market.draft.push({kind:'pit', pot, truePot:pot, age,
-        data:[genName(9100+i), '신인', role, Math.random()<.7?'우':'좌', velo, jit(),jit(), role==='불펜'?45:jit()]});
+      {const data=[genName(9100+i), '신인', role, Math.random()<.7?'우':'좌', velo, jit(),jit(), role==='불펜'?45:jit()];
+      if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(data,'pit',`${state.year||1}년 신인 드래프트`);
+      market.draft.push({kind:'pit', pot, truePot:pot, age,data});}
     }
   }
   state.season.market = market;
@@ -5070,7 +5105,10 @@ document.getElementById('rtabMyPlayer').onclick=()=>setRankTab('my');
 
 /* ═══════════ 1군·2군·FA 등록 경기 (v0.24.2) ═══════════ */
 const FIRST_TEAM_LIMIT=30, TOTAL_ROSTER_MIN=22, TOTAL_ROSTER_MAX=40, FA_SEASON_GAMES=24, FA_YEARS=7, FA_TOTAL_GAMES=FA_SEASON_GAMES*FA_YEARS;
-function squadKey(kind,p){ return kind+':'+(p?.[0]||''); }
+function squadKey(kind,p){
+  const id=typeof window.playerIdentityV463==='function'?window.playerIdentityV463(p):null;
+  return kind+':'+(id||(p?.[0]||''));
+}
 function ensureSquadState(){
   if(!state.squadLevel) state.squadLevel={};
   if(!state.faGames) state.faGames={};
@@ -5174,7 +5212,10 @@ ensureSquadState();
 
 
 /* ═══════════ 장기 구단 운영 통합 (v0.24.0) ═══════════ */
-function longKey(kind,p){ return kind+':'+(p?.[0]||''); }
+function longKey(kind,p){
+  const id=typeof window.playerIdentityV463==='function'?window.playerIdentityV463(p):null;
+  return kind+':'+(id||(p?.[0]||''));
+}
 function ensureLongTermState(){
   if(!state.contracts) state.contracts={};
   if(!state.morale) state.morale={};
@@ -5836,10 +5877,14 @@ function generateDraftCandidate(seed){
   if(isBat){
     const pos=['C','1B','2B','3B','SS','LF','CF','RF'][seed%8];
     const jit=()=>Math.max(38,Math.min(82,base-7+Math.floor(Math.random()*16)));
-    return {kind:'bat',pot:stars,truePot:stars,age,data:[genName(30000+seed),'신인',pos,Math.random()<.5?'우':'좌',jit(),jit(),jit(),jit(),jit()]};
+    const data=[genName(30000+seed),'신인',pos,Math.random()<.5?'우':'좌',jit(),jit(),jit(),jit(),jit()];
+    if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(data,'bat',`${state.year||1}년 신인 드래프트`);
+    return {kind:'bat',pot:stars,truePot:stars,age,data};
   }
   const role=Math.random()<.68?'선발':'불펜', jit=()=>Math.max(38,Math.min(82,base-7+Math.floor(Math.random()*16)));
-  return {kind:'pit',pot:stars,truePot:stars,age,data:[genName(31000+seed),'신인',role,Math.random()<.72?'우':'좌',140+Math.floor(Math.random()*14),jit(),jit(),role==='불펜'?42+Math.floor(Math.random()*16):jit()]};
+  const data=[genName(31000+seed),'신인',role,Math.random()<.72?'우':'좌',140+Math.floor(Math.random()*14),jit(),jit(),role==='불펜'?42+Math.floor(Math.random()*16):jit()];
+  if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(data,'pit',`${state.year||1}년 신인 드래프트`);
+  return {kind:'pit',pot:stars,truePot:stars,age,data};
 }
 function draftCandidateOvr(d,teamId){ return d.kind==='bat'?batOvr(d.data,teamId):pitOvr(d.data,teamId); }
 function draftOrderForMarket(){
@@ -6038,11 +6083,13 @@ function ensureLiveFaCandidates(m){
     if(isBat){
       const pos=['C','1B','2B','3B','SS','LF','CF','RF'][serial%8];
       data=[genName(52000+state.year*20+serial),'가상 선수',pos,serial%3?'우':'좌',base,base+2,base-2,base+1,base];
-      kind='bat'; t.bat.push(data);t.age.bat.push(age);ovr=batOvr(data,owner.id);
+      kind='bat';if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(data,'bat','FA 시장 보충 선수');
+      t.bat.push(data);t.age.bat.push(age);ovr=batOvr(data,owner.id);
     }else{
       const role=serial%3===0?'선발':'불펜';
       data=[genName(53000+state.year*20+serial),'가상 선수',role,serial%3?'우':'좌',143+serial%8,base+1,base,role==='선발'?base:52];
-      kind='pit'; t.pit.push(data);t.age.pit.push(age);ovr=pitOvr(data,owner.id);
+      kind='pit';if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(data,'pit','FA 시장 보충 선수');
+      t.pit.push(data);t.age.pit.push(age);ovr=pitOvr(data,owner.id);
     }
     m.fa.push({from:owner.id,kind,data:[...data],age,ovr});
     serial++;
@@ -8804,24 +8851,12 @@ if(skip5BtnV303){
   skip5BtnV303.addEventListener('focus',()=>skip5BtnV303.blur());
   ['touchend','touchcancel','pointerup','pointercancel'].forEach(ev=>skip5BtnV303.addEventListener(ev,()=>setTimeout(()=>skip5BtnV303.classList.remove('tap-feedback'),90),{passive:true}));
 }
-// v0.31.4 저장 데이터 보정: 같은 가상 선수 이름이 반복된 경우 각 선수를 고유 이름으로 분리한다.
-function repairDuplicateVirtualNamesV313(){
-  if(!state.players)return;
-  Object.entries(state.players).forEach(([teamId,t])=>{
-    ['bat','pit'].forEach(kind=>{
-      const used=new Set();
-      (t[kind]||[]).forEach((pl,idx)=>{
-        let name=String(pl?.[0]||'선수');
-        if(!used.has(name)){used.add(name);return;}
-        let seed=70000+idx*97+teamId.split('').reduce((a,c)=>a+c.charCodeAt(0),0)+(kind==='pit'?10000:0),candidate;
-        do{candidate=genName(seed++);}while(used.has(candidate));
-        pl[0]=candidate;used.add(candidate);
-      });
-    });
-  });
-}
-try{repairDuplicateVirtualNamesV313();if(state.pitchPlan)state.pitchPlan={};save();}catch(err){console.error('v0.31.4 데이터 보정:',err);}
-// v0.31.4 완료: 중복 가상 선수 이름 보정, 기존 마무리 고정 포지션 복원, 로테이션/예비 분리, 교체 가능한 자리 강조.
+// v0.46.5: 동명이인은 정상으로 허용한다.
+// 예전 버전은 같은 이름을 발견하면 선수 이름을 강제로 바꿨지만,
+// 이제 가상 선수는 고유 ID와 소개 정보로 구분하므로 이름을 변경하지 않는다.
+function repairDuplicateVirtualNamesV313(){ return 0; }
+// 기존 저장의 투수 배치는 이름 보정 때문에 더 이상 무효화하지 않는다.
+// v0.31.4의 다른 로테이션/교체 기능은 그대로 유지.
 
 
 /* ═══════════ v0.31.4 신인 잠재력 · 복수 포지션 · 과거 선수 출처 ═══════════ */
@@ -12204,6 +12239,7 @@ body.theme-night main::after{
     let data,kind;
     if(isBat){const pos=['C','1B','2B','3B','SS','LF','CF','RF'][seed%8];data=[genName(73000+(state?.year||1)*100+seed),'신인',pos,r()<.48?'좌':'우',jitter(),jitter(),jitter(),jitter(),jitter()];kind='bat';}
     else{const role=r()<.68?'선발':'불펜';data=[genName(74000+(state?.year||1)*100+seed),'신인',role,r()<.26?'좌':'우',Math.round(clamp(139+r()*16+(origin==='social'?2:0),136,158)),jitter(),jitter(),role==='선발'?jitter():Math.round(clamp(43+r()*18,40,72))];kind='pit';}
+    if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(data,kind,`${state?.year||1}년 신인 드래프트`);
     return {kind,pot:starText(pot),truePot:starText(pot),age,data,draftMetaV3413:{id:`${state?.year||1}-${seed}-${data[0]}`,origin,trueGrowth:growth,injuryRisk:injury,observations:0,lastObservedDay:-999,createdYear:state?.year||1,outlierGrowth:r()<.16,outlierInjury:r()<.11,seed:hash(`${data[0]}|${seed}|meta`)}};
   }
   window.generateDraftCandidate=function(seed){return makeCandidate(seed);};
@@ -13463,10 +13499,10 @@ body.theme-night main::after{
 @media(max-width:560px){.ai-stability-grid-v3413{grid-template-columns:1fr}}
 </style>
 <script>
-/* ═══════════ v0.46.2 · 게임 진단·복구 엔진 ═══════════ */
+/* ═══════════ v0.46.5 · 게임 진단·복구 엔진 ═══════════ */
 (function(){
   'use strict';
-  const VER='v0.46.2 DIAGNOSTICS';
+  const VER='v0.46.5 DIAGNOSTICS';
   const POS=['C','1B','2B','3B','SS','LF','CF','RF','DH'];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number(v)||0));
 
@@ -13546,13 +13582,9 @@ body.theme-night main::after{
         }
         seenRefs.add(pl);
 
-        // 이름만 같은 경우는 동명이인일 수 있으므로 자동 삭제하지 않는다.
+        // 이름만 같은 선수는 정상적인 동명이인으로 취급한다.
         const nk=String(pl[0]).trim().toLowerCase();
-        if(seenNames.has(nk)){
-          add(review,`${nm}: ${pl[0]} 이름이 같은 ${label}가 여러 명 있습니다 — 동명이인/중복 여부 확인 필요`);
-        }else{
-          seenNames.set(nk,i);
-        }
+        if(!seenNames.has(nk))seenNames.set(nk,i);
 
         if(!Number.isFinite(Number(ages[i]))||Number(ages[i])<16||Number(ages[i])>60){
           add(repaired,`${nm}: ${pl[0]} 나이 값 보정`);
@@ -13577,6 +13609,7 @@ body.theme-night main::after{
       return;
     }
     if(valid)return;
+    if(l==null)return; // 아직 캐시가 없는 것은 정상
 
     if(!fix){add(review,`${nm}: 라인업 참조가 손상되어 재구성이 필요합니다`);return;}
     try{
@@ -13604,6 +13637,7 @@ body.theme-night main::after{
       return;
     }
     if(valid)return;
+    if(p==null)return; // 아직 캐시가 없는 것은 정상
 
     if(!fix){add(review,`${nm}: 투수 운용 참조가 손상되어 재구성이 필요합니다`);return;}
     try{
@@ -15568,7 +15602,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.46.2';
+  const V='v0.46.5';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -15616,7 +15650,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.46.2';
+  const V='v0.46.5';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -15637,6 +15671,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
       else if(f==='archive')s+=' <span class="boost" style="color:#9EC5FF">과거시즌 +'+bo+'</span>';
       else if(bo>0)s+=' <span class="boost">+'+bo+(f==='new'?' 신규':'')+'</span>';
     }catch(_){}
+    try{const intro=window.playerIntroV463?.(teamId,kind,p);if(intro)s+=' · '+intro;}catch(_){}
     return s;
   }
 
@@ -17080,15 +17115,25 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     const out={bat:[],pit:[]};
     const bn=Math.ceil(need*0.6),pn=need-bn;
     const POS=['C','1B','2B','3B','SS','LF','CF','RF','DH'];
-    const SUR='김이박최정강조윤장임'.split(''),GIV=['도현','서준','민재','지훈','예준','시우','주원','하준','건우','우진'];
-    const nm=i=>SUR[i%SUR.length]+GIV[(i*3)%GIV.length];
+    const taken=new Set();
+    const nm=(i)=>{
+      for(let k=0;k<5000;k++){
+        const n=typeof genName==='function'?genName(460000+i+k*37):`신인${i+k+1}`;
+        if(!taken.has(n)){taken.add(n);return n;}
+      }
+      return `창단신인${i+1}`;
+    };
     for(let i=0;i<bn;i++){
       const o=52+((i*7)%12);
-      out.bat.push([nm(i),'신인',POS[i%POS.length],i%3?'우':'좌',o,o-4,o+2,o-2,o-6]);
+      const p=[nm(i),'신인',POS[i%POS.length],i%3?'우':'좌',o,o-4,o+2,o-2,o-6];
+      if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(p,'bat','창단 자동 신인');
+      out.bat.push(p);
     }
     for(let i=0;i<pn;i++){
       const o=52+((i*5)%12);
-      out.pit.push([nm(i+40),'신인',i<2?'선발':'불펜',i%3?'우':'좌',138+(i%8),o,o-3,o+1]);
+      const p=[nm(i+40),'신인',i<2?'선발':'불펜',i%3?'우':'좌',138+(i%8),o,o-3,o+1];
+      if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(p,'pit','창단 자동 신인');
+      out.pit.push(p);
     }
     return out;
   }
@@ -17477,16 +17522,28 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     const used=new Set(TEAMS.map(t=>t.id));
     return AI_CANDIDATES.find(x=>!used.has(x.id)&&x.region!==myRegion)||AI_CANDIDATES.find(x=>!used.has(x.id));
   }
-  function makeRoster(){
-    const bat=[],pit=[];
+  function makeRoster(spec){
+    const bat=[],pit=[],taken=new Set();
     const POS=['C','1B','2B','3B','SS','LF','CF','RF','DH','C','1B','SS','CF','RF','LF','2B','3B','DH'];
-    const SUR='강고남류백서신오양임전차'.split('');
-    const GIV=['성민','재윤','태호','승우','현서','동하','준서','우빈','시윤','민찬','재훈','도윤'];
-    const gn=i=>SUR[i%SUR.length]+GIV[(i*5)%GIV.length];
+    const base=470000+String(spec?.id||'AI').split('').reduce((a,c)=>a+c.charCodeAt(0),0)*113;
+    const gn=i=>{
+      for(let k=0;k<5000;k++){
+        const n=typeof genName==='function'?genName(base+i+k*41):`신인${i+k+1}`;
+        if(!taken.has(n)){taken.add(n);return n;}
+      }
+      return `신생선수${i+1}`;
+    };
+    const origin=`${spec?.region||''} ${spec?.nick||'AI 신생팀'} 창단 선수`.trim();
     for(let i=0;i<18;i++){const o=54+((i*7)%13);
-      bat.push([gn(i),'신인',POS[i%POS.length],i%3?'우':'좌',o,o-5,o+3,o-1,o-7]);}
+      const p=[gn(i),'신인',POS[i%POS.length],i%3?'우':'좌',o,o-5,o+3,o-1,o-7];
+      if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(p,'bat',origin);
+      bat.push(p);
+    }
     for(let i=0;i<12;i++){const o=54+((i*5)%13);
-      pit.push([gn(i+30),'신인',i<5?'선발':(i===11?'마무리':'불펜'),i%3?'우':'좌',139+(i%9),o,o-3,o+2]);}
+      const p=[gn(i+30),'신인',i<5?'선발':(i===11?'마무리':'불펜'),i%3?'우':'좌',139+(i%9),o,o-3,o+2];
+      if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(p,'pit',origin);
+      pit.push(p);
+    }
     return {bat,pit};
   }
   // 창단 시 12팀을 맞추기 위해 AI 신생 구단을 함께 만든다.
@@ -17494,7 +17551,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     try{
       const spec=pickAiTeam(myRegion);
       if(!spec)return null;
-      const r=makeRoster();
+      const r=makeRoster(spec);
       TEAMS.push({id:spec.id,name:`${spec.region} ${spec.nick}`,real:`${spec.region} ${spec.nick}`,c:spec.c,bat:[],pit:[]});
       if(typeof TEAM_EMOJI==='object')TEAM_EMOJI[spec.id]=spec.logo;
       state.players[spec.id]={bat:r.bat,pit:r.pit,age:{bat:r.bat.map(()=>21),pit:r.pit.map(()=>21)}};
@@ -17514,16 +17571,14 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
   'use strict';
   const V='v0.45', BAT_TARGET=18, PIT_TARGET=12;
   const BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
-  const SUR='강고남류백서신오양임전차'.split('');
-  const GIV=['성민','재윤','태호','승우','현서','동하','준서','우빈','시윤','민찬','재훈','도윤'];
   const POS=['C','1B','2B','3B','SS','LF','CF','RF','DH'];
 
   function freshName(taken,i){
-    for(let k=0;k<500;k++){
-      const n=SUR[(i+k)%SUR.length]+GIV[((i+k)*5)%GIV.length];
+    for(let k=0;k<5000;k++){
+      const n=typeof genName==='function'?genName(480000+i+k*43):`보충선수${i+k+1}`;
       if(!taken.has(n)){taken.add(n);return n;}
     }
-    return SUR[i%SUR.length]+GIV[i%GIV.length]+((i%9)+1);
+    return `보충선수${i+1}`;
   }
 
   /* 창단·신생 구단은 TEAMS에 선수가 없어, 다른 게임에서 고르면 선수단이 비거나 모자란다.
@@ -17539,11 +17594,15 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     let added=0,seed=t.bat.length+t.pit.length;
     while(t.bat.length<BAT_TARGET){
       const i=t.bat.length,o=54+((i*7)%13);
-      t.bat.push([freshName(taken,seed++),'신인',POS[i%POS.length],i%3?'우':'좌',o,o-5,o+3,o-1,o-7]);added++;
+      const p=[freshName(taken,seed++),'신인',POS[i%POS.length],i%3?'우':'좌',o,o-5,o+3,o-1,o-7];
+      if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(p,'bat','창단 선수단 보충');
+      t.bat.push(p);added++;
     }
     while(t.pit.length<PIT_TARGET){
       const i=t.pit.length,o=54+((i*5)%13);
-      t.pit.push([freshName(taken,seed++),'신인',i<5?'선발':(i===11?'마무리':'불펜'),i%3?'우':'좌',139+(i%9),o,o-3,o+2]);added++;
+      const p=[freshName(taken,seed++),'신인',i<5?'선발':(i===11?'마무리':'불펜'),i%3?'우':'좌',139+(i%9),o,o-3,o+2];
+      if(typeof window.tagGeneratedPlayerV463==='function')window.tagGeneratedPlayerV463(p,'pit','창단 선수단 보충');
+      t.pit.push(p);added++;
     }
     while(t.age.bat.length<t.bat.length)t.age.bat.push(21);
     while(t.age.pit.length<t.pit.length)t.age.pit.push(21);
@@ -17597,7 +17656,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.46.2';
+  const V='v0.46.5';
   const REQ='야수 9명 이상 · 투수 6명 이상 · 선발투수 5명 이상 · 마무리투수 1명 이상';
 
   function reqText(){ return REQ; }
@@ -17941,7 +18000,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 
 <style>
-/* ═══════════ v0.46.2 · 설정 + 게임 진단·복구 ═══════════ */
+/* ═══════════ v0.46.5 · 설정 + 게임 진단·복구 ═══════════ */
 .settings-grid-v462{display:grid;gap:10px;margin:12px 0}
 .settings-card-v462{padding:13px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.13)}
 .settings-card-v462 .st-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;font-weight:900;margin-bottom:5px}
@@ -17955,10 +18014,10 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 .diag-history-v462 summary{cursor:pointer;font-weight:800}
 </style>
 <script>
-/* ═══════════ v0.46.2 · 설정 + 게임 진단·복구 ═══════════ */
+/* ═══════════ v0.46.5 · 설정 + 게임 진단·복구 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.46.2';
+  const V='v0.46.5';
 
   function esc(s){
     return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -18020,7 +18079,6 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
         return;
       }
       rep=window.gameDiagnosticAuditV462(true,false);
-      try{renderFront();}catch(_){}
     }catch(err){
       console.error(V+' 진단:',err);
       showAlert('진단 중 오류가 발생했습니다. 자동으로 판단할 수 없는 상태이므로 데이터를 임의로 수정하지 않았습니다.');
@@ -18111,6 +18169,126 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     window.GAME_VERSION=V;
   }
   [0,400,1200,2600,3600].forEach(ms=>setTimeout(version,ms));
+  version();
+})();
+</script>
+
+
+<script>
+/* ═══════════ v0.46.5 · 생성 선수 이름·동명이인 구분 ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.46.5';
+  const BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
+
+  function metaOf(p){
+    if(!Array.isArray(p))return null;
+    for(let i=p.length-1;i>=0;i--){
+      const x=p[i];
+      if(x&&typeof x==='object'&&!Array.isArray(x)&&x._v463===1)return x;
+    }
+    return null;
+  }
+  function hash(s){
+    s=String(s||'');let h=2166136261>>>0;
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}
+    return h.toString(36);
+  }
+  function ensureFlagSlot(p,kind){
+    if(kind==='bat'&&p.length===9)p.push('');
+    if(kind==='pit'&&p.length===8)p.push('');
+  }
+  function nextId(kind,p,origin){
+    try{
+      if(!state.generatedPlayerSeqV463)state.generatedPlayerSeqV463=1;
+      const n=state.generatedPlayerSeqV463++;
+      return `gen-${hash(`${origin}|${kind}|${p?.[0]}|${n}|${Date.now()}`)}-${n}`;
+    }catch(_){return `gen-${hash(`${origin}|${kind}|${p?.[0]}|${Math.random()}`)}`;}
+  }
+
+  window.tagGeneratedPlayerV463=function(p,kind,origin,id){
+    if(!Array.isArray(p))return null;
+    let m=metaOf(p);
+    if(m){if(origin&&!m.origin)m.origin=origin;if(!m.id)m.id=id||nextId(kind,p,origin);return m;}
+    ensureFlagSlot(p,kind);
+    m={_v463:1,id:id||nextId(kind,p,origin),origin:origin||'자동 생성 선수'};
+    p.push(m);
+    return m;
+  };
+  window.playerMetaV463=metaOf;
+  window.playerIdentityV463=p=>metaOf(p)?.id||null;
+
+  function duplicateOrdinal(teamId,kind,p){
+    try{
+      const t=getTeam(teamId),arr=kind==='bat'?t.bat:t.pit,same=arr.filter(x=>x&&x[0]===p[0]);
+      if(same.length<2)return null;
+      const idx=same.indexOf(p);
+      return {n:idx>=0?idx+1:1,total:same.length};
+    }catch(_){return null;}
+  }
+  window.playerIntroV463=function(teamId,kind,p,detail){
+    const m=metaOf(p),dup=duplicateOrdinal(teamId,kind,p);
+    if(!m&&!dup)return '';
+    const parts=[];
+    if(dup)parts.push(`동명이인 ${dup.n}/${dup.total}`);
+    if(m?.origin)parts.push(m.origin);
+    if(detail&&m?.id)parts.push(`ID ${m.id.slice(-7)}`);
+    return parts.join(' · ');
+  };
+
+  function copyLegacyMap(obj,oldKey,newKey){
+    if(!obj||typeof obj!=='object'||oldKey===newKey||obj[newKey]!==undefined)return;
+    if(obj[oldKey]!==undefined){
+      try{obj[newKey]=structuredClone(obj[oldKey]);}
+      catch(_){try{obj[newKey]=JSON.parse(JSON.stringify(obj[oldKey]));}catch(__){obj[newKey]=obj[oldKey];}}
+    }
+  }
+
+  function migrateExisting(){
+    if(!state?.players)return 0;
+    let tagged=0;
+    Object.keys(state.players).forEach(teamId=>{
+      const t=state.players[teamId];if(!t)return;
+      const custom=!BASE_IDS.has(teamId);
+      ['bat','pit'].forEach(kind=>{
+        const arr=Array.isArray(t[kind])?t[kind]:[];
+        arr.forEach(p=>{
+          if(!Array.isArray(p))return;
+          const generated=p[1]==='신인'||p[1]==='가상 선수'||p[1]==='긴급 대체 선수';
+          if(!generated&&!metaOf(p))return;
+          const oldMeta=metaOf(p);
+          const origin=oldMeta?.origin||(custom?`${getTeam(teamId)?.name||teamId} 생성 선수`
+            :(p[1]==='신인'?`${getTeam(teamId)?.name||teamId} 신인`:
+              p[1]==='긴급 대체 선수'?`${getTeam(teamId)?.name||teamId} 긴급 대체 선수`:
+              `${getTeam(teamId)?.name||teamId} 가상 보충 선수`));
+          const m=window.tagGeneratedPlayerV463(p,kind,origin);
+          if(!oldMeta)tagged++;
+
+          const oldKey=`${kind}:${p[0]}`,newKey=`${kind}:${m.id}`;
+          copyLegacyMap(state.faGames,oldKey,newKey);
+          copyLegacyMap(state.faSeasonGames,oldKey,newKey);
+          copyLegacyMap(state.contracts,oldKey,newKey);
+          copyLegacyMap(state.morale,oldKey,newKey);
+          copyLegacyMap(state.salaryAdjustments,oldKey,newKey);
+          if(state.squadLevel?.[teamId])copyLegacyMap(state.squadLevel[teamId],oldKey,newKey);
+          if(state.health?.[teamId])copyLegacyMap(state.health[teamId],oldKey,newKey);
+        });
+      });
+    });
+    if(tagged){try{save();}catch(_){}}
+    return tagged;
+  }
+  window.migrateGeneratedPlayersV463=migrateExisting;
+  try{migrateExisting();}catch(e){console.error(V+' 생성선수 마이그레이션:',e);}
+
+  function version(){
+    document.title='우리팀을 만들자 '+V;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
+      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;
+    });
+    window.GAME_VERSION=V;
+  }
+  [0,300,1200,2800,4200].forEach(ms=>setTimeout(version,ms));
   version();
 })();
 </script>
