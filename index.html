@@ -781,7 +781,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.45</span>
+    <span class="ver">v0.46.2</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -13463,66 +13463,372 @@ body.theme-night main::after{
 @media(max-width:560px){.ai-stability-grid-v3413{grid-template-columns:1fr}}
 </style>
 <script>
-/* ═══════════ v0.34.13 · 장기 시뮬레이션 안정화 ═══════════ */
+/* ═══════════ v0.46.2 · 게임 진단·복구 엔진 ═══════════ */
 (function(){
   'use strict';
-  const VER='v0.34.13 STABILITY';
+  const VER='v0.46.2 DIAGNOSTICS';
+  const POS=['C','1B','2B','3B','SS','LF','CF','RF','DH'];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number(v)||0));
+
   function root(){
-    if(!state.simStabilityV3413)state.simStabilityV3413={lastKey:'',lastReport:null,history:[],autoRepairs:0};
-    const r=state.simStabilityV3413;if(!Array.isArray(r.history))r.history=[];return r;
+    if(!state.simStabilityV3413 || typeof state.simStabilityV3413!=='object'){
+      state.simStabilityV3413={lastKey:'',lastReport:null,history:[],autoRepairs:0,pendingReview:[],totalScans:0};
+    }
+    const r=state.simStabilityV3413;
+    if(!Array.isArray(r.history))r.history=[];
+    if(!Array.isArray(r.pendingReview))r.pendingReview=[];
+    if(!Number.isFinite(+r.autoRepairs))r.autoRepairs=0;
+    if(!Number.isFinite(+r.totalScans))r.totalScans=0;
+    return r;
   }
-  function teamIds(){return (TEAMS||[]).map(t=>t.id).filter(id=>state.players?.[id]);}
-  function ensureTeam(id,fix,issues){
+
+  function teamIds(){
+    return (typeof TEAMS!=='undefined'&&Array.isArray(TEAMS)?TEAMS:[])
+      .map(t=>t.id).filter(id=>state.players?.[id]);
+  }
+  function teamName(id){try{return getTeam(id)?.name||id;}catch(_){return id;}}
+  function add(list,text){if(text&&!list.includes(text))list.push(text);}
+
+  /* 확실하게 구조가 잘못된 것만 자동 복구한다.
+     같은 이름의 선수처럼 정답을 확정할 수 없는 것은 삭제하지 않고 확인 목록에 남긴다. */
+  function ensureTeam(id,fix,repaired,review){
     const t=getTeam(id);if(!t)return;
-    if(!Array.isArray(t.bat)){issues.push(`${id}: 타자 배열 복구`);if(fix)t.bat=[];}
-    if(!Array.isArray(t.pit)){issues.push(`${id}: 투수 배열 복구`);if(fix)t.pit=[];}
-    if(!t.age||typeof t.age!=='object'){issues.push(`${id}: 나이 데이터 복구`);if(fix)t.age={bat:[],pit:[]};}
+    const nm=teamName(id);
+
+    if(!Array.isArray(t.bat)){
+      add(repaired,`${nm}: 손상된 타자 목록 구조 복구`);
+      if(fix)t.bat=[];
+    }
+    if(!Array.isArray(t.pit)){
+      add(repaired,`${nm}: 손상된 투수 목록 구조 복구`);
+      if(fix)t.pit=[];
+    }
+    if(!t.age||typeof t.age!=='object'){
+      add(repaired,`${nm}: 나이 데이터 구조 복구`);
+      if(fix)t.age={bat:[],pit:[]};
+    }
+
     for(const kind of ['bat','pit']){
+      const label=kind==='bat'?'야수':'투수';
       const arr=Array.isArray(t[kind])?t[kind]:[];
-      if(!Array.isArray(t.age?.[kind])){issues.push(`${id}: ${kind} 나이 배열 복구`);if(fix)t.age[kind]=[];}
+      if(!Array.isArray(t.age?.[kind])){
+        add(repaired,`${nm}: ${label} 나이 배열 복구`);
+        if(fix)t.age[kind]=[];
+      }
       const ages=Array.isArray(t.age?.[kind])?t.age[kind]:[];
-      while(fix&&ages.length<arr.length)ages.push(kind==='bat'?27:28);
-      if(ages.length>arr.length){issues.push(`${id}: ${kind} 나이 초과 ${ages.length-arr.length}건 정리`);if(fix)ages.splice(arr.length);}
-      const seen=new Set();
+
+      if(ages.length<arr.length){
+        const gap=arr.length-ages.length;
+        add(repaired,`${nm}: ${label} 나이 누락 ${gap}건 보완`);
+        if(fix)while(ages.length<arr.length)ages.push(kind==='bat'?27:28);
+      }
+      if(ages.length>arr.length){
+        add(repaired,`${nm}: ${label} 나이 초과 ${ages.length-arr.length}건 정리`);
+        if(fix)ages.splice(arr.length);
+      }
+
+      const seenRefs=new Set();
+      const seenNames=new Map();
       for(let i=arr.length-1;i>=0;i--){
-        const p=arr[i];
-        if(!Array.isArray(p)||!p[0]){issues.push(`${id}: 손상된 ${kind} 선수 제거`);if(fix){arr.splice(i,1);ages.splice(i,1);}continue;}
-        const k=String(p[0]).trim().toLowerCase();
-        if(seen.has(k)){issues.push(`${id}: 중복 선수 ${p[0]} 제거`);if(fix){arr.splice(i,1);ages.splice(i,1);}continue;}seen.add(k);
-        if(!Number.isFinite(Number(ages[i]))||Number(ages[i])<16||Number(ages[i])>60){issues.push(`${id}: ${p[0]} 나이 보정`);if(fix)ages[i]=clamp(ages[i]||28,18,45);}
+        const pl=arr[i];
+
+        if(!Array.isArray(pl)||!String(pl[0]||'').trim()){
+          add(repaired,`${nm}: 읽을 수 없는 ${label} 데이터 1건 제거`);
+          if(fix){arr.splice(i,1);ages.splice(i,1);}
+          continue;
+        }
+
+        // 완전히 같은 객체가 배열에 두 번 들어간 것은 명백한 중복.
+        if(seenRefs.has(pl)){
+          add(repaired,`${nm}: 동일 ${label} 데이터 ${pl[0]} 중복 1건 제거`);
+          if(fix){arr.splice(i,1);ages.splice(i,1);}
+          continue;
+        }
+        seenRefs.add(pl);
+
+        // 이름만 같은 경우는 동명이인일 수 있으므로 자동 삭제하지 않는다.
+        const nk=String(pl[0]).trim().toLowerCase();
+        if(seenNames.has(nk)){
+          add(review,`${nm}: ${pl[0]} 이름이 같은 ${label}가 여러 명 있습니다 — 동명이인/중복 여부 확인 필요`);
+        }else{
+          seenNames.set(nk,i);
+        }
+
+        if(!Number.isFinite(Number(ages[i]))||Number(ages[i])<16||Number(ages[i])>60){
+          add(repaired,`${nm}: ${pl[0]} 나이 값 보정`);
+          if(fix)ages[i]=clamp(ages[i]||28,18,45);
+        }
       }
     }
   }
-  function ensureLineup(id,fix,issues){
-    const t=getTeam(id),n=t?.bat?.length||0;if(!state.lineups)state.lineups={};let l=state.lineups[id];
-    const valid=l&&Array.isArray(l.order)&&l.order.every(i=>Number.isInteger(i)&&i>=0&&i<n)&&new Set(l.order).size===l.order.length;
-    if(!valid||l.order.length>Math.min(9,n)){issues.push(`${id}: 라인업 재구성`);if(fix){try{if(typeof window.updateAiManagerV3413==='function'&&id!==state.myTeam)window.updateAiManagerV3413(true);else state.lineups[id]={order:Array.from({length:Math.min(9,n)},(_,i)=>i),pos:{}};}catch(_){state.lineups[id]={order:Array.from({length:Math.min(9,n)},(_,i)=>i),pos:{}};}}}
+
+  function ensureLineup(id,fix,repaired,review){
+    const t=getTeam(id),n=t?.bat?.length||0,nm=teamName(id);
+    if(!state.lineups||typeof state.lineups!=='object')state.lineups={};
+    const l=state.lineups[id],need=Math.min(9,n);
+    const valid=l&&Array.isArray(l.order)&&Array.isArray(l.pos)
+      &&l.order.length===need&&l.pos.length===need
+      &&new Set(l.order).size===need
+      &&l.order.every(i=>Number.isInteger(i)&&i>=0&&i<n)
+      &&l.pos.every(p=>POS.includes(p));
+
+    if(n<9){
+      add(review,`${nm}: 야수가 ${n}명이라 경기용 9인 라인업을 만들 수 없습니다`);
+      return;
+    }
+    if(valid)return;
+
+    if(!fix){add(review,`${nm}: 라인업 참조가 손상되어 재구성이 필요합니다`);return;}
+    try{
+      state.lineups[id]=null;
+      const rebuilt=typeof getLineup==='function'?getLineup(id):null;
+      if(!rebuilt||!Array.isArray(rebuilt.order)||rebuilt.order.length!==9)throw new Error('9인 라인업 재구성 실패');
+      add(repaired,`${nm}: 잘못된 라인업 참조 재구성`);
+    }catch(err){
+      add(review,`${nm}: 라인업 자동 복구 실패 — ${err?.message||'직접 확인 필요'}`);
+    }
   }
-  function ensurePitch(id,fix,issues){
-    const t=getTeam(id),n=t?.pit?.length||0;if(!state.pitchPlan)state.pitchPlan={};const p=state.pitchPlan[id];
+
+  function ensurePitch(id,fix,repaired,review){
+    const t=getTeam(id),n=t?.pit?.length||0,nm=teamName(id);
+    if(!state.pitchPlan||typeof state.pitchPlan!=='object')state.pitchPlan={};
+    if(!state.rotOrder||typeof state.rotOrder!=='object')state.rotOrder={};
+    const p=state.pitchPlan[id];
     const flat=p?[...(p.starters||[]),...(p.bullpen||[]),...(p.closers||[])]:[];
-    const valid=p&&flat.every(i=>Number.isInteger(i)&&i>=0&&i<n)&&new Set(flat).size===flat.length;
-    if(!valid){issues.push(`${id}: 투수 운용 재구성`);if(fix){try{if(typeof window.updateAiManagerV3413==='function'&&id!==state.myTeam)window.updateAiManagerV3413(true);else state.pitchPlan[id]={starters:Array.from({length:Math.min(5,n)},(_,i)=>i),bullpen:Array.from({length:Math.max(0,n-5)},(_,i)=>i+5),closers:[]};}catch(_){state.pitchPlan[id]={starters:Array.from({length:Math.min(5,n)},(_,i)=>i),bullpen:Array.from({length:Math.max(0,n-5)},(_,i)=>i+5),closers:[]};}}}
+    const valid=p&&Array.isArray(p.starters)&&Array.isArray(p.bullpen)&&Array.isArray(p.closers)
+      &&flat.every(i=>Number.isInteger(i)&&i>=0&&i<n)
+      &&new Set(flat).size===flat.length;
+
+    if(n<6){
+      add(review,`${nm}: 투수가 ${n}명이라 정상적인 투수 운용이 어렵습니다`);
+      return;
+    }
+    if(valid)return;
+
+    if(!fix){add(review,`${nm}: 투수 운용 참조가 손상되어 재구성이 필요합니다`);return;}
+    try{
+      delete state.pitchPlan[id];
+      state.rotOrder[id]=null;
+      if(typeof pitchPlanOfV310==='function'){
+        const rebuilt=pitchPlanOfV310(id);
+        if(!rebuilt)throw new Error('투수 배치 생성 실패');
+      }else{
+        throw new Error('투수 배치 복구 함수 없음');
+      }
+      add(repaired,`${nm}: 투수 배치·로테이션 재구성`);
+    }catch(err){
+      add(review,`${nm}: 투수 배치 자동 복구 실패 — ${err?.message||'직접 확인 필요'}`);
+    }
   }
-  function cleanContracts(fix,issues){
-    const roots=[state.aiContractsV3413?.contracts,state.aiForeignV3413?.contracts];
-    roots.forEach((obj,ri)=>{if(!obj||typeof obj!=='object')return;for(const k of Object.keys(obj)){const c=obj[k];if(!c||!c.teamId||!teamIds().includes(c.teamId)){issues.push(`계약 데이터 고아 항목 정리`);if(fix)delete obj[k];continue;}if(!Number.isFinite(Number(c.salary))||Number(c.salary)<0){issues.push(`${c.name||'선수'} 계약 연봉 보정`);if(fix)c.salary=Math.max(0,Number(c.salary)||0);}if(!Number.isFinite(Number(c.years))||Number(c.years)<0){issues.push(`${c.name||'선수'} 계약 기간 보정`);if(fix)c.years=Math.max(0,Math.round(Number(c.years)||0));}}});
+
+  function cleanContracts(fix,repaired,review){
+    const ids=teamIds();
+    const roots=[
+      ['AI 계약',state.aiContractsV3413?.contracts],
+      ['외국인 계약',state.aiForeignV3413?.contracts]
+    ];
+    roots.forEach(([label,obj])=>{
+      if(!obj||typeof obj!=='object')return;
+      for(const k of Object.keys(obj)){
+        const c=obj[k];
+        if(!c||!c.teamId||!ids.includes(c.teamId)){
+          add(repaired,`${label}: 소속팀이 없는 계약 데이터 정리`);
+          if(fix)delete obj[k];
+          continue;
+        }
+        if(!Number.isFinite(Number(c.salary))||Number(c.salary)<0){
+          add(repaired,`${c.name||'선수'} 계약 연봉의 잘못된 숫자 보정`);
+          if(fix)c.salary=Math.max(0,Number(c.salary)||0);
+        }
+        if(!Number.isFinite(Number(c.years))||Number(c.years)<0){
+          add(repaired,`${c.name||'선수'} 계약 기간의 잘못된 숫자 보정`);
+          if(fix)c.years=Math.max(0,Math.round(Number(c.years)||0));
+        }
+      }
+    });
   }
+
+  function checkRoster(id,review){
+    const t=getTeam(id),nm=teamName(id);
+    if(!t)return;
+    let chk=null;
+    try{
+      if(typeof window.validatePlayableRosterV46==='function'){
+        chk=window.validatePlayableRosterV46(nm,t.bat,t.pit);
+      }
+    }catch(_){}
+    if(chk&&!chk.ok){
+      add(review,`${nm}: 경기 필수 선수단 확인 필요 — ${chk.reason}`);
+      return;
+    }
+    const bat=t.bat?.length||0,pit=t.pit?.length||0;
+    const starters=(t.pit||[]).filter(p=>p?.[2]==='선발').length;
+    const closers=(t.pit||[]).filter(p=>p?.[2]==='마무리').length;
+    if(bat<9)add(review,`${nm}: 야수 ${bat}명 — 최소 9명 필요`);
+    if(pit<6)add(review,`${nm}: 투수 ${pit}명 — 최소 6명 필요`);
+    if(starters<5)add(review,`${nm}: 선발투수 ${starters}명 — 최소 5명 필요`);
+    if(closers<1)add(review,`${nm}: 마무리투수가 없습니다`);
+  }
+
+  /* 승패·돈·역사 기록은 어느 값이 정답인지 판단할 수 없으므로 발견만 한다. */
+  function inspectAmbiguousState(review){
+    if(!state.season)return;
+    const ids=teamIds(),rec=state.season.rec;
+
+    if(!Number.isFinite(Number(state.season.day))||Number(state.season.day)<0){
+      add(review,'현재 시즌 진행 일차가 올바른 숫자가 아닙니다');
+    }
+
+    if(!rec||typeof rec!=='object'){
+      add(review,'현재 시즌 순위/승패 기록 데이터가 없거나 손상되어 있습니다');
+    }else{
+      for(const id of ids){
+        const r=rec[id];
+        if(!r||typeof r!=='object'){
+          add(review,`${teamName(id)}: 시즌 승패 기록이 없습니다`);
+          continue;
+        }
+        for(const k of ['w','l','t']){
+          const v=Number(r[k]);
+          if(!Number.isFinite(v)||v<0||!Number.isInteger(v)){
+            add(review,`${teamName(id)}: 시즌 ${k==='w'?'승':k==='l'?'패':'무'} 기록 숫자 확인 필요`);
+          }
+        }
+      }
+    }
+
+    if(state.season.schedule!==undefined&&!Array.isArray(state.season.schedule)){
+      add(review,'시즌 일정 데이터 형식이 올바르지 않습니다');
+    }
+    if(state.history!==undefined&&!Array.isArray(state.history)){
+      add(review,'시즌 역사 기록 형식이 올바르지 않습니다');
+    }
+    if(state.worldHistory!==undefined&&!Array.isArray(state.worldHistory)){
+      add(review,'세계대회 기록 형식이 올바르지 않습니다');
+    }
+    if(state.money!==undefined&&!Number.isFinite(Number(state.money))){
+      add(review,'구단 잔고가 올바른 숫자가 아닙니다');
+    }
+    if(state.popularity!==undefined&&!Number.isFinite(Number(state.popularity))){
+      add(review,'구단 인기 값이 올바른 숫자가 아닙니다');
+    }
+  }
+
   function audit(fix=true,manual=false){
-    if(!state||state.mode!=='sim')return null;const issues=[];for(const id of teamIds()){ensureTeam(id,fix,issues);ensureLineup(id,fix,issues);ensurePitch(id,fix,issues);}cleanContracts(fix,issues);
-    const r=root(),rep={year:state.year,day:Number(state.season?.day)||0,issues:issues.length,repairs:fix?issues.length:0,items:issues.slice(0,40),at:Date.now()};r.lastReport=rep;if(fix)r.autoRepairs+=issues.length;r.history.push(rep);if(r.history.length>30)r.history=r.history.slice(-30);try{save();}catch(_){}
-    if(manual)showAlert(issues.length?`안정화 검사 완료\n\n${issues.slice(0,24).join('\n')}${issues.length>24?`\n외 ${issues.length-24}건`:''}`:'안정화 검사 완료\n\n선수·계약·라인업·투수진 데이터에서 이상을 찾지 못했습니다.');return rep;
+    if(!state||!state.myTeam)return null;
+
+    const repaired=[],review=[];
+    for(const id of teamIds()){
+      ensureTeam(id,fix,repaired,review);
+      ensureLineup(id,fix,repaired,review);
+      ensurePitch(id,fix,repaired,review);
+      checkRoster(id,review);
+    }
+    cleanContracts(fix,repaired,review);
+    inspectAmbiguousState(review);
+
+    const r=root();
+    const rep={
+      year:state.year||1,
+      day:Number(state.season?.day)||0,
+      mode:state.mode||'',
+      issues:repaired.length+review.length,
+      repairs:fix?repaired.length:0,
+      reviewCount:review.length,
+      repaired:repaired.slice(0,80),
+      review:review.slice(0,80),
+      items:[...repaired.map(x=>'복구 · '+x),...review.map(x=>'확인 · '+x)].slice(0,80),
+      at:Date.now()
+    };
+
+    r.lastReport=rep;
+    r.pendingReview=review.slice(0,80);
+    r.totalScans=(Number(r.totalScans)||0)+1;
+    if(fix)r.autoRepairs=(Number(r.autoRepairs)||0)+repaired.length;
+    r.history.push(rep);
+    if(r.history.length>60)r.history=r.history.slice(-60);
+    try{save();}catch(_){}
+
+    if(manual){
+      let msg=`게임 진단 · 복구 완료\n\n자동 복구 ${rep.repairs}건 · 확인 필요 ${rep.reviewCount}건`;
+      if(repaired.length)msg+=`\n\n[자동 복구]\n${repaired.slice(0,8).map(x=>'✓ '+x).join('\n')}${repaired.length>8?`\n외 ${repaired.length-8}건`:''}`;
+      if(review.length)msg+=`\n\n[직접 확인 필요]\n${review.slice(0,8).map(x=>'⚠ '+x).join('\n')}${review.length>8?`\n외 ${review.length-8}건`:''}`;
+      if(!repaired.length&&!review.length)msg+='\n\n현재 저장 데이터에서 이상을 찾지 못했습니다.';
+      showAlert(msg);
+    }
+    return rep;
   }
-  function scheduled(){if(state.mode!=='sim'||!state.season)return;const r=root(),day=Number(state.season.day)||0,key=`${state.year}:${Math.floor(day/12)}`;if(r.lastKey===key)return;r.lastKey=key;audit(true,false);}
+
+  function scheduled(){
+    if(state.mode!=='sim'||!state.season)return;
+    const r=root(),day=Number(state.season.day)||0,key=`${state.year}:${Math.floor(day/12)}`;
+    if(r.lastKey===key)return;
+    r.lastKey=key;
+    audit(true,false);
+  }
+
+  window.gameDiagnosticAuditV462=audit;
   window.runSimStabilityCheckV3413=()=>{const out=audit(true,true);try{renderFront();}catch(_){}return out;};
   window.simStabilityReportV3413=()=>root().lastReport;
-  function panel(){if(state.mode!=='sim'||!state.season)return'';const r=root(),x=r.lastReport||{issues:0,repairs:0,day:0,year:state.year};const ok=!x.issues;return `<div class="ai-stability-v3413"><div class="title">🛡️ 장기 시뮬레이션 안정화</div><div class="sub">12경기마다 선수 중복·손상, 나이 배열, 계약 데이터, AI 라인업과 투수진을 자동 검사하고 안전하게 복구합니다. 시즌 전환과 오프시즌에도 한 번 더 점검합니다.</div><div class="ai-stability-grid-v3413"><div class="ai-stability-card-v3413"><div class="head"><span>최근 검사</span><span class="${ok?'ok':'warn'}">${ok?'정상':`${x.repairs}건 복구`}</span></div><div>${x.year||state.year}시즌 · ${x.day||0}일차</div><div class="dim">누적 자동 복구 ${r.autoRepairs||0}건</div></div><div class="ai-stability-card-v3413"><div class="head"><span>검사 범위</span><span class="ok">6개 항목</span></div><div>선수 · 나이 · 중복 · 계약 · 라인업 · 투수진</div><div class="dim">세이브 데이터 구조는 유지하며 잘못된 참조만 정리합니다.</div></div></div><button class="btn" style="margin-top:9px" onclick="runSimStabilityCheckV3413()">지금 안정화 검사</button></div>`;}
-  const oldFront=window.renderFront;if(typeof oldFront==='function')window.renderFront=function(){scheduled();const out=oldFront.apply(this,arguments);try{const pane=document.querySelector('.front-pane[data-fpane="front"]');if(pane&&!pane.querySelector('.ai-stability-v3413'))pane.insertAdjacentHTML('beforeend',panel());}catch(e){console.error(VER,e);}return out;};
-  const oldFinish=window.finishDay;if(typeof oldFinish==='function')window.finishDay=function(){const out=oldFinish.apply(this,arguments);try{scheduled();}catch(e){console.error(VER,e);}return out;};
-  const oldNew=window.newSeason;if(typeof oldNew==='function')window.newSeason=function(){try{audit(true,false);}catch(e){console.error(VER,e);}const out=oldNew.apply(this,arguments);try{root().lastKey='';audit(true,false);}catch(e){console.error(VER,e);}return out;};
-  const oldBuild=window.buildOffseasonMarket;if(typeof oldBuild==='function')window.buildOffseasonMarket=function(){try{audit(true,false);}catch(e){console.error(VER,e);}const out=oldBuild.apply(this,arguments);try{audit(true,false);}catch(e){console.error(VER,e);}return out;};
-  try{audit(true,false);window.skillEngineV329=Object.assign({},window.skillEngineV329||{},{stabilityVersion:'0.34.13'});save();}catch(e){console.error(VER,e);}
+  window.gameDiagnosticStateV462=()=>root();
+
+  function panel(){
+    if(state.mode!=='sim'||!state.season)return'';
+    const r=root(),x=r.lastReport||{issues:0,repairs:0,reviewCount:0,day:0,year:state.year};
+    const review=Number(x.reviewCount)||0,repairs=Number(x.repairs)||0;
+    const ok=!review&&!repairs;
+    const stat=ok?'정상':review?`확인 ${review}건`:`${repairs}건 복구`;
+    return `<div class="ai-stability-v3413">
+      <div class="title">🛡️ 게임 진단 · 복구</div>
+      <div class="sub">명확한 오류는 자동으로 복구하고, 정답을 확정할 수 없는 문제는 건드리지 않고 기록합니다. 시뮬 모드는 12경기마다 자동 검사합니다.</div>
+      <div class="ai-stability-grid-v3413">
+        <div class="ai-stability-card-v3413"><div class="head"><span>최근 진단</span><span class="${review?'warn':'ok'}">${stat}</span></div><div>${x.year||state.year}시즌 · ${x.day||0}일차</div><div class="dim">누적 자동 복구 ${r.autoRepairs||0}건 · 진단 ${r.totalScans||0}회</div></div>
+        <div class="ai-stability-card-v3413"><div class="head"><span>검사 범위</span><span class="ok">9개 영역</span></div><div>선수 · 나이 · 중복 · 계약 · 라인업 · 투수진 · 필수 인원 · 시즌 · 저장값</div><div class="dim">애매한 시즌 기록과 재정 값은 자동 수정하지 않습니다.</div></div>
+      </div>
+      <button class="btn ghost" style="margin-top:9px" onclick="openGameSettingsV462()">⚙️ 설정에서 진단 · 복구</button>
+    </div>`;
+  }
+
+  const oldFront=window.renderFront;
+  if(typeof oldFront==='function')window.renderFront=function(){
+    scheduled();
+    const out=oldFront.apply(this,arguments);
+    try{
+      const pane=document.querySelector('.front-pane[data-fpane="front"]');
+      if(pane&&!pane.querySelector('.ai-stability-v3413'))pane.insertAdjacentHTML('beforeend',panel());
+    }catch(e){console.error(VER,e);}
+    return out;
+  };
+
+  const oldFinish=window.finishDay;
+  if(typeof oldFinish==='function')window.finishDay=function(){
+    const out=oldFinish.apply(this,arguments);
+    try{scheduled();}catch(e){console.error(VER,e);}
+    return out;
+  };
+
+  const oldNew=window.newSeason;
+  if(typeof oldNew==='function')window.newSeason=function(){
+    try{if(state?.mode==='sim')audit(true,false);}catch(e){console.error(VER,e);}
+    const out=oldNew.apply(this,arguments);
+    try{if(state?.mode==='sim'){root().lastKey='';audit(true,false);}}catch(e){console.error(VER,e);}
+    return out;
+  };
+
+  const oldBuild=window.buildOffseasonMarket;
+  if(typeof oldBuild==='function')window.buildOffseasonMarket=function(){
+    try{if(state?.mode==='sim')audit(true,false);}catch(e){console.error(VER,e);}
+    const out=oldBuild.apply(this,arguments);
+    try{if(state?.mode==='sim')audit(true,false);}catch(e){console.error(VER,e);}
+    return out;
+  };
+
+  try{
+    root();
+    if(state?.mode==='sim'&&state?.myTeam)audit(true,false);
+    window.skillEngineV329=Object.assign({},window.skillEngineV329||{},{stabilityVersion:'0.46.2'});
+    save();
+  }catch(e){console.error(VER,e);}
 })();
 </script>
 
@@ -15262,7 +15568,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.45';
+  const V='v0.46.2';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -15310,7 +15616,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.45';
+  const V='v0.46.2';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -16312,17 +16618,16 @@ main *,.sheet *{max-width:100%}
     document.getElementById('mask')?.classList.add('on');
   };
 
-  /* ---------- 구단홈에 진입 링크 ---------- */
+  /* ---------- 구단홈 설정 진입 링크 ---------- */
   function attach(){
-    const box=document.querySelector('#scr-team [onclick="resetCurrentSlot()"]')?.parentElement;
-    if(!box||box.querySelector('[data-bk-v3437]'))return;
-    const sp=document.createElement('span');
+    const sp=document.querySelector('#scr-team [onclick="resetCurrentSlot()"],#scr-team [data-settings-v462]');
+    if(!sp)return;
     sp.className='lb-help';
-    sp.setAttribute('data-bk-v3437','1');
-    sp.style.marginLeft='14px';
-    sp.textContent='💾 백업·복원';
-    sp.onclick=()=>openBackupSheetV3437();
-    box.appendChild(sp);
+    sp.setAttribute('data-settings-v462','1');
+    sp.setAttribute('onclick','openGameSettingsV462()');
+    sp.textContent='⚙️ 설정';
+    const box=sp.parentElement;
+    if(box)box.querySelectorAll('[data-bk-v3437]').forEach(el=>el.remove());
   }
   const oldHome=window.renderTeamHome;
   if(typeof oldHome==='function'){
@@ -17292,7 +17597,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.46.1';
+  const V='v0.46.2';
   const REQ='야수 9명 이상 · 투수 6명 이상 · 선발투수 5명 이상 · 마무리투수 1명 이상';
 
   function reqText(){ return REQ; }
@@ -17631,6 +17936,182 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     window.GAME_VERSION=V;
   }
   version();setTimeout(version,0);setTimeout(version,800);
+})();
+</script>
+
+
+<style>
+/* ═══════════ v0.46.2 · 설정 + 게임 진단·복구 ═══════════ */
+.settings-grid-v462{display:grid;gap:10px;margin:12px 0}
+.settings-card-v462{padding:13px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.13)}
+.settings-card-v462 .st-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;font-weight:900;margin-bottom:5px}
+.settings-card-v462 .st-sub{font-size:12px;line-height:1.6;color:var(--dim)}
+.settings-card-v462 .st-ok{color:#79e6b8}.settings-card-v462 .st-warn{color:#ffd166}
+.diag-list-v462{display:grid;gap:7px;margin-top:10px}
+.diag-item-v462{padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.04);font-size:11px;line-height:1.55}
+.diag-item-v462.warn{border-left:3px solid #ffd166}.diag-item-v462.ok{border-left:3px solid #79e6b8}
+.diag-history-v462{max-height:46vh;overflow-y:auto;overscroll-behavior:contain;margin-top:10px}
+.diag-history-v462 details{border:1px solid var(--line);border-radius:11px;padding:9px 10px;margin-bottom:7px;background:rgba(0,0,0,.12)}
+.diag-history-v462 summary{cursor:pointer;font-weight:800}
+</style>
+<script>
+/* ═══════════ v0.46.2 · 설정 + 게임 진단·복구 ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.46.2';
+
+  function esc(s){
+    return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function diagRoot(){
+    const r=state?.simStabilityV3413;
+    return r&&typeof r==='object'?r:{lastReport:null,history:[],pendingReview:[],autoRepairs:0,totalScans:0};
+  }
+  function lastSummary(){
+    const r=diagRoot(),x=r.lastReport;
+    if(!x)return {title:'아직 진단 기록 없음',cls:'',sub:'설정에서 검사를 실행하면 현재 저장 상태를 점검합니다.'};
+    const rp=Number(x.repairs)||0,rv=Number(x.reviewCount)||0;
+    if(rv)return {title:`확인 필요 ${rv}건`,cls:'st-warn',sub:`최근 자동 복구 ${rp}건 · ${x.year||'-'}시즌 ${x.day||0}일차`};
+    if(rp)return {title:`자동 복구 ${rp}건`,cls:'st-ok',sub:`확인 필요 없음 · ${x.year||'-'}시즌 ${x.day||0}일차`};
+    return {title:'최근 진단 정상',cls:'st-ok',sub:`이상 없음 · ${x.year||'-'}시즌 ${x.day||0}일차`};
+  }
+
+  window.openGameSettingsV462=function(){
+    const sheet=document.getElementById('sheet');if(!sheet)return;
+    const r=diagRoot(),s=lastSummary(),pending=Array.isArray(r.pendingReview)?r.pendingReview:[];
+    const pendingHtml=pending.length
+      ?`<div class="diag-list-v462">${pending.slice(0,4).map(x=>`<div class="diag-item-v462 warn">⚠️ ${esc(x)}</div>`).join('')}${pending.length>4?`<div class="hint">외 ${pending.length-4}건은 진단 기록에서 확인할 수 있습니다.</div>`:''}</div>`
+      :'<div class="hint" style="margin-top:8px">현재 남아 있는 직접 확인 항목이 없습니다.</div>';
+
+    sheet.innerHTML=`
+      <div class="top"><div class="pname">⚙️ 설정</div><button class="close" onclick="closeSheet()">✕</button></div>
+      <div class="meta">게임 진행과 저장 데이터를 관리합니다. 시즌 초기화는 기존 순위 화면에 그대로 있습니다.</div>
+
+      <div class="settings-grid-v462">
+        <div class="settings-card-v462">
+          <div class="st-head"><span>🛡️ 게임 진단 · 복구</span><span class="${s.cls}">${s.title}</span></div>
+          <div class="st-sub">명확한 오류는 자동으로 고치고, 어느 값이 맞는지 확정할 수 없는 문제는 수정하지 않은 채 기록합니다.</div>
+          ${pendingHtml}
+          <button class="btn" style="margin-top:10px" onclick="runGameDiagnosticsV462()">지금 진단 · 복구</button>
+          <button class="btn ghost" onclick="openGameDiagnosticHistoryV462()">진단 기록 보기 · ${Array.isArray(r.history)?r.history.length:0}회</button>
+        </div>
+
+        <div class="settings-card-v462">
+          <div class="st-head"><span>💾 저장 데이터</span><span>슬롯 5개</span></div>
+          <div class="st-sub">백업 파일 저장·복원과 전체 저장 데이터 관리는 기존 기능을 그대로 사용합니다.</div>
+          <button class="btn ghost" style="margin-top:10px" onclick="openBackupSheetV3437()">백업 · 복원</button>
+        </div>
+
+        <div class="settings-card-v462">
+          <div class="st-head"><span>🗑️ 현재 슬롯</span><span class="st-warn">주의</span></div>
+          <div class="st-sub">현재 슬롯의 구단과 시즌 진행을 비웁니다. 다른 슬롯에는 영향을 주지 않습니다.</div>
+          <button class="btn ghost" style="margin-top:10px" onclick="closeSheet();resetCurrentSlot()">현재 슬롯 초기화</button>
+        </div>
+      </div>
+      <div class="hint">🔄 시즌 초기화는 순위 화면 하단에 그대로 유지됩니다.</div>`;
+    document.getElementById('mask')?.classList.add('on');
+  };
+
+  window.runGameDiagnosticsV462=function(){
+    let rep=null;
+    try{
+      if(typeof window.gameDiagnosticAuditV462!=='function'){
+        showAlert('진단 기능을 불러오지 못했습니다. 저장 데이터는 변경하지 않았습니다.');
+        return;
+      }
+      rep=window.gameDiagnosticAuditV462(true,false);
+      try{renderFront();}catch(_){}
+    }catch(err){
+      console.error(V+' 진단:',err);
+      showAlert('진단 중 오류가 발생했습니다. 자동으로 판단할 수 없는 상태이므로 데이터를 임의로 수정하지 않았습니다.');
+      return;
+    }
+    if(!rep){showAlert('진단할 활성 구단이 없습니다.');return;}
+
+    const repaired=Array.isArray(rep.repaired)?rep.repaired:[];
+    const review=Array.isArray(rep.review)?rep.review:[];
+    const sheet=document.getElementById('sheet');if(!sheet)return;
+    sheet.innerHTML=`
+      <div class="top"><div class="pname">🛡️ 진단 결과</div><button class="close" onclick="closeSheet()">✕</button></div>
+      <div class="meta">${rep.year||'-'}시즌 · ${rep.day||0}일차 · 자동 복구 ${rep.repairs||0}건 · 확인 필요 ${rep.reviewCount||0}건</div>
+
+      <div class="settings-card-v462">
+        <div class="st-head"><span>✅ 자동 복구</span><span class="st-ok">${repaired.length}건</span></div>
+        ${repaired.length?`<div class="diag-list-v462">${repaired.map(x=>`<div class="diag-item-v462 ok">✓ ${esc(x)}</div>`).join('')}</div>`:'<div class="hint">자동으로 고칠 오류가 없었습니다.</div>'}
+      </div>
+
+      <div class="settings-card-v462" style="margin-top:10px">
+        <div class="st-head"><span>⚠️ 직접 확인 필요</span><span class="${review.length?'st-warn':'st-ok'}">${review.length}건</span></div>
+        <div class="st-sub">정답을 확정할 수 없는 데이터는 자동으로 변경하지 않았습니다.</div>
+        ${review.length?`<div class="diag-list-v462">${review.map(x=>`<div class="diag-item-v462 warn">⚠️ ${esc(x)}</div>`).join('')}</div>`:'<div class="hint">현재 직접 확인할 항목이 없습니다.</div>'}
+      </div>
+
+      <button class="btn ghost" style="margin-top:12px" onclick="openGameDiagnosticHistoryV462()">진단 기록 보기</button>
+      <button class="btn ghost" onclick="openGameSettingsV462()">← 설정으로</button>`;
+    document.getElementById('mask')?.classList.add('on');
+  };
+
+  window.openGameDiagnosticHistoryV462=function(){
+    const sheet=document.getElementById('sheet');if(!sheet)return;
+    const r=diagRoot(),hist=Array.isArray(r.history)?r.history.slice().reverse():[],pending=Array.isArray(r.pendingReview)?r.pendingReview:[];
+    const pendingHtml=pending.length
+      ?pending.map(x=>`<div class="diag-item-v462 warn">⚠️ ${esc(x)}</div>`).join('')
+      :'<div class="hint">현재 미해결 확인 항목이 없습니다.</div>';
+
+    const rows=hist.length?hist.slice(0,30).map((x,i)=>{
+      const rp=Number(x.repairs)||0,rv=Number(x.reviewCount)||0;
+      const when=x.at?new Date(x.at).toLocaleString('ko-KR'):'시간 기록 없음';
+      const repaired=Array.isArray(x.repaired)?x.repaired:[];
+      const review=Array.isArray(x.review)?x.review:[];
+      return `<details ${i===0?'open':''}>
+        <summary>${x.year||'-'}시즌 ${x.day||0}일차 · 복구 ${rp} · 확인 ${rv}</summary>
+        <div class="hint" style="margin:6px 0">${esc(when)}</div>
+        ${repaired.map(v=>`<div class="diag-item-v462 ok">✓ ${esc(v)}</div>`).join('')}
+        ${review.map(v=>`<div class="diag-item-v462 warn">⚠️ ${esc(v)}</div>`).join('')}
+        ${!repaired.length&&!review.length?'<div class="diag-item-v462 ok">✓ 이상 없음</div>':''}
+      </details>`;
+    }).join(''):'<div class="hint">아직 진단 기록이 없습니다.</div>';
+
+    sheet.innerHTML=`
+      <div class="top"><div class="pname">🧾 진단 기록</div><button class="close" onclick="closeSheet()">✕</button></div>
+      <div class="meta">자동으로 고친 내용과 손대지 않은 확인 항목을 함께 남깁니다. 최근 30회 표시 · 최대 60회 저장.</div>
+
+      <div class="settings-card-v462">
+        <div class="st-head"><span>⚠️ 현재 확인 필요</span><span class="${pending.length?'st-warn':'st-ok'}">${pending.length}건</span></div>
+        <div class="diag-list-v462">${pendingHtml}</div>
+      </div>
+
+      <div class="diag-history-v462">${rows}</div>
+      <button class="btn ghost" onclick="openGameSettingsV462()">← 설정으로</button>`;
+    document.getElementById('mask')?.classList.add('on');
+  };
+
+  /* 구단 화면이 다시 렌더되어도 '설정' 하나만 보이게 정리한다. */
+  function normalizeSettingsLink(){
+    const reset=document.querySelector('#scr-team [onclick="resetCurrentSlot()"]');
+    const existing=document.querySelector('#scr-team [data-settings-v462]');
+    const sp=existing||reset;
+    if(!sp)return;
+    sp.className='lb-help';
+    sp.dataset.settingsV462='1';
+    sp.setAttribute('onclick','openGameSettingsV462()');
+    sp.textContent='⚙️ 설정';
+    sp.parentElement?.querySelectorAll('[data-bk-v3437]').forEach(el=>el.remove());
+  }
+
+  // 구단 홈 렌더링 때의 지속 적용은 기존 백업 진입점 래퍼가 담당한다.
+  // 여기서는 이미 열린 화면만 한 번 정리해 불필요한 핵심 함수 재래핑을 피한다.
+  try{normalizeSettingsLink();}catch(_){}
+
+  function version(){
+    document.title='우리팀을 만들자 '+V;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
+      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;
+    });
+    window.GAME_VERSION=V;
+  }
+  [0,400,1200,2600,3600].forEach(ms=>setTimeout(version,ms));
+  version();
 })();
 </script>
 
