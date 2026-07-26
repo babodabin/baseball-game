@@ -781,7 +781,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.41</span>
+    <span class="ver">v0.43</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -948,6 +948,74 @@ nav button.lock{opacity:.32}
   </div>
 </div>
 
+<!-- v0.42 · 시즌 길이 표시 헬퍼 -->
+<script>
+/* 팀 수에 따라 시즌 경기 수가 달라진다(10팀 36 / 12팀 33).
+   화면에 36이 고정돼 있던 것을 실제 일정 길이로 읽게 한다. */
+window.seasonLenV42=function(){
+  try{
+    var n=window.state&&state.season&&Array.isArray(state.season.sched)?state.season.sched.length:0;
+    return n>0?n:36;
+  }catch(e){return 36;}
+};
+</script>
+<!-- v0.43 · 모드별 난이도 차등 -->
+<script>
+/* 기존에는 하드가 자금 계수만 달랐고 경기 쪽은 내 팀 OVR -1 하나뿐이라 체감이 없었다.
+   경기 전력 / AI 구단 공격성 / 선수단 유지비 세 갈래로 나눠 한 표에서 관리한다. */
+window.DIFF_V43=(function(){
+  var normal={
+    label:'일반',
+    myOvr:0, topAiOvr:0,                      // 경기 전력 보정
+    faHeadroom:.42, faRivals:4, faCeil:1.55,  // AI FA 입찰 공격성
+    gradeBlock:2, tradeSoft:1,                // AI 트레이드 판단
+    salaryMul:1, renegoMul:1,                 // 연봉 요구액 / 재협상 수용
+    trainExtra:.4, trainSlots:3, trainCost:5  // 훈련
+  };
+  var hard=Object.assign({},normal,{
+    label:'하드',
+    myOvr:-2, topAiOvr:1,
+    faHeadroom:.60, faRivals:5, faCeil:1.75,
+    gradeBlock:1, tradeSoft:.55,
+    salaryMul:1.35, renegoMul:.7,
+    trainExtra:.2, trainSlots:2, trainCost:8
+  });
+  var free=Object.assign({},normal,{label:'자유'}); // 자금만 끄고 경기 난이도는 일반과 동일
+  return {normal:normal, hard:hard, free:free};
+})();
+
+window.diffRuleV43=function(){
+  try{return DIFF_V43[state.eco]||DIFF_V43.normal;}catch(e){return DIFF_V43.normal;}
+};
+
+/* 상위권 AI 판정은 순위표를 다시 계산해야 해서 비싸다.
+   타석마다 부르면 시즌 진행이 느려지므로 (연차|경기일) 단위로 캐싱한다. */
+var _topAiCacheV43={sig:'',set:null};
+window.topAiSetV43=function(){
+  var sig='';
+  try{sig=(state.year||1)+'|'+(state.season?state.season.day:-1);}catch(e){}
+  if(_topAiCacheV43.sig===sig&&_topAiCacheV43.set)return _topAiCacheV43.set;
+  var set={};
+  try{
+    var order=(typeof rankOrder==='function')?rankOrder():[];
+    order.filter(function(id){return id!==state.myTeam;}).slice(0,3)
+         .forEach(function(id){set[id]=1;});
+  }catch(e){}
+  _topAiCacheV43={sig:sig,set:set};
+  return set;
+};
+
+/* 경기 중 능력치 보정: 내 팀은 깎고, 상위권 AI는 올린다.
+   내 팀만 깎지 않고 리그 전체를 조여 난이도를 올리는 방식. */
+window.diffAdjV43=function(teamId){
+  try{
+    var r=diffRuleV43();
+    if(!r.myOvr&&!r.topAiOvr)return 0;
+    if(teamId===state.myTeam)return r.myOvr;
+    return topAiSetV43()[teamId]?r.topAiOvr:0;
+  }catch(e){return 0;}
+};
+</script>
 <script>
 'use strict';
 /* iOS 문서 미리보기·PWA에서도 문서 루트가 전체 레이아웃 화면을 채우도록 유지 */
@@ -1313,7 +1381,7 @@ function raiseGrowthStat(p, isBat, k){
 }
 function applyFocusedTraining(p,isBat){
   const pool = isBat ? [4,5,6,7,8] : [4,5,6,7];
-  const count = Math.random()<0.4 ? 2 : 1;  // 기본 1개, 40% 확률로 2개
+  const count = Math.random()<diffRuleV43().trainExtra ? 2 : 1;  // 기본 1개, 확률로 2개
   for(let n=0;n<count && pool.length;n++){
     const at=Math.floor(Math.random()*pool.length);
     raiseGrowthStat(p,isBat,pool.splice(at,1)[0]);
@@ -1490,7 +1558,7 @@ function renderSlotStatus(boxId){
         });
         const rk = order.indexOf(s.myTeam)+1;
         const r = s.season.rec[s.myTeam];
-        rankTxt = `${s.season.day}/36경기 · ${rk}위 (${r.w}승 ${r.l}패)`;
+        rankTxt = `${s.season.day}/${seasonLenV42()}경기 · ${rk}위 (${r.w}승 ${r.l}패)`;
       }
       card.style.borderColor = s.c || 'var(--amber)';
       const active = store.active===i;
@@ -2084,7 +2152,7 @@ function teamStatusHtml(){
     const order = rankOrder ? rankOrder() : [];
     const rk = order.indexOf(state.myTeam)+1;
     const r = state.season.rec[state.myTeam];
-    s += `현재 시즌: ${state.season.day}/36경기 · ${rk}위 (${r.w}승 ${r.l}패 ${r.t}무)<br>`;
+    s += `현재 시즌: ${state.season.day}/${seasonLenV42()}경기 · ${rk}위 (${r.w}승 ${r.l}패 ${r.t}무)<br>`;
   }else s += `시즌 준비 중<br>`;
   // 로스터 요약
   const topBat = [...t.bat].map((p,i)=>({n:p[0],o:batOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
@@ -3246,7 +3314,7 @@ function renderGameSetup(){
   const oppSp = opp.pit[nextSpIdx(opp.id)];
   const rec = state.season.rec[state.myTeam];
   document.getElementById('seasonInfo').innerHTML =
-    `<b>${state.season.day+1}차전 / 36경기</b> · ${rec.w}승 ${rec.l}패 ${rec.t}무${ecoOn()?' · 잔고 '+fmtMoney()+(state.eco==='normal'&&state.money<0?' ⚠️보정감소':'')+debtStatusText():''}<br>
+    `<b>${state.season.day+1}차전 / ${seasonLenV42()}경기</b> · ${rec.w}승 ${rec.l}패 ${rec.t}무${ecoOn()?' · 잔고 '+fmtMoney()+(state.eco==='normal'&&state.money<0?' ⚠️보정감소':'')+debtStatusText():''}<br>
      ${isHome?'🏠 홈':'✈️ 원정'} vs <b>${opp.name}</b><br>
      내 선발: <b>${mySp[0]}</b> (${pitOvr(mySp,my.id)}) — 라인업 탭에서 변경 가능<br>
      상대 선발: ${oppSp[0]} (${pitOvr(oppSp,opp.id)})<br>
@@ -3796,11 +3864,11 @@ function renderFront(){
   if(ecoOn()){
     ensureFanState();
     info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b><br>시설 평균 <b>Lv.${(Object.values((ensureFacilities(),state.facilities)).reduce((a,b)=>a+b,0)/4).toFixed(1)}</b> · 구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>` +
-      (state.eco==='hard'?' · 하드(적자 3경기 유예)':state.eco==='normal'?' · 일반':'') +
+      (state.eco==='hard'?' · 하드(적자 3경기 유예 · 전력·AI 강화)':state.eco==='normal'?' · 일반':'') +
       (state.money<0 && state.eco==='normal'?'<br>⚠️ 잔고 마이너스 — 내 팀 원래팀 보정 감소 중':'') +
       (state.eco==='hard' && state.money<0 && !state.bankrupt?`<br>⚠️ 적자 유예 중 — ${Math.max(0,3-(state.debtGames||0))}경기 안에 흑자 전환 필요 · -20억 이하 즉시 파산`:'');
   }else{
-    info.innerHTML = `자유 모드 · 자금 시스템 꺼짐 · 연간 총연봉(참고) ${salTotal.toFixed(1)}억`;
+    info.innerHTML = `자유 모드 · 자금 시스템 꺼짐 · 연간 총연봉(참고) ${salTotal.toFixed(1)}억<br><span class="dim">경기 난이도·AI 판단은 일반과 동일합니다</span>`;
   }
 
   if(isOffseason()){
@@ -3908,7 +3976,7 @@ function renderOffseason(t){
   if(state.mode==='sim'){
     const trained = state.season.trained || [];
     h += `<h2 class="sec" style="margin-top:14px">훈련 배정 ${ecoOn()?'<small>1회 5억 · 성장 확률 대폭 상승</small>':'<small>1회 성장 확률 상승</small>'}</h2>
-      <div class="hint">훈련시킬 선수를 터치하세요 (시즌당 최대 3명). 어린 선수일수록 효과가 큽니다.</div>`;
+      <div class="hint">훈련시킬 선수를 터치하세요 (시즌당 최대 ${diffRuleV43().trainSlots}명). 어린 선수일수록 효과가 큽니다.</div>`;
     h += `<div id="trainList">`;
     t.bat.forEach((p,i)=>{
       const age=t.age.bat[i]; const done=trained.includes('b'+i);
@@ -4221,7 +4289,7 @@ function evalTrade(){
   const rosterReason = !myRoster.ok ? myRoster.reason : (!oppRoster.ok ? oppRoster.reason : '');
   const gain = myPerceived + rosterAdj + salaryAdj - oppPerceived;
   // 등급차 2단계 이상이면 무조건 거절 (특급을 다수 하위선수로 못 데려옴)
-  const gradeBlocked = gradeGap >= 2;
+  const gradeBlocked = gradeGap >= diffRuleV43().gradeBlock;
   let reason;
   if(rosterBlocked) reason = `❌ ${rosterReason}`;
   else if(gradeBlocked) reason = `❌ 등급 격차가 큽니다 (${oppTopG}급을 ${myTopG}급으로는 데려올 수 없습니다).`;
@@ -4237,7 +4305,8 @@ function evalTrade(){
 function proposeTrade(){
   if(state.season && (state.season.tradeCount||0)>=3){ showAlert('이번 오프시즌에는 이미 트레이드를 3회 진행했습니다.'); return; }
   const ev = evalTrade();
-  const accept = !ev.gradeBlocked && !ev.rosterBlocked && (ev.gain >= 0 || (ev.gain >= -5 && Math.random()<0.6) || (ev.gain >= -9 && Math.random()<0.2));
+  const _ts = diffRuleV43().tradeSoft;
+  const accept = !ev.gradeBlocked && !ev.rosterBlocked && (ev.gain >= 0 || (ev.gain >= -5 && Math.random()<0.6*_ts) || (ev.gain >= -9 && Math.random()<0.2*_ts));
   if(!accept){
     showAlert('상대 구단이 트레이드를 거절했습니다.\n' + ev.reason.replace(/^[\u2705\u274c\ud83e\udd1d]\s*/,''));
     return;
@@ -4483,8 +4552,8 @@ function openTrainSheet(key){
     <div class="reveal"><div class="lbl">훈련 배정</div>
       ${already? '✅ 이미 훈련 배정된 선수입니다.' :
         `이 선수를 집중 훈련시켜 다음 시즌 성장 확률을 높입니다.<br>
-         나이 ${age}세 → 기본 성장 기대: <b>${effect}</b><br>집중 훈련 효과: <b>능력치 1개 +1, 40% 확률로 1개 추가</b><br>훈련장 Lv.2/3은 추가 +1 확률 30%/60%<br>
-         ${ecoOn()? '훈련 비용 <b>5억</b> (현재 잔고 '+fmtMoney()+')':'비용 없음'}<br>
+         나이 ${age}세 → 기본 성장 기대: <b>${effect}</b><br>집중 훈련 효과: <b>능력치 1개 +1, ${Math.round(diffRuleV43().trainExtra*100)}% 확률로 1개 추가</b><br>훈련장 Lv.2/3은 추가 +1 확률 30%/60%<br>
+         ${ecoOn()? '훈련 비용 <b>'+diffRuleV43().trainCost+'억</b> (현재 잔고 '+fmtMoney()+')':'비용 없음'}<br>
          현재 배정 ${(state.season.trained||[]).length}/3명`}</div>
     ${playerStatsHtml(p, isBat, t.id)}
     ${already? '' : `<button class="btn" onclick="closeSheet(); doTrain('${key}')">훈련 배정 확정</button>`}
@@ -4494,10 +4563,11 @@ function openTrainSheet(key){
 function doTrain(key){
   if(!state.season.trained) state.season.trained=[];
   if(state.season.trained.includes(key)) return;
-  if(state.season.trained.length>=3){ showAlert('시즌당 최대 3명까지 훈련할 수 있습니다.'); return; }
+  const _dr = diffRuleV43();
+  if(state.season.trained.length>=_dr.trainSlots){ showAlert(`시즌당 최대 ${_dr.trainSlots}명까지 훈련할 수 있습니다.`); return; }
   if(ecoOn()){
-    if(state.money < 5){ showAlert('훈련 비용(5억)이 부족합니다.'); return; }
-    state.money -= 5;
+    if(state.money < _dr.trainCost){ showAlert(`훈련 비용(${_dr.trainCost}억)이 부족합니다.`); return; }
+    state.money -= _dr.trainCost;
   }
   state.season.trained.push(key);
   save(); refreshHeader(); renderFront();
@@ -4648,7 +4718,7 @@ function buildSalaryDemands(){
     if(r) reasons.push({rank:r.rank,priority:3,text:`${st.rbi}타점 · 리그 ${r.rank}위`});
     const why=bestReason(reasons); if(!why) return;
     const cur=salaryOf(p,true);
-    const raise=+(cur*(0.2+Math.random()*0.3)).toFixed(1);
+    const raise=+(cur*(0.2+Math.random()*0.3)*diffRuleV43().salaryMul).toFixed(1);
     demands.push({kind:'bat',idx:+idx,name:p[0],cur,raise,why});
   });
 
@@ -4665,7 +4735,7 @@ function buildSalaryDemands(){
     if(r) reasons.push({rank:r.rank,priority:3,text:`${st.so}탈삼진 · 리그 ${r.rank}위`});
     const why=bestReason(reasons); if(!why) return;
     const cur=salaryOf(p,false);
-    const raise=+(cur*(0.2+Math.random()*0.3)).toFixed(1);
+    const raise=+(cur*(0.2+Math.random()*0.3)*diffRuleV43().salaryMul).toFixed(1);
     const pidx=my.pit.findIndex(x=>x[0]===name);
     demands.push({kind:'pit',idx:pidx,name,cur,raise,why});
   });
@@ -4719,7 +4789,7 @@ function renegoDemand(i){
   else if(/([0-9]+)세이브/.test(why)) perf = Math.min(1, 0.4 + (+RegExp.$1)/25);
   else if(/([0-9]+)탈삼진/.test(why)) perf = Math.min(1, 0.4 + (+RegExp.$1)/120);
   // 수용 확률: 성적 좋을수록 콧대 높아 거절(수용 확률↓). 40%~85% 범위
-  const acceptChance = Math.max(0.15, 0.9 - perf*0.7);
+  const acceptChance = Math.max(0.10, (0.9 - perf*0.7) * diffRuleV43().renegoMul);
   const ok = Math.random() < acceptChance;
   res['reneg_used_'+i] = true;
   if(ok){
@@ -4912,7 +4982,7 @@ function renderRank(){
       <td>${gp}</td><td>${r.w}</td><td>${r.l}</td><td>${r.t}</td><td>${pct}</td><td>${gb}</td></tr>`;
   });
   document.getElementById('rankTable').innerHTML = html;
-  document.getElementById('rankTitle').textContent = `${state.mode==='sim'? state.year+'년차 ':''}순위표 — ${state.season.day}/36경기`;
+  document.getElementById('rankTitle').textContent = `${state.mode==='sim'? state.year+'년차 ':''}순위표 — ${state.season.day}/${seasonLenV42()}경기`;
   const lastBox = document.getElementById('lastResults');
   if(!state.season.last.length){ lastBox.innerHTML = '<div class="hint">아직 치른 경기가 없습니다.</div>'; }
   else{
@@ -6807,7 +6877,7 @@ renderRank=function(){
       html+=`<tr class="${id===state.myTeam?'me':''}"><td class="rk">${i+1}</td><td class="tm">${safeTeamNameV271(id)}</td><td>${gp}</td><td>${r.w}</td><td>${r.l}</td><td>${r.t}</td><td>${pct}</td><td>${gb}</td></tr>`;
     });
     document.getElementById('rankTable').innerHTML=html;
-    document.getElementById('rankTitle').textContent=`${state.mode==='sim'?state.year+'년차 ':''}순위표 — ${state.season.day}/36경기`;
+    document.getElementById('rankTitle').textContent=`${state.mode==='sim'?state.year+'년차 ':''}순위표 — ${state.season.day}/${seasonLenV42()}경기`;
     const box=document.getElementById('lastResults');
     if(box) box.innerHTML='<div class="hint">오래된 저장의 순위 데이터를 자동 복구했습니다.</div>'+seasonHistoryPanelV270();
   }
@@ -6848,7 +6918,7 @@ function renderRankCoreV272(){
   const table=document.getElementById('rankTable');
   if(table) table.innerHTML=html;
   const title=document.getElementById('rankTitle');
-  if(title) title.textContent=`${state.mode==='sim'?state.year+'년차 ':''}순위표 — ${state.season.day}/36경기`;
+  if(title) title.textContent=`${state.mode==='sim'?state.year+'년차 ':''}순위표 — ${state.season.day}/${seasonLenV42()}경기`;
   const box=document.getElementById('lastResults');
   if(box){
     let rh='<div class="rr-title">최근 경기 결과</div>';
@@ -7080,7 +7150,7 @@ function renderRankStableV274(){
   const table=document.getElementById('rankTable');
   if(table) table.innerHTML=html;
   const title=document.getElementById('rankTitle');
-  if(title) title.textContent=`${state.mode==='sim'?state.year+'년차 ':''}순위표 — ${+state.season.day||0}/36경기`;
+  if(title) title.textContent=`${state.mode==='sim'?state.year+'년차 ':''}순위표 — ${+state.season.day||0}/${seasonLenV42()}경기`;
 
   const box=document.getElementById('lastResults');
   if(box){
@@ -8327,13 +8397,13 @@ let BALANCE_GAME_DEPTH_V287=0;
 const _bV287=b;
 b=function(v,p,teamId,isBat){
   let out=_bV287(v,p,teamId,isBat);
-  if(BALANCE_GAME_DEPTH_V287>0&&state.eco==='hard'&&teamId===state.myTeam)out-=1;
+  if(BALANCE_GAME_DEPTH_V287>0&&typeof diffAdjV43==='function')out+=diffAdjV43(teamId);
   return Math.max(30,Math.min(99,out));
 };
 const _bvV287=bv;
 bv=function(velo,p,teamId){
   let out=_bvV287(velo,p,teamId);
-  if(BALANCE_GAME_DEPTH_V287>0&&state.eco==='hard'&&teamId===state.myTeam)out-=1;
+  if(BALANCE_GAME_DEPTH_V287>0&&typeof diffAdjV43==='function')out+=diffAdjV43(teamId);
   return Math.max(128,Math.min(160,out));
 };
 const _simGameV287=simGame;
@@ -9790,10 +9860,11 @@ body.theme-night main::after{
     if(!state.season.trained)state.season.trained=[];
     const plans=ensurePlanMapV327();
     const already=state.season.trained.includes(key);
-    if(!already&&state.season.trained.length>=3){showAlert('시즌당 최대 3명까지 훈련할 수 있습니다.');return;}
+    const _dr=diffRuleV43();
+    if(!already&&state.season.trained.length>=_dr.trainSlots){showAlert(`시즌당 최대 ${_dr.trainSlots}명까지 훈련할 수 있습니다.`);return;}
     if(!already&&ecoOn()){
-      if(state.money<5){showAlert('훈련 비용(5억)이 부족합니다.');return;}
-      state.money-=5;
+      if(state.money<_dr.trainCost){showAlert(`훈련 비용(${_dr.trainCost}억)이 부족합니다.`);return;}
+      state.money-=_dr.trainCost;
     }
     if(!already)state.season.trained.push(key);
     plans[key]=skill;
@@ -9811,7 +9882,7 @@ body.theme-night main::after{
     const allowed=info.isBat?BAT_SKILLS_V327:PIT_SKILLS_V327;
     if(!allowed.includes(skill))return null;
     let gain=1;
-    if(Math.random()<.40)gain++;
+    if(Math.random()<diffRuleV43().trainExtra)gain++;
     const lv=Math.max(1,Number(state.facilities?.training)||1);
     if(lv>=2&&Math.random()<(lv===2?.30:.60))gain++;
     if(coachTargetV327(info.isBat)===skill&&Math.random()<.45)gain++;
@@ -9847,7 +9918,8 @@ body.theme-night main::after{
       const replaced=segment.replace('✅ 훈련 완료',`✅ ${skillLabelV327(skill)} 훈련`);
       html=html.slice(0,start)+replaced+html.slice(end);
     });
-    html=html.replace('훈련시킬 선수를 터치하세요 (시즌당 최대 3명). 어린 선수일수록 효과가 큽니다.','선수를 터치해 훈련할 세부 능력치를 선택하세요 (시즌당 최대 3명). 어린 선수와 코치 특기 훈련일수록 유리합니다.');
+    const _sl=diffRuleV43().trainSlots;
+    html=html.replace(`훈련시킬 선수를 터치하세요 (시즌당 최대 ${_sl}명). 어린 선수일수록 효과가 큽니다.`,`선수를 터치해 훈련할 세부 능력치를 선택하세요 (시즌당 최대 ${_sl}명). 어린 선수와 코치 특기 훈련일수록 유리합니다.`);
     return html;
   };
 })();
@@ -10134,8 +10206,9 @@ body.theme-night main::after{
     const info=playerInfo(key);if(!info)return;
     if(!state.season.trained)state.season.trained=[];
     const already=state.season.trained.includes(key);
-    if(!already&&state.season.trained.length>=3){showAlert('시즌당 최대 3명까지 훈련할 수 있습니다.');return;}
-    if(!already&&ecoOn()){if(state.money<5){showAlert('훈련 비용(5억)이 부족합니다.');return;}state.money-=5;}
+    const _dr=diffRuleV43();
+    if(!already&&state.season.trained.length>=_dr.trainSlots){showAlert(`시즌당 최대 ${_dr.trainSlots}명까지 훈련할 수 있습니다.`);return;}
+    if(!already&&ecoOn()){if(state.money<_dr.trainCost){showAlert(`훈련 비용(${_dr.trainCost}억)이 부족합니다.`);return;}state.money-=_dr.trainCost;}
     if(!already)state.season.trained.push(key);planMap()[key]=plan;save();closeSheet();showAlert(`${info.p[0]}의 ${label} 훈련을 배정했습니다.`);renderClub();
   }
   window.doPitchMasteryTrainV331=function(key,id){const info=playerInfo(key);if(!info)return;ensurePitcher(info.p);const x=info.p.pitches.find(v=>v.id===id);if(x)assignPitchTraining(key,`pitch:${id}`,`${x.name} 숙련도`);};
@@ -14312,7 +14385,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.41';
+  const VERSION='v0.43';
   document.title='우리팀을 만들자 '+VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14333,7 +14406,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.41';
+  const VERSION='v0.43';
   function applyVersionV3414(){
     document.title='우리팀을 만들자 '+VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -14356,7 +14429,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.41';
+  const VERSION='v0.43';
 
   function applyVersionV3415(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14451,7 +14524,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.41';
+  const VERSION='v0.43';
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
@@ -14535,7 +14608,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.41';
+  const VERSION='v0.43';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -14679,7 +14752,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.41';
+  const VERSION='v0.43';
   let batchBusy=false;
 
   function forceVersionV3418(){
@@ -14822,7 +14895,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 (function(){
   'use strict';
-  const VERSION='v0.41';
+  const VERSION='v0.43';
 
   function forceVersionV3419(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -14983,7 +15056,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <script>
 /* ═══════════ v0.34.30 · 하단 내비게이션 화면 동기화 ═══════════ */
 (()=>{
-  const VERSION='v0.41';
+  const VERSION='v0.43';
   const screenToNav={team:'team',lineup:'lineup',game:'game',front:'front',rank:'rank'};
   function syncBottomNav(name){
     const nv=screenToNav[name];
@@ -15024,7 +15097,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 경기 탭 진입 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const VERSION='v0.41';
+  const VERSION='v0.43';
   function syncGameNav(){
     document.querySelectorAll('nav button[data-nav]').forEach(btn=>btn.classList.toggle('on',btn.dataset.nav==='game'));
   }
@@ -15089,7 +15162,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 충돌 패치 제거 후 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
 
   function version(){
     document.title='우리팀을 만들자 '+V;
@@ -15128,7 +15201,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
   // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
   // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
   const base=window.ensureSquadState;
@@ -15152,7 +15225,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -15200,7 +15273,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -15413,7 +15486,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
   // ensureSquadState()는 isFirstTeam 같은 사소한 조회마다 호출되는데,
   // v0.25.0에서 그 안에 aiTopUpRosters(리그 10팀 로스터 전체 재계산)가 붙으면서
   // 5경기 자동 진행 한 번에 5,400회 넘게 전 리그를 재계산하고 있었다.
@@ -15472,7 +15545,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
 
   function market(){return (typeof state!=='undefined'&&state)?state.season?.market:null;}
   function started(m){return !!m?.draftStartedV3413;}
@@ -15701,7 +15774,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.35 · 마감 점검 (조작 일관성) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
 
   // button이 아닌 div/span에 onclick만 달린 곳이 남아 있다.
   // 포커스가 갔을 때 Enter·Space로도 눌리게 해 조작 방식을 통일한다.
@@ -15776,7 +15849,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.36 · FA 라운드제 입찰 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
   const R1=n=>Math.round(n*10)/10;
   const money=()=>Number(state?.money)||0;
   const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
@@ -15814,7 +15887,7 @@ main *,.sheet *{max-width:100%}
     const home=teamId===fa.from?1.14:1;
     const noise=.88+(hashV(teamId+'|'+fa.data[0]+'|'+(state.year||1))%30)/100;
     // 한도가 지나치게 높으면 경매가 끝나지 않는다. 시작가의 1.55배를 넘지 않게 한다.
-    return R1(Math.min(base*1.55,base*(.78+need*.52)*home*noise));
+    return R1(Math.min(base*diffRuleV43().faCeil,base*(.78+need*.52)*home*noise));
   }
 
   /* ---------- 입찰 상태 ---------- */
@@ -15830,7 +15903,7 @@ main *,.sheet *{max-width:100%}
       list.push({teamId:t.id,max,appeal:appealOf(t.id,fa),bid:0,out:false});
     });
     list.sort((a,b)=>b.max-a.max);
-    return list.slice(0,4);                    // 최대 4팀이 경쟁
+    return list.slice(0,diffRuleV43().faRivals);   // 경쟁 팀 수는 난이도에 따라 달라진다
   }
 
   function perceived(amount,appeal){return amount*appeal;}
@@ -15869,7 +15942,7 @@ main *,.sheet *{max-width:100%}
         const pad=(hashV(r.teamId+'|'+B.round)%7)/10;          // 0~0.6억 여유
         // 찔끔 올리면 경매가 끝나지 않는다. 남은 여력의 일부를 한 번에 태운다.
         const headroom=Math.max(0,r.max-target);
-        r.bid=R1(Math.min(r.max,target+headroom*.42+pad));
+        r.bid=R1(Math.min(r.max,target+headroom*diffRuleV43().faHeadroom+pad));
         log(`<b>${nm(r.teamId)}</b> <span class="up">${r.bid.toFixed(1)}억</span> 제시`);
         raised=true;
       }else{
@@ -16086,7 +16159,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.37 · 백업·복원 (자동저장은 그대로) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
   const KEY='ourteam_slots_v1';
 
   function raw(){try{return localStorage.getItem(KEY)||'';}catch(_){return '';}}
@@ -16288,7 +16361,7 @@ main *,.sheet *{max-width:100%}
     const out=[];const r=rec350(),gp=r.w+r.l+r.t,inj=healthCount350();
     if(!state.season)out.push({c:'warn',i:'📅',t:'새 시즌을 시작해 첫 일정을 준비하세요.'});
     else if(typeof seasonOver==='function'&&seasonOver())out.push({c:'good',i:'🏁',t:'정규시즌이 끝났습니다. 포스트시즌·오프시즌 절차를 확인하세요.'});
-    else out.push({c:'good',i:'⚾',t:`다음 경기 준비 · 현재 ${state.season.day||0}/36경기 진행`});
+    else out.push({c:'good',i:'⚾',t:`다음 경기 준비 · 현재 ${state.season.day||0}/${seasonLenV42()}경기 진행`});
     if(inj>0)out.push({c:'bad',i:'🩹',t:`부상 선수 ${inj}명 · 라인업과 투수진 공백을 확인하세요.`});
     else out.push({c:'good',i:'💚',t:'부상 이탈 없이 선수단이 정상 가동 중입니다.'});
     if(gp>=5&&r.l-r.w>=3)out.push({c:'warn',i:'📉',t:'최근 성적이 기대보다 낮습니다. 라인업과 선발 로테이션을 점검하세요.'});
@@ -16406,7 +16479,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.38 · 이식 기능 통합 보정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
   const SLOT_KEY='ourteam_slots_v1';
   const DRAFT_KEY='ourteam_custom_drafts_v1';
 
@@ -16533,7 +16606,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.39 · 창단 구단 실제 생성 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
   const DRAFT_KEY='ourteam_custom_drafts_v1';
   const PER_TEAM=2;        // 팀당 지명 수 → 20명
   const AUTO_FILL=10;      // 나머지 자동 생성
@@ -16649,7 +16722,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.39 · 확장 드래프트 진행 + 구단 생성 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
   const PER_TEAM=2,AUTO_FILL=10,PROTECT=20;
   let D=null;
 
@@ -16859,7 +16932,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.40 · 11팀 리그 부전승(휴식일) 처리 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
 
   function todayRound(){
     const s=state?.season;
@@ -16931,7 +17004,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.41 · 12팀 확장 (내 구단 + AI 신생 구단) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.41';
+  const V='v0.43';
 
   /* ---------- 팀 수에 맞춰 사이클 수를 정해 36경기 근처를 유지 ---------- */
   const prevGen=window.genSchedule;
