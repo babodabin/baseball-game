@@ -16905,6 +16905,10 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
   function renderDraft(){
     const sheet=document.getElementById('sheet');if(!sheet||!D)return;
+    // 선수 한 명을 지명/취소할 때 전체 목록을 다시 그리더라도,
+    // 사용자가 보고 있던 확장 드래프트 스크롤 위치는 그대로 유지한다.
+    const oldPool=sheet.querySelector('.exp-pool-v39');
+    const keepScroll=oldPool?oldPool.scrollTop:0;
     const done=D.picked.length,need=D.need;
     let body='';
     D.sources.forEach(tid=>{
@@ -16934,6 +16938,12 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
       <button class="btn ghost" onclick="expAutoPickV39()">남은 자리 자동 지명</button>
       <button class="btn" onclick="expFinishV39()" ${ready?'':'disabled'}>${ready?'창단 완료':`${need-done}명 더 지명해야 합니다`}</button>`;
     document.getElementById('mask')?.classList.add('on');
+    const newPool=sheet.querySelector('.exp-pool-v39');
+    if(newPool){
+      // iOS Safari에서도 레이아웃 계산 뒤 위치가 튀지 않도록 즉시 + 다음 프레임에 한 번 더 복원.
+      newPool.scrollTop=keepScroll;
+      requestAnimationFrame(()=>{newPool.scrollTop=keepScroll;});
+    }
   }
 
   /* ---------- 구단 생성 ---------- */
@@ -17282,7 +17292,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.46';
+  const V='v0.46.1';
   const REQ='야수 9명 이상 · 투수 6명 이상 · 선발투수 5명 이상 · 마무리투수 1명 이상';
 
   function reqText(){ return REQ; }
