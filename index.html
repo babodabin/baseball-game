@@ -17277,5 +17277,352 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 })();
 </script>
 
+
+<script>
+/* ═══════════ v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록 ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.46';
+  const REQ='야수 9명 이상 · 투수 6명 이상 · 선발투수 5명 이상 · 마무리투수 1명 이상';
+
+  function reqText(){ return REQ; }
+  window.gameRosterRequirementTextV46=reqText;
+
+  function validateRoster(teamName,bat,pit){
+    bat=Array.isArray(bat)?bat:[]; pit=Array.isArray(pit)?pit:[];
+    if(bat.length<9)return {ok:false,reason:`${teamName}의 야수가 9명 미만이 됩니다.`};
+    if(pit.length<6)return {ok:false,reason:`${teamName}의 투수가 6명 미만이 됩니다.`};
+    const starters=pit.filter(p=>p&&p[2]==='선발').length;
+    if(starters<5)return {ok:false,reason:`${teamName}의 선발투수가 5명 미만이 됩니다.`};
+    const closers=pit.filter(p=>p&&p[2]==='마무리').length;
+    if(closers<1)return {ok:false,reason:`${teamName}의 마무리투수가 없어집니다.`};
+    return {ok:true,reason:''};
+  }
+  window.validatePlayableRosterV46=validateRoster;
+
+  /* 실제 선수 배열을 만들어 검사한다.
+     기존 코드는 인원 수만 더하고 빼서, 잘못된 인덱스/중복 선택이 끼면 실제 결과와 검사가 달라질 수 있었다. */
+  window.rosterAfterTrade=function(teamId,outgoing,incoming,isMy){
+    try{
+      const t=getTeam(teamId),incomingId=isMy?tradeOppId:state.myTeam,inT=getTeam(incomingId);
+      if(!t||!inT)return {ok:false,reason:'트레이드 선수단 정보를 확인할 수 없습니다.'};
+      const outBat=new Set(),outPit=new Set();
+      for(const x of (outgoing||[])){
+        if(!x||!Number.isInteger(x.idx))return {ok:false,reason:'트레이드 선택 정보가 올바르지 않습니다.'};
+        const arr=x.kind==='bat'?t.bat:t.pit;
+        if(!arr?.[x.idx])return {ok:false,reason:'트레이드 대상 선수가 현재 선수단에 없습니다. 다시 선택해 주세요.'};
+        (x.kind==='bat'?outBat:outPit).add(x.idx);
+      }
+      const bat=t.bat.filter((_,i)=>!outBat.has(i));
+      const pit=t.pit.filter((_,i)=>!outPit.has(i));
+      for(const x of (incoming||[])){
+        const arr=x?.kind==='bat'?inT.bat:inT.pit;
+        const p=arr?.[x?.idx];
+        if(!p)return {ok:false,reason:'받을 선수 정보가 현재 선수단과 맞지 않습니다. 다시 선택해 주세요.'};
+        (x.kind==='bat'?bat:pit).push(p);
+      }
+      return validateRoster(t.name||teamId,bat,pit);
+    }catch(err){
+      console.error(V+' 트레이드 사전검사:',err);
+      return {ok:false,reason:'트레이드 후 선수단을 안전하게 확인하지 못했습니다.'};
+    }
+  };
+
+  function ensureActivity(){
+    if(!Array.isArray(state.transactionHistory))state.transactionHistory=[];
+  }
+  function sameActivity(a,type,body){
+    return a&&a.type===type&&a.body===body&&(+a.year||0)===(+state.year||1)&&(+a.day||0)===((+state.season?.day||0)+1);
+  }
+  function addActivity(type,body){
+    try{
+      ensureLongTermState?.(); ensureActivity();
+      const row={year:state.year||1,day:(state.season?.day||0)+1,type:String(type||'구단 활동'),body:String(body||'')};
+      if(!sameActivity(state.transactionHistory[0],row.type,row.body))state.transactionHistory.unshift(row);
+      state.transactionHistory=state.transactionHistory.slice(0,200);
+    }catch(err){console.error(V+' 활동 기록:',err);}
+  }
+  window.pushTransactionHistoryV46=addActivity;
+
+  function addNewsUnique(title,body){
+    try{
+      ensureLongTermState?.();
+      const day=(state.season?.day||0)+1,year=state.year||1;
+      const exists=(state.news||[]).slice(0,8).some(x=>x&&x.title===title&&x.body===body&&+x.year===+year&&+x.day===+day);
+      if(!exists&&typeof pushClubNews==='function')pushClubNews(title,body);
+    }catch(err){console.error(V+' 뉴스 기록:',err);}
+  }
+
+  function invalidateRoster(teamId){
+    try{
+      if(!teamId)return;
+      if(!state.lineups||typeof state.lineups!=='object')state.lineups={};
+      if(!state.rotOrder||typeof state.rotOrder!=='object')state.rotOrder={};
+      if(!state.pitchPlan||typeof state.pitchPlan!=='object')state.pitchPlan={};
+      state.lineups[teamId]=null;
+      state.rotOrder[teamId]=null;
+      delete state.pitchPlan[teamId];
+      if(teamId===state.myTeam&&typeof setBalancedFirstTeamV300==='function')setBalancedFirstTeamV300(teamId);
+      if(typeof getLineup==='function')getLineup(teamId);
+      if(typeof pitchPlanOfV310==='function')pitchPlanOfV310(teamId);
+    }catch(err){console.error(V+' 라인업 재구성 '+teamId+':',err);}
+  }
+
+  /* 이미 과거 거래로 깨진 저장은 최소 인원만 보충한다.
+     정상 선수단은 한 명도 건드리지 않는다. */
+  function repairBrokenRoster(teamId){
+    const raw=state?.players?.[teamId];
+    if(!raw||!Array.isArray(raw.bat)||!Array.isArray(raw.pit))return [];
+    raw.age=raw.age||{bat:[],pit:[]};
+    raw.age.bat=Array.isArray(raw.age.bat)?raw.age.bat:[];
+    raw.age.pit=Array.isArray(raw.age.pit)?raw.age.pit:[];
+    const added=[],seedBase=46000+(teamId?String(teamId).length*100:0)+(raw.bat.length+raw.pit.length)*7;
+    const batBase=()=>raw.bat.length?raw.bat:[[ '대체선수','가상 선수','DH','우',60,58,58,58,58 ]];
+    const pitBase=()=>raw.pit.length?raw.pit:[[ '대체투수','가상 선수','불펜','우',145,60,60,55 ]];
+    let seed=seedBase;
+    while(raw.bat.length<9){
+      let p;
+      try{p=genBackupBat(batBase(),seed++);}catch(_){p=[`긴급야수${raw.bat.length+1}`,'가상 선수','DH','우',58,56,56,56,56];}
+      p[1]='긴급 대체 선수';
+      raw.bat.push(p);raw.age.bat.push(24);added.push(p[0]);
+    }
+    while(raw.pit.length<6){
+      let p;
+      try{p=genRelief(pitBase(),seed++);}catch(_){p=[`긴급투수${raw.pit.length+1}`,'가상 선수','불펜','우',143,58,58,52];}
+      p[1]='긴급 대체 선수';
+      raw.pit.push(p);raw.age.pit.push(24);added.push(p[0]);
+    }
+    let starters=raw.pit.filter(p=>p?.[2]==='선발').length;
+    while(starters<5){
+      let p;
+      try{p=genRelief(pitBase(),seed++);}catch(_){p=[`긴급선발${starters+1}`,'가상 선수','선발','우',143,58,58,68];}
+      p[1]='긴급 대체 선수';p[2]='선발';p[7]=Math.max(65,+p[7]||65);
+      raw.pit.push(p);raw.age.pit.push(24);added.push(p[0]);starters++;
+    }
+    if(!raw.pit.some(p=>p?.[2]==='마무리')){
+      let p;
+      try{p=genRelief(pitBase(),seed++);}catch(_){p=['긴급마무리','가상 선수','마무리','우',145,60,60,52];}
+      p[1]='긴급 대체 선수';p[2]='마무리';
+      raw.pit.push(p);raw.age.pit.push(24);added.push(p[0]);
+    }
+    while(raw.age.bat.length<raw.bat.length)raw.age.bat.push(24);
+    while(raw.age.pit.length<raw.pit.length)raw.age.pit.push(24);
+    if(added.length){
+      try{
+        if(typeof ensureSquadState==='function'){
+          ensureSquadState();
+          state.squadLevel[teamId]=state.squadLevel[teamId]||{};
+          raw.bat.forEach(p=>{if(p?.[1]==='긴급 대체 선수')state.squadLevel[teamId][squadKey('bat',p)]='first';});
+          raw.pit.forEach(p=>{if(p?.[1]==='긴급 대체 선수')state.squadLevel[teamId][squadKey('pit',p)]='first';});
+        }
+      }catch(_){}
+      invalidateRoster(teamId);
+    }
+    return added;
+  }
+
+  function repairBrokenLeagueOnce(){
+    try{
+      if(!state?.players)return;
+      let changed=false;
+      Object.keys(state.players).forEach(id=>{
+        const before=validateRoster(getTeam(id)?.name||id,state.players[id]?.bat,state.players[id]?.pit);
+        if(before.ok)return;
+        const added=repairBrokenRoster(id);
+        if(added.length){
+          changed=true;
+          if(id===state.myTeam){
+            const body=`경기 필수 인원이 부족했던 기존 저장을 복구했습니다. 긴급 대체 선수 ${added.length}명 등록: ${added.join(', ')}`;
+            addNewsUnique('긴급 로스터 복구',body);addActivity('로스터 복구',body);
+          }
+        }
+      });
+      if(changed&&typeof save==='function')save();
+    }catch(err){console.error(V+' 기존 저장 복구:',err);}
+  }
+
+  /* 트레이드: 현재의 정상 작동 로직은 그대로 두고, 성사 뒤 양 팀 캐시만 무효화한다. */
+  const prevTrade=window.proposeTrade;
+  if(typeof prevTrade==='function'){
+    window.proposeTrade=function(){
+      const oppId=tradeOppId;
+      const before=Number(state.season?.tradeCount)||0;
+      let outNames='',inNames='',oppName='';
+      try{
+        const my=getTeam(state.myTeam),opp=getTeam(oppId);oppName=opp?.name||oppId||'상대 구단';
+        outNames=(tradeMyPicks||[]).map(x=>(x.kind==='bat'?my.bat:my.pit)?.[x.idx]?.[0]).filter(Boolean).join(', ');
+        inNames=(tradeOppPicks||[]).map(x=>(x.kind==='bat'?opp.bat:opp.pit)?.[x.idx]?.[0]).filter(Boolean).join(', ');
+      }catch(_){}
+      const r=prevTrade.apply(this,arguments);
+      try{
+        const after=Number(state.season?.tradeCount)||0;
+        if(after>before){
+          invalidateRoster(state.myTeam);invalidateRoster(oppId);
+          const body=`${oppName}와 트레이드 · 보낸 선수: ${outNames||'없음'} · 받은 선수: ${inNames||'없음'}`;
+          addNewsUnique('트레이드 성사',body);addActivity('트레이드',body);
+          if(typeof save==='function')save();
+        }
+      }catch(err){console.error(V+' 트레이드 후처리:',err);}
+      return r;
+    };
+  }
+
+  /* FA 영입은 원 소속팀에서 실제로 선수가 빠지므로, 원 소속팀이 경기 불능이면 계약 자체를 막는다. */
+  const prevSignFA=window.signFA;
+  if(typeof prevSignFA==='function'){
+    window.signFA=function(idx){
+      const fa=state.season?.market?.fa?.[idx];
+      if(!fa)return prevSignFA.apply(this,arguments);
+      try{
+        const src=state.players?.[fa.from],srcName=getTeam(fa.from)?.name||fa.from;
+        if(src){
+          const bat=src.bat.slice(),pit=src.pit.slice();
+          const arr=fa.kind==='bat'?bat:pit;
+          const rm=arr.findIndex(p=>p?.[0]===fa.data?.[0]);
+          if(rm>=0)arr.splice(rm,1);
+          const chk=validateRoster(srcName,bat,pit);
+          if(!chk.ok){showAlert(`이 계약은 진행할 수 없습니다.\n${chk.reason}\n\n경기 필수 조건: ${REQ}`);return;}
+        }
+      }catch(err){console.error(V+' FA 계약 사전검사:',err);}
+      const before=state.season?.market?.fa?.length||0,from=fa.from,name=fa.data?.[0]||'선수',pos=fa.data?.[2]||'';
+      const r=prevSignFA.apply(this,arguments);
+      try{
+        if((state.season?.market?.fa?.length||0)<before){
+          invalidateRoster(state.myTeam);invalidateRoster(from);
+          const body=`${name} · ${pos} · FA 영입 · 원 소속 ${getTeam(from)?.name||from}`;
+          addNewsUnique('FA 영입',body);addActivity('선수 계약',body);if(typeof save==='function')save();
+        }
+      }catch(err){console.error(V+' FA 계약 후처리:',err);}
+      return r;
+    };
+  }
+
+  function wrapAddSigning(fnName,label){
+    const prev=window[fnName];if(typeof prev!=='function')return;
+    window[fnName]=function(idx){
+      let name='',pos='',beforeBat=0,beforePit=0;
+      try{
+        const m=state.season?.market,entry=fnName==='signForeign'?m?.foreign?.[idx]:m?.legends?.[idx];
+        name=entry?.data?.[0]||'선수';pos=entry?.data?.[2]||'';
+        const t=state.players?.[state.myTeam];beforeBat=t?.bat?.length||0;beforePit=t?.pit?.length||0;
+      }catch(_){}
+      const r=prev.apply(this,arguments);
+      try{
+        const t=state.players?.[state.myTeam];
+        if((t?.bat?.length||0)>beforeBat||(t?.pit?.length||0)>beforePit){
+          invalidateRoster(state.myTeam);
+          const body=`${name} · ${pos} · ${label}`;
+          addNewsUnique(label,body);addActivity('선수 계약',body);if(typeof save==='function')save();
+        }
+      }catch(err){console.error(V+' '+label+' 후처리:',err);}
+      return r;
+    };
+  }
+  wrapAddSigning('signForeign','외국인 선수 영입');
+  wrapAddSigning('signLegend','레전드 영입');
+
+  /* 방출도 같은 최소 경기 인원을 보장한다. */
+  const prevCut=window.doCut;
+  if(typeof prevCut==='function'){
+    window.doCut=function(kind,i){
+      try{
+        const t=state.players?.[state.myTeam],isBat=kind==='bat',p=(isBat?t?.bat:t?.pit)?.[i];
+        if(p){
+          const bat=t.bat.slice(),pit=t.pit.slice();(isBat?bat:pit).splice(i,1);
+          const chk=validateRoster(getTeam(state.myTeam)?.name||state.myTeam,bat,pit);
+          if(!chk.ok){showAlert(`방출할 수 없습니다.\n${chk.reason}\n\n경기 필수 조건: ${REQ}`);return;}
+          const before=(isBat?t.bat.length:t.pit.length),name=p[0];
+          const r=prevCut.apply(this,arguments);
+          const after=(isBat?t.bat.length:t.pit.length);
+          if(after<before){invalidateRoster(state.myTeam);const body=`${name} 방출`;addNewsUnique('선수 방출',body);addActivity('방출',body);if(typeof save==='function')save();}
+          return r;
+        }
+      }catch(err){console.error(V+' 방출 사전검사:',err);}
+      return prevCut.apply(this,arguments);
+    };
+  }
+
+  /* 재계약은 인원 변동은 없지만 사용자가 요청한 필수 조건을 항상 표시하고, 성사 기록을 남긴다. */
+  const prevOffer=window.offerContract;
+  if(typeof prevOffer==='function'){
+    window.offerContract=function(kind,idx){
+      let name='',before='';
+      try{const p=(kind==='bat'?getTeam(state.myTeam).bat:getTeam(state.myTeam).pit)?.[idx];name=p?.[0]||'선수';before=JSON.stringify(state.contracts?.[longKey(kind,p)]||{});}catch(_){}
+      const r=prevOffer.apply(this,arguments);
+      try{
+        const p=(kind==='bat'?getTeam(state.myTeam).bat:getTeam(state.myTeam).pit)?.[idx],after=JSON.stringify(state.contracts?.[longKey(kind,p)]||{});
+        if(name&&after!==before){const body=`${name} 재계약 성사`;addActivity('선수 계약',body);if(typeof save==='function')save();}
+      }catch(err){console.error(V+' 재계약 기록:',err);}
+      return r;
+    };
+  }
+
+  function noticeHtml(){
+    return `<div class="notice" data-roster-req-v46><b>⚠️ 경기 필수 선수단</b><br>${REQ}<br>이 조건을 깨는 트레이드·FA 계약·방출은 자동으로 차단됩니다.</div>`;
+  }
+  function addNotice(){
+    const sheet=document.getElementById('sheet');if(!sheet||sheet.querySelector('[data-roster-req-v46]'))return;
+    const top=sheet.querySelector('.top');if(top)top.insertAdjacentHTML('afterend',noticeHtml());
+    else sheet.insertAdjacentHTML('afterbegin',noticeHtml());
+  }
+  ['openTradeSheet','openContractSheet','openFaSheet','openForeignSheet','openLegendSheet','openCutSheet'].forEach(name=>{
+    const prev=window[name];if(typeof prev!=='function')return;
+    window[name]=function(){const r=prev.apply(this,arguments);try{addNotice();}catch(e){console.error(V+' 안내 표시:',e);}return r;};
+  });
+
+  /* 과거 뉴스 중 거래/계약 관련 항목도 활동 기록으로 한 번 가져온다. */
+  function seedHistoryFromNews(){
+    try{
+      ensureActivity();
+      if(state.transactionHistorySeedV46)return;
+      const rows=(state.news||[]).filter(x=>/트레이드|계약|영입|방출|지명/.test((x?.title||'')+' '+(x?.body||''))).slice(0,100).reverse();
+      rows.forEach(x=>{
+        const row={year:x.year||state.year||1,day:x.day||1,type:x.title||'구단 활동',body:x.body||''};
+        const exists=state.transactionHistory.some(a=>a&&a.year===row.year&&a.day===row.day&&a.type===row.type&&a.body===row.body);
+        if(!exists)state.transactionHistory.unshift(row);
+      });
+      state.transactionHistory=state.transactionHistory.slice(0,200);
+      state.transactionHistorySeedV46=true;
+    }catch(err){console.error(V+' 과거 활동 이관:',err);}
+  }
+
+  /* 기록실은 기존 내용을 건드리지 않고 맨 위에 '최근 활동'과 긴 뉴스 목록만 추가한다. */
+  const prevHistory=window.openHistoryRoom;
+  if(typeof prevHistory==='function'){
+    window.openHistoryRoom=function(){
+      seedHistoryFromNews();
+      const r=prevHistory.apply(this,arguments);
+      try{
+        const sheet=document.getElementById('sheet');if(!sheet)return r;
+        sheet.querySelectorAll('[data-recent-activity-v46]').forEach(el=>el.remove());
+        const tx=(state.transactionHistory||[]).slice(0,120);
+        const news=(state.news||[]).slice(0,80);
+        const hr='<hr style="border:0;border-top:1px solid rgba(255,255,255,.08);margin:8px 0">';
+        const txHtml=tx.length?tx.map(x=>`<b>${x.type||'구단 활동'}</b> <span style="color:var(--dim)">${x.year||'-'}년 ${x.day||'-'}일</span><br>${x.body||''}`).join(hr):'아직 기록된 활동이 없습니다.';
+        const newsHtml=news.length?news.map(x=>`<b>${x.title||'뉴스'}</b> <span style="color:var(--dim)">${x.year||'-'}년 ${x.day||'-'}일</span><br>${x.body||''}`).join(hr):'아직 뉴스가 없습니다.';
+        const block=`<div data-recent-activity-v46>
+          <div class="reveal"><div class="lbl">🧾 최근 구단 활동 · 최대 120건</div>${txHtml}</div>
+          <details class="reveal"><summary style="cursor:pointer;font-weight:800;color:var(--amber)">📰 최근 뉴스 길게 보기 · 최대 80건</summary><div style="margin-top:10px">${newsHtml}</div></details>
+        </div>`;
+        const top=sheet.querySelector('.top');if(top)top.insertAdjacentHTML('afterend',block);else sheet.insertAdjacentHTML('afterbegin',block);
+      }catch(err){console.error(V+' 기록실 확장:',err);}
+      return r;
+    };
+  }
+
+  /* 현재 저장이 이미 깨져 있으면 이번 한 번만 최소 복구. */
+  seedHistoryFromNews();
+  repairBrokenLeagueOnce();
+
+  /* 표시 버전은 마지막에 고정. */
+  function version(){
+    document.title='우리팀을 만들자 '+V;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;});
+    window.GAME_VERSION=V;
+  }
+  version();setTimeout(version,0);setTimeout(version,800);
+})();
+</script>
+
 </body>
 </html>
