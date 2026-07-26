@@ -3,7 +3,7 @@
 <head>
 <!--
 ==============================================================================
-  우리팀을 만들자 — 파일 지도 (v0.47 정돈)
+  우리팀을 만들자 — 파일 지도 (v0.50 정돈)
 ==============================================================================
 
   이 파일은 단일 HTML 안에 스타일/스크립트 블록이 순서대로 쌓인 구조입니다.
@@ -832,7 +832,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.47</span>
+    <span class="ver">v0.50</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -12176,7 +12176,7 @@ body.theme-night main::after{
    ───────────────────────────────────────────────────────────────────── */
 
 (function(){
-  const VERSION='v0.47';
+  const VERSION='v0.50';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -12296,7 +12296,7 @@ body.theme-night main::after{
 
 (function(){
   'use strict';
-  const VERSION='v0.47';
+  const VERSION='v0.50';
   const META='playerMetaV326';
   const FIELD=['C','1B','2B','3B','SS','LF','CF','RF'];
   const INF=new Set(['1B','2B','3B','SS']);
@@ -15533,7 +15533,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.47';
+  const VERSION='v0.50';
   document.title='우리팀을 만들자 '+VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -15559,7 +15559,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.47';
+  const VERSION='v0.50';
   function applyVersionV3414(){
     document.title='우리팀을 만들자 '+VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -15588,7 +15588,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.47';
+  const VERSION='v0.50';
 
   function applyVersionV3415(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -15696,7 +15696,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.47';
+  const VERSION='v0.50';
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
@@ -15789,7 +15789,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.47';
+  const VERSION='v0.50';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -15946,7 +15946,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.47';
+  const VERSION='v0.50';
   let batchBusy=false;
 
   function forceVersionV3418(){
@@ -16097,7 +16097,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.47';
+  const VERSION='v0.50';
 
   function forceVersionV3419(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -16265,7 +16265,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 /* ═══════════ v0.34.30 · 하단 내비게이션 화면 동기화 ═══════════ */
 (()=>{
-  const VERSION='v0.47';
+  const VERSION='v0.50';
   const screenToNav={team:'team',lineup:'lineup',game:'game',front:'front',rank:'rank'};
   function syncBottomNav(name){
     const nv=screenToNav[name];
@@ -16312,7 +16312,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 경기 탭 진입 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const VERSION='v0.47';
+  const VERSION='v0.50';
   function syncGameNav(){
     document.querySelectorAll('nav button[data-nav]').forEach(btn=>btn.classList.toggle('on',btn.dataset.nav==='game'));
   }
@@ -16392,7 +16392,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 충돌 패치 제거 후 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
 
   function version(){
     document.title='우리팀을 만들자 '+V;
@@ -16441,7 +16441,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
   // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
   const base=window.ensureSquadState;
@@ -16474,7 +16474,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -16537,7 +16537,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -16761,7 +16761,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   // ensureSquadState()는 isFirstTeam 같은 사소한 조회마다 호출되는데,
   // v0.25.0에서 그 안에 aiTopUpRosters(리그 10팀 로스터 전체 재계산)가 붙으면서
   // 5경기 자동 진행 한 번에 5,400회 넘게 전 리그를 재계산하고 있었다.
@@ -16835,7 +16835,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
 
   function market(){return (typeof state!=='undefined'&&state)?state.season?.market:null;}
   function started(m){return !!m?.draftStartedV3413;}
@@ -17079,7 +17079,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.35 · 마감 점검 (조작 일관성) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
 
   // button이 아닌 div/span에 onclick만 달린 곳이 남아 있다.
   // 포커스가 갔을 때 Enter·Space로도 눌리게 해 조작 방식을 통일한다.
@@ -17169,7 +17169,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.36 · FA 라운드제 입찰 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   const R1=n=>Math.round(n*10)/10;
   const money=()=>Number(state?.money)||0;
   const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
@@ -17494,7 +17494,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.37 · 백업·복원 (자동저장은 그대로) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   const KEY='ourteam_slots_v1';
 
   function raw(){try{return localStorage.getItem(KEY)||'';}catch(_){return '';}}
@@ -17930,7 +17930,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.38 · 이식 기능 통합 보정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   const SLOT_KEY='ourteam_slots_v1';
   const DRAFT_KEY='ourteam_custom_drafts_v1';
 
@@ -18072,7 +18072,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.39 · 창단 구단 실제 생성 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   const DRAFT_KEY='ourteam_custom_drafts_v1';
   const PER_TEAM=2;        // 팀당 지명 수 → 20명
   const AUTO_FILL=10;      // 나머지 자동 생성
@@ -18205,7 +18205,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.39 · 확장 드래프트 진행 + 구단 생성 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   const PER_TEAM=2,AUTO_FILL=10,PROTECT=20;
   let D=null;
 
@@ -18458,7 +18458,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.40 · 11팀 리그 부전승(휴식일) 처리 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
 
   function todayRound(){
     const s=state?.season;
@@ -18540,7 +18540,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.41 · 12팀 확장 (내 구단 + AI 신생 구단) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
 
   /* ---------- 팀 수에 맞춰 사이클 수를 정해 36경기 근처를 유지 ---------- */
   const prevGen=window.genSchedule;
@@ -18634,7 +18634,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 (()=>{
   'use strict';
-  const V='v0.47', BAT_TARGET=18, PIT_TARGET=12;
+  const V='v0.50', BAT_TARGET=18, PIT_TARGET=12;
   const BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
   const POS=['C','1B','2B','3B','SS','LF','CF','RF','DH'];
 
@@ -18731,7 +18731,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   const REQ='야수 9명 이상 · 투수 6명 이상 · 선발투수 5명 이상 · 마무리투수 1명 이상';
 
   function reqText(){ return REQ; }
@@ -19106,7 +19106,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46.5 · 설정 + 게임 진단·복구 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
 
   function esc(s){
     return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -19276,7 +19276,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46.5 · 생성 선수 이름·동명이인 구분 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   const BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
 
   function metaOf(p){
@@ -19422,7 +19422,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46.6 · 슬롯 리그 정합 + 슬롯 선택 삭제 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
 
   /* 슬롯을 옮길 때마다 그 슬롯이 쓰는 구단만 TEAMS에 남긴다. */
   ['switchSlot','switchSlotEmpty'].forEach(fn=>{
@@ -19543,7 +19543,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   function apply(){
     document.title='우리팀을 만들자 '+V;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
@@ -19570,7 +19570,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.47';
+  const V='v0.50';
   function sweep(){
     let n=0;
     document.querySelectorAll('div[onclick],span[onclick],li[onclick]').forEach(el=>{
@@ -19592,6 +19592,139 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
       window[n]=function(){const r=f.apply(this,arguments);schedule();return r;};});
   window.a11ySweepV47=sweep;
   schedule();
+})();
+</script>
+
+
+<style>
+/* ──────────────────────────────────────────────────────────────
+   [정돈] v0.48 · 마감 점검 보완 (v0.34.35 규칙을 최신 화면까지 확장)
+   대상  : -v40 휴식일 · -v46 활동기록 · -v462 설정/진단 · -v466 드래프트요약·슬롯삭제 · -v47
+   메모  : v0.34.35의 [class*=] 목록이 -v39까지만 덮고 있어 그 뒤 화면이 빠져 있었다.
+           한글 줄바꿈과 넘침 방지, 조작 요소 44px, 좁은/가로 화면, 위험 버튼 강조를 채운다.
+   ────────────────────────────────────────────────────────────── */
+
+/* [글자 크기와 줄바꿈] 한글은 어절 단위로 끊고, 긴 토큰만 넘침 방지 */
+[class*="-v40"],[class*="-v46"],[class*="-v462"],[class*="-v466"],[class*="-v47"]{
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+[class*="-v46"] .num,[class*="-v462"] .num,[class*="-v466"] .num{
+  word-break:normal;overflow-wrap:normal;
+}
+
+/* [모바일 터치 영역] 실제 조작 요소만 44px 확보 */
+.slot-del-v466,.settings-card-v462[onclick],.diag-item-v462[onclick],
+.myteam-task-v350[onclick],[class*="-v462"] button,[class*="-v466"] button{
+  min-height:var(--tap-min,44px);
+}
+
+/* [비활성·선택·오류 상태] 슬롯 삭제는 되돌릴 수 없는 조작이라 경고색으로 구분 */
+.slot-del-v466{
+  border-color:rgba(240,144,122,.5);
+  color:#F0907A;
+}
+.slot-del-v466:disabled,.slot-del-v466[aria-disabled="true"]{
+  opacity:.42;filter:grayscale(.4);cursor:not-allowed;
+}
+.slot-del-v466:focus-visible,[class*="-v462"] button:focus-visible,
+[class*="-v466"] button:focus-visible{
+  outline:3px solid var(--amber);outline-offset:2px;
+}
+
+/* [스크롤과 화면 넘침] 목록형 패널이 화면을 밀지 않도록 */
+.diag-list-v462,.diag-history-v462,.exp-sum-v466{
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+.diag-history-v462{
+  max-height:38vh;max-height:40dvh;
+  overflow-y:auto;overscroll-behavior:contain;
+}
+.exp-sum-v466{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.exp-chip-v466{white-space:nowrap}
+
+/* [색감과 강조 단계] 진단 결과가 상태별로 구분되게 */
+.diag-item-v462{border-left:3px solid rgba(255,255,255,.12);padding-left:9px}
+.diag-item-v462.ok{border-left-color:#7BD69B}
+.diag-item-v462.warn{border-left-color:var(--amber)}
+.diag-item-v462.err{border-left-color:#F0907A}
+
+/* [작은 화면] 설정 카드와 지명 요약이 좁은 폭에서 눌리지 않게 */
+@media (max-width:390px){
+  .settings-grid-v462{grid-template-columns:1fr}
+  .exp-chip-v466{font-size:11px;padding:5px 8px}
+}
+@media (max-width:360px){
+  .settings-card-v462{padding:11px}
+  .diag-item-v462{font-size:12px}
+}
+
+/* [가로 화면] 시트형 패널이 세로 공간을 다 먹지 않도록 */
+@media (orientation:landscape) and (max-height:600px){
+  .diag-history-v462{max-height:46vh;max-height:46dvh}
+  .exp-pool-v39{max-height:52vh;max-height:52dvh}
+}
+</style>
+
+
+<style>
+/* ──────────────────────────────────────────────────────────────
+   [정돈] v0.50 · 버전 표기를 헤더에서 설정으로 이동
+   메모  : .ver 요소는 지우지 않는다. 버전 타이머 9개가 이 요소에 쓰기 때문에
+           제거하면 그쪽이 깨진다. 화면에서만 감추고 값은 그대로 유지한다.
+   ────────────────────────────────────────────────────────────── */
+header .board .ver{display:none}
+header .board h1{margin-right:0}
+.set-ver-v49{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:12px;padding:12px 13px;border:1px solid var(--line);border-radius:13px;
+  background:var(--panel2);font-size:13px;color:var(--dim);
+  word-break:keep-all;overflow-wrap:anywhere;
+}
+.set-ver-v49 b{
+  font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--amber);
+  word-break:normal;
+}
+</style>
+<script>
+/* ──────────────────────────────────────────────────────────────
+   [정돈] v0.50 · 설정 화면에 버전 표시
+   감쌈  : openGameSettingsV462, runGameDiagnosticsV462,
+           openGameDiagnosticHistoryV462, openSlotDeleteV466
+   메모  : 헤더 배지(.ver)를 감추는 대신 설정에서 확인하게 한다.
+           설정 계열 화면은 저마다 sheet.innerHTML을 통째로 덮어쓰므로
+           (진단을 실행하면 붙여둔 행이 사라졌다) 각 화면 렌더 뒤마다 다시 붙인다.
+           값은 .ver / window.GAME_VERSION에서 읽어 상수를 하나로 유지한다.
+   ────────────────────────────────────────────────────────────── */
+(()=>{
+  'use strict';
+  const V='v0.50';
+  function ver(){
+    const el=document.querySelector('.ver');
+    return (el&&el.textContent.trim())||window.GAME_VERSION||'알 수 없음';
+  }
+  function attach(){
+    const sheet=document.getElementById('sheet');
+    if(!sheet||!sheet.innerHTML.trim())return;
+    if(sheet.querySelector('.set-ver-v49'))return;
+    const row=document.createElement('div');
+    row.className='set-ver-v49';
+    row.innerHTML=`<span>ℹ️ 버전</span><b>${ver()}</b>`;
+    sheet.appendChild(row);
+  }
+  ['openGameSettingsV462','runGameDiagnosticsV462','openGameDiagnosticHistoryV462','openSlotDeleteV466']
+    .forEach(n=>{
+      const f=window[n];
+      if(typeof f!=='function')return;
+      window[n]=function(){
+        const r=f.apply(this,arguments);
+        try{attach();}catch(e){console.error(V+' 버전 표시:',e);}
+        // 렌더가 비동기로 이어지는 경우까지 한 번 더 확인한다.
+        setTimeout(()=>{try{attach();}catch(_){}},0);
+        return r;
+      };
+    });
 })();
 </script>
 
