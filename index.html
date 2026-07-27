@@ -832,7 +832,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.53</span>
+    <span class="ver">v0.60</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -12176,7 +12176,7 @@ body.theme-night main::after{
    ───────────────────────────────────────────────────────────────────── */
 
 (function(){
-  const VERSION='v0.53';
+  const VERSION='v0.60';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -12296,7 +12296,7 @@ body.theme-night main::after{
 
 (function(){
   'use strict';
-  const VERSION='v0.53';
+  const VERSION='v0.60';
   const META='playerMetaV326';
   const FIELD=['C','1B','2B','3B','SS','LF','CF','RF'];
   const INF=new Set(['1B','2B','3B','SS']);
@@ -15533,7 +15533,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.53';
+  const VERSION='v0.60';
   document.title='우리팀을 만들자 '+VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -15559,7 +15559,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.53';
+  const VERSION='v0.60';
   function applyVersionV3414(){
     document.title='우리팀을 만들자 '+VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -15588,7 +15588,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.53';
+  const VERSION='v0.60';
 
   function applyVersionV3415(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -15696,7 +15696,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.53';
+  const VERSION='v0.60';
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
@@ -15789,7 +15789,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.53';
+  const VERSION='v0.60';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -15946,7 +15946,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.53';
+  const VERSION='v0.60';
   let batchBusy=false;
 
   function forceVersionV3418(){
@@ -16097,7 +16097,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 (function(){
   'use strict';
-  const VERSION='v0.53';
+  const VERSION='v0.60';
 
   function forceVersionV3419(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -16265,7 +16265,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 /* ═══════════ v0.34.30 · 하단 내비게이션 화면 동기화 ═══════════ */
 (()=>{
-  const VERSION='v0.53';
+  const VERSION='v0.60';
   const screenToNav={team:'team',lineup:'lineup',game:'game',front:'front',rank:'rank'};
   function syncBottomNav(name){
     const nv=screenToNav[name];
@@ -16312,7 +16312,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 경기 탭 진입 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const VERSION='v0.53';
+  const VERSION='v0.60';
   function syncGameNav(){
     document.querySelectorAll('nav button[data-nav]').forEach(btn=>btn.classList.toggle('on',btn.dataset.nav==='game'));
   }
@@ -16392,7 +16392,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 충돌 패치 제거 후 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
 
   function version(){
     document.title='우리팀을 만들자 '+V;
@@ -16441,7 +16441,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
   // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
   const base=window.ensureSquadState;
@@ -16474,7 +16474,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -16537,7 +16537,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -16761,7 +16761,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   // ensureSquadState()는 isFirstTeam 같은 사소한 조회마다 호출되는데,
   // v0.25.0에서 그 안에 aiTopUpRosters(리그 10팀 로스터 전체 재계산)가 붙으면서
   // 5경기 자동 진행 한 번에 5,400회 넘게 전 리그를 재계산하고 있었다.
@@ -16835,7 +16835,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
 
   function market(){return (typeof state!=='undefined'&&state)?state.season?.market:null;}
   function started(m){return !!m?.draftStartedV3413;}
@@ -17079,7 +17079,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.35 · 마감 점검 (조작 일관성) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
 
   // button이 아닌 div/span에 onclick만 달린 곳이 남아 있다.
   // 포커스가 갔을 때 Enter·Space로도 눌리게 해 조작 방식을 통일한다.
@@ -17169,7 +17169,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.36 · FA 라운드제 입찰 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   const R1=n=>Math.round(n*10)/10;
   const money=()=>Number(state?.money)||0;
   const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
@@ -17494,7 +17494,7 @@ main *,.sheet *{max-width:100%}
 /* ═══════════ v0.34.37 · 백업·복원 (자동저장은 그대로) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   const KEY='ourteam_slots_v1';
 
   function raw(){try{return localStorage.getItem(KEY)||'';}catch(_){return '';}}
@@ -17930,7 +17930,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.38 · 이식 기능 통합 보정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   const SLOT_KEY='ourteam_slots_v1';
   const DRAFT_KEY='ourteam_custom_drafts_v1';
 
@@ -18072,7 +18072,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.39 · 창단 구단 실제 생성 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   const DRAFT_KEY='ourteam_custom_drafts_v1';
   const PER_TEAM=2;        // 팀당 지명 수 → 20명
   const AUTO_FILL=10;      // 나머지 자동 생성
@@ -18205,7 +18205,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.39 · 확장 드래프트 진행 + 구단 생성 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   const PER_TEAM=2,AUTO_FILL=10,PROTECT=20;
   let D=null;
 
@@ -18458,7 +18458,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.40 · 11팀 리그 부전승(휴식일) 처리 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
 
   function todayRound(){
     const s=state?.season;
@@ -18540,7 +18540,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.41 · 12팀 확장 (내 구단 + AI 신생 구단) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
 
   /* ---------- 팀 수에 맞춰 사이클 수를 정해 36경기 근처를 유지 ---------- */
   const prevGen=window.genSchedule;
@@ -18634,7 +18634,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 (()=>{
   'use strict';
-  const V='v0.53', BAT_TARGET=18, PIT_TARGET=12;
+  const V='v0.60', BAT_TARGET=18, PIT_TARGET=12;
   const BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
   const POS=['C','1B','2B','3B','SS','LF','CF','RF','DH'];
 
@@ -18731,7 +18731,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   const REQ='야수 9명 이상 · 투수 6명 이상 · 선발투수 5명 이상 · 마무리투수 1명 이상';
 
   function reqText(){ return REQ; }
@@ -19106,7 +19106,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46.5 · 설정 + 게임 진단·복구 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
 
   function esc(s){
     return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -19276,7 +19276,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46.5 · 생성 선수 이름·동명이인 구분 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   const BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
 
   function metaOf(p){
@@ -19422,7 +19422,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.46.6 · 슬롯 리그 정합 + 슬롯 선택 삭제 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
 
   /* 슬롯을 옮길 때마다 그 슬롯이 쓰는 구단만 TEAMS에 남긴다. */
   ['switchSlot','switchSlotEmpty'].forEach(fn=>{
@@ -19543,7 +19543,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   function apply(){
     document.title='우리팀을 만들자 '+V;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
@@ -19570,7 +19570,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   function sweep(){
     let n=0;
     document.querySelectorAll('div[onclick],span[onclick],li[onclick]').forEach(el=>{
@@ -19699,7 +19699,7 @@ header .board h1{margin-right:0}
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   function ver(){
     const el=document.querySelector('.ver');
     return (el&&el.textContent.trim())||window.GAME_VERSION||'알 수 없음';
@@ -19740,7 +19740,7 @@ header .board h1{margin-right:0}
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
 
   function mark(){
     if(!state.storyMarkV51||typeof state.storyMarkV51!=='object')state.storyMarkV51={};
@@ -19897,7 +19897,7 @@ header .board h1{margin-right:0}
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
   const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
   function news(t,b){try{pushClubNews(t,b);}catch(e){console.error(V+' 뉴스:',e);}}
 
@@ -20022,7 +20022,8 @@ header .board h1{margin-right:0}
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
+  const DUR=3;   // 지시 지속 이닝 — 끝까지 적용하면 1회에 누르는 게 무조건 이득이라 판단이 사라진다
 
   /* ---------- 시드 난수 ---------- */
   function makeRng(seed){
@@ -20053,13 +20054,13 @@ header .board h1{margin-right:0}
            return ({contact:'정교 타격 코치의 지도로 컨택이 살아납니다.',
                     power:'장타 코치의 지도로 한 방을 노립니다.',
                     eye:'선구안 코치의 지도로 출루에 집중합니다.'})[k];},
-         atk:0.030, pit:0},
+         atk:0.050, pit:0},
     pit:{icon:'🧤',label:'마운드 안정',
          desc:()=>{const k=state.staff?.pitCoach||'control';
            return ({control:'제구 코치가 볼넷을 줄입니다.',
                     breaking:'변화구 코치가 결정구를 살립니다.',
                     stamina:'체력 코치가 투수를 끝까지 끌고 갑니다.'})[k];},
-         atk:0, pit:0.030},
+         atk:0, pit:0.050},
     mgr:{icon:'🎽',label:'감독 승부수',
          desc:()=>{const k=state.staff?.manager||'balanced';
            return ({balanced:'균형형 감독이 공수 모두를 다잡습니다.',
@@ -20067,14 +20068,30 @@ header .board h1{margin-right:0}
                     defense:'수비형 감독이 잠급니다.'})[k];},
          atk:null, pit:null}   // 감독 성향에 따라 갈린다
   };
+  // 기록 모드별 효과 차등 — 경기를 자세히 볼수록 개입이 크게 먹힌다.
+  // 타석별 100% · 이닝별 70% · 결과만 0%(재생이 없어 개입 지점 자체가 없다)
+  const MODE_MULT={pa:1,inn:0.7,fast:0};
+  window.mgrModeV55=function(){
+    const on=document.querySelector('.speedbar [data-spd].on')||document.querySelector('[data-spd].on');
+    return on?(on.dataset.spd||'pa'):'pa';
+  };
+  window.mgrModeMultV55=function(){
+    const m=window.mgrModeV55();
+    return MODE_MULT[m]!=null?MODE_MULT[m]:1;
+  };
   function effectOf(kind){
+    const e=effectRawV56(kind),k=window.mgrModeMultV55();
+    return {atk:e.atk*k,pit:e.pit*k};
+  }
+  function effectRawV56(kind){
     const o=ORDERS[kind];
     if(!o)return {atk:0,pit:0};
     if(kind!=='mgr')return {atk:o.atk,pit:o.pit};
     const k=state.staff?.manager||'balanced';
-    return ({balanced:{atk:0.016,pit:0.016},
-             offense:{atk:0.034,pit:0},
-             defense:{atk:0,pit:0.034}})[k]||{atk:0.016,pit:0.016};
+    // 감독 승부수는 타격/마운드와 성격이 겹치지 않게 공수 동시 보정으로 둔다.
+    return ({balanced:{atk:0.030,pit:0.030},
+             offense:{atk:0.040,pit:0.018},
+             defense:{atk:0.018,pit:0.040}})[k]||{atk:0.030,pit:0.030};
   }
 
   /* ---------- 보정 적용 ---------- */
@@ -20090,7 +20107,9 @@ header .board h1{margin-right:0}
           // curInn은 스크립트 블록마다 따로 선언돼 있어 여기서 안 보인다.
           // 최신 simGame이 window.__innV53으로 현재 이닝을 알려준다.
           const inn=Number(window.__innV53)||1;
-          if(inn>=cur.fromInn)v+=effectOf(cur.kind)[key]||0;
+          // 끝까지 적용하면 1회에 누르는 게 무조건 이득이라 "언제 쓸까"가 사라진다.
+          // 3이닝만 유지해 승부처에 맞춰 쓰도록 한다.
+          if(inn>=cur.fromInn&&inn<cur.fromInn+DUR)v+=effectOf(cur.kind)[key]||0;
         }
       }catch(e){console.error(V+' 보정:',e);}
       return v;
@@ -20100,6 +20119,11 @@ header .board h1{margin-right:0}
   /* ---------- 같은 시드로 다시 계산 ---------- */
   const baseSim=window.simGame;
   window.simGame=function(myId,oppId,mySp,oppSp){
+    // 시드 고정은 "지시를 반영해 다시 계산할 내 경기"에만 필요하다.
+    // 전부 고정하면 같은 날 AI 경기까지 같은 난수열을 써서 결과가 서로 붙는다.
+    // (같은 대진을 여러 번 돌리면 늘 같은 점수가 나오던 원인)
+    const mine=(typeof state!=='undefined'&&state)&&(myId===state.myTeam||oppId===state.myTeam);
+    if(!mine)return baseSim.apply(this,arguments);
     const seed=(cur&&cur.seed!=null)?cur.seed
       :hash(`${state.year||1}|${state.season?.day||0}|${myId}|${oppId}|${Date.now()}`);
     if(!cur)cur={seed,fromInn:null,kind:null};
@@ -20140,18 +20164,25 @@ header .board h1{margin-right:0}
     const sheet=document.getElementById('sheet');if(!sheet)return;
     if(!cur){showAlert('진행 중인 경기가 없습니다.');return;}
     if(cur.kind){showAlert('이번 경기에는 이미 지시를 내렸습니다.');return;}
+    const mode=window.mgrModeV55();
+    if(mode==='fast'){
+      showAlert('결과만 모드에서는 감독 지시를 쓸 수 없습니다.\n타석별이나 이닝별로 보면서 진행하세요.');
+      return;
+    }
     const inn=nowInn();
     const btn=k=>{
       const o=ORDERS[k],e=effectOf(k);
-      const gain=[e.atk?`공격 +${(e.atk*100).toFixed(1)}%`:'',e.pit?`투수 +${(e.pit*100).toFixed(1)}%`:'']
-        .filter(Boolean).join(' · ');
+      // v0.57: 코치별로 실제 바뀌는 것을 그대로 적는다.
+      const gain=(typeof mgrOrderEffectTextV57==='function')
+        ? mgrOrderEffectTextV57(k)
+        : [e.atk?`공격 +${(e.atk*100).toFixed(1)}%`:'',e.pit?`투수 +${(e.pit*100).toFixed(1)}%`:''].filter(Boolean).join(' · ');
       return `<button onclick="mgrOrderApplyV53('${k}')">
-        <b>${o.icon} ${o.label}</b><span>${o.desc()}<br>${inn}회부터 경기 끝까지 · ${gain}</span></button>`;
+        <b>${o.icon} ${o.label}</b><span>${o.desc()}<br><b>${inn}~${inn+DUR-1}회</b> 3이닝 · ${gain}</span></button>`;
     };
     sheet.innerHTML=`
       <div class="top"><div class="pname">감독 지시</div>
         <button class="close" onclick="closeSheet()">✕</button></div>
-      <div class="meta">한 경기에 한 번만 쓸 수 있습니다. 지금 ${inn}회부터 남은 이닝에 적용됩니다.</div>
+      <div class="meta">한 경기에 한 번만 쓸 수 있습니다. 누른 이닝부터 <b>3이닝</b>만 유지되니 승부처에 맞춰 쓰세요.<br>기록 모드 <b>${mode==='inn'?'이닝별':'타석별'} · 지시 위력 ${Math.round((window.mgrModeMultV55?window.mgrModeMultV55():1)*100)}%</b></div>
       <div class="mgr-pick-v53">${btn('bat')}${btn('pit')}${btn('mgr')}</div>
       <div class="hint">효과는 미리 정해둔 코칭스태프 성향을 따릅니다. 운영 → 코칭스태프에서 바꿀 수 있습니다.</div>
       <button class="btn ghost" onclick="closeSheet()">취소</button>`;
@@ -20182,7 +20213,7 @@ header .board h1{margin-right:0}
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.53';
+  const V='v0.60';
 
   /* ---------- 재생 타이머 추적 ---------- */
   const live=new Set();
@@ -20217,7 +20248,7 @@ header .board h1{margin-right:0}
     // 지시가 반영된 사실을 로그에 남긴다.
     const note=document.createElement('div');
     note.className='mgr-used-v53';
-    note.textContent=`🎽 감독 지시 — ${inn}회부터 적용`;
+    note.textContent=`🎽 감독 지시 — ${inn}~${inn+2}회 적용`;
     log.appendChild(note);
 
     const innDone={a:0,h:0};
@@ -20326,13 +20357,15 @@ header .board h1{margin-right:0}
     if(state?.gameControl!=='direct')return;
     const st=window.mgrOrderStateV53&&window.mgrOrderStateV53();
     if(!st||st.kind)return;
+    // 결과만 모드는 재생이 없어 개입할 지점이 없다.
+    if(window.mgrModeV55&&window.mgrModeV55()==='fast')return;
     const live=document.getElementById('gameLive');
     if(!live||live.style.display==='none')return;
     if(live.querySelector('.mgr-order-v53'))return;
     const box=document.createElement('div');
     box.className='mgr-order-v53';
     box.innerHTML=`<button class="btn" onclick="mgrOrderOpenV53()">🎽 감독 지시 (1회)</button>
-      <div class="hint">지금 이닝부터 경기 끝까지 적용됩니다.</div>`;
+      <div class="hint">누른 이닝부터 3이닝 유지 · ${window.mgrModeV55()==='inn'?'이닝별':'타석별'} 위력 ${Math.round((window.mgrModeMultV55?window.mgrModeMultV55():1)*100)}%</div>`;
     live.appendChild(box);
   }
   // 경기 재생이 시작되면 버튼을 띄운다.
@@ -20346,6 +20379,774 @@ header .board h1{margin-right:0}
     window.renderGameSetup=function(){const r=oldSetup.apply(this,arguments);hideOrderBtn();return r;};
   }
   window.mgrShowOrderBtnV53=showOrderBtn;
+})();
+</script>
+
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   [수정] v0.54 · 진단이 같은 문제를 매번 다시 잡던 것
+   감쌈  : runGameDiagnosticsV462
+   메모  : 두 가지가 겹쳐 있었다.
+     1) 진단은 starters+bullpen+closers를 한 배열로 이어 붙인 뒤 중복이 있으면
+        "손상"으로 봤는데, closers는 원래 bullpen의 일부다(마무리도 불펜 투수).
+        그래서 전 구단이 매번 중복 2로 잡혀 끝없이 재구성됐다.
+        → 검사 전에 closers를 빼고 본다.
+     2) 확장 드래프트가 보호명단 밖 마무리를 데려가면 원 소속팀에 마무리가 0명이 된다.
+        경고만 뜨고 아무도 안 고쳐서 계속 남았다.
+        → 불펜 중 가장 좋은 투수를 마무리로 올려 자동 복구한다.
+   ────────────────────────────────────────────────────────────── */
+(()=>{
+  'use strict';
+  const V='v0.60';
+  const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
+
+  /* ① 마무리 없는 팀 보충 ------------------------------------- */
+  function fixClosers(){
+    const fixed=[];
+    (typeof TEAMS!=='undefined'?TEAMS:[]).forEach(t=>{
+      const arr=state.players?.[t.id]?.pit;
+      if(!Array.isArray(arr)||!arr.length)return;
+      if(arr.some(p=>p&&p[2]==='마무리'))return;
+      // 불펜 중 가장 좋은 투수를 마무리로 돌린다.
+      let best=-1,bv=-1;
+      arr.forEach((p,i)=>{
+        if(!p||p[2]!=='불펜')return;
+        let v=60;try{v=pitOvr(p,t.id);}catch(_){}
+        if(v>bv){bv=v;best=i;}
+      });
+      if(best<0)return;
+      arr[best][2]='마무리';
+      if(state.pitchPlan)delete state.pitchPlan[t.id];
+      if(state.rotOrder)state.rotOrder[t.id]=null;
+      fixed.push(nm(t.id)+' '+arr[best][0]);
+    });
+    return fixed;
+  }
+
+  /* ② 진단 전에 정리하고, 중복 오판을 막는다 ------------------- */
+  // closers는 bullpen의 부분집합이므로 진단이 보기 전에 잠시 감춘다.
+  function stripClosers(){
+    const saved={};
+    const pp=state.pitchPlan;
+    if(!pp||typeof pp!=='object')return saved;
+    Object.keys(pp).forEach(id=>{
+      const p=pp[id];
+      if(!p||!Array.isArray(p.closers))return;
+      // 불펜에 들어 있는 마무리만 제외 대상이다. 그렇지 않으면 진짜 손상이니 그대로 둔다.
+      if(!p.closers.every(c=>Array.isArray(p.bullpen)&&p.bullpen.includes(c)))return;
+      saved[id]=p.closers;
+      p.closers=[];
+    });
+    return saved;
+  }
+  function restoreClosers(saved){
+    const pp=state.pitchPlan;
+    if(!pp)return;
+    Object.keys(saved).forEach(id=>{
+      if(pp[id])pp[id].closers=saved[id];
+    });
+  }
+
+  const old=window.runGameDiagnosticsV462;
+  if(typeof old!=='function')return;
+  window.runGameDiagnosticsV462=function(){
+    let closerFix=[],saved={};
+    try{closerFix=fixClosers();}catch(e){console.error(V+' 마무리 보충:',e);}
+    try{saved=stripClosers();}catch(e){console.error(V+' 중복 오판 방지:',e);}
+    let r;
+    try{r=old.apply(this,arguments);}
+    finally{try{restoreClosers(saved);}catch(e){console.error(V+' 복원:',e);}}
+    // 보충한 내역을 결과 화면에 덧붙인다.
+    try{
+      if(closerFix.length){
+        const sheet=document.getElementById('sheet');
+        if(sheet&&!sheet.querySelector('[data-closerfix-v54]')){
+          const box=document.createElement('div');
+          box.dataset.closerfixV54='1';
+          box.className='diag-item-v462 ok';
+          box.style.marginTop='8px';
+          box.textContent=`✓ 마무리투수 보충 ${closerFix.length}건 — ${closerFix.join(', ')}`;
+          sheet.appendChild(box);
+        }
+        if(typeof save==='function')save();
+      }
+    }catch(e){console.error(V+' 결과 표시:',e);}
+    return r;
+  };
+
+  /* ③ 확장 드래프트가 마무리를 데려간 직후에도 바로 보충 -------- */
+  const oldFin=window.expFinishV39;
+  if(typeof oldFin==='function'){
+    window.expFinishV39=function(){
+      const r=oldFin.apply(this,arguments);
+      setTimeout(()=>{try{fixClosers();if(typeof save==='function')save();}catch(e){console.error(V+' 창단 후 보충:',e);}},0);
+      return r;
+    };
+  }
+  window.fixClosersV54=fixClosers;
+})();
+</script>
+
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   [기능] v0.57 · 감독 지시를 코치별 실제 결과로 · 감독 방식에도 보정
+   감쌈  : paResult, managerAttackBonus, managerPitchBonus, mgrModeMultV55
+   정의  : mgrOrderEffectTextV57
+   메모  : 지금까지 지시는 코치가 무엇이든 "공격 +N%"로 뭉뚱그려져 코치 선택이
+           무의미했다. paResult가 돌려주는 결과 종류(.t)를 전환하는 방식으로 바꿔
+           정교=안타 / 장타=장타·홈런 / 선구=볼넷 처럼 실제로 다른 것이 오르게 한다.
+           시뮬 내부 확률식은 건드리지 않고 결과만 바꾸므로 회귀 위험이 낮다.
+   배율  : 감독 방식 30/10/5 · 감독 지시 70/40/10 (타석별/이닝별/결과만)
+   ────────────────────────────────────────────────────────────── */
+(()=>{
+  'use strict';
+  const V='v0.60';
+  // 사용자 지정: 이 값이 곧 효과 크기다(배율이 아니라).
+  //   감독 지시 = 결과 전환 확률 · 감독 방식 = 공수 보정
+  // 결과만 모드는 경기를 보지 않으므로 감독 개입 효과를 아예 두지 않는다.
+  // 실측으로 맞춘 값 — 리그 평균 3.3점 기준
+  //   지시 12% → 약 +1.0점 · 방식 3% → 약 +0.5점
+  //   이닝별은 그 60%, 결과만은 경기를 안 보므로 0
+  const MULT_ORDER={pa:0.12,inn:0.07,fast:0};
+  const MULT_PLAN ={pa:0,inn:0,fast:0};   // v0.60: 자동/직접 구분 폐지로 보정 삭제
+  const BASE_CONV=1.0;    // 전환 확률 = MULT_ORDER 그대로
+  const BASE_PLAN=1.0;    // 보정 = MULT_PLAN 그대로
+
+  function mode(){
+    try{
+      const on=document.querySelector('.speedbar [data-spd].on')||document.querySelector('[data-spd].on');
+      return on?(on.dataset.spd||'pa'):'pa';
+    }catch(_){return 'pa';}
+  }
+  window.mgrModeMultV55=function(){const m=mode();return MULT_ORDER[m]!=null?MULT_ORDER[m]:MULT_ORDER.pa;};
+  window.mgrPlanMultV57=function(){const m=mode();return MULT_PLAN[m]!=null?MULT_PLAN[m]:MULT_PLAN.pa;};
+
+  /* ---------- 지시가 켜져 있는 구간인가 ---------- */
+  function activeOrder(){
+    try{
+      const st=window.mgrOrderStateV53&&window.mgrOrderStateV53();
+      if(!st||!st.kind)return null;
+      const inn=Number(window.__innV53)||1;
+      if(inn<st.fromInn||inn>=st.fromInn+3)return null;
+      return st.kind;
+    }catch(_){return null;}
+  }
+
+  /* ---------- 감독 방식(직접 감독) 보정 ---------- */
+  ['managerAttackBonus','managerPitchBonus'].forEach(fn=>{
+    const base=window[fn];
+    if(typeof base!=='function')return;
+    window[fn]=function(teamId){
+      let v=0;
+      try{v=base.apply(this,arguments)||0;}catch(_){}
+      try{
+        // 직접 감독을 고른 것 자체에 대한 보정. 지켜볼수록 크다.
+        if(teamId===state.myTeam&&state.gameControl==='direct')
+          v+=BASE_PLAN*window.mgrPlanMultV57();
+      }catch(e){console.error(V+' 방식 보정:',e);}
+      return v;
+    };
+  });
+
+  /* ---------- 코치별 결과 전환 ---------- */
+  const OUTS=['K','GO','FO'],HITS=['1B','2B','3B','HR'];
+  function conv(){return BASE_CONV*window.mgrModeMultV55();}
+
+  function myBatEffect(res,p){
+    const k=state.staff?.batCoach||'contact';
+    if(k==='power'){
+      // 장타: 단타를 장타·홈런으로 끌어올린다
+      if(res.t==='1B'&&Math.random()<p)return {...res,t:Math.random()<.42?'HR':'2B',v57:'장타'};
+      if(res.t==='2B'&&Math.random()<p*.5)return {...res,t:'HR',v57:'장타'};
+      return res;
+    }
+    if(k==='eye'){
+      // 선구안: 아웃을 볼넷으로
+      if(OUTS.includes(res.t)&&Math.random()<p)return {...res,t:'BB',v57:'선구'};
+      return res;
+    }
+    // 정교: 아웃을 안타로
+    if(OUTS.includes(res.t)&&Math.random()<p)return {...res,t:'1B',v57:'정교'};
+    return res;
+  }
+  function myPitEffect(res,p){
+    // 상대 득점이 원래 3점 안팎이라 줄일 여지가 작다. 타격 쪽과 저울을 맞추려 배로 준다.
+    p=Math.min(0.92,p*4.5);
+    const k=state.staff?.pitCoach||'control';
+    if(k==='breaking'){
+      // 변화구: 상대 인플레이·안타를 삼진으로
+      if((res.t==='GO'||res.t==='FO')&&Math.random()<p)return {...res,t:'K',v57:'변화구'};
+      if(res.t==='1B'&&Math.random()<p*.6)return {...res,t:'K',v57:'변화구'};
+      return res;
+    }
+    if(k==='stamina'){
+      // 체력: 상대 출루를 범타로 (투수가 버틴다)
+      if(HITS.includes(res.t)&&Math.random()<p*.7)return {...res,t:Math.random()<.5?'GO':'FO',v57:'체력'};
+      return res;
+    }
+    // 제구: 볼넷을 줄인다
+    if(res.t==='BB'&&Math.random()<p)return {...res,t:Math.random()<.5?'GO':'FO',v57:'제구'};
+    return res;
+  }
+
+  const oldPA=window.paResult;
+  if(typeof oldPA==='function'){
+    window.paResult=function(bat,batTid,pit,pitTid,tactic){
+      let res=oldPA.apply(this,arguments);
+      try{
+        if(!res||!res.t)return res;
+        const kind=activeOrder();
+        if(!kind)return res;
+        const p=conv();
+        if(!(p>0))return res;
+        const my=state.myTeam;
+        if(kind==='bat'&&batTid===my)return myBatEffect(res,p);
+        if(kind==='pit'&&pitTid===my)return myPitEffect(res,p);
+        if(kind==='mgr'){
+          // 감독 승부수는 공수 양쪽에 절반씩 (성향에 따라 배분)
+          const mk=state.staff?.manager||'balanced';
+          const w=({balanced:[.5,.5],offense:[.75,.35],defense:[.35,.75]})[mk]||[.5,.5];
+          if(batTid===my)return myBatEffect(res,p*w[0]);
+          if(pitTid===my)return myPitEffect(res,p*w[1]);
+        }
+      }catch(e){console.error(V+' 결과 전환:',e);}
+      return res;
+    };
+  }
+
+  /* ---------- 안내 문구 ---------- */
+  window.mgrOrderEffectTextV57=function(kind){
+    const p=Math.round(conv()*100);
+    if(kind==='bat'){
+      const k=state.staff?.batCoach||'contact';
+      return ({contact:`범타의 <b>${p}%</b>를 안타로`,
+               power:`단타의 <b>${p}%</b>를 2루타·홈런으로`,
+               eye:`범타의 <b>${p}%</b>를 볼넷으로`})[k];
+    }
+    if(kind==='pit'){
+      const k=state.staff?.pitCoach||'control';
+      return ({control:`상대 볼넷의 <b>${p}%</b>를 범타로`,
+               breaking:`상대 인플레이의 <b>${p}%</b>를 삼진으로`,
+               stamina:`상대 안타의 <b>${Math.round(p*.7)}%</b>를 범타로`})[k];
+    }
+    const mk=state.staff?.manager||'balanced';
+    const w=({balanced:'공수 절반씩',offense:'공격 위주',defense:'수비 위주'})[mk];
+    return `타격·투구 양쪽 (${w})`;
+  };
+})();
+</script>
+
+
+<style>
+/* ── v0.58 · 감독 방식 추천 + 지시 상시 버튼 ── */
+.rec-v58{
+  margin-top:10px;padding:11px 12px;border-radius:12px;
+  background:rgba(255,193,77,.10);border:1px solid rgba(255,193,77,.32);
+  font-size:13px;line-height:1.7;word-break:keep-all;overflow-wrap:anywhere;
+}
+.rec-v58 b{color:var(--amber)}
+.rec-v58 .why{display:block;margin-top:4px;font-size:12px;color:var(--dim)}
+.rec-v58 button{
+  margin-top:8px;width:100%;min-height:var(--tap-min,44px);
+  border-radius:11px;border:1px solid rgba(255,193,77,.5);
+  background:rgba(255,193,77,.16);color:var(--amber);font-family:inherit;font-weight:800;font-size:13px;
+}
+.ord-bar-v58{
+  position:sticky;bottom:0;z-index:5;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  padding:8px 0 calc(6px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,transparent,rgba(6,16,11,.94) 34%);
+}
+.ord-bar-v58 button{
+  min-height:var(--tap-min,44px);border-radius:12px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--chalk);
+  font-family:inherit;font-size:12px;font-weight:800;line-height:1.35;
+  word-break:keep-all;padding:6px 4px;
+}
+.ord-bar-v58 button.sel{border-color:var(--amber);background:rgba(255,193,77,.16);color:var(--amber)}
+.ord-bar-v58 button:disabled{opacity:.4;filter:grayscale(.4)}
+.ord-bar-v58 .full{grid-column:1/-1;font-size:12px;color:var(--dim);text-align:center;padding:2px}
+@media (max-width:360px){.ord-bar-v58 button{font-size:11px}}
+</style>
+<script>
+/* ──────────────────────────────────────────────────────────────
+   [기능] v0.58 · 감독 방식 추천 + 감독 지시 상시 버튼
+   감쌈  : renderManagerSettings, renderGameSetup
+   정의  : mgrRecommendV58, mgrApplyRecV58, mgrOrderBarV58
+   메모  : ① 감독 방식은 선수단 상태(파워/주력/번트, 선발 체력, 불펜 두께,
+             상대 선발)를 읽어 최적안을 미리 알려준다. 버튼 하나로 적용.
+           ② 감독 지시는 시트를 열지 않고 경기 화면 하단에서 바로 고른다.
+             기본값은 감독 승부수. 지고 있으면 타격, 이기고 있으면 마운드가
+             자연스럽게 눈에 들어오도록 세 개를 나란히 둔다.
+   ────────────────────────────────────────────────────────────── */
+(()=>{
+  'use strict';
+  const V='v0.60';
+  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+
+  /* ---------- 추천 ---------- */
+  window.mgrRecommendV58=function(){
+    try{
+      const me=state?.myTeam; if(!me)return null;
+      const t=getTeam(me); if(!t)return null;
+      let lu=null; try{lu=ensureHealthyLineup(me);}catch(_){}
+      const idx=(lu&&Array.isArray(lu.order))?lu.order:t.bat.map((_,i)=>i).slice(0,9);
+      const line=idx.map(i=>t.bat[i]).filter(Boolean);
+      if(!line.length)return null;
+
+      const pow=avg(line.map(p=>+p[5]||50));     // 파워
+      const spd=avg(line.map(p=>+p[6]||50));     // 주력
+      const con=avg(line.map(p=>+p[4]||50));     // 컨택
+
+      // 공격 작전 — 팀 평균이 대체로 비슷해서 기준을 좁게 잡는다.
+      // 컨택이 유난히 좋으면 굳이 모험할 이유가 없으므로 정공을 우선한다.
+      let attack='balanced',why='';
+      const gap=pow-spd;
+      if(con>=pow+6&&con>=spd+6){
+        attack='balanced';
+        why=`컨택 ${con.toFixed(0)}이 파워 ${pow.toFixed(0)}·주력 ${spd.toFixed(0)}보다 뚜렷합니다. 정면승부가 낫습니다.`;
+      }else if(gap>=2.5){
+        attack='power';
+        why=`파워 ${pow.toFixed(0)} vs 주력 ${spd.toFixed(0)} — 장타를 노릴 타선입니다.`;
+      }else if(gap<=-2.5){
+        attack='small';
+        why=`주력 ${spd.toFixed(0)} vs 파워 ${pow.toFixed(0)} — 발과 작전으로 흔드는 게 낫습니다.`;
+      }else{
+        attack='balanced';
+        why=`파워 ${pow.toFixed(0)} · 주력 ${spd.toFixed(0)} · 컨택 ${con.toFixed(0)} — 어느 쪽도 치우치지 않았습니다.`;
+      }
+
+      // 투수 교체
+      let bullpen='normal',why2='';
+      let spIdx=0; try{spIdx=nextSpIdx(me);}catch(_){}
+      const sp=t.pit[spIdx];
+      const spSta=sp?(+sp[7]||50):50;
+      const spOvr=sp?pitOvr(sp,me):60;
+      let bp=[]; try{bp=(bullpenOrderOfV310(me)||[]).map(i=>t.pit[i]).filter(Boolean);}catch(_){}
+      const bpOvr=bp.length?avg(bp.slice(0,4).map(x=>pitOvr(x,me))):spOvr;
+      // 오늘 선발이 불펜보다 확실히 낫고 체력도 받쳐야 길게 끈다.
+      const edge=spOvr-bpOvr;
+      if(edge<=-1.5){bullpen='quick';why2=`오늘 선발 ${spOvr} vs 불펜 ${bpOvr.toFixed(0)} — 불펜이 낫습니다. 일찍 넘기세요.`;}
+      else if(edge>=2.5&&spSta>=72){bullpen='late';why2=`선발 ${spOvr}(체력 ${spSta})이 불펜 ${bpOvr.toFixed(0)}보다 낫습니다. 길게 끌 만합니다.`;}
+      else if(spSta<=62){bullpen='quick';why2=`선발 체력이 ${spSta}로 낮습니다. 무리하지 말고 일찍 바꾸세요.`;}
+      else{bullpen='normal';why2=`선발 ${spOvr}(체력 ${spSta}) · 불펜 ${bpOvr.toFixed(0)} — 무난한 교체 시점이 좋습니다.`;}
+
+      const NA={power:'강공',small:'번트·기동',balanced:'정공'};
+      const NB={quick:'빠르게',normal:'보통',late:'길게'};
+      return {attack,bullpen,label:`${NA[attack]} · ${NB[bullpen]}`,why,why2};
+    }catch(e){console.error(V+' 추천:',e);return null;}
+  };
+
+  window.mgrApplyRecV58=function(){
+    const r=window.mgrRecommendV58();
+    if(!r)return;
+    try{
+      if(typeof setManagerAttack==='function')setManagerAttack(r.attack);
+      else{state.managerPlan=state.managerPlan||{};state.managerPlan.attack=r.attack;}
+      if(typeof setManagerBullpen==='function')setManagerBullpen(r.bullpen);
+      else{state.managerPlan.bullpen=r.bullpen;}
+      if(typeof save==='function')save();
+      if(typeof renderGameSetup==='function')renderGameSetup();
+    }catch(e){console.error(V+' 추천 적용:',e);}
+  };
+
+  function paintRec(){
+    const box=document.getElementById('managerPlan');
+    if(!box||box.style.display==='none')return;
+    box.parentElement?.querySelectorAll('[data-rec-v58]').forEach(el=>el.remove());
+    const r=window.mgrRecommendV58();
+    if(!r)return;
+    const cur=state.managerPlan||{};
+    const same=cur.attack===r.attack&&cur.bullpen===r.bullpen;
+    const d=document.createElement('div');
+    d.className='rec-v58';d.dataset.recV58='1';
+    d.innerHTML=`💡 추천: <b>${r.label}</b>${same?' <span style="color:var(--dim)">(적용됨)</span>':''}
+      <span class="why">${r.why}<br>${r.why2}</span>
+      ${same?'':'<button onclick="mgrApplyRecV58()">추천대로 맞추기</button>'}`;
+    box.appendChild(d);
+  }
+  const oldMgr=window.renderManagerSettings;
+  if(typeof oldMgr==='function'){
+    window.renderManagerSettings=function(){
+      const r=oldMgr.apply(this,arguments);
+      try{paintRec();}catch(e){console.error(V+' 추천 표시:',e);}
+      return r;
+    };
+  }
+
+  /* ---------- 감독 지시 상시 버튼 ---------- */
+  const KINDS=[['bat','🏏 타격 집중'],['pit','🧤 마운드 안정'],['mgr','🎽 감독 승부수']];
+  window.mgrDefaultKindV58='mgr';
+  window.mgrPickKindV58=function(k){
+    window.mgrDefaultKindV58=k;
+    try{if(typeof mgrOrderApplyV53==='function')mgrOrderApplyV53(k);}catch(e){console.error(V+' 지시:',e);}
+  };
+  function paintBar(){
+    try{
+      if(state?.gameControl!=='direct')return;
+      if(window.mgrModeV55&&window.mgrModeV55()==='fast')return;
+      const live=document.getElementById('gameLive');
+      if(!live||live.style.display==='none')return;
+      live.querySelectorAll('.mgr-order-v53,.ord-bar-v58').forEach(el=>el.remove());
+      const st=window.mgrOrderStateV53&&window.mgrOrderStateV53();
+      const used=!st||st.kind;
+      const bar=document.createElement('div');
+      bar.className='ord-bar-v58';
+      if(used){
+        bar.innerHTML=`<div class="full">🎽 이번 경기 지시를 이미 사용했습니다.</div>`;
+      }else{
+        bar.innerHTML=KINDS.map(([k,label])=>
+          `<button class="${window.mgrDefaultKindV58===k?'sel':''}" onclick="mgrPickKindV58('${k}')">${label}</button>`
+        ).join('')+`<div class="full">누르면 그 이닝부터 3이닝 적용 · 경기당 1회</div>`;
+      }
+      live.appendChild(bar);
+    }catch(e){console.error(V+' 지시 버튼:',e);}
+  }
+  window.mgrOrderBarV58=paintBar;
+  // 기존 단일 버튼 대신 이 막대를 쓴다.
+  window.mgrShowOrderBtnV53=paintBar;
+  document.addEventListener('click',e=>{
+    if(e.target?.closest?.('#playBtn'))setTimeout(paintBar,80);
+    if(e.target?.closest?.('#newGameBtn'))setTimeout(()=>{
+      document.querySelectorAll('.ord-bar-v58').forEach(el=>el.remove());},60);
+  },false);
+  const oldSetup2=window.renderGameSetup;
+  if(typeof oldSetup2==='function'){
+    window.renderGameSetup=function(){
+      const r=oldSetup2.apply(this,arguments);
+      try{document.querySelectorAll('.ord-bar-v58').forEach(el=>el.remove());paintRec();}catch(_){}
+      return r;
+    };
+  }
+})();
+</script>
+
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   [기능] v0.59 · 리그 득점 상향 + 감독 지시 효과 재조정
+   감쌈  : paResult (가장 바깥)
+   정의  : LEAGUE_BOOST_V59, setLeagueBoostV59
+   메모  : 이 리그는 한 팀 평균 1.6점 · 완봉 48%로 실제 KBO(4~5점)보다 훨씬 낮았다.
+           확률식을 건드리지 않고, 결과(.t)의 일부 범타를 안타로 바꿔 득점을 올린다.
+           모든 구단에 똑같이 적용하므로 유불리가 생기지 않는다.
+   ────────────────────────────────────────────────────────────── */
+(()=>{
+  'use strict';
+  const V='v0.60';
+  const OUTS=['K','GO','FO'];
+  // 보정값은 실측으로 맞춘다. setLeagueBoostV59로 조정 가능.
+  window.LEAGUE_BOOST_V59=0.085;  // 실측으로 맞춤 — 한 팀 평균 2.4 → 3점대
+  window.setLeagueBoostV59=function(v){window.LEAGUE_BOOST_V59=Number(v)||0;};
+
+  const old=window.paResult;
+  if(typeof old!=='function')return;
+  window.paResult=function(bat,batTid,pit,pitTid,tactic){
+    let res=old.apply(this,arguments);
+    try{
+      const r=window.LEAGUE_BOOST_V59;
+      if(!(r>0)||!res||!res.t)return res;
+      if(!OUTS.includes(res.t))return res;
+      if(Math.random()>=r)return res;
+      // 대부분 단타, 일부는 장타로 흩어 준다.
+      const x=Math.random();
+      return {...res,t:x<.76?'1B':(x<.94?'2B':(x<.98?'BB':'HR')),v59:1};
+    }catch(e){console.error(V+' 리그 보정:',e);}
+    return res;
+  };
+})();
+</script>
+
+
+<style>
+/* ── v0.60 · 경기 전 감독 지시 카드 ── */
+.pre-card-v60{margin-top:14px}
+.pre-card-v60 .cap{font-size:13px;font-weight:800;color:var(--amber);margin-bottom:6px}
+.pre-card-v60 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pre-card-v60 .grid button{
+  min-height:var(--tap-min,44px);border-radius:12px;padding:9px 5px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--chalk);
+  font-family:inherit;font-size:12px;font-weight:800;line-height:1.35;
+  word-break:keep-all;overflow-wrap:anywhere;
+}
+.pre-card-v60 .grid button.sel{border-color:var(--amber);background:rgba(255,193,77,.18);color:var(--amber)}
+.pre-card-v60 .grid button.rec::after{content:' 💡'}
+.pre-card-v60 .desc{
+  margin-top:8px;padding:10px 12px;border-radius:12px;
+  background:rgba(255,193,77,.10);border:1px solid rgba(255,193,77,.30);
+  font-size:12px;line-height:1.7;word-break:keep-all;overflow-wrap:anywhere;
+}
+.pre-card-v60 .desc b{color:var(--amber)}
+.pre-card-v60 .desc .why{display:block;margin-top:3px;color:var(--dim)}
+.pre-card-v60 .off{opacity:.55}
+@media (max-width:360px){.pre-card-v60 .grid button{font-size:11px}}
+</style>
+<script>
+/* ──────────────────────────────────────────────────────────────
+   [기능] v0.60 · 경기 전 감독 지시 카드 + 자동/직접 토글 폐지
+   감쌈  : renderGameSetup, renderManagerSettings, paResult
+   정의  : preCardRecV60, preCardPickV60, preCardActiveV60
+   메모  : 자동 감독을 없애 늘 직접 감독으로 둔다(토글은 숨김).
+           카드는 경기 전에 하나 고르고 1회부터 적용되며,
+           "지켜보는 동안"만 유효해서 건너뛰기를 누르면 그 이닝부터 끊긴다.
+           결과만 모드는 재생이 없으므로 카드 자체를 못 고른다.
+   ────────────────────────────────────────────────────────────── */
+(()=>{
+  'use strict';
+  const V='v0.60';
+  const OUTS=['K','GO','FO'],HITS=['1B','2B','3B','HR'];
+  const RATE={pa:0.12,inn:0.07,fast:0};
+
+  function mode(){
+    try{
+      const on=document.querySelector('.speedbar [data-spd].on')||document.querySelector('[data-spd].on');
+      return on?(on.dataset.spd||'pa'):'pa';
+    }catch(_){return 'pa';}
+  }
+  function rate(){const r=RATE[mode()];return r!=null?r:RATE.pa;}
+
+  /* ---------- 카드 상태 ---------- */
+  function S(){
+    if(!state.preCardV60||typeof state.preCardV60!=='object')
+      state.preCardV60={kind:null,cutAt:99};
+    return state.preCardV60;
+  }
+  window.preCardActiveV60=function(){
+    const c=S();
+    if(!c.kind)return null;
+    const inn=Number(window.__innV53)||1;
+    if(inn>=c.cutAt)return null;      // 건너뛴 이닝부터는 효과 없음
+    return c.kind;
+  };
+  window.preCardCutV60=function(inn){
+    const c=S(); if(!c.kind)return;
+    c.cutAt=Math.max(1,Number(inn)||1);
+  };
+  window.preCardResetV60=function(){const c=S();c.cutAt=99;};
+
+  /* ---------- 결과 전환 (v0.57과 같은 규칙) ---------- */
+  function batConv(res,p){
+    const k=state.staff?.batCoach||'contact';
+    if(k==='power'){
+      if(res.t==='1B'&&Math.random()<p)return {...res,t:Math.random()<.42?'HR':'2B'};
+      if(res.t==='2B'&&Math.random()<p*.5)return {...res,t:'HR'};
+      return res;
+    }
+    if(k==='eye'){
+      if(OUTS.includes(res.t)&&Math.random()<p)return {...res,t:'BB'};
+      return res;
+    }
+    if(OUTS.includes(res.t)&&Math.random()<p)return {...res,t:'1B'};
+    return res;
+  }
+  function pitConv(res,p){
+    p=Math.min(0.92,p*4.5);
+    const k=state.staff?.pitCoach||'control';
+    if(k==='breaking'){
+      if((res.t==='GO'||res.t==='FO')&&Math.random()<p)return {...res,t:'K'};
+      if(res.t==='1B'&&Math.random()<p*.6)return {...res,t:'K'};
+      return res;
+    }
+    if(k==='stamina'){
+      if(HITS.includes(res.t)&&Math.random()<p*.7)return {...res,t:Math.random()<.5?'GO':'FO'};
+      return res;
+    }
+    if(res.t==='BB'&&Math.random()<p)return {...res,t:Math.random()<.5?'GO':'FO'};
+    return res;
+  }
+  const oldPA=window.paResult;
+  if(typeof oldPA==='function'){
+    window.paResult=function(bat,batTid,pit,pitTid,tactic){
+      let res=oldPA.apply(this,arguments);
+      try{
+        const kind=window.preCardActiveV60();
+        if(!kind||!res||!res.t)return res;
+        const p=rate(); if(!(p>0))return res;
+        const my=state.myTeam;
+        if(kind==='bat'&&batTid===my)return batConv(res,p);
+        if(kind==='pit'&&pitTid===my)return pitConv(res,p);
+        if(kind==='mgr'){
+          const mk=state.staff?.manager||'balanced';
+          const w=({balanced:[.5,.5],offense:[.75,.35],defense:[.35,.75]})[mk]||[.5,.5];
+          if(batTid===my)return batConv(res,p*w[0]);
+          if(pitTid===my)return pitConv(res,p*w[1]);
+        }
+      }catch(e){console.error(V+' 전환:',e);}
+      return res;
+    };
+  }
+
+  /* ---------- 추천 ---------- */
+  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+  window.preCardRecV60=function(){
+    try{
+      const me=state?.myTeam; if(!me)return null;
+      let m=null; try{m=myMatchToday();}catch(_){}
+      if(!m)return null;
+      const oppId=(m.home===me)?m.away:m.home;
+      const t=getTeam(me),o=getTeam(oppId);
+      if(!t||!o)return null;
+      let lu=null; try{lu=ensureHealthyLineup(me);}catch(_){}
+      const myBat=avg(((lu&&lu.order)||t.bat.map((_,i)=>i).slice(0,9)).map(i=>t.bat[i]).filter(Boolean).map(p=>batOvr(p,me)));
+      let ol=null; try{ol=ensureHealthyLineup(oppId);}catch(_){}
+      const opBat=avg(((ol&&ol.order)||o.bat.map((_,i)=>i).slice(0,9)).map(i=>o.bat[i]).filter(Boolean).map(p=>batOvr(p,oppId)));
+      let si=0,oi=0; try{si=nextSpIdx(me);}catch(_){} try{oi=nextSpIdx(oppId);}catch(_){}
+      const mySp=t.pit[si]?pitOvr(t.pit[si],me):60;
+      const opSp=o.pit[oi]?pitOvr(o.pit[oi],oppId):60;
+
+      // 투수 OVR과 타자 OVR은 척도가 달라 서로 비교하면 늘 한쪽으로 쏠린다.
+      // 같은 종류끼리(타선 vs 타선, 선발 vs 선발) 상대 팀과 견줘 약한 쪽을 보강한다.
+      const batEdge=myBat-opBat;   // 타선 우열
+      const pitEdge=mySp-opSp;     // 선발 우열
+      const sign=v=>(v>=0?'+':'')+v.toFixed(1);
+      const BCn={contact:'정교',power:'장타',eye:'선구안'}[state.staff?.batCoach||'contact'];
+      const PCn={control:'제구',breaking:'변화구',stamina:'체력'}[state.staff?.pitCoach||'control'];
+      if(pitEdge<=batEdge-2)
+        return {kind:'pit',
+          why:`마운드가 상대적 약점입니다. 선발 ${mySp} vs ${opSp} (${sign(pitEdge)}) · 타선 ${myBat.toFixed(0)} vs ${opBat.toFixed(0)} (${sign(batEdge)}).`,
+          how:`${PCn} 코치가 마운드를 붙잡습니다.`};
+      if(batEdge<=pitEdge-2)
+        return {kind:'bat',
+          why:`타선이 상대적 약점입니다. 타선 ${myBat.toFixed(0)} vs ${opBat.toFixed(0)} (${sign(batEdge)}) · 선발 ${mySp} vs ${opSp} (${sign(pitEdge)}).`,
+          how:`${BCn} 코치로 타선을 끌어올립니다.`};
+      return {kind:'mgr',
+        why:`타선 ${sign(batEdge)} · 선발 ${sign(pitEdge)} — 어느 쪽도 크게 밀리지 않습니다.`,
+        how:'공수 양쪽을 고르게 올립니다.'};
+    }catch(e){console.error(V+' 추천:',e);return null;}
+  };
+
+  /* ---------- 선택 UI ---------- */
+  const CARDS=[['bat','🏏 타격 집중'],['pit','🧤 마운드 안정'],['mgr','🎽 감독 승부수']];
+  window.preCardPickV60=function(k){
+    const c=S();
+    c.kind=(c.kind===k)?null:k;
+    c.cutAt=99;
+    try{save();}catch(_){}
+    paint();
+  };
+  function detail(k){
+    const p=Math.round(rate()*100);
+    if(k==='bat'){
+      const bc=state.staff?.batCoach||'contact';
+      return ({contact:`범타의 ${p}%를 안타로`,power:`단타의 ${p}%를 2루타·홈런으로`,eye:`범타의 ${p}%를 볼넷으로`})[bc];
+    }
+    if(k==='pit'){
+      const pc=state.staff?.pitCoach||'control';
+      const q=Math.round(Math.min(.92,rate()*4.5)*100);
+      return ({control:`상대 볼넷의 ${q}%를 범타로`,breaking:`상대 인플레이의 ${q}%를 삼진으로`,stamina:`상대 안타의 ${Math.round(q*.7)}%를 범타로`})[pc];
+    }
+    return '타격·투구 양쪽을 함께';
+  }
+  function paint(){
+    try{
+      const host=document.getElementById('managerPlan');
+      if(!host)return;
+      host.parentElement?.querySelectorAll('[data-precard-v60]').forEach(el=>el.remove());
+      const md=mode();
+      const c=S(),rec=window.preCardRecV60();
+      const box=document.createElement('div');
+      box.className='pre-card-v60'+(md==='fast'?' off':'');
+      box.dataset.precardV60='1';
+      if(md==='fast'){
+        box.innerHTML=`<div class="cap">감독 지시</div>
+          <div class="desc">결과만 모드는 경기를 보지 않으므로 지시를 쓸 수 없습니다.
+          <span class="why">타석별이나 이닝별을 고르면 카드를 선택할 수 있습니다.</span></div>`;
+      }else{
+        const sel=c.kind;
+        box.innerHTML=`<div class="cap">감독 지시 · 경기 전 선택</div>
+          <div class="grid">${CARDS.map(([k,L])=>
+            `<button class="${sel===k?'sel':''} ${rec&&rec.kind===k?'rec':''}" onclick="preCardPickV60('${k}')">${L}</button>`).join('')}</div>
+          ${rec?`<div class="desc">💡 추천: <b>${CARDS.find(x=>x[0]===rec.kind)[1]}</b> — ${detail(rec.kind)}
+            <span class="why">${rec.why}<br>${rec.how}</span></div>`:''}
+          ${sel?`<div class="desc"><b>선택함: ${CARDS.find(x=>x[0]===sel)[1]}</b> — ${detail(sel)}
+            <span class="why">1회부터 적용 · 중계를 건너뛰면 그 이닝부터 효과가 끊깁니다.
+            ${md==='inn'?'이닝별은 타석별보다 위력이 낮습니다.':''}</span></div>`
+            :`<div class="desc" style="background:rgba(255,255,255,.04);border-color:var(--line)">고르지 않으면 지시 없이 경기합니다.
+            <span class="why">한 장만 고를 수 있고, 다시 누르면 해제됩니다.</span></div>`}`;
+      }
+      host.appendChild(box);
+    }catch(e){console.error(V+' 카드 표시:',e);}
+  }
+  window.preCardPaintV60=paint;
+
+  /* ---------- 자동/직접 토글 폐지 ---------- */
+  function forceDirect(){
+    try{
+      if(state)state.gameControl='direct';
+      const row=document.getElementById('mgrAuto')?.parentElement;
+      if(row)row.style.display='none';
+      const plan=document.getElementById('managerPlan');
+      if(plan)plan.style.display='';
+    }catch(_){}
+  }
+
+  const oldMgr=window.renderManagerSettings;
+  if(typeof oldMgr==='function'){
+    window.renderManagerSettings=function(){
+      const r=oldMgr.apply(this,arguments);
+      try{forceDirect();paint();}catch(e){console.error(V+' 방식:',e);}
+      return r;
+    };
+  }
+  const oldSetup=window.renderGameSetup;
+  if(typeof oldSetup==='function'){
+    window.renderGameSetup=function(){
+      try{if(state)state.gameControl='direct';}catch(_){}
+      const r=oldSetup.apply(this,arguments);
+      try{forceDirect();window.preCardResetV60();paint();
+        document.querySelectorAll('.ord-bar-v58,.mgr-order-v53').forEach(el=>el.remove());}catch(_){}
+      return r;
+    };
+  }
+  // 경기 중 하단 막대는 더 이상 쓰지 않는다.
+  window.mgrShowOrderBtnV53=function(){};
+  window.mgrOrderBarV58=function(){};
+  try{forceDirect();}catch(_){}
+})();
+</script>
+
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   [기능] v0.60 · 건너뛰기하면 지시 효과가 그 이닝부터 끊긴다
+   감쌈  : skipBtn 클릭 (캡처 단계)
+   메모  : 지시는 "지켜보는 동안"만 유효하다. 중계를 건너뛰면 그 이닝부터
+           효과를 끄고 같은 시드로 남은 경기를 다시 계산해 이어 재생한다.
+           앞 이닝은 입력이 같으므로 결과도 같다.
+   ────────────────────────────────────────────────────────────── */
+(()=>{
+  'use strict';
+  const V='v0.60';
+  function nowInn(){
+    try{
+      const el=document.getElementById('gamelog');
+      const inns=el?el.querySelectorAll('.inn'):[];
+      if(inns.length){
+        const m=String(inns[inns.length-1].textContent||'').match(/(\d+)회/);
+        if(m)return Math.max(1,+m[1]);
+      }
+    }catch(_){}
+    return 1;
+  }
+  document.addEventListener('click',function(e){
+    const btn=e.target&&e.target.closest&&e.target.closest('#skipBtn');
+    if(!btn)return;
+    try{
+      const c=state&&state.preCardV60;
+      if(!c||!c.kind||c.cutAt<=99===false)return;
+      if(c.cutAt<99)return;                      // 이미 끊겼으면 그대로 둔다
+      const inn=nowInn();
+      window.preCardCutV60(inn);
+      // 남은 경기를 효과 없이 다시 계산해 이어 붙인다.
+      if(typeof window.mgrReplayFromV53==='function'){
+        e.preventDefault(); e.stopPropagation();
+        const ok=window.mgrReplayFromV53(inn,c.kind);
+        if(!ok)console.error(V+' 건너뛰기 재계산 실패');
+      }
+    }catch(err){console.error(V+' 건너뛰기:',err);}
+  },true);
 })();
 </script>
 
