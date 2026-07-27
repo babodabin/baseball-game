@@ -3,10 +3,10 @@
 <head>
 <!--
 ==============================================================================
-  우리팀을 만들자 — 파일 지도 (v0.50 정돈)
+  우리팀을 만들자 — 파일 지도 (v0.62 기준)
 ==============================================================================
 
-  이 파일은 단일 HTML 안에 스타일/스크립트 블록이 순서대로 쌓인 구조입니다.
+  단일 HTML 안에 스타일/스크립트 블록이 순서대로 쌓인 구조입니다.
   뒤에 오는 블록이 앞의 함수를 다시 감싸므로 [블록 순서 = 실행 우선순위]입니다.
   블록을 옮기면 감싸는 순서가 바뀌어 기능이 깨집니다. 위치는 그대로 두세요.
 
@@ -18,57 +18,69 @@
 ------------------------------------------------------------------------------
   주요 구간
 ------------------------------------------------------------------------------
-  [001]     27행    44.3KB  v0.24.2 운영 화면 정리
-  [004]   1019행   413.5KB  v0.28.6 — 저장 슬롯·구버전 데이터 안전 복구
-  [018]   9748행     5.9KB  구형 WebView에서는 메타데이터 인덱스 저장만 유지
-  [024]  10253행     9.4KB  (제목 없음)
-  [028]  10614행     9.9KB  (제목 없음)
-  [030]  10745행     7.5KB  v0.33.5 성장·노화·잠재력·출장 경험 시스템
-  [033]  10868행     7.4KB  v0.33.8 특수능력 획득·각성 시스템
-  [035]  10990행     8.0KB  v0.33.9 선수 히스토리 시스템
-  [037]  11040행     6.6KB  v0.34.0 선수 성격 시스템
-  [039]  11111행     6.0KB  v0.34.1 선수 가치 시스템
-  [041]  11151행     7.8KB  v0.34.2 명예의 전당 시스템
-  [043]  11257행     9.5KB  v0.34.3 구단 역사 시스템
-  [045]  11359행    12.4KB  v0.34.5 기록 기반 동적 라이벌 시스템
-  [047]  11469행     6.2KB  v0.34.5 포지션·보직 기반 OVR 재설계
-  [055]  11883행    30.7KB  (제목 없음)
-  [057]  12246행    27.5KB  (제목 없음)
-  [061]  12514행     9.2KB  (제목 없음)
-  [062]  12587행     7.5KB  v0.34.13 · AI PLAYER VALUE ENGINE
-  [063]  12693행     6.9KB  v0.34.13 · AI FA 구단 운영
-  [065]  12812행     7.4KB  v0.34.13 · AI 트레이드 구단 운영
-  [067]  12947행     9.2KB  v0.34.13 · AI 구단 운영 코어
-  [069]  13047행    10.4KB  v0.34.13 · AI 로스터 관리
-  [071]  13177행     9.1KB  v0.34.13 · AI 계약·재계약 관리
-  [073]  13261행     7.9KB  v0.34.13 · AI 감독 운영
-  [075]  13352행     7.2KB  v0.34.13 · AI 장기 운영
-  [077]  13414행     9.0KB  v0.34.13 · AI 재정·구단주 운영
-  [079]  13482행    10.2KB  v0.34.13 · AI 외국인 선수 운영
-  [081]  13548행    13.3KB  v0.46.5 · 게임 진단·복구 엔진
-  [083]  13927행    10.6KB  v0.34.13 · AI 감독·코칭스태프
-  [085]  14066행     9.8KB  v0.34.13 · AI 시설 투자
-  [088]  14207행     7.7KB  v0.34.13 · AI 리그 생태계·장기 밸런스
-  [090]  14278행     8.6KB  v0.34.13 · AI 단장 성향
-  [092]  14382행     5.5KB  v0.34.13 선수 개성 보완: 효과 설명 · 희귀 변화 · 주장 판정 안정화
-  [093]  14460행     5.1KB  실제 조작 요소의 터치 영역
-  [114]  15696행     9.4KB  v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭
-  [117]  15969행     5.3KB  v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로
-  [121]  16273행    12.3KB  v0.34.36 · FA 라운드제 입찰
-  [123]  16583행     5.5KB  v0.34.37 · 백업·복원 (자동저장은 그대로)
-  [126]  16823행     6.9KB  v0.35.0 나의 팀 대시보드
-  [131]  17110행     5.4KB  v0.39 · 창단 구단 실제 생성
-  [132]  17236행    11.4KB  v0.39 · 확장 드래프트 진행 + 구단 생성
-  [136]  17722행    15.7KB  v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록
-  [138]  18083행     7.9KB  v0.46.5 · 설정 + 게임 진단·복구
+  [001]     27행    42.6KB  v0.24.2 운영 화면 정리
+  [004]    994행   413.5KB  v0.28.6 — 저장 슬롯·구버전 데이터 안전 복구
+  [011]   9284행     4.0KB  낮: 야구장 관중석, 외야 전광판, 햇살과 잔디 층을 분명하게
+  [018]   9721행     5.9KB  구형 WebView에서는 메타데이터 인덱스 저장만 유지
+  [024]  10226행     9.4KB  (제목 없음)
+  [028]  10587행     9.9KB  (제목 없음)
+  [030]  10718행     7.5KB  v0.33.5 성장·노화·잠재력·출장 경험 시스템
+  [033]  10841행     7.4KB  v0.33.8 특수능력 획득·각성 시스템
+  [035]  10963행     8.0KB  v0.33.9 선수 히스토리 시스템
+  [037]  11013행     6.6KB  v0.34.0 선수 성격 시스템
+  [039]  11084행     6.0KB  v0.34.1 선수 가치 시스템
+  [041]  11124행     7.8KB  v0.34.2 명예의 전당 시스템
+  [043]  11230행     9.5KB  v0.34.3 구단 역사 시스템
+  [045]  11332행    12.4KB  v0.34.5 기록 기반 동적 라이벌 시스템
+  [047]  11442행     6.2KB  v0.34.5 포지션·보직 기반 OVR 재설계
+  [055]  11856행    30.7KB  v0.53: 감독 지시가 이닝을 알 수 있게 밖으로 내보낸다
+  [057]  12219행    27.5KB  (제목 없음)
+  [061]  12487행     9.2KB  (제목 없음)
+  [062]  12560행     7.5KB  v0.34.13 · AI PLAYER VALUE ENGINE
+  [063]  12666행     6.9KB  v0.34.13 · AI FA 구단 운영
+  [065]  12785행     7.4KB  v0.34.13 · AI 트레이드 구단 운영
+  [067]  12920행     9.2KB  v0.34.13 · AI 구단 운영 코어
+  [069]  13020행    10.4KB  v0.34.13 · AI 로스터 관리
+  [071]  13150행     9.1KB  v0.34.13 · AI 계약·재계약 관리
+  [073]  13234행     7.9KB  v0.34.13 · AI 감독 운영
+  [075]  13325행     7.2KB  v0.34.13 · AI 장기 운영
+  [077]  13387행     9.0KB  v0.34.13 · AI 재정·구단주 운영
+  [079]  13455행    10.2KB  v0.34.13 · AI 외국인 선수 운영
+  [081]  13521행    13.3KB  v0.46.5 · 게임 진단·복구 엔진
+  [083]  13900행    10.6KB  v0.34.13 · AI 감독·코칭스태프
+  [085]  14039행     9.8KB  v0.34.13 · AI 시설 투자
+  [088]  14180행     7.7KB  v0.34.13 · AI 리그 생태계·장기 밸런스
+  [090]  14251행     8.6KB  v0.34.13 · AI 단장 성향
+  [092]  14355행     5.5KB  v0.34.13 선수 개성 보완: 효과 설명 · 희귀 변화 · 주장 판정 안정화
+  [093]  14433행     5.1KB  실제 조작 요소의 터치 영역
+  [114]  15669행     9.3KB  v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭
+  [117]  15942행     5.3KB  v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로
+  [121]  16246행    12.3KB  v0.34.36 · FA 라운드제 입찰
+  [123]  16556행     5.5KB  v0.34.37 · 백업·복원 (자동저장은 그대로)
+  [124]  16705행     4.0KB  상단 3열 요약
+  [126]  16796행     6.9KB  v0.35.0 나의 팀 대시보드
+  [129]  16955행     4.0KB  v0.38 · 이식 기능 통합 보정
+  [131]  17082행     5.4KB  v0.39 · 창단 구단 실제 생성
+  [132]  17208행    11.4KB  v0.39 · 확장 드래프트 진행 + 구단 생성
+  [136]  17694행    15.7KB  v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록
+  [138]  18055행     7.9KB  v0.46.5 · 설정 + 게임 진단·복구
+  [139]  18216행     4.4KB  v0.46.5 · 생성 선수 이름·동명이인 구분
+  [141]  18350행     4.0KB  v0.46.6 · 슬롯 리그 정합 + 슬롯 선택 삭제
+  [148]  18617행     5.1KB  ---------- 내 경기 결과 파싱 ----------
+  [151]  18875행     6.7KB  ---------- 시드 난수 ----------
+  [152]  19058행     6.0KB  ---------- 재생 타이머 추적 ----------
+  [154]  19323행     4.8KB  ---------- 지시가 켜져 있는 구간인가 ----------
+  [156]  19493행     5.8KB  ---------- 추천 ----------
+  [159]  19686행     8.3KB  v0.57과 같은 규칙) ----------
+  [164]  19994행     4.1KB  ① 슬롯 목록에 창단 버튼 ------------------------------------
 
 ------------------------------------------------------------------------------
   주의사항 (실제로 겪은 것)
 ------------------------------------------------------------------------------
   · 파일 앞쪽 코드에서 뒤쪽 const를 참조하지 마세요.
     typeof 가드는 TDZ에 무효합니다. 반드시 try/catch로 감싸세요.
-    (v0.46.6에서 TEAM_EMOJI를 선언 전에 읽어 흰 화면이 났습니다)
-  · 훈련·라인업처럼 여러 번 재정의된 함수는 마지막 정의를 고쳐야 합니다.
+  · 여러 번 재정의된 함수는 마지막 정의를 고쳐야 반영됩니다.
+  · 문자열 치환 패치는 조용히 실패할 수 있으니 적용 여부를 항목별로 확인하세요.
   · 저장 키: ourteam_slots_v1 (슬롯 5개) / ourteam_custom_drafts_v1 (창단안)
 ==============================================================================
 -->
@@ -97,7 +109,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
 /* ───────────────────────────────────
-   [001/142] STYLE · 44.3KB · 원본 27행
+   [001/164] STYLE · 42.6KB · 원본 27행
    주제  : v0.24.2 운영 화면 정리
    ─────────────────────────────────── */
 
@@ -832,7 +844,7 @@ nav button.lock{opacity:.32}
 <header>
   <div class="board">
     <h1>우리팀을 만들자!</h1>
-    <span class="ver">v0.61</span>
+    <span class="ver">v0.62</span>
   </div>
   <div class="subline">
     <span id="subLeft">구단을 선택하세요</span>
@@ -1002,7 +1014,7 @@ nav button.lock{opacity:.32}
 <!-- v0.42 · 시즌 길이 표시 헬퍼 -->
 <script>
 /* ───────────────────────────────────────────────
-   [002/142] SCRIPT · 0.3KB · 원본 952행
+   [002/164] SCRIPT · 0.3KB · 원본 927행
    주제  : 팀 수에 따라 시즌 경기 수가 달라진다(10팀 36 / 12팀 33).
    정의  : seasonLenV42
    ─────────────────────────────────────────────── */
@@ -1019,7 +1031,7 @@ window.seasonLenV42=function(){
 <!-- v0.43 · 모드별 난이도 차등 -->
 <script>
 /* ───────────────────────────────────────────────────────────
-   [003/142] SCRIPT · 1.8KB · 원본 963행
+   [003/164] SCRIPT · 1.8KB · 원본 938행
    주제  : 기존에는 하드가 자금 계수만 달랐고 경기 쪽은 내 팀 OVR -1 하나뿐이라 체감이 없었다.
    정의  : DIFF_V43, diffAdjV43, diffRuleV43, topAiSetV43
    ─────────────────────────────────────────────────────────── */
@@ -1081,13 +1093,11 @@ window.diffAdjV43=function(teamId){
 </script>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [004/142] SCRIPT · 413.5KB · 원본 1019행
+   [004/164] SCRIPT · 413.5KB · 원본 994행
    주제  : v0.28.6 — 저장 슬롯·구버전 데이터 안전 복구
-   감쌈  : addDailyFaRegistration, addDraftPlayer, advanceDraftToUser, ageOf, aiTopUpRosters, autoAssignLineup, b, benchBatters  (이전 정의를 호출하는 체인)
    정의  : acceptDemand, addDailyFaRegistration, addDraftPlayer, addSalaryRaise, addVerifiedRookiesV283, advanceDraftToUser, advanceRot, ageOf
    ⚠ 대체됨: aiDraftChoiceIndex, aiManagerTacticV3413, batOvr, benchBatters, bullpenOrderOfV310, catcherInfoV337, clamp, closeSheet
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 'use strict';
@@ -9103,7 +9113,7 @@ try{ensurePlayerProfilesV314();save();}catch(err){console.error('v0.31.4 프로�
 <!-- v0.32.1 라인업 수비배치 스타일 -->
 <style>
 /* ────────────────────────────────────
-   [005/142] STYLE · 0.4KB · 원본 9031행
+   [005/164] STYLE · 0.4KB · 원본 9006행
    ──────────────────────────────────── */
 
 .def-section-v315{margin:12px 0 7px;padding:8px 12px;border-radius:10px;background:rgba(255,196,77,.10);color:var(--gold);font-weight:800;font-size:13px;letter-spacing:.02em}
@@ -9113,11 +9123,10 @@ try{ensurePlayerProfilesV314();save();}catch(err){console.error('v0.31.4 프로�
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────
-   [006/142] SCRIPT · 4.8KB · 원본 9037행
+   [006/164] SCRIPT · 4.8KB · 원본 9012행
    정의  : benchBatters, lineupRowV315, renderLineup, repairPitchPlansV316, setLuMode
    ⚠ 대체됨: benchBatters, renderLineup, setLuMode
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────── */
 
 const DEFENSE_ORDER_V315=['C','1B','2B','3B','SS','LF','CF','RF','DH'];
@@ -9203,7 +9212,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ────────────────────────────────────
-   [007/142] STYLE · 0.5KB · 원본 9119행
+   [007/164] STYLE · 0.5KB · 원본 9094행
    ──────────────────────────────────── */
 
 .pitch-section-v313.closer{background:rgba(255,94,77,.11);color:#ffb08e;border:1px solid rgba(255,94,77,.18)}
@@ -9216,13 +9225,12 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 
 <script>
-/* ───────────────────────────────────────
-   [008/142] SCRIPT · 1.9KB · 원본 9129행
+/* ─────────────────────────────────────────
+   [008/164] SCRIPT · 1.9KB · 원본 9104행
    정의  : openLineupSafeV319
    ⚠ 대체됨: openLineupSafeV319
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
-   ─────────────────────────────────────── */
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ───────────────────────────────────────── */
 
 (function(){
   function openLineupSafeV319(){
@@ -9275,7 +9283,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.32.1 특수능력 상세·라인업 교체 복구 -->
 <style>
 /* ────────────────────────────────────
-   [009/142] STYLE · 1.2KB · 원본 9179행
+   [009/164] STYLE · 1.1KB · 원본 9154행
    ──────────────────────────────────── */
 
 .lineup-section-v320{margin:16px 0 8px;padding:10px 13px;border-radius:12px;border:1px solid rgba(255,196,77,.22);background:rgba(255,196,77,.09);font-weight:900;color:var(--gold);display:flex;justify-content:space-between;align-items:center}
@@ -9292,12 +9300,11 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [010/142] SCRIPT · 7.0KB · 원본 9194행
+   [010/164] SCRIPT · 7.0KB · 원본 9167행
    감쌈  : renderPitchStaffV310  (이전 정의를 호출하는 체인)
    정의  : abilityCountsV320, allBenchBattersV320, benchBatters, lineupStarterRowV320, openSpecialAbilitiesDetailV320, panelV320, renderLineup, renderPitchStaffV310
    ⚠ 대체됨: benchBatters, renderLineup, renderPitchStaffV310
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -9418,7 +9425,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.32.1 배경 강화·타순 카드 압축 -->
 <style>
 /* ──────────────────────────────────────────
-   [011/142] STYLE · 4.0KB · 원본 9311행
+   [011/164] STYLE · 4.0KB · 원본 9284행
    주제  : 낮: 야구장 관중석, 외야 전광판, 햇살과 잔디 층을 분명하게
    ────────────────────────────────────────── */
 
@@ -9499,7 +9506,7 @@ body.theme-day .team-hero,body.theme-night .team-hero{
 <!-- v0.32.2 타순 카드·선택 피드백·배경 재정리 -->
 <style>
 /* ─────────────────────────────────────
-   [012/142] STYLE · 3.7KB · 원본 9387행
+   [012/164] STYLE · 3.7KB · 원본 9360행
    주제  : 과했던 구장 그림을 걷어내고 카드가 중심이 되는 배경
    ───────────────────────────────────── */
 
@@ -9571,11 +9578,10 @@ body.theme-night main::after{
 </style>
 <script>
 /* ───────────────────────────────────────────────────────────────────
-   [013/142] SCRIPT · 4.0KB · 원본 9454행
+   [013/164] SCRIPT · 4.0KB · 원본 9427행
    정의  : positionTextV322, renderLineup, sectionV322, starterRowV322
    ⚠ 대체됨: renderLineup
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ─────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -9645,7 +9651,7 @@ body.theme-night main::after{
 <!-- v0.32.3 전체 로스터형 라인업·투수배치 통일 -->
 <style>
 /* ─────────────────────────────────────────────────────
-   [014/142] STYLE · 3.0KB · 원본 9520행
+   [014/164] STYLE · 3.0KB · 원본 9493행
    주제  : 전체 로스터(prow)를 기준으로 라인업의 모든 선수 카드를 하나의 형식으로 통일
    ───────────────────────────────────────────────────── */
 
@@ -9713,11 +9719,10 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────
-   [015/142] SCRIPT · 5.5KB · 원본 9583행
+   [015/164] SCRIPT · 5.5KB · 원본 9556행
    정의  : multiTextV323, renderLineup, renderPitchV323, rowV323, secV323
    ⚠ 대체됨: renderLineup
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -9797,7 +9802,7 @@ body.theme-night main::after{
 <!-- v0.32.5 투수배치 탭 복구 · 로스터 카드 색상/OVR 완전 통일 -->
 <style>
 /* ───────────────────────────────────────────────────
-   [016/142] STYLE · 1.5KB · 원본 9659행
+   [016/164] STYLE · 1.5KB · 원본 9632행
    주제  : 전체 로스터 .prow의 실제 색상과 타이포그래피를 라인업 카드에 그대로 사용
    ─────────────────────────────────────────────────── */
 
@@ -9844,14 +9849,13 @@ body.theme-night main::after{
 #scr-lineup:not(.pitch-mode-v325) #pitchWrap{display:none!important}
 </style>
 <script>
-/* ───────────────────────────────────────
-   [017/142] SCRIPT · 1.5KB · 원본 9702행
+/* ─────────────────────────────────────────
+   [017/164] SCRIPT · 1.5KB · 원본 9675행
    감쌈  : renderLineup  (이전 정의를 호출하는 체인)
    정의  : renderLineup, setLuMode
    ⚠ 대체됨: renderLineup
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
-   ─────────────────────────────────────── */
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ───────────────────────────────────────── */
 
 (function(){
   const previousRender=window.renderLineup;
@@ -9900,13 +9904,12 @@ body.theme-night main::after{
 <!-- v0.32.6 선수 세부 능력치 데이터 기반 추가 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [018/142] SCRIPT · 5.9KB · 원본 9748행
+   [018/164] SCRIPT · 5.9KB · 원본 9721행
    주제  : 구형 WebView에서는 메타데이터 인덱스 저장만 유지
    감쌈  : save  (이전 정의를 호출하는 체인)
    정의  : batOvrBaseV326, batterStyleV326, bindSkillAliasV326, clampSkillV326, ensureAllSlotsV326, ensureOneV326, ensurePlayerSkillsV326, ensurePlayersV326
    ⚠ 대체됨: save, generateSkills
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -10068,7 +10071,7 @@ body.theme-night main::after{
 <!-- v0.32.7 비시즌 세부 능력치 집중 훈련 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [019/142] SCRIPT · 5.9KB · 원본 9906행
+   [019/164] SCRIPT · 5.9KB · 원본 9879행
    감쌈  : applyGrowthWithTraining, renderOffseason  (이전 정의를 호출하는 체인)
    정의  : addDetailedTrainingV327, applyGrowthWithTraining, coachTargetV327, doTrain, ensurePlanMapV327, expectedTextV327, openTrainSheet, renderOffseason
    ────────────────────────────────────────────────────────────────────────────────────── */
@@ -10217,7 +10220,7 @@ body.theme-night main::after{
 <!-- v0.32.8 선수 상세 세부 능력치 표시 -->
 <style>
 /* ─────────────────────────────────────
-   [020/142] STYLE · 1.2KB · 원본 10049행
+   [020/164] STYLE · 1.2KB · 원본 10022행
    ───────────────────────────────────── */
 
 .skill-detail-v328{margin-top:12px;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.025)}
@@ -10233,7 +10236,7 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [021/142] SCRIPT · 3.0KB · 원본 10061행
+   [021/164] SCRIPT · 3.0KB · 원본 10034행
    감쌈  : openSheet, playerStatsHtml  (이전 정의를 호출하는 체인)
    정의  : detailedSkillsHtmlV328, ensureSkillsV328, generateSkills, gradeV328, openSheet, playerStatsHtml
    ────────────────────────────────────────────────────────────────────────────────────── */
@@ -10313,11 +10316,10 @@ body.theme-night main::after{
 <!-- v0.33.0 세부 능력치 경기 엔진 보완 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [022/142] SCRIPT · 4.6KB · 원본 10135행
+   [022/164] SCRIPT · 4.6KB · 원본 10108행
    정의  : blendedBatV329, blendedPitV329, defenseRatingV329, legacyBatV329, legacyPitV329, nV329, paResult, skillEngineV329
    ⚠ 대체됨: skillEngineV329
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -10427,7 +10429,7 @@ body.theme-night main::after{
 <!-- v0.33.1 투수 구종 데이터·비시즌 훈련·상세 표시 -->
 <style>
 /* ─────────────────────────────────────
-   [023/142] STYLE · 1.0KB · 원본 10241행
+   [023/164] STYLE · 1.0KB · 원본 10214행
    ───────────────────────────────────── */
 
 .pitch-repertoire-v331{margin-top:12px;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(86,154,255,.045)}
@@ -10443,12 +10445,11 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [024/142] SCRIPT · 9.4KB · 원본 10253행
+   [024/164] SCRIPT · 9.4KB · 원본 10226행
    감쌈  : applyGrowthWithTraining, openSheet, openTrainSheet, playerStatsHtml, save  (이전 정의를 호출하는 체인)
    정의  : applyGrowthWithTraining, applyPitchTraining, assignPitchTraining, bind, doLearnPitchV331, doPitchMasteryTrainV331, ensureAll, ensurePitcher
    ⚠ 대체됨: save, bind, ensureAll, ensurePlayers, hash, metaOf, skill
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -10561,11 +10562,10 @@ body.theme-night main::after{
 <!-- v0.33.2 구종 경기 엔진 반영 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [025/142] SCRIPT · 6.3KB · 원본 10362행
+   [025/164] SCRIPT · 6.3KB · 원본 10335행
    정의  : bat332, defense332, legacyBat332, legacyPit332, paResult, pit332, pitchProfileV332, profile332
    ⚠ 대체됨: skillEngineV329, pitchProfileV332
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -10673,12 +10673,11 @@ body.theme-night main::after{
 <!-- v0.33.3 숨겨진 선수 DNA 시스템 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [026/142] SCRIPT · 7.4KB · 원본 10466행
+   [026/164] SCRIPT · 7.4KB · 원본 10439행
    감쌈  : applyGrowthWithTraining, save  (이전 정의를 호출하는 체인)
    정의  : applyGrowthWithTraining, bind, chooseBat, choosePit, dnaDef, ensureAll, ensureOne, ensurePlayers
    ⚠ 대체됨: save, skillEngineV329, bind, ensureAll, ensurePlayers, hash, metaOf, chooseBat
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -10823,7 +10822,7 @@ body.theme-night main::after{
 <!-- v0.33.4 선수 성향 시스템 -->
 <style>
 /* ─────────────────────────────────────
-   [027/142] STYLE · 0.5KB · 원본 10607행
+   [027/164] STYLE · 0.5KB · 원본 10580행
    ───────────────────────────────────── */
 
 .tendency-detail-v334{margin-top:12px;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,190,92,.045)}
@@ -10834,12 +10833,11 @@ body.theme-night main::after{
 </style>
 <script>
 /* ───────────────────────────────────────────────────────────────────────────────
-   [028/142] SCRIPT · 9.9KB · 원본 10614행
+   [028/164] SCRIPT · 9.9KB · 원본 10587행
    감쌈  : openSheet, paResult, playerStatsHtml, save  (이전 정의를 호출하는 체인)
    정의  : bind, build, dnaType, ensureAll, ensureOne, ensurePlayers, hash, level
    ⚠ 대체됨: save, skillEngineV329, bind, ensureAll, hash, metaOf, ensureOne, level
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ─────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -10968,7 +10966,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [029/142] STYLE · 0.4KB · 원본 10739행
+   [029/164] STYLE · 0.4KB · 원본 10712행
    ───────────────────────────────────── */
 
 .growth-profile-v335{margin-top:12px;padding:12px;border:1px solid rgba(143,211,255,.16);border-radius:12px;background:rgba(143,211,255,.045)}
@@ -10978,13 +10976,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [030/142] SCRIPT · 7.5KB · 원본 10745행
+   [030/164] SCRIPT · 7.5KB · 원본 10718행
    주제  : v0.33.5 성장·노화·잠재력·출장 경험 시스템
    감쌈  : applyGrowthWithTraining, playerStatsHtml, save  (이전 정의를 호출하는 체인)
    정의  : ageAt, applyGrowthWithTraining, clamp, currentOvr, deltaFor, dnaPreferred, ensureAll, ensureProfile
    ⚠ 대체됨: clamp, save, skillEngineV329, ensureAll, hash, ageAt, grade, meta
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.33.5 성장·노화·잠재력·출장 경험 시스템 ═══════════ */
@@ -11097,14 +11094,13 @@ body.theme-night main::after{
 </script>
 
 <script>
-/* ───────────────────────────────────────
-   [031/142] SCRIPT · 0.5KB · 원본 10855행
+/* ─────────────────────────────────────────
+   [031/164] SCRIPT · 0.5KB · 원본 10828행
    주제  : v0.33.6 수비 시스템 버전 표시
    정의  : skillEngineV329
    ⚠ 대체됨: skillEngineV329
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
-   ─────────────────────────────────────── */
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ───────────────────────────────────────── */
 
 /* ═══════════ v0.33.6 수비 시스템 버전 표시 ═══════════ */
 (function(){
@@ -11116,7 +11112,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [032/142] STYLE · 0.3KB · 원본 10864행
+   [032/164] STYLE · 0.3KB · 원본 10837행
    ───────────────────────────────────── */
 
 .special-history-v338{margin-top:12px;padding:12px;border:1px solid rgba(255,210,74,.22);border-radius:12px;background:rgba(255,210,74,.045);font-size:12px;line-height:1.55}
@@ -11124,13 +11120,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [033/142] SCRIPT · 7.4KB · 원본 10868행
+   [033/164] SCRIPT · 7.4KB · 원본 10841행
    주제  : v0.33.8 특수능력 획득·각성 시스템
    감쌈  : applyGrowthWithTraining, renderSeasonDone, simGame, specialAbilityPanelV280  (이전 정의를 호출하는 체인)
    정의  : abilityIcon, abilityName, addHistory, applyGrowthWithTraining, chooseBatAbility, choosePitAbility, diff, ensureState
-   ⚠ 대체됨: simGame, skillEngineV329, addHistory, ensureState, snap
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+   ⚠ 대체됨: skillEngineV329, addHistory, ensureState, snap
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.33.8 특수능력 획득·각성 시스템 ═══════════ */
@@ -11249,7 +11244,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [034/142] STYLE · 0.5KB · 원본 10983행
+   [034/164] STYLE · 0.5KB · 원본 10956행
    ───────────────────────────────────── */
 
 .player-history-v339{margin-top:12px;padding:12px;border:1px solid rgba(158,197,255,.24);border-radius:12px;background:rgba(158,197,255,.045);font-size:12px;line-height:1.55}
@@ -11260,13 +11255,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [035/142] SCRIPT · 8.0KB · 원본 10990행
+   [035/164] SCRIPT · 8.0KB · 원본 10963행
    주제  : v0.33.9 선수 히스토리 시스템
    감쌈  : openSheet, processRetirements, renderSeasonDone, simGame  (이전 정의를 호출하는 체인)
    정의  : add, ensureRoster, ensureState, escapeHtml, findPlayer, gameMilestones, historyHtml, metaOf
-   ⚠ 대체됨: simGame, skillEngineV329, metaOf, ensureState, add, findPlayer, historyHtml
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+   ⚠ 대체됨: skillEngineV329, metaOf, ensureState, add, findPlayer, historyHtml
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.33.9 선수 히스토리 시스템 ═══════════ */
@@ -11316,7 +11310,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [036/142] STYLE · 0.4KB · 원본 11036행
+   [036/164] STYLE · 0.4KB · 원본 11009행
    ───────────────────────────────────── */
 
 .personality-v340{margin-top:12px;padding:12px;border:1px solid rgba(215,170,255,.2);border-radius:12px;background:rgba(215,170,255,.045);font-size:12px;line-height:1.55}
@@ -11324,13 +11318,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [037/142] SCRIPT · 6.6KB · 원본 11040행
+   [037/164] SCRIPT · 6.6KB · 원본 11013행
    주제  : v0.34.0 선수 성격 시스템
    감쌈  : applyGrowthWithTraining, openSheet, playerMorale, playerStatsHtml, updateDailyHealth  (이전 정의를 호출하는 체인)
    정의  : applyGrowthWithTraining, choose, def, ensureAll, ensureOne, hash, html, meta
    ⚠ 대체됨: skillEngineV329, ensureAll, hash, meta, html
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.0 선수 성격 시스템 ═══════════ */
@@ -11401,7 +11394,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [038/142] STYLE · 0.6KB · 원본 11107행
+   [038/164] STYLE · 0.6KB · 원본 11080행
    ───────────────────────────────────── */
 
 .player-value-v341{margin-top:12px;padding:12px;border:1px solid rgba(255,182,59,.24);border-radius:12px;background:rgba(255,182,59,.055);font-size:12px;line-height:1.55}
@@ -11409,13 +11402,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────
-   [039/142] SCRIPT · 6.0KB · 원본 11111행
+   [039/164] SCRIPT · 6.0KB · 원본 11084행
    주제  : v0.34.1 선수 가치 시스템
    감쌈  : openSheet, playerStatsHtml  (이전 정의를 호출하는 체인)
    정의  : ageOfPlayer, agePremium, clamp, estimateMoney, evaluate, grade, html, meta
    ⚠ 대체됨: skillEngineV329, grade, meta, html, ageOfPlayer, evaluate
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.1 선수 가치 시스템 ═══════════ */
@@ -11454,7 +11446,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [040/142] STYLE · 0.7KB · 원본 11146행
+   [040/164] STYLE · 0.7KB · 원본 11119행
    ───────────────────────────────────── */
 
 .hof-v342{margin-top:12px;padding:12px;border:1px solid rgba(255,211,106,.28);border-radius:14px;background:linear-gradient(135deg,rgba(255,211,106,.08),rgba(255,255,255,.025));font-size:12px;line-height:1.55}
@@ -11463,13 +11455,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [041/142] SCRIPT · 7.8KB · 원본 11151행
+   [041/164] SCRIPT · 7.8KB · 원본 11124행
    주제  : v0.34.2 명예의 전당 시스템
    감쌈  : openHistoryRoom, processRetirements, renderSeasonDone  (이전 정의를 호출하는 체인)
    정의  : accumulateSeason, addFields, clone, consider, enrichNewRetirees, ensureState, esc, formatCareer
    ⚠ 대체됨: skillEngineV329, meta, esc
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.2 명예의 전당 시스템 ═══════════ */
@@ -11572,7 +11563,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [042/142] STYLE · 1.2KB · 원본 11250행
+   [042/164] STYLE · 1.2KB · 원본 11223행
    ───────────────────────────────────── */
 
 .franchise-v343{margin-top:12px;padding:12px;border:1px solid rgba(103,201,255,.25);border-radius:14px;background:linear-gradient(135deg,rgba(103,201,255,.07),rgba(255,255,255,.02));font-size:12px;line-height:1.55}
@@ -11583,13 +11574,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [043/142] SCRIPT · 9.5KB · 원본 11257행
+   [043/164] SCRIPT · 9.5KB · 원본 11230행
    주제  : v0.34.3 구단 역사 시스템
    감쌈  : finishDay, openHistoryRoom, renderSeasonDone  (이전 정의를 호출하는 체인)
    정의  : chooseCaptain, ensure, esc, finishDay, historyHtml, meta, migrate, openFranchiseHistoryV343
    ⚠ 대체됨: skillEngineV329, meta, esc, ensure, recordSeason, teamName
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.3 구단 역사 시스템 ═══════════ */
@@ -11688,7 +11678,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [044/142] STYLE · 1.0KB · 원본 11352행
+   [044/164] STYLE · 1.0KB · 원본 11325행
    ───────────────────────────────────── */
 
 .rival-v344{margin-top:12px;padding:12px;border:1px solid rgba(255,93,93,.28);border-radius:14px;background:linear-gradient(135deg,rgba(255,70,70,.08),rgba(255,255,255,.02));font-size:12px;line-height:1.55}
@@ -11699,13 +11689,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [045/142] SCRIPT · 12.4KB · 원본 11359행
+   [045/164] SCRIPT · 12.4KB · 원본 11332행
    주제  : v0.34.5 기록 기반 동적 라이벌 시스템
    감쌈  : openFranchiseHistoryV343, openHistoryRoom, openSheet, paResult, simGame  (이전 정의를 호출하는 체인)
    정의  : addHistory, announceRivalChange, bindPlayerRivals, ensure, findPlayer, isPostseasonGame, isRival, isTitleRaceGame
-   ⚠ 대체됨: simGame, skillEngineV329, meta, ensure, teamName
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+   ⚠ 대체됨: skillEngineV329, meta, ensure, teamName
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.5 기록 기반 동적 라이벌 시스템 ═══════════ */
@@ -11814,7 +11803,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [046/142] STYLE · 0.7KB · 원본 11464행
+   [046/164] STYLE · 0.7KB · 원본 11437행
    ───────────────────────────────────── */
 
 .ovr-redesign-v345{margin-top:12px;padding:12px;border:1px solid rgba(126,231,135,.25);border-radius:13px;background:rgba(126,231,135,.055);font-size:12px;line-height:1.55}
@@ -11823,13 +11812,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [047/142] SCRIPT · 6.2KB · 원본 11469행
+   [047/164] SCRIPT · 6.2KB · 원본 11442행
    주제  : v0.34.5 포지션·보직 기반 OVR 재설계
    감쌈  : openSheet  (이전 정의를 호출하는 체인)
    정의  : adjusted, batOvr, batterBreakdown, breakdown, html, openSheet, ovrBreakdownV345, pitOvr
    ⚠ 대체됨: skillEngineV329
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.5 포지션·보직 기반 OVR 재설계 ═══════════ */
@@ -11943,7 +11931,7 @@ body.theme-night main::after{
 
 <script>
 /* ──────────────────────────────────────
-   [048/142] SCRIPT · 0.4KB · 원본 11579행
+   [048/164] SCRIPT · 0.4KB · 원본 11552행
    주제  : v0.34.8 진행 방식별 기록 범위 최종 연결
    ────────────────────────────────────── */
 
@@ -11964,7 +11952,7 @@ body.theme-night main::after{
 <!-- v0.34.10 모바일 훈련 배정 클릭 안정화 -->
 <script>
 /* ───────────────────────────────────────
-   [049/142] SCRIPT · 0.6KB · 원본 11595행
+   [049/164] SCRIPT · 0.6KB · 원본 11568행
    감쌈  : bindOffseason  (이전 정의를 호출하는 체인)
    정의  : bindOffseason
    ─────────────────────────────────────── */
@@ -11992,7 +11980,7 @@ body.theme-night main::after{
 <!-- v0.34.10 훈련 선택창 호출 수정 -->
 <script>
 /* ──────────────────────────────────────
-   [050/142] SCRIPT · 0.9KB · 원본 11617행
+   [050/164] SCRIPT · 0.9KB · 원본 11590행
    감쌈  : openSheet  (이전 정의를 호출하는 체인)
    정의  : openSheet
    ────────────────────────────────────── */
@@ -12027,7 +12015,7 @@ body.theme-night main::after{
 <!-- v0.34.12 훈련 선택창 UI 정리 · 경기 시작 강제 복구 -->
 <style>
 /* ─────────────────────────────────────
-   [051/142] STYLE · 1.6KB · 원본 11646행
+   [051/164] STYLE · 1.6KB · 원본 11619행
    ───────────────────────────────────── */
 
 #sheet.training-sheet-v3411{padding-bottom:max(28px,env(safe-area-inset-bottom));}
@@ -12049,12 +12037,11 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [052/142] SCRIPT · 5.2KB · 원본 11664행
+   [052/164] SCRIPT · 5.2KB · 원본 11637행
    감쌈  : closeSheet, openSheet, playMyGame  (이전 정의를 호출하는 체인)
    정의  : closeSheet, exactPositionRepairV3411, openSheet, playMyGame, readinessV3411, todayTeamsV3411
    ⚠ 대체됨: closeSheet
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -12171,12 +12158,12 @@ body.theme-night main::after{
 <!-- v0.34.13 season stats repair + unified game start -->
 <script>
 /* ─────────────────────────────────────────────────────────────────────
-   [053/142] SCRIPT · 4.8KB · 원본 11777행
+   [053/164] SCRIPT · 4.8KB · 원본 11750행
    정의  : normalizeTeamForGameV3412, playMyGame, unifiedPlayMyGameV3412
    ───────────────────────────────────────────────────────────────────── */
 
 (function(){
-  const VERSION='v0.61';
+  const VERSION='v0.62';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -12275,7 +12262,7 @@ body.theme-night main::after{
 <!-- v0.34.13 player individuality completion: clutch, pinch hitting, bunt/steal traits, leadership, fielding proficiency -->
 <style>
 /* ─────────────────────────────────────
-   [054/142] STYLE · 0.6KB · 원본 11876행
+   [054/164] STYLE · 0.6KB · 원본 11849행
    ───────────────────────────────────── */
 
 .player-archetype-v3413{margin-top:12px;padding:12px;border:1px solid rgba(119,214,155,.22);border-radius:12px;background:rgba(119,214,155,.045);font-size:12px;line-height:1.58}
@@ -12286,17 +12273,17 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [055/142] SCRIPT · 30.7KB · 원본 11883행
+   [055/164] SCRIPT · 30.7KB · 원본 11856행
+   주제  : v0.53: 감독 지시가 이닝을 알 수 있게 밖으로 내보낸다
    감쌈  : canPlay, openSheet, paResult, playerStatsHtml, specialBonusV280, specialContextV281  (이전 정의를 호출하는 체인)
-   정의  : GAME_CONTEXT_V3413, adjustedDefense, autoAssignLineup, canPlay, candidateBatScore, catcherInfoV337, defenderRatingV336, ensureAll
+   정의  : GAME_CONTEXT_V3413, __innV53, adjustedDefense, autoAssignLineup, canPlay, candidateBatScore, catcherInfoV337, defenderRatingV336
    ⚠ 대체됨: skillEngineV329, ensureAll, hash, meta
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
   'use strict';
-  const VERSION='v0.61';
+  const VERSION='v0.62';
   const META='playerMetaV326';
   const FIELD=['C','1B','2B','3B','SS','LF','CF','RF'];
   const INF=new Set(['1B','2B','3B','SS']);
@@ -12648,7 +12635,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [056/142] STYLE · 2.4KB · 원본 12236행
+   [056/164] STYLE · 2.4KB · 원본 12209행
    주제  : v0.34.13 시즌 스카우팅·드래프트 긴장감
    ───────────────────────────────────── */
 
@@ -12663,12 +12650,11 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [057/142] SCRIPT · 27.5KB · 원본 12246행
+   [057/164] SCRIPT · 27.5KB · 원본 12219행
    감쌈  : addDraftPlayer, applyGrowthWithTraining, buildOffseasonMarket, newSeason, openSheet, playerStatsHtml, signFA, updateDailyHealth  (이전 정의를 호출하는 체인)
    정의  : actualOvr, addDraftPlayer, advanceDraftToUser, aiDraftChoiceIndex, applyDraftProfile, applyGrowthWithTraining, budgetMax, buildOffseasonMarket
    ⚠ 대체됨: aiDraftChoiceIndex, draftOrderStatusHtml, tagGeneratedPlayerV463, skillEngineV329, hash, needScore, starN
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -12905,7 +12891,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [058/142] STYLE · 0.6KB · 원본 12479행
+   [058/164] STYLE · 0.6KB · 원본 12452행
    ───────────────────────────────────── */
 
 .ai-philosophy-v3413{margin-top:14px;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(0,0,0,.12)}
@@ -12915,12 +12901,11 @@ body.theme-night main::after{
 </style>
 <script>
 /* ─────────────────────────────────────────────────────────────────────────────────────
-   [059/142] SCRIPT · 2.4KB · 원본 12485행
+   [059/164] SCRIPT · 2.4KB · 원본 12458행
    감쌈  : renderFront  (이전 정의를 호출하는 체인)
    정의  : aiClubPhilosophiesV3413, aiClubProfileV3413, ensure, hash, panel, renderFront
    ⚠ 대체됨: hash, ensure, aiClubProfileV3413, panel
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ───────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -12945,7 +12930,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [060/142] STYLE · 1.0KB · 원본 12506행
+   [060/164] STYLE · 1.0KB · 원본 12479행
    주제  : v0.34.13 스카우트·드래프트 최종 완성 패치
    ───────────────────────────────────── */
 
@@ -12958,12 +12943,11 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [061/142] SCRIPT · 9.2KB · 원본 12514행
+   [061/164] SCRIPT · 9.2KB · 원본 12487행
    감쌈  : addDraftPlayer, advanceDraftToUser, aiDraftChoiceIndex, draftPick, kboDraftPanelHtml, openDraftSheet, openScoutCandidateV3413, playerStatsHtml  (이전 정의를 호출하는 체인)
    정의  : addDraftPlayer, advanceDraftToUser, aiClubProfileV3413, aiDraftChoiceIndex, draftPick, ensureNews, extraCard, kboDraftPanelHtml
    ⚠ 대체됨: aiDraftChoiceIndex, skillEngineV329, aiClubProfileV3413, ovr, pool, styleFor
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
@@ -13040,12 +13024,11 @@ body.theme-night main::after{
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [062/142] SCRIPT · 7.5KB · 원본 12587행
+   [062/164] SCRIPT · 7.5KB · 원본 12560행
    주제  : v0.34.13 · AI PLAYER VALUE ENGINE
    정의  : ageOfPlayer, aiDraftChoiceIndex, aiPlayerValueEngineV3413, aiPlayerValueV3413, evaluate, evaluatePlayerValue, healthOf, kindOf
    ⚠ 대체됨: aiDraftChoiceIndex, skillEngineV329, meta, ageOfPlayer, evaluate, aiPlayerValueV3413, team
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI PLAYER VALUE ENGINE ═══════════ */
@@ -13155,13 +13138,12 @@ body.theme-night main::after{
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [063/142] SCRIPT · 6.9KB · 원본 12693행
+   [063/164] SCRIPT · 6.9KB · 원본 12666행
    주제  : v0.34.13 · AI FA 구단 운영
    감쌈  : buildOffseasonMarket, offseasonChecklist, renderOffseason, signFA  (이전 정의를 호출하는 체인)
    정의  : aiClubProfileV3413, aiState, asking, buildOffseasonMarket, clubInfo, evaluatePlayerValue, hash, moveFa
    ⚠ 대체됨: hash, aiClubProfileV3413, panel, typeOf
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI FA 구단 운영 ═══════════ */
@@ -13278,7 +13260,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [064/142] STYLE · 0.5KB · 원본 12806행
+   [064/164] STYLE · 0.5KB · 원본 12779행
    주제  : v0.34.13 · AI 트레이드 구단 운영
    ───────────────────────────────────── */
 
@@ -13289,13 +13271,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [065/142] SCRIPT · 7.4KB · 원본 12812행
+   [065/164] SCRIPT · 7.4KB · 원본 12785행
    주제  : v0.34.13 · AI 트레이드 구단 운영
    감쌈  : renderFront  (이전 정의를 호출하는 체인)
    정의  : ageAt, aiClubProfileV3413, candidates, eligibleNow, evaluatePlayerValue, execute, findDeal, gainScore
    ⚠ 대체됨: skillEngineV329, hash, ageAt, aiClubProfileV3413, panel, root, value
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 트레이드 구단 운영 ═══════════ */
@@ -13425,7 +13406,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [066/142] STYLE · 1.2KB · 원본 12938행
+   [066/164] STYLE · 1.2KB · 원본 12911행
    주제  : v0.34.13 · AI 구단 운영 코어
    ───────────────────────────────────── */
 
@@ -13439,13 +13420,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [067/142] SCRIPT · 9.2KB · 원본 12947행
+   [067/164] SCRIPT · 9.2KB · 원본 12920행
    주제  : v0.34.13 · AI 구단 운영 코어
    감쌈  : finishDay, newSeason, renderFront  (이전 정의를 호출하는 체인)
    정의  : aiClubCoreV3413, aiClubProfileV3413, aiStrategyV3413, analyze, chooseStrategy, ensureRoot, fanLabel, finance
    ⚠ 대체됨: skillEngineV329, hash, teamName, panel, finance, profile, update
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 구단 운영 코어 ═══════════ */
@@ -13542,7 +13522,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [068/142] STYLE · 0.8KB · 원본 13040행
+   [068/164] STYLE · 0.8KB · 원본 13013행
    ───────────────────────────────────── */
 
 .ai-roster-v3413{margin-top:14px;padding:12px;border:1px solid rgba(110,210,160,.22);border-radius:14px;background:rgba(20,46,38,.28)}
@@ -13553,13 +13533,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [069/142] SCRIPT · 10.4KB · 원본 13047행
+   [069/164] SCRIPT · 10.4KB · 원본 13020행
    주제  : v0.34.13 · AI 로스터 관리
    감쌈  : autoAssignLineup, benchBatters, finishDay, newSeason, pitchPlanPoolV310, renderFront  (이전 정의를 호출하는 체인)
    정의  : activeCount, age, aiRosterStateV3413, autoAssignLineup, benchBatters, chooseBat, choosePit, core
    ⚠ 대체됨: benchBatters, skillEngineV329, panel, update, age, core, health, updateAiRosterV3413
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 로스터 관리 ═══════════ */
@@ -13685,7 +13664,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [070/142] STYLE · 0.8KB · 원본 13169행
+   [070/164] STYLE · 0.8KB · 원본 13142행
    주제  : v0.34.13 · AI 계약·재계약 관리
    ───────────────────────────────────── */
 
@@ -13698,13 +13677,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [071/142] SCRIPT · 9.1KB · 원본 13177행
+   [071/164] SCRIPT · 9.1KB · 원본 13150행
    주제  : v0.34.13 · AI 계약·재계약 관리
    감쌈  : buildOffseasonMarket, offseasonChecklist, renderOffseason, runAiFaMarketV3413  (이전 정의를 호출하는 체인)
    정의  : age, aiContractStateV3413, budgetFor, buildOffseasonMarket, contract, core, ensureAll, evaluatePlayerValue
    ⚠ 대체됨: skillEngineV329, hash, panel, ovr, root, profile, age, core
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 계약·재계약 관리 ═══════════ */
@@ -13784,7 +13762,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [072/142] STYLE · 0.8KB · 원본 13253행
+   [072/164] STYLE · 0.8KB · 원본 13226행
    주제  : v0.34.13 · AI 감독 운영
    ───────────────────────────────────── */
 
@@ -13797,13 +13775,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [073/142] SCRIPT · 7.9KB · 원본 13261행
+   [073/164] SCRIPT · 7.9KB · 원본 13234행
    주제  : v0.34.13 · AI 감독 운영
    감쌈  : finishDay, newSeason, renderFront, updateAiRosterV3413  (이전 정의를 호출하는 체인)
    정의  : age, aiManagerBullpenFactorV3413, aiManagerTacticV3413, buildLineup, buildPitchPlan, core, evaluatePlayerValue, finishDay
    ⚠ 대체됨: skillEngineV329, panel, root, profile, update, age, core, updateAiRosterV3413
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 감독 운영 ═══════════ */
@@ -13890,7 +13867,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [074/142] STYLE · 1.1KB · 원본 13344행
+   [074/164] STYLE · 1.1KB · 원본 13317행
    주제  : v0.34.13 · AI 장기 운영
    ───────────────────────────────────── */
 
@@ -13903,13 +13880,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [075/142] SCRIPT · 7.2KB · 원본 13352행
+   [075/164] SCRIPT · 7.2KB · 원본 13325행
    주제  : v0.34.13 · AI 장기 운영
    감쌈  : newSeason, renderFront, updateAiClubCoreV3413  (이전 정의를 호출하는 체인)
    정의  : ageOfPlayer, aiLongTermBiasV3413, aiLongTermPlanV3413, baseProfile, choosePhase, core, horizon, newSeason
    ⚠ 대체됨: skillEngineV329, panel, root, update, core
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 장기 운영 ═══════════ */
@@ -13967,7 +13943,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [076/142] STYLE · 1.0KB · 원본 13406행
+   [076/164] STYLE · 1.0KB · 원본 13379행
    주제  : v0.34.13 · AI 재정·구단주 운영
    ───────────────────────────────────── */
 
@@ -13980,13 +13956,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [077/142] SCRIPT · 9.0KB · 원본 13414행
+   [077/164] SCRIPT · 9.0KB · 원본 13387행
    주제  : v0.34.13 · AI 재정·구단주 운영
    감쌈  : buildOffseasonMarket, finishDay, newSeason, renderFront, renderOffseason, runAiFaMarketV3413  (이전 정의를 호출하는 체인)
    정의  : aiFinanceBudgetV3413, aiFinanceStateV3413, buildOffseasonMarket, contracts, core, evaluate, finishDay, hash
    ⚠ 대체됨: skillEngineV329, hash, panel, root, update, core, key, longPlan
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 재정·구단주 운영 ═══════════ */
@@ -14050,7 +14025,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [078/142] STYLE · 0.8KB · 원본 13474행
+   [078/164] STYLE · 0.8KB · 원본 13447행
    주제  : v0.34.13 · AI 외국인 선수 운영
    ───────────────────────────────────── */
 
@@ -14063,13 +14038,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [079/142] SCRIPT · 10.2KB · 원본 13482행
+   [079/164] SCRIPT · 10.2KB · 원본 13455행
    주제  : v0.34.13 · AI 외국인 선수 운영
    감쌈  : buildOffseasonMarket, offseasonChecklist, renderOffseason, runAiForeignMarketV3413  (이전 정의를 호출하는 체인)
    정의  : add, age, aiForeignStateV3413, buildOffseasonMarket, contract, core, cost, counts
    ⚠ 대체됨: skillEngineV329, hash, add, needScore, panel, root, finance, profile
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 외국인 선수 운영 ═══════════ */
@@ -14131,7 +14105,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [080/142] STYLE · 0.9KB · 원본 13540행
+   [080/164] STYLE · 0.9KB · 원본 13513행
    주제  : v0.34.13 · 장기 시뮬레이션 안정화
    ───────────────────────────────────── */
 
@@ -14144,13 +14118,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [081/142] SCRIPT · 13.3KB · 원본 13548행
+   [081/164] SCRIPT · 13.3KB · 원본 13521행
    주제  : v0.46.5 · 게임 진단·복구 엔진
    감쌈  : buildOffseasonMarket, finishDay, newSeason, renderFront  (이전 정의를 호출하는 체인)
    정의  : add, audit, buildOffseasonMarket, checkRoster, cleanContracts, ensureLineup, ensurePitch, ensureTeam
    ⚠ 대체됨: skillEngineV329, panel, root, audit, validatePlayableRosterV46
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.46.5 · 게임 진단·복구 엔진 ═══════════ */
@@ -14525,7 +14498,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [082/142] STYLE · 0.8KB · 원본 13919행
+   [082/164] STYLE · 0.8KB · 원본 13892행
    주제  : v0.34.13 · AI 감독·코칭스태프
    ───────────────────────────────────── */
 
@@ -14538,13 +14511,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [083/142] SCRIPT · 10.6KB · 원본 13927행
+   [083/164] SCRIPT · 10.6KB · 원본 13900행
    주제  : v0.34.13 · AI 감독·코칭스태프
    감쌈  : aiManagerBullpenFactorV3413, applyGrowthWithTraining, finishDay, managerAttackBonus, managerPitchBonus, newSeason, renderFront  (이전 정의를 호출하는 체인)
    정의  : aiManagerBullpenFactorV3413, aiStaffStateV3413, applyGrowthWithTraining, attackBonus, batScores, core, finance, finishDay
    ⚠ 대체됨: skillEngineV329, hash, panel, root, finance, profile, update, core
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 감독·코칭스태프 ═══════════ */
@@ -14679,7 +14651,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [084/142] STYLE · 1.2KB · 원본 14058행
+   [084/164] STYLE · 1.2KB · 원본 14031행
    주제  : v0.34.13 · AI 시설 투자
    ───────────────────────────────────── */
 
@@ -14692,13 +14664,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [085/142] SCRIPT · 9.8KB · 원본 14066행
+   [085/164] SCRIPT · 9.8KB · 원본 14039행
    주제  : v0.34.13 · AI 시설 투자
    감쌈  : aiDraftChoiceIndex, applyGrowthWithTraining, managerAttackBonus, managerPitchBonus, newSeason, renderFront  (이전 정의를 호출하는 체인)
    정의  : aiDraftChoiceIndex, aiFacilityLevelV3413, aiFacilityStateV3413, annualBenefit, applyGrowthWithTraining, club, core, finance
    ⚠ 대체됨: aiDraftChoiceIndex, skillEngineV329, hash, panel, root, core, club, plan
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 시설 투자 ═══════════ */
@@ -14808,13 +14779,12 @@ body.theme-night main::after{
 
 <script>
 /* ───────────────────────────────────────────────────────────────────────
-   [086/142] SCRIPT · 2.6KB · 원본 14172행
+   [086/164] SCRIPT · 2.6KB · 원본 14145행
    주제  : v0.34.13 · AI 경기 운영 고도화
    감쌈  : renderFront  (이전 정의를 호출하는 체인)
    정의  : aiInGameTacticsV3413, panel, plan, renderFront, skillEngineV329
    ⚠ 대체됨: skillEngineV329, panel
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ─────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 경기 운영 고도화 ═══════════ */
@@ -14845,7 +14815,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [087/142] STYLE · 0.9KB · 원본 14199행
+   [087/164] STYLE · 0.9KB · 원본 14172행
    주제  : v0.34.13 · AI 리그 생태계·장기 밸런스
    ───────────────────────────────────── */
 
@@ -14858,13 +14828,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [088/142] SCRIPT · 7.7KB · 원본 14207행
+   [088/164] SCRIPT · 7.7KB · 원본 14180행
    주제  : v0.34.13 · AI 리그 생태계·장기 밸런스
    감쌈  : evaluatePlayerValue, newSeason, renderFront, renderSeasonDone  (이전 정의를 호출하는 체인)
    정의  : aiLeagueEcosystemV3413, audit, avgAge, club, context, evaluatePlayerValue, financeFlag, ids
    ⚠ 대체됨: skillEngineV329, panel, root
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 리그 생태계·장기 밸런스 ═══════════ */
@@ -14930,7 +14899,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [089/142] STYLE · 1.0KB · 원본 14269행
+   [089/164] STYLE · 1.0KB · 원본 14242행
    주제  : v0.34.13 · AI 단장 성향
    ───────────────────────────────────── */
 
@@ -14944,13 +14913,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [090/142] SCRIPT · 8.6KB · 원본 14278행
+   [090/164] SCRIPT · 8.6KB · 원본 14251행
    주제  : v0.34.13 · AI 단장 성향
    감쌈  : evaluatePlayerValue, newSeason, renderFront  (이전 정의를 호출하는 체인)
    정의  : aiDraftChoiceIndex, aiGmPersonalityV3413, aiPlayerValueV3413, core, eco, evaluatePlayerValue, evolve, hash
    ⚠ 대체됨: skillEngineV329, hash
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 · AI 단장 성향 ═══════════ */
@@ -15051,7 +15019,7 @@ body.theme-night main::after{
 
 <style>
 /* ─────────────────────────────────────
-   [091/142] STYLE · 0.5KB · 원본 14375행
+   [091/164] STYLE · 0.5KB · 원본 14348행
    주제  : v0.34.13 선수 개성 보완
    ───────────────────────────────────── */
 
@@ -15063,13 +15031,12 @@ body.theme-night main::after{
 </style>
 <script>
 /* ────────────────────────────────────────────────────────────────────────────────────
-   [092/142] SCRIPT · 5.5KB · 원본 14382행
+   [092/164] SCRIPT · 5.5KB · 원본 14355행
    주제  : v0.34.13 선수 개성 보완: 효과 설명 · 희귀 변화 · 주장 판정 안정화
    감쌈  : openSheet, playerStatsHtml, renderSeasonDone  (이전 정의를 호출하는 체인)
    정의  : ageAt, candidate, detailHtml, evolveOne, evolveSeason, hash, meta, openSheet
    ⚠ 대체됨: hash
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ──────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.13 선수 개성 보완: 효과 설명 · 희귀 변화 · 주장 판정 안정화 ═══════════ */
@@ -15151,7 +15118,7 @@ body.theme-night main::after{
 <!-- v0.34.14 — 모바일 UI/터치/반응형/모달 안정화 최종 보정 -->
 <style>
 /* ─────────────────────────────────────
-   [093/142] STYLE · 5.1KB · 원본 14460행
+   [093/164] STYLE · 5.1KB · 원본 14433행
    주제  : 실제 조작 요소의 터치 영역
    ───────────────────────────────────── */
 
@@ -15272,7 +15239,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ─────────────────────────────────────────────────────────────────
-   [094/142] SCRIPT · 2.1KB · 원본 14576행
+   [094/164] SCRIPT · 2.1KB · 원본 14549행
    주제  : v0.34.14 modal state, focus, viewport and backdrop safety
    정의  : closeSheet, sync, visible
    ───────────────────────────────────────────────────────────────── */
@@ -15334,7 +15301,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.13 UX hotfix: faster auto progress + visible game-start feedback -->
 <style>
 /* ─────────────────────────────────────
-   [095/142] STYLE · 0.7KB · 원본 14632행
+   [095/164] STYLE · 0.7KB · 원본 14605행
    ───────────────────────────────────── */
 
 #playBtn{
@@ -15359,12 +15326,11 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ────────────────────────────────────────────────────────────
-   [096/142] SCRIPT · 5.2KB · 원본 14653행
+   [096/164] SCRIPT · 5.2KB · 원본 14626행
    감쌈  : renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : bindV3413, finish, paintV3413, push, renderGameSetup
    ⚠ 대체됨: finish, push
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ──────────────────────────────────────────────────────────── */
 
 (function(){
@@ -15523,17 +15489,16 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <!-- v0.34.30 version marker -->
 <script>
-/* ────────────────────────────────────────
-   [097/142] SCRIPT · 0.5KB · 원본 14809행
+/* ─────────────────────────────────────────
+   [097/164] SCRIPT · 0.5KB · 원본 14782행
    정의  : GAME_VERSION, applyVersionV3414
    ⚠ 대체됨: GAME_VERSION, applyVersionV3414
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
-   ──────────────────────────────────────── */
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ───────────────────────────────────────── */
 
 (function(){
   'use strict';
-  const VERSION='v0.61';
+  const VERSION='v0.62';
   document.title='우리팀을 만들자 '+VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -15553,13 +15518,13 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 final version display override -->
 <script>
 /* ──────────────────────────────────────
-   [098/142] SCRIPT · 0.7KB · 원본 14830행
+   [098/164] SCRIPT · 0.7KB · 원본 14803행
    정의  : applyVersionV3414
    ────────────────────────────────────── */
 
 (function(){
   'use strict';
-  const VERSION='v0.61';
+  const VERSION='v0.62';
   function applyVersionV3414(){
     document.title='우리팀을 만들자 '+VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
@@ -15581,14 +15546,14 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 instant 5-game simulation -->
 <script>
 /* ──────────────────────────────────────────────────────────────
-   [099/142] SCRIPT · 2.6KB · 원본 14853행
+   [099/164] SCRIPT · 2.6KB · 원본 14826행
    감쌈  : renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : applyVersionV3415, bindFastBatchV3415, renderGameSetup
    ────────────────────────────────────────────────────────────── */
 
 (function(){
   'use strict';
-  const VERSION='v0.61';
+  const VERSION='v0.62';
 
   function applyVersionV3415(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -15672,7 +15637,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 fast result simulation + unmistakable game-button feedback -->
 <style>
 /* ─────────────────────────────────────
-   [100/142] STYLE · 0.4KB · 원본 14938행
+   [100/164] STYLE · 0.4KB · 원본 14911행
    ───────────────────────────────────── */
 
 #playBtn.v3416-working,#skip5Btn.v3416-working{
@@ -15686,17 +15651,16 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [101/142] SCRIPT · 4.3KB · 원본 14948행
+   [101/164] SCRIPT · 4.3KB · 원본 14921행
    감쌈  : renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, applyVersion, bind, finish, paintThen, push, renderGameSetup, startBatch
    ⚠ 대체됨: finish, push, GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
   'use strict';
-  const VERSION='v0.61';
+  const VERSION='v0.62';
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
@@ -15773,7 +15737,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 complete pitcher allocation, full rotation, bullpen reserve -->
 <style>
 /* ─────────────────────────────────────
-   [102/142] STYLE · 0.4KB · 원본 15026행
+   [102/164] STYLE · 0.4KB · 원본 14999행
    ───────────────────────────────────── */
 
 .pitch-section-v3417{margin-top:10px;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.055);font-size:12px;font-weight:800;color:#dfe9e3}
@@ -15783,13 +15747,13 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [103/142] SCRIPT · 7.1KB · 원본 15032행
+   [103/164] SCRIPT · 7.1KB · 원본 15005행
    정의  : bullpenOrderOfV310, orderedIndexes, pitchPlanOfV310, renderPitchStaffV310, rotOrderOf, setBalancedFirstTeamV300
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
   'use strict';
-  const VERSION='v0.61';
+  const VERSION='v0.62';
   document.title='우리팀을 만들자 '+VERSION;
   document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
 
@@ -15923,7 +15887,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 authoritative mobile-safe batch runner -->
 <style>
 /* ─────────────────────────────────────
-   [104/142] STYLE · 0.3KB · 원본 15167행
+   [104/164] STYLE · 0.3KB · 원본 15140행
    ───────────────────────────────────── */
 
 #skip5Btn.v3418-working,#playBtn.v3418-working{
@@ -15936,17 +15900,16 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [105/142] SCRIPT · 5.7KB · 원본 15176행
+   [105/164] SCRIPT · 5.7KB · 원본 15149행
    감쌈  : renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, bindV3418, cleanButtonV3418, finish, forceVersionV3418, push, refreshHeader, renderGameSetup
-   ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+   ⚠ 대체됨: push, GAME_VERSION
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
   'use strict';
-  const VERSION='v0.61';
+  const VERSION='v0.62';
   let batchBusy=false;
 
   function forceVersionV3418(){
@@ -16088,16 +16051,15 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.31 save migration + guaranteed lineup recovery -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [106/142] SCRIPT · 7.0KB · 원본 15319행
+   [106/164] SCRIPT · 7.0KB · 원본 15292행
    정의  : GAME_VERSION, benchBatters, buildSafeLineupV3419, ensureCoreStateV3419, forceVersionV3419, getLineup, migrateAllV3419, openLineupSafeV319
    ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (function(){
   'use strict';
-  const VERSION='v0.61';
+  const VERSION='v0.62';
 
   function forceVersionV3419(){
     document.title='우리팀을 만들자 '+VERSION;
@@ -16257,7 +16219,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ──────────────────────────────────────────────────
-   [107/142] SCRIPT · 1.4KB · 원본 15480행
+   [107/164] SCRIPT · 1.4KB · 원본 15453행
    주제  : v0.34.30 · 하단 내비게이션 화면 동기화
    감쌈  : show  (이전 정의를 호출하는 체인)
    정의  : show, syncBottomNav, syncFromVisibleScreen
@@ -16265,7 +16227,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 /* ═══════════ v0.34.30 · 하단 내비게이션 화면 동기화 ═══════════ */
 (()=>{
-  const VERSION='v0.61';
+  const VERSION='v0.62';
   const screenToNav={team:'team',lineup:'lineup',game:'game',front:'front',rank:'rank'};
   function syncBottomNav(name){
     const nv=screenToNav[name];
@@ -16304,7 +16266,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </script>
 <script>
 /* ──────────────────────────────────────────────────────────────────────
-   [108/142] SCRIPT · 1.8KB · 원본 15520행
+   [108/164] SCRIPT · 1.8KB · 원본 15493행
    주제  : v0.34.30 · 경기 탭 진입 안정화
    정의  : openGameSafeV3423, openGameV3423, renderGameSetup, syncGameNav
    ────────────────────────────────────────────────────────────────────── */
@@ -16312,7 +16274,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 /* ═══════════ v0.34.30 · 경기 탭 진입 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const VERSION='v0.61';
+  const VERSION='v0.62';
   function syncGameNav(){
     document.querySelectorAll('nav button[data-nav]').forEach(btn=>btn.classList.toggle('on',btn.dataset.nav==='game'));
   }
@@ -16360,7 +16322,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ─────────────────────────────────────────────────────
-   [109/142] SCRIPT · 0.3KB · 원본 15570행
+   [109/164] SCRIPT · 0.3KB · 원본 15543행
    주제  : v0.34.30 · lexical state compatibility bridge
    ───────────────────────────────────────────────────── */
 
@@ -16380,19 +16342,18 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ──────────────────────────────────────────────
-   [110/142] SCRIPT · 1.0KB · 원본 15585행
+   [110/164] SCRIPT · 1.0KB · 원본 15558행
    주제  : v0.34.30 · 충돌 패치 제거 후 안정화
    감쌈  : renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, renderGameSetup, version
    ⚠ 대체됨: GAME_VERSION, version
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.30 · 충돌 패치 제거 후 안정화 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   function version(){
     document.title='우리팀을 만들자 '+V;
@@ -16429,19 +16390,18 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ────────────────────────────────────────────
-   [111/142] SCRIPT · 0.7KB · 원본 15624행
+   [111/164] SCRIPT · 0.7KB · 원본 15597행
    주제  : v0.34.31 · ensureSquadState 무한 재귀 차단
    감쌈  : ensureSquadState  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, ensureSquadState
    ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ──────────────────────────────────────────── */
 
 /* ═══════════ v0.34.31 · ensureSquadState 무한 재귀 차단 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   // ensureSquadState 안에서 aiTopUpRosters → rebalance → setBalancedFirstTeam 경로가
   // 다시 ensureSquadState를 부르면 스택이 터진다. 중첩 호출은 즉시 무시한다.
   const base=window.ensureSquadState;
@@ -16462,19 +16422,18 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </script>
 
 <script>
-/* ───────────────────────────────────────
-   [112/142] SCRIPT · 0.6KB · 원본 15648행
+/* ─────────────────────────────────────────
+   [112/164] SCRIPT · 0.6KB · 원본 15621행
    주제  : v0.34.31 · 버전 표기 최종 고정
    정의  : GAME_VERSION, apply
-   ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
-   ─────────────────────────────────────── */
+   ⚠ 대체됨: GAME_VERSION, apply
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ───────────────────────────────────────── */
 
 /* ═══════════ v0.34.31 · 버전 표기 최종 고정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
@@ -16494,7 +16453,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <style>
 /* ────────────────────────────────────────────────
-   [113/142] STYLE · 1.5KB · 원본 15670행
+   [113/164] STYLE · 1.5KB · 원본 15643행
    주제  : v0.34.32 · 라인업 카드를 전체 로스터(.prow) 형식으로 통일
    ──────────────────────────────────────────────── */
 
@@ -16525,19 +16484,18 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [114/142] SCRIPT · 9.4KB · 원본 15696행
+   [114/164] SCRIPT · 9.3KB · 원본 15669행
    주제  : v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭
    감쌈  : renderFront  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, buildAiTab, prowCard, renderFront, renderLineup, renderPitchers, sec, subLine
-   ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+   ⚠ 대체됨: GAME_VERSION, ver
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const g=n=>document.getElementById(n);
 
   /* ---------- A. 라인업 카드를 전체 로스터 형식으로 ---------- */
@@ -16749,19 +16707,18 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ─────────────────────────────────────────────────────────────────────────────
-   [115/142] SCRIPT · 1.7KB · 원본 15910행
+   [115/164] SCRIPT · 1.7KB · 원본 15883행
    주제  : v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱)
    감쌈  : aiTopUpRosters  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, aiTopUpRosters, invalidateAiRosterCacheV3433, signature
    ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   // ensureSquadState()는 isFirstTeam 같은 사소한 조회마다 호출되는데,
   // v0.25.0에서 그 안에 aiTopUpRosters(리그 10팀 로스터 전체 재계산)가 붙으면서
   // 5경기 자동 진행 한 번에 5,400회 넘게 전 리그를 재계산하고 있었다.
@@ -16811,7 +16768,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <style>
 /* ─────────────────────────────────────────
-   [116/142] STYLE · 0.2KB · 원본 15962행
+   [116/164] STYLE · 0.2KB · 원본 15935행
    주제  : v0.34.34 · FA 영입에 따른 지명 순번 페널티 표시
    ───────────────────────────────────────── */
 
@@ -16823,19 +16780,18 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [117/142] SCRIPT · 5.3KB · 원본 15969행
+   [117/164] SCRIPT · 5.3KB · 원본 15942행
    주제  : v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로
    감쌈  : kboDraftPanelHtml, repairDraftState, runAiFaMarketV3413, signFA  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, baseOrder, computePen, draftOrderStatusHtml, faDraftPenaltyV3434, kboDraftPanelHtml, market, orderWithPenalty
    ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   function market(){return (typeof state!=='undefined'&&state)?state.season?.market:null;}
   function started(m){return !!m?.draftStartedV3413;}
@@ -16984,7 +16940,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <style>
 /* ───────────────────────────────────────
-   [118/142] STYLE · 2.7KB · 원본 16120행
+   [118/164] STYLE · 2.7KB · 원본 16093행
    주제  : v0.34.35 · 마감 점검 (줄바꿈·터치·상태·넘침)
    ─────────────────────────────────────── */
 
@@ -17067,19 +17023,18 @@ main *,.sheet *{max-width:100%}
 </style>
 <script>
 /* ─────────────────────────────────────────────
-   [119/142] SCRIPT · 1.3KB · 원본 16198행
+   [119/164] SCRIPT · 1.3KB · 원본 16171행
    주제  : v0.34.35 · 마감 점검 (조작 일관성)
    감쌈  : show  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, show, syncDisabledV3435
    ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ───────────────────────────────────────────── */
 
 /* ═══════════ v0.34.35 · 마감 점검 (조작 일관성) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   // button이 아닌 div/span에 onclick만 달린 곳이 남아 있다.
   // 포커스가 갔을 때 Enter·Space로도 눌리게 해 조작 방식을 통일한다.
@@ -17119,7 +17074,7 @@ main *,.sheet *{max-width:100%}
 
 <style>
 /* ─────────────────────────────────────
-   [120/142] STYLE · 1.8KB · 원본 16240행
+   [120/164] STYLE · 1.8KB · 원본 16213행
    주제  : v0.34.36 · FA 라운드제 입찰
    ───────────────────────────────────── */
 
@@ -17157,19 +17112,18 @@ main *,.sheet *{max-width:100%}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [121/142] SCRIPT · 12.3KB · 원본 16273행
+   [121/164] SCRIPT · 12.3KB · 원본 16246행
    주제  : v0.34.36 · FA 라운드제 입찰
    감쌈  : openFaSheet, runAiFaMarketV3413  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, aiRespond, appealOf, faBidCloseV3436, faBidQuitV3436, faBidRaiseV3436, finishToAi, finishToMe
    ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.36 · FA 라운드제 입찰 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const R1=n=>Math.round(n*10)/10;
   const money=()=>Number(state?.money)||0;
   const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
@@ -17461,7 +17415,7 @@ main *,.sheet *{max-width:100%}
 
 <style>
 /* ─────────────────────────────────────
-   [122/142] STYLE · 0.9KB · 원본 16567행
+   [122/164] STYLE · 0.9KB · 원본 16540행
    주제  : v0.34.37 · 백업·복원
    ───────────────────────────────────── */
 
@@ -17482,19 +17436,18 @@ main *,.sheet *{max-width:100%}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [123/142] SCRIPT · 5.5KB · 원본 16583행
+   [123/164] SCRIPT · 5.5KB · 원본 16556행
    주제  : v0.34.37 · 백업·복원 (자동저장은 그대로)
    감쌈  : renderTeamHome  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, attach, backupExportV3437, backupImportFileV3437, backupPickFileV3437, backupWipeV3437, openBackupSheetV3437, raw
-   ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+   ⚠ 대체됨: GAME_VERSION, attach
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.34.37 · 백업·복원 (자동저장은 그대로) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const KEY='ourteam_slots_v1';
 
   function raw(){try{return localStorage.getItem(KEY)||'';}catch(_){return '';}}
@@ -17641,7 +17594,7 @@ main *,.sheet *{max-width:100%}
 <!-- v0.44 · 나의 팀 대시보드 스타일 (v0.38 이식 때 누락된 것) -->
 <style>
 /* ─────────────────────────────────────
-   [124/142] STYLE · 4.0KB · 원본 16732행
+   [124/164] STYLE · 4.0KB · 원본 16705행
    주제  : 상단 3열 요약
    ───────────────────────────────────── */
 
@@ -17727,7 +17680,7 @@ main *,.sheet *{max-width:100%}
 <!-- ═══════════ v0.35 이식: 나의 팀 대시보드 + 신생 구단 창단 ═══════════ -->
 <style>
 /* ─────────────────────────────────────
-   [125/142] STYLE · 2.2KB · 원본 16813행
+   [125/164] STYLE · 2.2KB · 원본 16786행
    ───────────────────────────────────── */
 
 .custom-team-launch{margin:10px 0 12px;background:linear-gradient(135deg,var(--amber),#f59e0b);color:#17130a;font-weight:900;min-height:52px}
@@ -17741,7 +17694,7 @@ main *,.sheet *{max-width:100%}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [126/142] SCRIPT · 6.9KB · 원본 16823행
+   [126/164] SCRIPT · 6.9KB · 원본 16796행
    주제  : v0.35.0 나의 팀 대시보드
    감쌈  : renderTeamHome  (이전 정의를 호출하는 체인)
    정의  : esc350, healthCount350, html350, nextMatch350, openMyTeamSummaryV350, rank350, rec350, recentMine350
@@ -17855,8 +17808,7 @@ main *,.sheet *{max-width:100%}
 </script>
 <script id="custom-team-creator-script">
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [127/142] SCRIPT · 5.8KB · 원본 16930행
-   감쌈  : renderSlotStatus  (이전 정의를 호출하는 체인)
+   [127/164] SCRIPT · 5.8KB · 원본 16903행
    정의  : currentCustomDraft, customCreatorNext, customFullName, escCt, openCustomTeamCreator, readCustomDrafts, renderCustomCreator, renderCustomDraftCard
    ────────────────────────────────────────────────────────────────────────────────────── */
 
@@ -17902,7 +17854,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ─────────────────────────────────────
-   [128/142] STYLE · 0.5KB · 원본 16971행
+   [128/164] STYLE · 0.4KB · 원본 16944행
    주제  : v0.38 · 이식 기능 통합 보정
    ───────────────────────────────────── */
 
@@ -17918,19 +17870,18 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [129/142] SCRIPT · 4.0KB · 원본 16983행
+   [129/164] SCRIPT · 4.0KB · 원본 16955행
    주제  : v0.38 · 이식 기능 통합 보정
    감쌈  : backupExportV3437, backupImportFileV3437, backupWipeV3437, show  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, backupExportV3437, backupImportFileV3437, backupWipeV3437, hintCustom, show
    ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.38 · 이식 기능 통합 보정 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const SLOT_KEY='ourteam_slots_v1';
   const DRAFT_KEY='ourteam_custom_drafts_v1';
 
@@ -18034,7 +17985,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ─────────────────────────────────────
-   [130/142] STYLE · 1.1KB · 원본 17089행
+   [130/164] STYLE · 1.1KB · 원본 17061행
    주제  : v0.39 · 창단 구단 실제 생성 (확장 드래프트)
    ───────────────────────────────────── */
 
@@ -18060,19 +18011,18 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [131/142] SCRIPT · 5.4KB · 원본 17110행
+   [131/164] SCRIPT · 5.4KB · 원본 17082행
    주제  : v0.39 · 창단 구단 실제 생성
    감쌈  : genSchedule  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, autoPlayers, drafts, expSetEcoV39, expSetLeagueV39, expansionConfigV39, genSchedule, myDraft
    ⚠ 대체됨: tagGeneratedPlayerV463, GAME_VERSION, autoPlayers, ovrOf
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.39 · 창단 구단 실제 생성 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const DRAFT_KEY='ourteam_custom_drafts_v1';
   const PER_TEAM=2;        // 팀당 지명 수 → 20명
   const AUTO_FILL=10;      // 나머지 자동 생성
@@ -18196,7 +18146,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [132/142] SCRIPT · 11.4KB · 원본 17236행
+   [132/164] SCRIPT · 11.4KB · 원본 17208행
    주제  : v0.39 · 확장 드래프트 진행 + 구단 생성
    감쌈  : expansionConfigV39, renderCustomDraftCard, show  (이전 정의를 호출하는 체인)
    정의  : attachStart, autoPlayers, countFrom, expAutoPickV39, expFinishV39, expPickV39, expUnpickV39, openExpansionDraftV39
@@ -18205,7 +18155,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 /* ═══════════ v0.39 · 확장 드래프트 진행 + 구단 생성 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const PER_TEAM=2,AUTO_FILL=10,PROTECT=20;
   let D=null;
 
@@ -18446,19 +18396,18 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [133/142] SCRIPT · 2.4KB · 원본 17479행
+   [133/164] SCRIPT · 2.4KB · 원본 17451행
    주제  : v0.40 · 11팀 리그 부전승(휴식일) 처리
    감쌈  : playMyGame, renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, isMyByeDayV40, passByeDayV40, playMyGame, renderGameSetup, todayRound
    ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.40 · 11팀 리그 부전승(휴식일) 처리 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   function todayRound(){
     const s=state?.season;
@@ -18528,19 +18477,18 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [134/142] SCRIPT · 3.3KB · 원본 17551행
+   [134/164] SCRIPT · 3.3KB · 원본 17523행
    주제  : v0.41 · 12팀 확장 (내 구단 + AI 신생 구단)
    감쌈  : genSchedule  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, addAiExpansionTeamV41, genSchedule, makeRoster, pickAiTeam, tagGeneratedPlayerV463
    ⚠ 대체됨: tagGeneratedPlayerV463, GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.41 · 12팀 확장 (내 구단 + AI 신생 구단) ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   /* ---------- 팀 수에 맞춰 사이클 수를 정해 36경기 근처를 유지 ---------- */
   const prevGen=window.genSchedule;
@@ -18623,18 +18571,17 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 <!-- v0.45 · 커스텀 구단 인원 보충 + 안전 가드 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [135/142] SCRIPT · 3.2KB · 원본 17636행
+   [135/164] SCRIPT · 3.2KB · 원본 17608행
    주제  : 창단·신생 구단은 TEAMS에 선수가 없어, 다른 게임에서 고르면 선수단이 비거나 모자란다.
    감쌈  : getTeam  (이전 정의를 호출하는 체인)
    정의  : fixCurrentSlotV45, freshName, getTeam, tagGeneratedPlayerV463, topUpCustomRosterV45
    ⚠ 대체됨: tagGeneratedPlayerV463
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 (()=>{
   'use strict';
-  const V='v0.61', BAT_TARGET=18, PIT_TARGET=12;
+  const V='v0.62', BAT_TARGET=18, PIT_TARGET=12;
   const BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
   const POS=['C','1B','2B','3B','SS','LF','CF','RF','DH'];
 
@@ -18719,19 +18666,18 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [136/142] SCRIPT · 15.7KB · 원본 17722행
+   [136/164] SCRIPT · 15.7KB · 원본 17694행
    주제  : v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록
    감쌈  : doCut, offerContract, openHistoryRoom, proposeTrade, signFA  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, addActivity, addNewsUnique, addNotice, doCut, ensureActivity, gameRosterRequirementTextV46, invalidateRoster
    ⚠ 대체됨: GAME_VERSION, version
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const REQ='야수 9명 이상 · 투수 6명 이상 · 선발투수 5명 이상 · 마무리투수 1명 이상';
 
   function reqText(){ return REQ; }
@@ -19076,7 +19022,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ─────────────────────────────────────
-   [137/142] STYLE · 1.1KB · 원본 18069행
+   [137/164] STYLE · 1.1KB · 원본 18041행
    주제  : v0.46.5 · 설정 + 게임 진단·복구
    ───────────────────────────────────── */
 
@@ -19095,18 +19041,17 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [138/142] SCRIPT · 7.9KB · 원본 18083행
+   [138/164] SCRIPT · 7.9KB · 원본 18055행
    주제  : v0.46.5 · 설정 + 게임 진단·복구
    정의  : GAME_VERSION, diagRoot, esc, lastSummary, normalizeSettingsLink, openGameDiagnosticHistoryV462, openGameSettingsV462, runGameDiagnosticsV462
    ⚠ 대체됨: GAME_VERSION, version
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.46.5 · 설정 + 게임 진단·복구 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   function esc(s){
     return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -19265,18 +19210,17 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [139/142] SCRIPT · 4.4KB · 원본 18244행
+   [139/164] SCRIPT · 4.4KB · 원본 18216행
    주제  : v0.46.5 · 생성 선수 이름·동명이인 구분
    정의  : GAME_VERSION, copyLegacyMap, duplicateOrdinal, ensureFlagSlot, hash, metaOf, migrateExisting, migrateGeneratedPlayersV463
-   ⚠ 대체됨: GAME_VERSION
-     → 이 블록의 위 함수들은 뒤쪽 블록이 통째로 다시 정의합니다.
-       여기를 고쳐도 반영되지 않으니 마지막 정의를 찾아 고치세요.
+   ⚠ 대체됨: hash, GAME_VERSION
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.46.5 · 생성 선수 이름·동명이인 구분 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
 
   function metaOf(p){
@@ -19393,7 +19337,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ─────────────────────────────────────
-   [140/142] STYLE · 0.9KB · 원본 18363행
+   [140/164] STYLE · 0.9KB · 원본 18335행
    주제  : v0.46.6 · 확장 드래프트 지명 현황
    ───────────────────────────────────── */
 
@@ -19413,16 +19357,18 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
-   [141/142] SCRIPT · 4.0KB · 원본 18378행
+   [141/164] SCRIPT · 4.0KB · 원본 18350행
    주제  : v0.46.6 · 슬롯 리그 정합 + 슬롯 선택 삭제
    감쌈  : openGameSettingsV462  (이전 정의를 호출하는 체인)
    정의  : GAME_VERSION, confirmSlotDeleteV466, openGameSettingsV462, openSlotDeleteV466, slotLabel
+   ⚠ 대체됨: GAME_VERSION
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────── */
 
 /* ═══════════ v0.46.6 · 슬롯 리그 정합 + 슬롯 선택 삭제 ═══════════ */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   /* 슬롯을 옮길 때마다 그 슬롯이 쓰는 구단만 TEAMS에 남긴다. */
   ['switchSlot','switchSlotEmpty'].forEach(fn=>{
@@ -19524,7 +19470,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </script>
 <style>
 /* ─────────────────────────────────────
-   [142/142] STYLE · 0.2KB · 원본 18482행
+   [142/164] STYLE · 0.2KB · 원본 18454행
    ───────────────────────────────────── */
 
 .slot-del-v466{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;min-height:56px;margin-top:8px}
@@ -19535,15 +19481,13 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [정돈] 버전 표기 최종 고정 · v0.47
-   앞선 블록들이 setTimeout(0/300/350/800/1000ms)으로 버전 문구를
-   9번 다시 씁니다. 상수를 통일했어도 순서 경쟁이 남으므로
-   가장 늦게 한 번 더 덮어써 표기를 확정합니다.
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────
+   [143/164] SCRIPT · 0.4KB · 원본 18462행
+   정의  : GAME_VERSION, apply
+   ────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   function apply(){
     document.title='우리팀을 만들자 '+V;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
@@ -19559,18 +19503,13 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [정돈] v0.47 · 조작 요소 접근성 마무리
-   정의  : a11ySweepV47
-   감쌈  : show, renderTeamHome, renderLineup, renderGameSetup,
-           renderFront, renderRank, renderRoster  (표시 후 한 번 훑음)
-   메모  : <button>이 아니라 div/span에 onclick만 달린 곳이 남아 있다.
-           마크업을 바꾸면 스타일이 틀어지므로 역할·초점만 부여한다.
-           Enter/Space 실행은 v0.34.35 핸들러가 이미 처리한다.
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────
+   [144/164] SCRIPT · 0.9KB · 원본 18479행
+   정의  : a11ySweepV47, schedule, sweep
+   ────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   function sweep(){
     let n=0;
     document.querySelectorAll('div[onclick],span[onclick],li[onclick]').forEach(el=>{
@@ -19597,12 +19536,10 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 
 <style>
-/* ──────────────────────────────────────────────────────────────
-   [정돈] v0.48 · 마감 점검 보완 (v0.34.35 규칙을 최신 화면까지 확장)
-   대상  : -v40 휴식일 · -v46 활동기록 · -v462 설정/진단 · -v466 드래프트요약·슬롯삭제 · -v47
-   메모  : v0.34.35의 [class*=] 목록이 -v39까지만 덮고 있어 그 뒤 화면이 빠져 있었다.
-           한글 줄바꿈과 넘침 방지, 조작 요소 44px, 좁은/가로 화면, 위험 버튼 강조를 채운다.
-   ────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────
+   [145/164] STYLE · 1.9KB · 원본 18507행
+   주제  : [글자 크기와 줄바꿈] 한글은 어절 단위로 끊고, 긴 토큰만 넘침 방지
+   ─────────────────────────────────────────────── */
 
 /* [글자 크기와 줄바꿈] 한글은 어절 단위로 끊고, 긴 토큰만 넘침 방지 */
 [class*="-v40"],[class*="-v46"],[class*="-v462"],[class*="-v466"],[class*="-v47"]{
@@ -19669,11 +19606,9 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 
 <style>
-/* ──────────────────────────────────────────────────────────────
-   [정돈] v0.50 · 버전 표기를 헤더에서 설정으로 이동
-   메모  : .ver 요소는 지우지 않는다. 버전 타이머 9개가 이 요소에 쓰기 때문에
-           제거하면 그쪽이 깨진다. 화면에서만 감추고 값은 그대로 유지한다.
-   ────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────
+   [146/164] STYLE · 0.5KB · 원본 18572행
+   ───────────────────────────────────── */
 header .board .ver{display:none}
 header .board h1{margin-right:0}
 .set-ver-v49{
@@ -19688,18 +19623,13 @@ header .board h1{margin-right:0}
 }
 </style>
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [정돈] v0.50 · 설정 화면에 버전 표시
-   감쌈  : openGameSettingsV462, runGameDiagnosticsV462,
-           openGameDiagnosticHistoryV462, openSlotDeleteV466
-   메모  : 헤더 배지(.ver)를 감추는 대신 설정에서 확인하게 한다.
-           설정 계열 화면은 저마다 sheet.innerHTML을 통째로 덮어쓰므로
-           (진단을 실행하면 붙여둔 행이 사라졌다) 각 화면 렌더 뒤마다 다시 붙인다.
-           값은 .ver / window.GAME_VERSION에서 읽어 상수를 하나로 유지한다.
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────
+   [147/164] SCRIPT · 0.9KB · 원본 18585행
+   정의  : attach, ver
+   ────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   function ver(){
     const el=document.querySelector('.ver');
     return (el&&el.textContent.trim())||window.GAME_VERSION||'알 수 없음';
@@ -19730,17 +19660,17 @@ header .board h1{margin-right:0}
 
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.51 · 경기·순위 서사 뉴스
-   감쌈  : finishDay  (하루가 끝날 때마다 서사를 판정해 뉴스로 남김)
-   정의  : gameStoryV51, rankStoryV51
-   메모  : 2시즌 72경기를 돌려도 뉴스가 5건뿐이고 전부 운영 이벤트였다.
-           경기 결과와 순위 흐름을 읽어 기록실에 쌓는다. 화면 표시는 바꾸지 않는다.
-           같은 사건이 매일 반복되지 않도록 state.storyMarkV51에 발생 지점을 남긴다.
-   ────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   [148/164] SCRIPT · 5.1KB · 원본 18617행
+   주제  : ---------- 내 경기 결과 파싱 ----------
+   감쌈  : finishDay  (이전 정의를 호출하는 체인)
+   정의  : cool, finishDay, gameStory, gameStoryV51, mark, news, once, parseMine
+   ⚠ 대체됨: news
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ───────────────────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   function mark(){
     if(!state.storyMarkV51||typeof state.storyMarkV51!=='object')state.storyMarkV51={};
@@ -19888,16 +19818,14 @@ header .board h1{margin-right:0}
 
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.52 · 시즌 결산 기사
-   감쌈  : nextSeason  (오프시즌으로 넘어가기 직전 그 해를 정리)
-   정의  : seasonReviewV52
-   메모  : 연차는 nextSeason에서 올라가므로, 올리기 전에 그 해 기록을 읽어야 한다.
-           타이틀은 기존 collectBatLeaders / collectPitLeaders를 그대로 쓴다.
-   ────────────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────
+   [149/164] SCRIPT · 3.3KB · 원본 18766행
+   감쌈  : nextSeason  (이전 정의를 호출하는 체인)
+   정의  : news, nextSeason, review, seasonReviewV52, topOf
+   ──────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
   function news(t,b){try{pushClubNews(t,b);}catch(e){console.error(V+' 뉴스:',e);}}
 
@@ -19981,9 +19909,9 @@ header .board h1{margin-right:0}
 
 
 <style>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.53 · 감독 지시 (직접 감독 전용)
-   ────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────
+   [150/164] STYLE · 1.1KB · 원본 18851행
+   ───────────────────────────────────── */
 .mgr-order-v53{
   position:sticky;bottom:0;z-index:5;margin-top:8px;
   display:grid;gap:8px;
@@ -20009,20 +19937,17 @@ header .board h1{margin-right:0}
 }
 </style>
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.53 · 감독 지시
-   감쌈  : simGame(시드 고정), managerAttackBonus, managerPitchBonus
-   정의  : mgrOrderOpenV53, mgrOrderApplyV53, mgrOrderStateV53
-   메모  : 경기는 먼저 전부 계산한 뒤 로그를 재생하는 구조다.
-           그래서 재생 중에 눌러도 결과가 안 바뀐다.
-           시뮬 동안만 Math.random을 시드 난수로 바꿔 같은 경기를 재현할 수 있게 하고,
-           지시를 누르면 같은 시드로 그 이닝부터 효과를 켜서 다시 계산한다.
-           이미 지나간 이닝은 입력이 같으므로 결과도 같다. 뒷부분만 달라진다.
-           simGame 본문은 건드리지 않는다.
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────────────────────────────
+   [151/164] SCRIPT · 6.7KB · 원본 18875행
+   주제  : ---------- 시드 난수 ----------
+   감쌈  : playMyGame, simGame  (이전 정의를 호출하는 체인)
+   정의  : effectOf, effectRawV56, hash, makeRng, mgrModeMultV55, mgrModeV55, mgrOrderApplyV53, mgrOrderOpenV53
+   ⚠ 대체됨: mgrModeMultV55, nowInn
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ────────────────────────────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const DUR=3;   // 지시 지속 이닝 — 끝까지 적용하면 1회에 누르는 게 무조건 이득이라 판단이 사라진다
 
   /* ---------- 시드 난수 ---------- */
@@ -20204,16 +20129,17 @@ header .board h1{margin-right:0}
 
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.53 · 감독 지시 — 재생 화면 연결
-   정의  : mgrReplayFromV53
-   메모  : 기존 재생 루프(gTimer, push, evs)는 onclick 안의 지역 변수라
-           밖에서 손댈 수 없다. setInterval을 추적해 그 타이머를 멈춘 뒤
-           남은 이닝을 여기서 이어 재생한다. 기존 코드는 건드리지 않는다.
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────────────────────────────
+   [152/164] SCRIPT · 6.0KB · 원본 19058행
+   주제  : ---------- 재생 타이머 추적 ----------
+   감쌈  : renderGameSetup  (이전 정의를 호출하는 체인)
+   정의  : clearInterval, done, draw, findLineV53, fixResultV53, hideOrderBtn, mgrReplayFromV53, mgrShowOrderBtnV53
+   ⚠ 대체됨: mgrReplayFromV53, mgrShowOrderBtnV53
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ────────────────────────────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   /* ---------- 재생 타이머 추적 ---------- */
   const live=new Set();
@@ -20384,21 +20310,17 @@ header .board h1{margin-right:0}
 
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [수정] v0.54 · 진단이 같은 문제를 매번 다시 잡던 것
-   감쌈  : runGameDiagnosticsV462
-   메모  : 두 가지가 겹쳐 있었다.
-     1) 진단은 starters+bullpen+closers를 한 배열로 이어 붙인 뒤 중복이 있으면
-        "손상"으로 봤는데, closers는 원래 bullpen의 일부다(마무리도 불펜 투수).
-        그래서 전 구단이 매번 중복 2로 잡혀 끝없이 재구성됐다.
-        → 검사 전에 closers를 빼고 본다.
-     2) 확장 드래프트가 보호명단 밖 마무리를 데려가면 원 소속팀에 마무리가 0명이 된다.
-        경고만 뜨고 아무도 안 고쳐서 계속 남았다.
-        → 불펜 중 가장 좋은 투수를 마무리로 올려 자동 복구한다.
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────────────────────────────
+   [153/164] SCRIPT · 2.9KB · 원본 19230행
+   주제  : ① 마무리 없는 팀 보충 -------------------------------------
+   감쌈  : expFinishV39, runGameDiagnosticsV462  (이전 정의를 호출하는 체인)
+   정의  : expFinishV39, fixClosers, fixClosersV54, restoreClosers, runGameDiagnosticsV462, stripClosers
+   ⚠ 대체됨: fixClosersV54
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ────────────────────────────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const nm=id=>{try{return getTeam(id).name;}catch(_){return id;}};
 
   /* ① 마무리 없는 팀 보충 ------------------------------------- */
@@ -20490,19 +20412,17 @@ header .board h1{margin-right:0}
 
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.57 · 감독 지시를 코치별 실제 결과로 · 감독 방식에도 보정
-   감쌈  : paResult, managerAttackBonus, managerPitchBonus, mgrModeMultV55
-   정의  : mgrOrderEffectTextV57
-   메모  : 지금까지 지시는 코치가 무엇이든 "공격 +N%"로 뭉뚱그려져 코치 선택이
-           무의미했다. paResult가 돌려주는 결과 종류(.t)를 전환하는 방식으로 바꿔
-           정교=안타 / 장타=장타·홈런 / 선구=볼넷 처럼 실제로 다른 것이 오르게 한다.
-           시뮬 내부 확률식은 건드리지 않고 결과만 바꾸므로 회귀 위험이 낮다.
-   배율  : 감독 방식 30/10/5 · 감독 지시 70/40/10 (타석별/이닝별/결과만)
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────────────────────────────
+   [154/164] SCRIPT · 4.8KB · 원본 19323행
+   주제  : ---------- 지시가 켜져 있는 구간인가 ----------
+   감쌈  : paResult  (이전 정의를 호출하는 체인)
+   정의  : activeOrder, conv, mgrModeMultV55, mgrOrderEffectTextV57, mgrPlanMultV57, mode, myBatEffect, myPitEffect
+   ⚠ 대체됨: mode
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ────────────────────────────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   // 사용자 지정: 이 값이 곧 효과 크기다(배율이 아니라).
   //   감독 지시 = 결과 전환 확률 · 감독 방식 = 공수 보정
   // 결과만 모드는 경기를 보지 않으므로 감독 개입 효과를 아예 두지 않는다.
@@ -20640,6 +20560,11 @@ header .board h1{margin-right:0}
 
 
 <style>
+/* ──────────────────────────────────────
+   [155/164] STYLE · 1.4KB · 원본 19462행
+   주제  : v0.58 · 감독 방식 추천 + 지시 상시 버튼 ──
+   ────────────────────────────────────── */
+
 /* ── v0.58 · 감독 방식 추천 + 지시 상시 버튼 ── */
 .rec-v58{
   margin-top:10px;padding:11px 12px;border-radius:12px;
@@ -20671,19 +20596,17 @@ header .board h1{margin-right:0}
 @media (max-width:360px){.ord-bar-v58 button{font-size:11px}}
 </style>
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.58 · 감독 방식 추천 + 감독 지시 상시 버튼
-   감쌈  : renderManagerSettings, renderGameSetup
-   정의  : mgrRecommendV58, mgrApplyRecV58, mgrOrderBarV58
-   메모  : ① 감독 방식은 선수단 상태(파워/주력/번트, 선발 체력, 불펜 두께,
-             상대 선발)를 읽어 최적안을 미리 알려준다. 버튼 하나로 적용.
-           ② 감독 지시는 시트를 열지 않고 경기 화면 하단에서 바로 고른다.
-             기본값은 감독 승부수. 지고 있으면 타격, 이기고 있으면 마운드가
-             자연스럽게 눈에 들어오도록 세 개를 나란히 둔다.
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────────────────────────────
+   [156/164] SCRIPT · 5.8KB · 원본 19493행
+   주제  : ---------- 추천 ----------
+   감쌈  : renderGameSetup, renderManagerSettings  (이전 정의를 호출하는 체인)
+   정의  : mgrApplyRecV58, mgrDefaultKindV58, mgrOrderBarV58, mgrPickKindV58, mgrRecommendV58, mgrShowOrderBtnV53, paintBar, paintRec
+   ⚠ 대체됨: mgrShowOrderBtnV53, mgrOrderBarV58
+     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
+   ────────────────────────────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 
   /* ---------- 추천 ---------- */
@@ -20825,17 +20748,14 @@ header .board h1{margin-right:0}
 
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.59 · 리그 득점 상향 + 감독 지시 효과 재조정
-   감쌈  : paResult (가장 바깥)
-   정의  : LEAGUE_BOOST_V59, setLeagueBoostV59
-   메모  : 이 리그는 한 팀 평균 1.6점 · 완봉 48%로 실제 KBO(4~5점)보다 훨씬 낮았다.
-           확률식을 건드리지 않고, 결과(.t)의 일부 범타를 안타로 바꿔 득점을 올린다.
-           모든 구단에 똑같이 적용하므로 유불리가 생기지 않는다.
-   ────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────
+   [157/164] SCRIPT · 0.8KB · 원본 19636행
+   감쌈  : LEAGUE_BOOST_V59, paResult  (이전 정의를 호출하는 체인)
+   정의  : LEAGUE_BOOST_V59, paResult, setLeagueBoostV59
+   ───────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const OUTS=['K','GO','FO'];
   // 보정값은 실측으로 맞춘다. setLeagueBoostV59로 조정 가능.
   window.LEAGUE_BOOST_V59=0.085;  // 실측으로 맞춤 — 한 팀 평균 2.4 → 3점대
@@ -20861,6 +20781,11 @@ header .board h1{margin-right:0}
 
 
 <style>
+/* ─────────────────────────────────────
+   [158/164] STYLE · 1.1KB · 원본 19663행
+   주제  : v0.60 · 경기 전 감독 지시 카드 ──
+   ───────────────────────────────────── */
+
 /* ── v0.60 · 경기 전 감독 지시 카드 ── */
 .pre-card-v60{margin-top:14px}
 .pre-card-v60 .cap{font-size:13px;font-weight:800;color:var(--amber);margin-bottom:6px}
@@ -20884,18 +20809,15 @@ header .board h1{margin-right:0}
 @media (max-width:360px){.pre-card-v60 .grid button{font-size:11px}}
 </style>
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.60 · 경기 전 감독 지시 카드 + 자동/직접 토글 폐지
-   감쌈  : renderGameSetup, renderManagerSettings, paResult
-   정의  : preCardRecV60, preCardPickV60, preCardActiveV60
-   메모  : 자동 감독을 없애 늘 직접 감독으로 둔다(토글은 숨김).
-           카드는 경기 전에 하나 고르고 1회부터 적용되며,
-           "지켜보는 동안"만 유효해서 건너뛰기를 누르면 그 이닝부터 끊긴다.
-           결과만 모드는 재생이 없으므로 카드 자체를 못 고른다.
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────────────────────────────
+   [159/164] SCRIPT · 8.3KB · 원본 19686행
+   주제  : v0.57과 같은 규칙) ----------
+   감쌈  : paResult, renderGameSetup, renderManagerSettings  (이전 정의를 호출하는 체인)
+   정의  : batConv, detail, forceDirect, mgrOrderBarV58, mgrShowOrderBtnV53, mode, paResult, paint
+   ────────────────────────────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   const OUTS=['K','GO','FO'],HITS=['1B','2B','3B','HR'];
   const RATE={pa:0.12,inn:0.07,fast:0};
 
@@ -21109,16 +21031,13 @@ header .board h1{margin-right:0}
 
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.60 · 건너뛰기하면 지시 효과가 그 이닝부터 끊긴다
-   감쌈  : skipBtn 클릭 (캡처 단계)
-   메모  : 지시는 "지켜보는 동안"만 유효하다. 중계를 건너뛰면 그 이닝부터
-           효과를 끄고 같은 시드로 남은 경기를 다시 계산해 이어 재생한다.
-           앞 이닝은 입력이 같으므로 결과도 같다.
-   ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────
+   [160/164] SCRIPT · 1.0KB · 원본 19901행
+   정의  : mgrReplayFromV53, nowInn
+   ────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
   function nowInn(){
     try{
       const el=document.getElementById('gamelog');
@@ -21152,20 +21071,24 @@ header .board h1{margin-right:0}
 
 
 <style>
-/* ──────────────────────────────────────────────────────────────
-   [수정] v0.61 · 경기 중 지시 막대 제거 + 하단 여백 정리
-   메모  : v0.60에서 경기 중 지시 막대를 없앴다고 했으나, v0.58 내부 리스너가
-           계속 그리고 있었다(막대가 중계 로그를 가리고 아래로 더 스크롤됐다).
-           지시는 경기 전에 고르므로 이 막대는 필요 없다.
-   ────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────
+   [161/164] STYLE · 0.2KB · 원본 19936행
+   ───────────────────────────────────── */
 .ord-bar-v58,.mgr-order-v53{display:none!important}
 #gameLive{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
 #gamelog{overscroll-behavior:contain}
 </style>
 <script>
+/* ──────────────────────────────────────────────────────────────────────
+   [162/164] SCRIPT · 1.2KB · 원본 19940행
+   주제  : ① 경기 중 지시 막대를 확실히 없앤다
+   감쌈  : openGameSettingsV462, runGameDiagnosticsV462  (이전 정의를 호출하는 체인)
+   정의  : fixClosersV54, openGameSettingsV462, strip
+   ────────────────────────────────────────────────────────────────────── */
+
 (()=>{
   'use strict';
-  const V='v0.61';
+  const V='v0.62';
 
   /* ① 경기 중 지시 막대를 확실히 없앤다 */
   function strip(){
@@ -21198,6 +21121,149 @@ header .board h1{margin-right:0}
         finally{busy=false;}
       }
       return oldOpen.apply(this,arguments);
+    };
+  }
+})();
+</script>
+
+
+<style>
+/* ─────────────────────────────────────────
+   [163/164] STYLE · 0.5KB · 원본 19982행
+   주제  : v0.62 · 창단 진입 개선 + 대시보드 할 일 보강 ──
+   ───────────────────────────────────────── */
+
+/* ── v0.62 · 창단 진입 개선 + 대시보드 할 일 보강 ── */
+.slot-create-v62{
+  margin-top:12px;padding:13px;border-radius:14px;
+  border:1px solid rgba(255,193,77,.42);
+  background:linear-gradient(145deg,rgba(255,193,77,.14),rgba(255,193,77,.06));
+  min-height:var(--tap-min,44px);width:100%;
+  color:var(--amber);font-family:inherit;font-weight:800;font-size:14px;
+  word-break:keep-all;overflow-wrap:anywhere;text-align:center;
+}
+.slot-create-v62 small{display:block;margin-top:3px;font-size:11px;font-weight:600;color:var(--dim)}
+</style>
+<script>
+/* ──────────────────────────────────────────────────────────────────────────────────────
+   [164/164] SCRIPT · 4.1KB · 원본 19994행
+   주제  : ① 슬롯 목록에 창단 버튼 ------------------------------------
+   감쌈  : backupExportV3437, openMyTeamSummaryV350, renderTeamHome, show  (이전 정의를 호출하는 체인)
+   정의  : addCreateBtn, backupExportV3437, dropCreateBtn, extraTasks, extraTasksV62, openMyTeamSummaryV350, paintTasks, renderTeamHome
+   ────────────────────────────────────────────────────────────────────────────────────── */
+(()=>{
+  'use strict';
+  const V='v0.62';
+
+  /* ① 슬롯 목록에 창단 버튼 ------------------------------------ */
+  function addCreateBtn(){
+    try{
+      const ss=document.getElementById('slotStatus');
+      if(!ss||ss.style.display==='none')return;
+      const picker=document.getElementById('teamPicker');
+      if(picker&&picker.style.display!=='none')return;   // 팀 선택 화면이면 원래 버튼이 있다
+      if(ss.parentElement?.querySelector('[data-create-v62]'))return;
+      const b=document.createElement('button');
+      b.className='slot-create-v62';
+      b.dataset.createV62='1';
+      b.innerHTML='✨ 직접 신생 구단 만들기<small>연고지·닉네임·로고를 정해 새 구단을 창단합니다</small>';
+      b.onclick=()=>{try{openCustomTeamCreator();}catch(e){console.error(V+' 창단 열기:',e);}};
+      ss.insertAdjacentElement('afterend',b);
+    }catch(e){console.error(V+' 창단 버튼:',e);}
+  }
+  function dropCreateBtn(){
+    try{document.querySelectorAll('[data-create-v62]').forEach(el=>el.remove());}catch(_){}
+  }
+  ['renderSlots','renderSlotStatus'].forEach(n=>{
+    const f=window[n];
+    if(typeof f!=='function')return;
+    window[n]=function(){
+      const r=f.apply(this,arguments);
+      setTimeout(()=>{dropCreateBtn();addCreateBtn();},0);
+      return r;
+    };
+  });
+  const oldShow=window.show;
+  if(typeof oldShow==='function'){
+    window.show=function(sc){
+      const r=oldShow.apply(this,arguments);
+      setTimeout(()=>{
+        if(sc==='select'){dropCreateBtn();addCreateBtn();}
+        else dropCreateBtn();
+      },0);
+      return r;
+    };
+  }
+  setTimeout(()=>{dropCreateBtn();addCreateBtn();},300);
+
+  /* ② 대시보드 할 일에 새 기능 연결 ---------------------------- */
+  function extraTasks(){
+    const out=[];
+    try{
+      // 오프시즌 FA 입찰
+      const m=state.season?.market;
+      if(m&&Array.isArray(m.fa)&&m.fa.length)
+        out.push({c:'warn',i:'💰',t:`FA 시장에 ${m.fa.length}명이 남아 있습니다. 입찰로 영입할 수 있습니다.`});
+      // 신인 드래프트
+      if(m&&Array.isArray(m.draft)&&m.draft.length&&!m.draftStartedV3413)
+        out.push({c:'warn',i:'🎓',t:`신인 드래프트 대기 중 · 후보 ${m.draft.length}명`});
+      // 백업 권유 — 진행이 쌓였는데 백업한 적이 없으면
+      const y=Number(state.year)||1,day=Number(state.season?.day)||0;
+      if((y>=2||day>=15)&&!state.backupDoneV62)
+        out.push({c:'warn',i:'💾',t:'백업을 한 번도 저장하지 않았습니다. 설정 → 백업·복원에서 파일로 남겨두세요.'});
+      // 진단 미해결
+      const rep=state.gameDiagV462?.lastReport;
+      if(rep&&Number(rep.reviewCount)>0)
+        out.push({c:'bad',i:'🛡️',t:`진단에서 확인이 필요한 항목 ${rep.reviewCount}건이 있습니다.`});
+      // 감독 지시 미선택
+      if(state.season&&typeof seasonOver==='function'&&!seasonOver()&&!(state.preCardV60&&state.preCardV60.kind))
+        out.push({c:'good',i:'🎽',t:'다음 경기 감독 지시를 아직 고르지 않았습니다.'});
+    }catch(e){console.error(V+' 할 일:',e);}
+    return out;
+  }
+  window.extraTasksV62=extraTasks;
+  // 백업을 실제로 저장하면 표시를 끈다.
+  const oldExp=window.backupExportV3437;
+  if(typeof oldExp==='function'){
+    window.backupExportV3437=function(){
+      const r=oldExp.apply(this,arguments);
+      try{state.backupDoneV62=true;save();}catch(_){}
+      return r;
+    };
+  }
+  // 대시보드가 그려진 뒤 항목을 덧붙인다.
+  function paintTasks(){
+    try{
+      const box=document.querySelector('.myteam-tasks-v350');
+      if(!box||box.querySelector('[data-task-v62]'))return;
+      const add=extraTasks();
+      if(!add.length)return;
+      const one=box.querySelector('.myteam-task-v350');
+      add.forEach(x=>{
+        const d=document.createElement('div');
+        d.className=one?one.className:'myteam-task-v350';
+        d.dataset.taskV62='1';
+        if(one&&one.dataset)Object.keys(one.dataset).forEach(k=>{if(k!=='taskV62')d.dataset[k]=one.dataset[k];});
+        d.classList.add(x.c);
+        d.innerHTML=`<span>${x.i}</span> ${x.t}`;
+        box.appendChild(d);
+      });
+    }catch(e){console.error(V+' 할 일 표시:',e);}
+  }
+  const oldHome=window.renderTeamHome;
+  if(typeof oldHome==='function'){
+    window.renderTeamHome=function(){
+      const r=oldHome.apply(this,arguments);
+      setTimeout(paintTasks,0);
+      return r;
+    };
+  }
+  const oldSum=window.openMyTeamSummaryV350;
+  if(typeof oldSum==='function'){
+    window.openMyTeamSummaryV350=function(){
+      const r=oldSum.apply(this,arguments);
+      setTimeout(paintTasks,0);
+      return r;
     };
   }
 })();
