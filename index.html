@@ -21359,5 +21359,123 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
 })();
 </script>
 
+
+<script>
+/* ═══════════ v0.65 · 실제 선수 실명 표시 레이어 ═══════════ */
+(()=>{
+  'use strict';
+  const V='v0.65';
+  const GENERIC_MODEL=new Set(['신인','가상 선수','긴급 대체 선수','자동 생성 선수','선수']);
+  const aliasToReal=new Map();
+  const ambiguous=new Set();
+
+  function clean(v){return String(v??'').trim();}
+  function realDisplayOf(p){
+    if(!Array.isArray(p))return '';
+    const alias=clean(p[0]),real=clean(p[1]);
+    if(!alias||!real||GENERIC_MODEL.has(real))return alias;
+    // 자동 생성 외국인은 p[0] 자체가 이름이고 p[1]은 같거나 "(아시아쿼터)" 꼬리표만 붙는다.
+    if(real===alias||real.startsWith(alias+' ('))return alias;
+    return real;
+  }
+  function addPlayer(p){
+    if(!Array.isArray(p))return;
+    const alias=clean(p[0]),real=realDisplayOf(p);
+    if(!alias||!real||alias===real)return;
+    if(ambiguous.has(alias))return;
+    const prev=aliasToReal.get(alias);
+    if(prev&&prev!==real){aliasToReal.delete(alias);ambiguous.add(alias);return;}
+    aliasToReal.set(alias,real);
+  }
+  function addTeamLike(t){
+    if(!t||typeof t!=='object')return;
+    (t.bat||[]).forEach(addPlayer);(t.pit||[]).forEach(addPlayer);
+  }
+  function rebuildMap(){
+    aliasToReal.clear();ambiguous.clear();
+    try{(TEAMS||[]).forEach(addTeamLike);}catch(_){}
+    try{Object.values(state?.players||{}).forEach(addTeamLike);}catch(_){}
+    try{Object.values(REAL_2026_SUPPLEMENTS||{}).forEach(addTeamLike);}catch(_){}
+    try{(LEGENDS_BAT||[]).forEach(addPlayer);(LEGENDS_PIT||[]).forEach(addPlayer);}catch(_){}
+    // 과거 시즌 로스터는 이미 실명이 p[0]에 들어 있으므로 별도 치환이 필요 없다.
+    return aliasToReal;
+  }
+  window.playerDisplayName=function(p){return realDisplayOf(p);};
+  window.playerDisplayNameV65=window.playerDisplayName;
+  window.rebuildRealNameMapV65=rebuildMap;
+
+  let keys=[];
+  function refreshKeys(){
+    rebuildMap();
+    // 긴 별칭부터 바꾸면 부분 문자열 충돌을 줄일 수 있다.
+    keys=[...aliasToReal.keys()].sort((a,b)=>b.length-a.length);
+  }
+  function replaceText(s){
+    let out=String(s??'');
+    for(const a of keys){
+      if(out.includes(a))out=out.split(a).join(aliasToReal.get(a));
+    }
+    return out;
+  }
+  window.realNameTextV65=replaceText;
+
+  function processTextNode(n){
+    const old=n.nodeValue;if(!old)return;
+    const next=replaceText(old);
+    if(next!==old)n.nodeValue=next;
+  }
+  function processRoot(root){
+    if(!root)return;
+    if(root.nodeType===Node.TEXT_NODE){processTextNode(root);return;}
+    if(root.nodeType!==Node.ELEMENT_NODE&&root.nodeType!==Node.DOCUMENT_FRAGMENT_NODE)return;
+    if(root.nodeType===Node.ELEMENT_NODE&&/^(SCRIPT|STYLE|TEXTAREA)$/i.test(root.tagName))return;
+    const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){
+      const p=n.parentElement;
+      return p&&/^(SCRIPT|STYLE|TEXTAREA)$/i.test(p.tagName)?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT;
+    }});
+    let n;while((n=w.nextNode()))processTextNode(n);
+  }
+
+  let scheduled=false,pending=[];
+  function flush(){
+    scheduled=false;
+    // 선수 영입/트레이드/레전드 추가 뒤 새 실명 매핑도 자동 반영.
+    refreshKeys();
+    const roots=pending;pending=[];
+    roots.forEach(processRoot);
+  }
+  const obs=new MutationObserver(ms=>{
+    for(const m of ms){
+      if(m.type==='characterData')pending.push(m.target);
+      else m.addedNodes.forEach(n=>pending.push(n));
+    }
+    if(!scheduled){scheduled=true;queueMicrotask(flush);}
+  });
+
+  function start(){
+    refreshKeys();
+    processRoot(document.body);
+    if(document.body)obs.observe(document.body,{subtree:true,childList:true,characterData:true});
+  }
+
+  // 알림 문자열도 DOM에 그려지기 전부터 실명으로 통일한다.
+  try{
+    const oldShow=window.showAlert;
+    if(typeof oldShow==='function')window.showAlert=function(msg){refreshKeys();return oldShow.call(this,replaceText(msg));};
+  }catch(_){}
+
+  function version(){
+    document.title='우리팀을 만들자 '+V;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
+      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;
+    });
+    window.GAME_VERSION=V;
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+  [0,500,1500,3200].forEach(ms=>setTimeout(version,ms));
+  version();
+})();
+</script>
+
 </body>
 </html>
