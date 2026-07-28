@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.84 · 라인업·경기·운영·순위 레거시 정리 */
-window.APP_VERSION='v0.85';
+window.APP_VERSION='v0.86';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -128,29 +128,42 @@ window.applyGameVersion=function(){
    ─────────────────────────────────── */
 
 :root{
-  --bg:#0D1811; --panel:rgba(26,38,30,.92); --panel2:rgba(32,46,36,.92); --line:#2A3D30;
-  --chalk:#EDEAE0; --dim:#8FA396; --amber:#FFB63B; --amber2:#E89B1C;
-  --red:#E4573D;
+  --bg:#08150F;
+  --panel:rgba(13,29,21,.96);
+  --panel2:rgba(19,38,28,.96);
+  --line:rgba(184,211,194,.16);
+  --chalk:#F7F4EC;
+  --dim:#9DB0A5;
+  --amber:#F6BE4A;
+  --amber2:#D99623;
+  --red:#EC6753;
+  --green:#4ADE9B;
+  --violet:#9B8CFF;
+  --shadow:0 10px 26px rgba(0,0,0,.22);
+  --shadow-soft:0 4px 14px rgba(0,0,0,.16);
+  --radius:17px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{width:100%;height:100%;overflow:hidden;background:#0A130D;color-scheme:dark}
 body{
   position:fixed;inset:0;width:auto;height:auto;overflow:hidden;
-  background:#0A130D; color:var(--chalk);
-  font-family:'IBM Plex Sans KR',sans-serif; font-size:15px;
-  display:flex; flex-direction:column;
-  overscroll-behavior:none;
+  background:#050D0A;color:var(--chalk);
+  font-family:'IBM Plex Sans KR',sans-serif;font-size:15px;letter-spacing:-.1px;
+  display:flex;flex-direction:column;overscroll-behavior:none;
 }
-main{position:relative;isolation:isolate;flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
-  background:var(--bg);padding-bottom:12px}
+main{
+  position:relative;isolation:isolate;flex:1 1 auto;min-height:0;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;
+  background:var(--bg);padding-bottom:20px;
+}
 .num{font-family:'IBM Plex Mono',monospace}
 
 /* ── 상단 헤더 ── */
 header{
   flex:none;z-index:20;position:relative;overflow:hidden;
-  background:linear-gradient(180deg,#0A1711 0%,#0B1913 100%);
-  border-bottom:1px solid rgba(255,193,77,.42);
-  padding:calc(12px + env(safe-area-inset-top)) 18px 12px;
+  background:#07130E;
+  border-bottom:1px solid rgba(246,190,74,.28);
+  padding:calc(11px + env(safe-area-inset-top)) 18px 11px;
 }
 .board{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .board h1{
@@ -171,11 +184,6 @@ header{
 /* ── 화면 공통 ── */
 .screen{display:none;padding:16px 16px 40px}
 .screen.on{display:block}
-h2.sec{
-  font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:17px;
-  margin:4px 0 12px;letter-spacing:.4px;
-}
-h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);margin-left:8px;font-weight:400}
 
 /* ── 팀 선택 ── */
 .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -300,30 +308,6 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
 .stat .bar{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden}
 .stat .bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--amber2),var(--amber))}
 
-/* ── 하단 내비 ── */
-nav{
-  position:relative;z-index:30;
-  flex:0 0 104px;height:104px;min-height:104px;max-height:104px;
-  background:#0A130D;border-top:1px solid var(--line);
-  display:flex;padding:0 0 max(10px, env(safe-area-inset-bottom));
-  overflow:hidden;
-}
-nav button{
-  flex:1;background:none;border:none;color:var(--dim);
-  font-family:inherit;font-size:11px;
-  padding:8px 0 0;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-}
-nav button .ic{font-size:19px;line-height:1}
-nav button.on{color:var(--amber)}
-nav button.lock{opacity:.38}
-
-.btn{
-  width:100%;padding:13px 0;border-radius:11px;border:none;
-  background:var(--amber);color:#20180A;font-weight:700;font-size:15px;
-  font-family:inherit;margin-top:14px;
-}
-.btn.ghost{background:none;border:1px solid var(--line);color:var(--dim);font-weight:400;font-size:13px}
 .locked-msg{padding:60px 20px;text-align:center;color:var(--dim);font-size:14px;line-height:1.8}
 .locked-msg .big{font-size:34px;display:block;margin-bottom:10px}
 
@@ -383,7 +367,7 @@ nav button.lock{opacity:.38}
 
 
 /* ── 배경 테마 ── */
-main::before{content:'';position:fixed;inset:0;z-index:-3;pointer-events:none;background:linear-gradient(180deg,#78A1A9 0%,#5C8276 54%,#426650 100%)}
+main::before{content:'';position:fixed;inset:0;z-index:-3;pointer-events:none;background:linear-gradient(180deg,#73969A 0%,#587A70 52%,#3D5E4A 100%)}
 main::after{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none;background:transparent}
 .slot-row button.on{border-color:var(--amber);color:var(--chalk)}
 
@@ -472,32 +456,9 @@ main::after{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none;bac
 .world-row-v284 button{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--chalk);font-family:inherit;font-size:11px;font-weight:700;border-radius:8px;padding:6px 9px}
 .world-log-v284{font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.7;color:var(--dim)}
 
-/* ═══════════ v0.29.0 비주얼 리디자인 — Stadium Front Office ═══════════ */
-:root{
-  --bg:#07130F;
-  --panel:rgba(15,29,23,.94);
-  --panel2:rgba(23,41,32,.96);
-  --line:rgba(184,211,194,.15);
-  --chalk:#F7F3E9;
-  --dim:#9FB2A7;
-  --amber:#FFC14D;
-  --amber2:#E79A20;
-  --red:#F06A54;
-  --green:#4ADE9B;
-  --violet:#9B8CFF;
-  --shadow:0 12px 32px rgba(0,0,0,.28);
-  --shadow-soft:0 6px 18px rgba(0,0,0,.18);
-  --radius:16px;
-}
-html,body{background:#050D0A}
-body{font-size:15px;letter-spacing:-.1px}
+/* ═══════════ v0.86 공통 디자인 마스터 — Stadium Front Office ═══════════ */
 button{touch-action:manipulation}
 button:focus-visible,[onclick]:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-main{
-  background:var(--bg);
-  padding-bottom:20px;
-  scrollbar-width:none;
-}
 main::-webkit-scrollbar,.sheet::-webkit-scrollbar,.sbrow::-webkit-scrollbar{display:none}
 main::after{z-index:-2}
 
@@ -507,27 +468,25 @@ main::after{z-index:-2}
 .screen.on{animation:screenIn .18s ease-out}
 @keyframes screenIn{from{opacity:.25;transform:translateY(4px)}to{opacity:1;transform:none}}
 h2.sec{
-  display:flex;align-items:center;gap:10px;font-size:18px;margin:8px 0 13px;color:var(--chalk);
+  display:flex;align-items:center;gap:10px;margin:9px 0 14px;
+  font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:18px;letter-spacing:.25px;color:var(--chalk);
 }
-h2.sec::after{content:'';height:1px;flex:1;background:linear-gradient(90deg,rgba(255,193,77,.35),transparent)}
-h2.sec small{white-space:nowrap;color:var(--dim)}
+h2.sec::after{content:'';height:1px;flex:1;background:rgba(246,190,74,.28)}
+h2.sec small{font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;font-weight:400;white-space:nowrap;color:var(--dim)}
 .hint{color:#AFC0B7!important;line-height:1.65}
 
 /* 공통 카드 */
 .notice,.reveal,.season-info,.manager-box,.scorebox,.gamelog,.sortbar,.mode-guide,.club-summary-card,.biz-card,.contract-total,.growth-report,.checklist{
-  border-color:var(--line)!important;
-  box-shadow:var(--shadow-soft);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
+  border-color:var(--line)!important;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;
 }
 .notice{
-  position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(29,50,39,.98),rgba(12,28,21,.98));
-  border-style:solid;border-radius:15px;padding:14px 15px;color:#B4C3BA;
+  position:relative;overflow:hidden;background:rgba(14,31,23,.96);
+  border-style:solid;border-radius:16px;padding:14px 15px;color:#B8C8BF;
 }
-.notice::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber)}
-.reveal{background:linear-gradient(145deg,rgba(22,40,31,.96),rgba(11,25,19,.96));border-radius:15px;padding:14px}
-.reveal .lbl{font-size:10px;letter-spacing:1.5px;color:#FFD06C}
-.season-info{background:linear-gradient(145deg,rgba(18,36,28,.97),rgba(11,24,19,.96));border-radius:15px;padding:14px}
+.notice::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--amber)}
+.reveal{background:rgba(13,29,21,.96);border-radius:16px;padding:14px}
+.reveal .lbl{font-size:10px;letter-spacing:1.5px;color:#EBC36C}
+.season-info{background:rgba(13,29,21,.96);border-radius:16px;padding:14px}
 
 
 /* 세그먼트 탭 */
@@ -575,12 +534,12 @@ h2.sec small{white-space:nowrap;color:var(--dim)}
 
 /* 주요 버튼 */
 .btn{
-  min-height:48px;border-radius:14px;background:linear-gradient(180deg,#FFD36C,#EFA62B);color:#251904;
-  box-shadow:0 8px 20px rgba(232,155,28,.2),inset 0 1px rgba(255,255,255,.35);
-  transition:transform .1s ease,filter .15s ease,box-shadow .15s ease;
+  width:100%;min-height:48px;margin-top:14px;padding:13px 0;border:0;border-radius:14px;
+  background:var(--amber);color:#221806;font-family:inherit;font-size:15px;font-weight:800;
+  box-shadow:none;transition:transform .1s ease,filter .15s ease;
 }
-.btn:active{transform:translateY(1px) scale(.993);filter:brightness(.96);box-shadow:0 4px 12px rgba(232,155,28,.17)}
-.btn.ghost{background:rgba(17,32,25,.72);border:1px solid var(--line);color:#A8BBB1;box-shadow:none}
+.btn:active{transform:translateY(1px) scale(.993);filter:brightness(.94)}
+.btn.ghost{background:rgba(12,27,20,.82);border:1px solid var(--line);color:#A8BBB1;font-size:13px;font-weight:500;box-shadow:none}
 .btn.cl-start.locked{background:rgba(24,39,31,.75);box-shadow:none}
 
 /* 경기 화면 */
@@ -615,7 +574,7 @@ h2.sec small{white-space:nowrap;color:var(--dim)}
 .front-subtabs button{border:0;background:transparent;border-radius:10px;color:#91A59A}
 .front-subtabs button.on{background:linear-gradient(180deg,#FFD16A,#EFA62C);box-shadow:0 5px 14px rgba(232,155,28,.18)}
 .club-summary-grid,.biz-grid{gap:10px}
-.club-summary-card,.biz-card{background:linear-gradient(145deg,rgba(24,43,33,.97),rgba(12,27,20,.97));border-radius:15px;padding:13px}
+.club-summary-card,.biz-card{background:rgba(13,29,21,.96);border-radius:16px;padding:13px}
 .club-summary-card .k,.biz-card .biz-value{color:#91A79B}
 .club-summary-card .v{color:#FFF2CE}
 .biz-card button{border-radius:10px;background:linear-gradient(180deg,#FFD16A,#EFA62C)}
@@ -637,24 +596,29 @@ h2.sec small{white-space:nowrap;color:var(--dim)}
 
 /* 하단 도크 내비게이션 */
 nav{
+  position:relative;z-index:30;display:flex;overflow:hidden;
   flex:0 0 92px;height:92px;min-height:92px;max-height:92px;
-  margin:0;background:rgba(4,12,8,.96);border-top:1px solid rgba(184,211,194,.12);
-  padding:6px 7px max(9px,env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.3);
+  margin:0;background:#050E0A;border-top:1px solid rgba(184,211,194,.13);
+  padding:6px 7px max(9px,env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(0,0,0,.22);
 }
-nav button{position:relative;padding:3px 0 0;gap:4px;font-size:10.5px;border-radius:13px;transition:color .15s ease,background .15s ease}
-nav button .ic{display:flex;align-items:center;justify-content:center;width:42px;height:31px;border-radius:11px;font-size:18px;transition:background .16s ease,transform .16s ease,box-shadow .16s ease}
-nav button.on{color:#FFE2A0;background:rgba(255,193,77,.045)}
-nav button.on .ic{background:linear-gradient(180deg,rgba(255,210,107,.98),rgba(235,159,34,.98));color:#211604;transform:translateY(-1px);box-shadow:0 6px 15px rgba(232,155,28,.22)}
+nav button{
+  position:relative;flex:1;border:0;background:none;color:var(--dim);font-family:inherit;font-size:10.5px;
+  padding:3px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  border-radius:13px;transition:color .15s ease,background .15s ease;
+}
+nav button .ic{display:flex;align-items:center;justify-content:center;width:42px;height:31px;border-radius:11px;font-size:18px;line-height:1;transition:background .16s ease,transform .16s ease}
+nav button.on{color:#F4D58A;background:rgba(246,190,74,.055)}
+nav button.on .ic{background:var(--amber);color:#211604;transform:translateY(-1px);box-shadow:none}
 nav button.lock{opacity:.32}
 
 /* 구단 홈 리디자인 */
 .club-hero{
-  --team:#FFB63B;position:relative;overflow:hidden;margin:-2px 0 14px;padding:18px;border:1px solid rgba(255,255,255,.11);border-radius:22px;
-  background:linear-gradient(135deg,#214330,#0A1711 64%);
-  background:linear-gradient(135deg,color-mix(in srgb,var(--team) 32%,#10281d),#0A1711 64%);box-shadow:var(--shadow);
+  --team:#F6BE4A;position:relative;overflow:hidden;margin:-2px 0 16px;padding:20px 18px;
+  border:1px solid rgba(255,255,255,.10);border-radius:22px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--team) 22%,#163226),#0A1711 68%);box-shadow:var(--shadow-soft);
 }
-.club-hero::before{content:'';position:absolute;width:180px;height:180px;right:-62px;top:-88px;border-radius:50%;background:rgba(255,193,77,.2);background:color-mix(in srgb,var(--team) 32%,transparent);filter:blur(2px);opacity:.75}
-.club-hero::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 30%,transparent 68%,rgba(255,255,255,.035))}
+.club-hero::before{content:'';position:absolute;left:0;top:20px;bottom:20px;width:4px;border-radius:0 4px 4px 0;background:var(--team);opacity:.9}
+.club-hero::after{content:none}
 .club-hero-top{position:relative;display:flex;align-items:center;gap:14px;z-index:1}
 .club-logo-box{width:82px;height:72px;flex:0 0 82px;display:flex;align-items:center;justify-content:center;overflow:visible;background:transparent;border:0;box-shadow:none}
 .club-logo-box .club-logo-img{width:76px;height:64px;max-width:100%;object-fit:contain;object-position:center;display:block;filter:drop-shadow(0 8px 12px rgba(0,0,0,.28))}
@@ -663,7 +627,7 @@ nav button.lock{opacity:.32}
 .club-name{font-family:'Black Han Sans',sans-serif;font-size:25px;line-height:1.1;color:#FFF9E9;text-shadow:0 2px 14px rgba(0,0,0,.25)}
 .club-meta{margin-top:6px;font-size:12px;color:rgba(255,255,255,.72)}
 .club-chips{position:relative;z-index:1;display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}
-.club-chip{padding:6px 9px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(3,12,8,.36);font-size:11px;color:#F4EEDC;backdrop-filter:blur(5px)}
+.club-chip{padding:6px 9px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(5,16,11,.58);font-size:11px;color:#F4EEDC}
 .club-chip b{color:#FFD670}
 .dashboard-panel{margin-top:14px}
 .dashboard-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:800;color:#F4EFE4}
@@ -16960,10 +16924,8 @@ main *,.sheet *{max-width:100%}
 /* 상단 3열 요약 */
 .myteam-overview-v350{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .myteam-kpi-v350{
-  background:linear-gradient(155deg,rgba(29,50,39,.96),rgba(12,26,20,.96));
-  border:1px solid var(--line);border-radius:15px;padding:12px 10px;
-  box-shadow:var(--shadow-soft);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  display:flex;flex-direction:column;gap:4px;min-width:0;text-align:center
+  background:rgba(13,29,21,.96);border:1px solid var(--line);border-radius:16px;padding:12px 10px;
+  box-shadow:none;display:flex;flex-direction:column;gap:4px;min-width:0;text-align:center
 }
 .myteam-kpi-v350 .k{font-size:10px;letter-spacing:1px;color:var(--dim);white-space:nowrap}
 .myteam-kpi-v350 .v{font-size:21px;font-weight:900;color:var(--amber);font-variant-numeric:tabular-nums;line-height:1.15}
@@ -16971,13 +16933,11 @@ main *,.sheet *{max-width:100%}
 
 /* 카드 */
 .myteam-card-v350{
-  background:linear-gradient(145deg,rgba(22,40,31,.96),rgba(11,25,19,.96));
-  border:1px solid var(--line);border-radius:15px;padding:14px;
-  box-shadow:var(--shadow-soft);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)
+  background:rgba(13,29,21,.96);border:1px solid var(--line);border-radius:16px;padding:15px;box-shadow:none
 }
 .myteam-card-head-v350{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:11px}
 .myteam-card-title-v350{font-size:15px;font-weight:800;color:var(--chalk)}
-.myteam-card-sub-v350{font-size:9px;letter-spacing:1.6px;color:#FFD06C;opacity:.75;white-space:nowrap}
+.myteam-card-sub-v350{font-size:9px;letter-spacing:1.6px;color:#EAC46E;opacity:.82;white-space:nowrap}
 .myteam-note-v350{font-size:12px;color:#AFC0B7;line-height:1.6;margin-top:10px}
 
 /* 다음 경기 — 스코어보드 형태 */
@@ -16995,7 +16955,7 @@ main *,.sheet *{max-width:100%}
   border:1px solid var(--line);border-radius:13px;padding:11px;min-width:0;
   background:rgba(255,255,255,.025)
 }
-.myteam-star-v350 .role{font-size:10px;letter-spacing:.6px;color:#FFD06C;margin-bottom:5px}
+.myteam-star-v350 .role{font-size:10px;letter-spacing:.6px;color:#EAC46E;margin-bottom:5px}
 .myteam-star-v350 .name{font-size:16px;font-weight:900;color:var(--chalk);line-height:1.25}
 .myteam-star-v350 .desc{font-size:11px;color:var(--dim);margin-top:3px;font-variant-numeric:tabular-nums}
 
