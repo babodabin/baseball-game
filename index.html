@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.84 · 라인업·경기·운영·순위 레거시 정리 */
-window.APP_VERSION='v0.86';
+window.APP_VERSION='v0.87';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -615,7 +615,7 @@ nav button.lock{opacity:.32}
 .club-hero{
   --team:#F6BE4A;position:relative;overflow:hidden;margin:-2px 0 16px;padding:20px 18px;
   border:1px solid rgba(255,255,255,.10);border-radius:22px;
-  background:linear-gradient(135deg,color-mix(in srgb,var(--team) 22%,#163226),#0A1711 68%);box-shadow:var(--shadow-soft);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--team) 10%,#11271D),#0A1711 72%);box-shadow:var(--shadow-soft);
 }
 .club-hero::before{content:'';position:absolute;left:0;top:20px;bottom:20px;width:4px;border-radius:0 4px 4px 0;background:var(--team);opacity:.9}
 .club-hero::after{content:none}
@@ -626,8 +626,8 @@ nav button.lock{opacity:.32}
 .club-kicker{display:block;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#FFE6AE}
 .club-name{font-family:'Black Han Sans',sans-serif;font-size:25px;line-height:1.1;color:#FFF9E9;text-shadow:0 2px 14px rgba(0,0,0,.25)}
 .club-meta{margin-top:6px;font-size:12px;color:rgba(255,255,255,.72)}
-.club-chips{position:relative;z-index:1;display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}
-.club-chip{padding:6px 9px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(5,16,11,.58);font-size:11px;color:#F4EEDC}
+.club-chips{position:relative;z-index:1;display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}
+.club-chip{padding:5px 8px;border:1px solid rgba(255,255,255,.10);border-radius:8px;background:rgba(5,16,11,.42);font-size:10.5px;color:#EDE9DB}
 .club-chip b{color:#FFD670}
 .dashboard-panel{margin-top:14px}
 .dashboard-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:800;color:#F4EFE4}
@@ -16921,77 +16921,79 @@ main *,.sheet *{max-width:100%}
 .myteam-dashboard-v350{display:flex;flex-direction:column;gap:12px;margin-top:4px}
 .myteam-dashboard-v350 *{word-break:keep-all;overflow-wrap:anywhere}
 
-/* 상단 3열 요약 */
-.myteam-overview-v350{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+/* 상단 시즌 스코어보드 — 세 정보를 한 판으로 묶는다 */
+.myteam-overview-v350{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;overflow:hidden;
+  border:1px solid var(--line);border-radius:18px;background:#0D1D16
+}
 .myteam-kpi-v350{
-  background:rgba(13,29,21,.96);border:1px solid var(--line);border-radius:16px;padding:12px 10px;
-  box-shadow:none;display:flex;flex-direction:column;gap:4px;min-width:0;text-align:center
+  position:relative;display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;
+  min-height:92px;padding:13px 8px;text-align:center;background:transparent;border:0;border-radius:0;box-shadow:none
 }
-.myteam-kpi-v350 .k{font-size:10px;letter-spacing:1px;color:var(--dim);white-space:nowrap}
-.myteam-kpi-v350 .v{font-size:21px;font-weight:900;color:var(--amber);font-variant-numeric:tabular-nums;line-height:1.15}
-.myteam-kpi-v350 .s{font-size:11px;color:#AFC0B7;line-height:1.35}
+.myteam-kpi-v350:not(:last-child)::after{
+  content:'';position:absolute;right:0;top:17px;bottom:17px;width:1px;background:rgba(184,211,194,.13)
+}
+.myteam-kpi-v350 .k{font-size:10px;letter-spacing:.8px;color:#91A89C;white-space:nowrap}
+.myteam-kpi-v350 .v{font-size:22px;font-weight:950;color:var(--amber);font-variant-numeric:tabular-nums;line-height:1.05}
+.myteam-kpi-v350 .s{font-size:11px;color:#B7C7BE;line-height:1.35}
 
-/* 카드 */
+/* 홈 정보 카드 — 같은 판형과 간격으로 통일 */
 .myteam-card-v350{
-  background:rgba(13,29,21,.96);border:1px solid var(--line);border-radius:16px;padding:15px;box-shadow:none
+  background:#0D1D16;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:none
 }
-.myteam-card-head-v350{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:11px}
-.myteam-card-title-v350{font-size:15px;font-weight:800;color:var(--chalk)}
-.myteam-card-sub-v350{font-size:9px;letter-spacing:1.6px;color:#EAC46E;opacity:.82;white-space:nowrap}
-.myteam-note-v350{font-size:12px;color:#AFC0B7;line-height:1.6;margin-top:10px}
+.myteam-card-head-v350{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.myteam-card-title-v350{font-size:16px;font-weight:900;letter-spacing:-.2px;color:var(--chalk)}
+.myteam-card-sub-v350{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1.7px;color:#CBA653;white-space:nowrap}
+.myteam-note-v350{font-size:11.5px;color:#9FB2A8;line-height:1.6;margin-top:10px}
 
-/* 다음 경기 — 스코어보드 형태 */
-.myteam-match-v350{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:9px}
-.myteam-match-v350 .team{font-size:15px;font-weight:800;color:var(--chalk);line-height:1.3}
+/* 다음 경기 — 한 줄 스코어보드 */
+.myteam-overview-v350 + .myteam-card-v350{border-color:rgba(255,193,77,.24)}
+.myteam-match-v350{
+  display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);align-items:center;gap:9px;
+  padding:14px 0;border-top:1px solid rgba(184,211,194,.10);border-bottom:1px solid rgba(184,211,194,.10)
+}
+.myteam-match-v350 .team{font-size:16px;font-weight:900;color:var(--chalk);line-height:1.25}
 .myteam-match-v350 .team.r{text-align:right}
 .myteam-match-v350 .vs{
-  font-size:10px;font-weight:900;letter-spacing:1.2px;color:#0F1D17;
-  background:var(--amber);border-radius:99px;padding:4px 9px;white-space:nowrap
+  display:grid;place-items:center;width:40px;height:28px;padding:0;
+  font-size:9px;font-weight:900;letter-spacing:1px;color:#2B210D;background:var(--amber);border-radius:8px;white-space:nowrap
 }
 
-/* 중심 선수 */
-.myteam-stars-v350{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.myteam-star-v350{
-  border:1px solid var(--line);border-radius:13px;padding:11px;min-width:0;
-  background:rgba(255,255,255,.025)
+/* 중심 선수 — 카드 안에 다시 카드가 겹치지 않도록 한 판으로 */
+.myteam-stars-v350{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;overflow:hidden;
+  border:1px solid rgba(184,211,194,.12);border-radius:14px;background:#091812
 }
-.myteam-star-v350 .role{font-size:10px;letter-spacing:.6px;color:#EAC46E;margin-bottom:5px}
-.myteam-star-v350 .name{font-size:16px;font-weight:900;color:var(--chalk);line-height:1.25}
-.myteam-star-v350 .desc{font-size:11px;color:var(--dim);margin-top:3px;font-variant-numeric:tabular-nums}
+.myteam-star-v350{position:relative;min-width:0;padding:13px 14px;border:0;border-radius:0;background:transparent}
+.myteam-star-v350:first-child{border-right:1px solid rgba(184,211,194,.12)}
+.myteam-star-v350 .role{font-size:9px;letter-spacing:.9px;color:#CBA653;margin-bottom:6px}
+.myteam-star-v350 .name{font-size:17px;font-weight:950;color:var(--chalk);line-height:1.2}
+.myteam-star-v350 .desc{font-size:10.5px;color:#94AA9F;margin-top:4px;font-variant-numeric:tabular-nums}
 
-/* 구단 과제 */
-.myteam-tasks-v350{display:flex;flex-direction:column;gap:7px}
+/* 구단 과제 — 독립 카드 여러 장 대신 체크리스트 한 판 */
+.myteam-tasks-v350{
+  display:flex;flex-direction:column;gap:0;overflow:hidden;
+  border:1px solid rgba(184,211,194,.12);border-radius:14px;background:#091812
+}
 .myteam-task-v350{
-  display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border-radius:12px;
-  background:rgba(255,255,255,.03);border-left:3px solid var(--dim);font-size:12.5px;line-height:1.55
+  display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border:0;border-radius:0;
+  background:transparent;font-size:12px;line-height:1.5
 }
-.myteam-task-v350 .ico{flex:0 0 auto;font-size:14px;line-height:1.35}
-.myteam-task-v350 .txt{min-width:0;color:#C6D3CB}
-.myteam-task-v350.good{border-left-color:var(--green)}
-.myteam-task-v350.warn{border-left-color:var(--amber)}
-.myteam-task-v350.bad{border-left-color:var(--red)}
-
-/* 빠른 이동 */
-.myteam-actions-v350{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.myteam-action-v350{
-  display:flex;flex-direction:column;gap:3px;align-items:flex-start;text-align:left;
-  min-height:56px;padding:11px 12px;border-radius:13px;cursor:pointer;
-  border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--chalk);
-  font-family:inherit;transition:background .15s ease,border-color .15s ease
-}
-.myteam-action-v350 b{font-size:13px;font-weight:800}
-.myteam-action-v350 span{font-size:11px;color:var(--dim);line-height:1.4}
-.myteam-action-v350:active{background:rgba(255,193,77,.12);border-color:rgba(255,193,77,.5)}
-.myteam-action-v350:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.myteam-task-v350 + .myteam-task-v350{border-top:1px solid rgba(184,211,194,.09)}
+.myteam-task-v350 .ico{flex:0 0 19px;font-size:13px;line-height:1.4;text-align:center}
+.myteam-task-v350 .txt{min-width:0;color:#C2D0C8}
+.myteam-task-v350.good .ico{color:var(--green)}
+.myteam-task-v350.warn .ico{color:var(--amber)}
+.myteam-task-v350.bad .ico{color:var(--red)}
 
 @media(max-width:360px){
-  .myteam-kpi-v350{padding:10px 7px}
-  .myteam-kpi-v350 .v{font-size:18px}
-  .myteam-kpi-v350 .k{font-size:9px;letter-spacing:.4px}
-  .myteam-actions-v350,.myteam-stars-v350{grid-template-columns:1fr}
+  .myteam-kpi-v350{min-height:84px;padding:11px 6px}
+  .myteam-kpi-v350 .v{font-size:19px}
+  .myteam-kpi-v350 .k{font-size:9px;letter-spacing:.3px}
+  .myteam-stars-v350{grid-template-columns:1fr}
+  .myteam-star-v350:first-child{border-right:0;border-bottom:1px solid rgba(184,211,194,.12)}
   .myteam-match-v350 .team{font-size:14px}
 }
-@media(prefers-reduced-motion:reduce){.myteam-action-v350{transition:none}}
 </style>
 <!-- ═══════════ v0.35 이식: 나의 팀 대시보드 + 신생 구단 창단 ═══════════ -->
 <style>
@@ -17096,15 +17098,6 @@ main *,.sheet *{max-width:100%}
         <div class="myteam-card-head-v350"><div class="myteam-card-title-v350">오늘의 구단 과제</div><div class="myteam-card-sub-v350">CLUB CHECK</div></div>
         <div class="myteam-tasks-v350">${tasks350().concat(typeof window.extraTasksV62==='function'?window.extraTasksV62():[]).map(x=>`<div class="myteam-task-v350 ${x.c}"><span class="ico">${x.i}</span><span class="txt">${esc350(x.t)}</span></div>`).join('')}</div>
       </div>
-      <div class="myteam-card-v350">
-        <div class="myteam-card-head-v350"><div class="myteam-card-title-v350">빠른 이동</div><div class="myteam-card-sub-v350">QUICK ACTIONS</div></div>
-        <div class="myteam-actions-v350">
-          <button class="myteam-action-v350" onclick="gotoNav('lineup')"><b>📋 라인업 점검</b><span>선발·벤치·투수진 구성</span></button>
-          <button class="myteam-action-v350" onclick="gotoNav('game')"><b>📺 경기 준비</b><span>다음 일정과 경기 진행</span></button>
-          <button class="myteam-action-v350" onclick="gotoNav('front')"><b>🏢 구단 운영</b><span>선수단·계약·시설 관리</span></button>
-          <button class="myteam-action-v350" onclick="gotoNav('rank')"><b>🏆 순위 확인</b><span>팀·선수 기록과 구단 역사</span></button>
-        </div>
-      </div>
     </div>`;
   }
   window.myTeamDashboardHtml=html350;
@@ -17170,7 +17163,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 [class*="-v350"],[class^="ct-"],[class*=" ct-"],.custom-team-draft,.custom-team-launch{
   word-break:keep-all;overflow-wrap:anywhere;
 }
-.ct-actions .btn,.custom-team-launch,.myteam-action-v350{min-height:var(--tap-min,44px)}
+.ct-actions .btn,.custom-team-launch{min-height:var(--tap-min,44px)}
 @media (max-width:360px){
   .custom-team-launch{font-size:14px}
 }
