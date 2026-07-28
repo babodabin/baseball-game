@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.84 · 라인업·경기·운영·순위 레거시 정리 */
-window.APP_VERSION='v0.87';
+window.APP_VERSION='v0.88';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -691,9 +691,6 @@ nav button.lock{opacity:.32}
 .pitch-row-v310{transition:none!important}
 .pitch-row-v310:active{transform:none!important;filter:brightness(1.06)}
 .pitch-row-v310 .lp{font-size:11px;min-width:58px}
-/* v0.31.1: 선수 교체 시 카드 전체 색상 고정 */
-#scr-lineup .lrow,#scr-lineup .lrow.sel{background:var(--panel)!important;transform:none!important;outline:none!important;box-shadow:none!important}
-#scr-lineup .lrow:active{background:var(--panel2)!important}
 .pitch-row-v310{cursor:pointer;border-left:3px solid transparent}
 .pitch-row-v310:hover{border-left-color:var(--amber)}
 /* v0.31.4 투수 교체 가능 위치 표시 */
@@ -709,27 +706,6 @@ nav button.lock{opacity:.32}
 .pitch-divider-v313{height:1px;background:var(--line);margin:10px 0}
 
 
-/* v0.32.5 라인업·로스터 카드 완전 통일 */
-#scr-lineup .lrow{
-  background:linear-gradient(145deg,rgba(25,43,34,.97),rgba(13,28,21,.98))!important;
-  border:1px solid rgba(181,209,191,.11)!important;border-radius:14px!important;
-  box-shadow:0 5px 14px rgba(0,0,0,.15)!important;padding:12px 13px!important;margin-bottom:9px!important;
-}
-#scr-lineup .lrow:active{background:linear-gradient(145deg,rgba(32,52,42,.98),rgba(16,32,25,.98))!important}
-#scr-lineup .lrow .lp{
-  width:38px!important;height:38px!important;border-radius:11px!important;flex:none!important;
-  display:flex!important;align-items:center!important;justify-content:center!important;
-  font-family:'IBM Plex Mono',monospace!important;font-size:12px!important;font-weight:700!important;
-  background:rgba(5,14,10,.55)!important;border:1px solid rgba(255,193,77,.18)!important;color:#D2DED7!important;
-}
-#scr-lineup .lrow .ln{font-size:15px!important;font-weight:700!important;min-width:0!important}
-#scr-lineup .lrow .lo{
-  font-family:'IBM Plex Mono',monospace!important;font-size:21px!important;font-weight:700!important;
-  color:var(--amber)!important;width:44px!important;text-align:right!important;flex:none!important;
-  text-shadow:0 0 14px rgba(255,193,77,.18)!important;letter-spacing:normal!important;
-}
-#scr-lineup .lrow .ord{width:26px!important;font-family:'IBM Plex Mono',monospace!important;font-size:18px!important;font-weight:700!important;color:var(--amber)!important;text-align:center!important}
-#pitchWrap .pitch-section-v313{margin-top:10px}
 </style>
 </head>
 <body>
@@ -8923,294 +8899,11 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </script>
 
 
-<!-- v0.32.1 배경 강화·타순 카드 압축 -->
-<style>
-/* ──────────────────────────────────────────
-   [011/164] STYLE · 4.0KB · 원본 9284행
-   주제  : 낮: 야구장 관중석, 외야 전광판, 햇살과 잔디 층을 분명하게
-   ────────────────────────────────────────── */
-
-/* 타순 변경 화면만 수비배치와 같은 밀도로 압축 */
-#scr-lineup:has(#luModeOrder.on) #lineupList .lrow{
-  min-height:66px;
-  padding:8px 11px;
-  margin-bottom:7px;
-  gap:8px;
-  border-radius:13px;
-}
-#scr-lineup:has(#luModeOrder.on) #lineupList .lrow::before{top:9px;bottom:9px}
-#scr-lineup:has(#luModeOrder.on) #lineupList .lrow .ord{width:28px;font-size:17px;flex:0 0 28px}
-#scr-lineup:has(#luModeOrder.on) #lineupList .lrow .lp{width:42px;flex:0 0 42px;font-size:12px;font-weight:800}
-#scr-lineup:has(#luModeOrder.on) #lineupList .lrow .ln{
-  min-width:0;font-size:15px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-#scr-lineup:has(#luModeOrder.on) #lineupList .lrow .ln br{display:none}
-#scr-lineup:has(#luModeOrder.on) #lineupList .lrow .ln span{display:block;margin-top:3px;font-size:10px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#scr-lineup:has(#luModeOrder.on) #lineupList .lrow .lo{width:34px;flex:0 0 34px;text-align:right;font-size:14px}
-#scr-lineup:has(#luModeOrder.on) #lineupList .order-swap-v304{width:34px;height:34px;flex:0 0 34px;border-radius:11px;font-size:15px}
-#scr-lineup:has(#luModeOrder.on) #lineupList .grade-badge{transform:scale(.92);transform-origin:left center}
-#scr-lineup:has(#luModeOrder.on) .lineup-section-v320{margin:13px 0 7px;padding:9px 12px}
-</style>
-
-
-<!-- v0.32.2 타순 카드·선택 피드백·배경 재정리 -->
-<style>
-/* ─────────────────────────────────────
-   [012/164] STYLE · 3.7KB · 원본 9360행
-   주제  : 과했던 구장 그림을 걷어내고 카드가 중심이 되는 배경
-   ───────────────────────────────────── */
-
-/* 타순 변경 카드는 수비배치 카드와 같은 높이·밀도 */
-#scr-lineup #lineupList .order-row-v322{
-  display:grid!important;
-  grid-template-columns:30px 64px minmax(0,1fr) 38px 42px;
-  align-items:center;
-  min-height:70px!important;
-  height:70px;
-  padding:9px 13px!important;
-  margin-bottom:8px!important;
-  gap:8px!important;
-  border-radius:13px!important;
-  position:relative;
-  overflow:hidden;
-}
-#scr-lineup #lineupList .order-row-v322 .ord{width:auto!important;font-size:18px!important}
-#scr-lineup #lineupList .order-row-v322 .lp{width:auto!important;font-size:12px!important;font-weight:850;color:#f0c35a;white-space:nowrap}
-#scr-lineup #lineupList .order-row-v322 .ln{font-size:15px!important;line-height:1.18;min-width:0;overflow:hidden}
-#scr-lineup #lineupList .order-row-v322 .ln .player-name-v322{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#scr-lineup #lineupList .order-row-v322 .ln .condition-v322{display:block;margin-top:4px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#scr-lineup #lineupList .order-row-v322 .lo{width:auto!important;text-align:right;font-size:14px!important;color:#e7ece9}
-#scr-lineup #lineupList .order-row-v322 .order-swap-v304{width:34px!important;height:34px!important;min-width:34px;border-radius:11px!important;font-size:15px!important;transition:transform .10s ease,background .14s ease,color .14s ease,box-shadow .14s ease}
-#scr-lineup #lineupList .order-row-v322 .order-swap-v304:active{transform:scale(.88)!important}
-#scr-lineup #lineupList .order-row-v322.swap-source-v322{
-  background:linear-gradient(145deg,rgba(79,66,24,.98),rgba(33,42,25,.98))!important;
-  box-shadow:inset 0 0 0 2px var(--amber),0 0 0 3px rgba(255,193,77,.12)!important;
-}
-#scr-lineup #lineupList .order-row-v322.swap-source-v322 .order-swap-v304{
-  background:var(--amber)!important;color:#20180a!important;border-color:var(--amber)!important;
-  box-shadow:0 0 0 4px rgba(255,193,77,.15)!important;
-}
-#scr-lineup #lineupList .order-row-v322.swap-target-v322:not(.swap-source-v322){
-  box-shadow:inset 0 0 0 1px rgba(255,193,77,.34)!important;
-}
-.selected-tag-v322{display:inline-block;margin-left:6px;padding:2px 5px;border-radius:6px;background:var(--amber);color:#20180a;font-size:8px;font-weight:900;vertical-align:2px}
-</style>
-<script>
-/* ───────────────────────────────────────────────────────────────────
-   [013/164] SCRIPT · 4.0KB · 원본 9427행
-   정의  : positionTextV322, renderLineup, sectionV322, starterRowV322
-   ⚠ 대체됨: renderLineup
-     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
-   ─────────────────────────────────────────────────────────────────── */
-
-(function(){
-  function sectionV322(text,count,cls){
-    const d=document.createElement('div');
-    d.className='lineup-section-v320 '+(cls||'');
-    d.innerHTML=`<span>${text}</span><small>${count}</small>`;
-    return d;
-  }
-  function positionTextV322(p){
-    const primary=p?.[2]||'-';
-    let alts=[];
-    try{if(typeof multiPositionsOfV314==='function')alts=multiPositionsOfV314(p)||[];}catch(_){alts=[];}
-    alts=[...new Set(alts.filter(x=>x&&x!==primary))];
-    return alts.length?`${primary}(${alts.join('/')})`:primary;
-  }
-  function starterRowV322(t,lu,pos,displayOrd,defMode){
-    const bi=lu.order[pos],p=t.bat[bi],slot=lu.pos[pos],ci=conditionInfo(t.id,'bat',p),d=document.createElement('div');
-    if(defMode){
-      d.className='lrow def-slot-v315';
-      d.innerHTML=`<div class="ord">${displayOrd}</div><div class="lp">${DEFENSE_NAME_V315[slot]||slot}</div><div class="ln"><span class="player-name-v322">${playerDisplayName(p)}</span><br><span style="font-size:10px;color:${ci.color}">${ci.label}</span></div><div class="lo num">${batOvr(p,t.id)}</div>`;
-      d.onclick=()=>openLineupExchangePickerV304('starter',pos);
-      return d;
-    }
-    const selected=luSel===pos;
-    d.className='lrow order-row-v322'+(selected?' swap-source-v322':(luSel>=0?' swap-target-v322':''));
-    d.innerHTML=`<div class="ord">${displayOrd}</div><div class="lp">${positionTextV322(p)}</div><div class="ln"><span class="player-name-v322">${playerDisplayName(p)}${selected?'<span class="selected-tag-v322">선택됨</span>':''}</span><span class="condition-v322" style="color:${ci.color}">${ci.label}</span></div><button type="button" class="order-swap-v304" aria-label="타순 교환" aria-pressed="${selected?'true':'false'}">↕</button><div class="lo num">${batOvr(p,t.id)}</div>`;
-    const swap=d.querySelector('.order-swap-v304');
-    swap.onclick=e=>{e.stopPropagation();selectStarterSwapV304(pos);};
-    d.onclick=()=>openLineupExchangePickerV304('starter',pos);
-    return d;
-  }
-  })();
-</script>
 
 
 
-<!-- v0.32.3 전체 로스터형 라인업·투수배치 통일 -->
-<style>
-/* ─────────────────────────────────────────────────────
-   [014/164] STYLE · 3.0KB · 원본 9493행
-   주제  : 전체 로스터(prow)를 기준으로 라인업의 모든 선수 카드를 하나의 형식으로 통일
-   ───────────────────────────────────────────────────── */
-
-/* 전체 로스터(prow)를 기준으로 라인업의 모든 선수 카드를 하나의 형식으로 통일 */
-#scr-lineup .unified-player-v323{
-  display:grid!important;
-  grid-template-columns:34px 54px minmax(0,1fr) 36px 44px;
-  align-items:center;
-  min-height:76px!important;
-  height:76px;
-  padding:9px 12px!important;
-  margin:0 0 8px!important;
-  gap:8px!important;
-  border-radius:15px!important;
-  background:linear-gradient(145deg,rgba(12,31,25,.96),rgba(7,22,18,.96))!important;
-  border:1px solid rgba(191,216,203,.13)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
-  position:relative;
-  overflow:hidden;
-}
-#scr-lineup .unified-player-v323::before{
-  content:"";position:absolute;left:0;top:10px;bottom:10px;width:2px;border-radius:2px;
-  background:linear-gradient(180deg,var(--amber),rgba(255,193,77,.16));
-}
-#scr-lineup .unified-player-v323 .u-num-v323{
-  text-align:center;color:var(--amber);font-weight:900;font-size:17px;font-variant-numeric:tabular-nums;
-}
-#scr-lineup .unified-player-v323 .u-pos-v323{
-  display:flex;align-items:center;justify-content:center;width:50px;height:42px;border-radius:12px;
-  border:1px solid rgba(255,193,77,.23);background:rgba(4,17,14,.55);
-  color:#e9efeb;font-size:13px;font-weight:900;white-space:nowrap;
-}
-#scr-lineup .unified-player-v323 .u-mid-v323{min-width:0}
-#scr-lineup .unified-player-v323 .u-name-v323{
-  color:#f5f7f5;font-size:16px;font-weight:900;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-#scr-lineup .unified-player-v323 .u-sub-v323{
-  margin-top:5px;color:var(--dim);font-size:10px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-#scr-lineup .unified-player-v323 .u-action-v323{
-  width:34px;height:34px;padding:0;border-radius:11px;border:1px solid rgba(255,193,77,.36);
-  background:rgba(255,193,77,.06);color:var(--amber);font-weight:900;font-size:15px;
-  transition:transform .1s ease,background .14s ease,color .14s ease,box-shadow .14s ease;
-}
-#scr-lineup .unified-player-v323 .u-action-v323:active{transform:scale(.88)}
-#scr-lineup .unified-player-v323 .u-ovr-v323{
-  text-align:right;color:#f4c45d;font-size:22px;font-weight:900;line-height:1;
-  font-family:inherit;font-variant-numeric:tabular-nums;
-}
-#scr-lineup .unified-player-v323.selected-v323{
-  border-color:rgba(255,193,77,.75)!important;box-shadow:inset 0 0 0 1px rgba(255,193,77,.42),0 0 0 3px rgba(255,193,77,.08)!important;
-}
-#scr-lineup .unified-player-v323.selected-v323 .u-action-v323{
-  background:var(--amber);color:#20180a;box-shadow:0 0 0 4px rgba(255,193,77,.13);
-}
-#scr-lineup .unified-player-v323.available-v323:not(.selected-v323){border-color:rgba(255,193,77,.28)!important}
-#scr-lineup .unified-player-v323.injured-v323{opacity:.43}
-#scr-lineup .lineup-section-v320{margin:14px 0 8px}
-@media(max-width:380px){
-  #scr-lineup .unified-player-v323{grid-template-columns:30px 48px minmax(0,1fr) 32px 40px;padding-left:9px;padding-right:9px;gap:6px}
-  #scr-lineup .unified-player-v323 .u-pos-v323{width:46px}
-  #scr-lineup .unified-player-v323 .u-name-v323{font-size:15px}
-  #scr-lineup .unified-player-v323 .u-ovr-v323{font-size:20px}
-}
-</style>
-<script>
-/* ──────────────────────────────────────────────────────────────────────
-   [015/164] SCRIPT · 5.5KB · 원본 9556행
-   정의  : multiTextV323, renderLineup, renderPitchV323, rowV323, secV323
-   ⚠ 대체됨: renderLineup
-     → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
-   ────────────────────────────────────────────────────────────────────── */
-
-(function(){
-  const POS_EN_V323={포수:'C','1루수':'1B','2루수':'2B','3루수':'3B',유격수:'SS',좌익수:'LF',중견수:'CF',우익수:'RF',지명타자:'DH',선발:'SP',불펜:'RP',마무리:'RP'};
-  const posEnV323=v=>POS_EN_V323[v]||v||'-';
-  function secV323(text,count,cls){
-    const d=document.createElement('div');d.className='lineup-section-v320 '+(cls||'');
-    d.innerHTML=`<span>${text}</span><small>${count}</small>`;return d;
-  }
-  function multiTextV323(p){
-    let arr=[];try{if(typeof multiPositionsOfV314==='function')arr=multiPositionsOfV314(p)||[];}catch(_){arr=[];}
-    const primary=posEnV323(p?.[2]);
-    arr=[...new Set(arr.map(posEnV323).filter(x=>x&&x!==primary))];
-    return arr.length?`${primary} · 가능 ${arr.join('/')}`:`기본 ${primary}`;
-  }
-  function rowV323({num,pos,name,sub,ovr,onClick,onAction,selected=false,available=false,injured=false,action='↕',label='교체'}){
-    const d=document.createElement('div');
-    d.className='unified-player-v323'+(selected?' selected-v323':'')+(available?' available-v323':'')+(injured?' injured-v323':'');
-    d.innerHTML=`<div class="u-num-v323">${num}</div><div class="u-pos-v323">${pos}</div><div class="u-mid-v323"><div class="u-name-v323">${name}</div><div class="u-sub-v323">${sub||''}</div></div><button type="button" class="u-action-v323" aria-label="${label}" aria-pressed="${selected?'true':'false'}">${action}</button><div class="u-ovr-v323">${ovr}</div>`;
-    const b=d.querySelector('.u-action-v323');
-    b.onclick=e=>{e.stopPropagation();(onAction||onClick)?.();};
-    d.onclick=()=>onClick?.();
-    return d;
-  }
-  function renderPitchV323(box,t){
-    const plan=pitchPlanOfV310(t.id),nxt=state.season&&!isOffseason()?nextSpIdx(t.id):null;
-    box.appendChild(secV323('선발 로테이션',`${Math.min(5,plan.starters.length)}/5`,'pitch'));
-    plan.starters.slice(0,5).forEach((pi,slot)=>{
-      const p=t.pit[pi],ci=conditionInfo(t.id,'pit',p),rest=starterRestRemainingV312(t.id,pi),inj=isInjured(t.id,'pit',p);
-      const notes=[ci.label];if(pi===nxt)notes.push('당일 선발 · 교체불가');if(rest>0)notes.push(`휴식 ${rest}경기`);
-      box.appendChild(rowV323({num:slot+1,pos:'SP',name:playerDisplayName(p),sub:notes.join(' · '),ovr:pitOvr(p,t.id),injured:inj,onClick:()=>openPitchStaffPickerV310('starters',slot)}));
-    });
-    box.appendChild(secV323('예비 선발',`${Math.max(0,plan.starters.length-5)}명`,'reserve'));
-    plan.starters.slice(5).forEach((pi,k)=>{
-      const slot=k+5,p=t.pit[pi],ci=conditionInfo(t.id,'pit',p),rest=starterRestRemainingV312(t.id,pi),inj=isInjured(t.id,'pit',p);
-      const notes=['예비',ci.label];if(rest>0)notes.push(`휴식 ${rest}경기`);
-      box.appendChild(rowV323({num:slot+1,pos:'SP',name:playerDisplayName(p),sub:notes.join(' · '),ovr:pitOvr(p,t.id),injured:inj,onClick:()=>openPitchStaffPickerV310('starters',slot)}));
-    });
-    box.appendChild(secV323('불펜',`${plan.bullpen.length}/7`,'bullpen'));
-    plan.bullpen.forEach((pi,slot)=>{
-      const p=t.pit[pi],ci=conditionInfo(t.id,'pit',p),inj=isInjured(t.id,'pit',p);
-      const role=slot===0?'Closer 1':slot===1?'Closer 2':`Bullpen ${slot+1}`;
-      box.appendChild(rowV323({num:slot+1,pos:'RP',name:playerDisplayName(p),sub:`${role} · ${ci.label}`,ovr:pitOvr(p,t.id),injured:inj,onClick:()=>openPitchStaffPickerV310('bullpen',slot)}));
-    });
-  }
-  })();
-</script>
 
 
-<!-- v0.32.5 투수배치 탭 복구 · 로스터 카드 색상/OVR 완전 통일 -->
-<style>
-/* ───────────────────────────────────────────────────
-   [016/164] STYLE · 1.5KB · 원본 9632행
-   주제  : 전체 로스터 .prow의 실제 색상과 타이포그래피를 라인업 카드에 그대로 사용
-   ─────────────────────────────────────────────────── */
-
-/* 전체 로스터 .prow의 실제 색상과 타이포그래피를 라인업 카드에 그대로 사용 */
-#scr-lineup .unified-player-v323{
-  background:linear-gradient(145deg,rgba(25,43,34,.97),rgba(13,28,21,.98))!important;
-  border:1px solid rgba(181,209,191,.11)!important;
-  box-shadow:0 5px 14px rgba(0,0,0,.15)!important;
-}
-#scr-lineup .unified-player-v323:active{
-  background:linear-gradient(145deg,rgba(32,52,42,.98),rgba(16,32,25,.98))!important;
-}
-#scr-lineup .unified-player-v323 .u-pos-v323{
-  background:rgba(5,14,10,.55)!important;
-  border-color:rgba(255,193,77,.18)!important;
-  color:#D2DED7!important;
-  font-family:'IBM Plex Mono',monospace!important;
-}
-#scr-lineup .unified-player-v323 .u-name-v323{
-  color:inherit!important;
-  font-size:15px!important;
-  font-weight:700!important;
-}
-#scr-lineup .unified-player-v323 .u-sub-v323{
-  color:var(--dim)!important;
-  font-size:11px!important;
-  margin-top:1px!important;
-}
-#scr-lineup .unified-player-v323 .u-ovr-v323{
-  width:44px!important;
-  color:var(--amber)!important;
-  font-family:'IBM Plex Mono',monospace!important;
-  font-size:21px!important;
-  font-weight:700!important;
-  line-height:1!important;
-  text-align:right!important;
-  text-shadow:0 0 14px rgba(255,193,77,.18)!important;
-  font-variant-numeric:tabular-nums!important;
-}
-/* 모드별로 필요한 영역만 노출 */
-#scr-lineup.pitch-mode-v325 #lineupList{display:none!important}
-#scr-lineup.pitch-mode-v325 #pitchWrap{display:block!important}
-#scr-lineup:not(.pitch-mode-v325) #lineupList{display:block!important}
-#scr-lineup:not(.pitch-mode-v325) #pitchWrap{display:none!important}
-</style>
 <script>
 /* ─────────────────────────────────────────
    [017/164] SCRIPT · 1.5KB · 원본 9675행
@@ -15792,35 +15485,106 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 
 <style>
-/* ────────────────────────────────────────────────
-   [113/164] STYLE · 1.5KB · 원본 15643행
-   주제  : v0.34.32 · 라인업 카드를 전체 로스터(.prow) 형식으로 통일
-   ──────────────────────────────────────────────── */
+/* ═══════════ v0.88 · LINEUP BOARD ═══════════ */
+/* 최종 .prow 라인업 렌더러의 단일 디자인 정의. 과거 .lrow/order-row 전용 스타일은 제거했다. */
+#scr-lineup{padding-top:12px}
 
-/* ═══════════ v0.34.32 · 라인업 카드를 전체 로스터(.prow) 형식으로 통일 ═══════════ */
-#lineupList .prow, #spList .prow{margin-bottom:8px}
-#lineupList .lp-ord-v3432, #spList .lp-ord-v3432{
-  width:22px;flex:none;text-align:center;
-  font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:800;color:var(--amber);
+/* 라인업 / 전체 로스터 */
+#scr-lineup > .tabs{
+  display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 0 12px;padding:4px;
+  border:1px solid rgba(181,209,191,.14);border-radius:14px;background:#081710;box-shadow:none;
 }
-#lineupList .lp-swap-v3432, #spList .lp-swap-v3432{
-  flex:none;width:34px;height:34px;border-radius:9px;
-  background:var(--panel2);border:1px solid var(--line);color:var(--dim);
-  font-family:inherit;font-size:15px;font-weight:800;line-height:1;
+#scr-lineup > .tabs button{
+  min-height:40px;padding:8px;border:0;border-radius:10px;background:transparent;
+  color:#8FA499;font-size:13px;font-weight:800;box-shadow:none;
 }
-#lineupList .lp-swap-v3432[aria-pressed="true"]{background:var(--amber);border-color:var(--amber);color:#20180A}
-#lineupList .lp-sel-v3432{outline:2px solid var(--amber);outline-offset:-2px}
-#lineupList .lp-target-v3432{border-left:3px solid rgba(255,193,77,.45)}
-#lineupList .lp-injured-v3432, #spList .lp-injured-v3432{opacity:.45}
+#scr-lineup > .tabs button.on{
+  background:#1C3326;color:#F4C45E;box-shadow:inset 0 0 0 1px rgba(244,196,94,.28);
+}
+
+/* 타순 / 수비 / 투수 */
+#lineupWrap > .lb-cat{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;overflow:visible;padding:0;margin:0 0 14px;
+}
+#lineupWrap > .lb-cat button{
+  min-height:38px;padding:7px 4px;border:1px solid rgba(181,209,191,.13);border-radius:10px;
+  background:#102219;color:#8FA499;font-size:12px;font-weight:800;box-shadow:none;
+}
+#lineupWrap > .lb-cat button.on{
+  background:#172D21;border-color:rgba(244,196,94,.48);color:#F4C45E;box-shadow:none;
+}
+
+/* 섹션 머리 */
+#lineupList .sec,#spList .sec{
+  margin:17px 2px 7px;font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;font-weight:800;
+  letter-spacing:.15px;color:#C5D2CB;
+}
+#lineupList .sec::after,#spList .sec::after{background:rgba(181,209,191,.12)}
+#lineupList .sec small,#spList .sec small{
+  margin-left:2px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#6F877A;
+}
+
+/* 선수 행: 타순 → 포지션 → 선수 → OVR */
+#lineupList .prow,#spList .prow{
+  min-height:60px;margin:0 0 6px;padding:9px 10px;gap:9px;border-radius:12px;
+  background:#102219!important;border:1px solid rgba(181,209,191,.11)!important;box-shadow:none!important;
+}
+#lineupList .prow::before,#spList .prow::before{
+  top:10px;bottom:10px;width:2px;background:#F1BC4F;opacity:.62;
+}
+#lineupList .prow:active,#spList .prow:active{transform:scale(.992);background:#142A1F!important}
+#lineupList .lp-ord-v3432,#spList .lp-ord-v3432{
+  width:25px;flex:none;text-align:center;font-family:'IBM Plex Mono',monospace;
+  font-size:16px;font-weight:800;color:#F4C45E;
+}
+#lineupList .prow .pos,#spList .prow .pos{
+  width:35px;height:35px;border-radius:9px;flex:none;background:#091711;
+  border:1px solid rgba(181,209,191,.13);color:#C9D5CE;font-size:11px;font-weight:800;
+}
+#lineupList .prow .mid,#spList .prow .mid{min-width:0;padding:1px 0}
+#lineupList .prow .nm,#spList .prow .nm{
+  font-size:14px;font-weight:800;line-height:1.2;color:#F3F6F4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#lineupList .prow .hand,#spList .prow .hand{
+  margin-top:4px;font-size:10.5px;line-height:1.28;color:#81958A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#lineupList .prow .ovr,#spList .prow .ovr{
+  width:39px;height:34px;display:grid;place-items:center;flex:none;text-align:center;border-radius:9px;
+  background:#091711;border:1px solid rgba(244,196,94,.18);font-size:15px;font-weight:800;color:#F4C45E;text-shadow:none;
+}
+
+/* 타순 교환 */
+#lineupList .lp-swap-v3432,#spList .lp-swap-v3432{
+  flex:none;width:32px;height:32px;border-radius:9px;background:transparent;
+  border:1px solid rgba(181,209,191,.14);color:#71877B;font-family:inherit;font-size:14px;font-weight:800;line-height:1;
+}
+#lineupList .lp-swap-v3432:active{background:#1D3427;color:#F4C45E}
+#lineupList .lp-swap-v3432[aria-pressed="true"]{
+  background:#F4C45E;border-color:#F4C45E;color:#211706;box-shadow:none;
+}
+#lineupList .lp-sel-v3432{outline:1px solid #F4C45E;outline-offset:-1px;background:#172B21!important}
+#lineupList .lp-target-v3432{border-left-color:rgba(244,196,94,.36)!important}
+#lineupList .lp-injured-v3432,#spList .lp-injured-v3432{opacity:.46}
 #lineupList .lp-guide-v3432{
-  background:rgba(255,193,77,.12);border:1px solid rgba(255,193,77,.35);
-  border-radius:11px;padding:10px 12px;margin-bottom:9px;font-size:13px;font-weight:700;color:var(--amber);
+  margin:0 0 8px;padding:10px 11px;border:1px solid rgba(244,196,94,.25);border-radius:10px;
+  background:#17291F;color:#DDB45B;font-size:11.5px;font-weight:700;box-shadow:none;
 }
-#lineupList .sec, #spList .sec{font-size:14px;margin:14px 0 8px}
-#lineupList .sec small, #spList .sec small{font-size:11px;color:var(--dim);font-weight:600;margin-left:6px}
-/* ── 운영 AI 구단 탭 ── */
+
+/* 전체 로스터도 같은 밀도로 */
+#rosterWrap > .tabs{margin:0 0 10px}
+#rosterWrap .plist{gap:6px}
+#rosterWrap .prow{min-height:60px;margin:0;padding:9px 10px;border-radius:12px;box-shadow:none}
+
+/* 운영 AI 구단 탭 — 원래 이 블록에 있던 정의 유지 */
 .front-subtabs.has-ai-v3432{grid-template-columns:repeat(4,1fr)}
 .ai-pane-empty-v3432{padding:16px;border:1px dashed var(--line);border-radius:13px;color:var(--dim);font-size:13px;line-height:1.6}
+
+@media(max-width:390px){
+  #lineupList .prow,#spList .prow{gap:7px;padding-left:8px;padding-right:8px}
+  #lineupList .lp-ord-v3432,#spList .lp-ord-v3432{width:22px;font-size:15px}
+  #lineupList .prow .pos,#spList .prow .pos{width:33px;height:33px}
+  #lineupList .prow .ovr,#spList .prow .ovr{width:36px}
+}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
