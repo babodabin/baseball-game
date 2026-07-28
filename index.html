@@ -21695,11 +21695,16 @@ window.jumpOffseasonTaskV66=function(key){
 
   // v0.70 · 버전 단일 기준. 과거 블록의 지연 타이머가 실행돼도 낮은 버전으로 내려가지 않는다.
   const VERSION_LOCK='v0.70';
+  const TITLE_V70='우리팀을 만들자 '+VERSION_LOCK;
   function paintVersionV70(){
     try{
-      document.title='우리팀을 만들자 '+VERSION_LOCK;
+      if(document.title!==TITLE_V70)document.title=TITLE_V70;
       document.querySelectorAll('.ver,.version,.version-badge,[data-version],.set-ver-v49 b').forEach(el=>{
         const txt=String(el.textContent||'').trim();
+        // 이미 맞는 값이면 절대 다시 쓰지 않는다. textContent 재대입은 값이 같아도
+        // 텍스트 노드를 갈아끼워 childList 변경을 일으키고, 옵저버가 이를 다시 감지해
+        // 무한 루프가 된다. 이 한 줄이 루프를 끊는 핵심이다.
+        if(txt===VERSION_LOCK)return;
         if(el.matches('.set-ver-v49 b')||el.hasAttribute('data-version')||/v?0\./i.test(txt))el.textContent=VERSION_LOCK;
       });
     }catch(e){console.error(VERSION_LOCK+' 버전 표시:',e);}
@@ -21714,10 +21719,19 @@ window.jumpOffseasonTaskV66=function(key){
   }catch(e){
     try{window.GAME_VERSION=VERSION_LOCK;}catch(_){}
   }
+  // 연속 렌더에도 한 번만 돌도록 묶는다.
+  let versionQueuedV70=false;
+  function scheduleVersionPaintV70(){
+    if(versionQueuedV70)return;
+    versionQueuedV70=true;
+    setTimeout(()=>{versionQueuedV70=false;paintVersionV70();},120);
+  }
   paintVersionV70();
-  // 설정 시트가 나중에 열리거나 구버전 타이머가 DOM을 다시 써도 즉시 정상화한다.
-  const versionObserverV70=new MutationObserver(()=>paintVersionV70());
-  try{versionObserverV70.observe(document.documentElement,{subtree:true,childList:true,characterData:true});}catch(_){}
+  // 설정 시트가 나중에 열리거나 구버전 타이머가 DOM을 다시 써도 정상화한다.
+  // 감시 범위는 body, childList만. characterData와 documentElement 전체 감시는 비용이 너무 크다.
+  try{
+    new MutationObserver(scheduleVersionPaintV70).observe(document.body,{subtree:true,childList:true});
+  }catch(_){}
   [0,500,1500,3200,5000].forEach(ms=>setTimeout(paintVersionV70,ms));
 })();
 </script>
