@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v0.96';
+window.APP_VERSION='v0.97';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -23,9 +23,9 @@ window.applyGameVersion=function(){
 </script>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [002/184] SCRIPT · 7.8KB · 원본 26행
-   정의  : DELAY, KEYS, MAGIC, MAXCODE, SaveCodecV96, SaveStoreV96, cacheIn, codec, codesToString, flush, fromBytes, pack
-   ⚠ 대체됨: KEYS
+   [002/184] SCRIPT · 11.9KB · 원본 26행
+   정의  : DRAFT_KEY, MAGIC, MAXCODE, NSLOT, PART, SLOT_KEY, SaveCodecV96, SaveStoreV96, codec, codesToString, draftPending, flush
+   ⚠ 대체됨: DRAFT_KEY, SLOT_KEY, schedule
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────────── */
 /* v0.96 · 세이브 압축 코덱 (동기)
@@ -124,61 +124,121 @@ window.applyGameVersion=function(){
     unpack: unpack
   };
 })();
-/* v0.96 · 세이브 저장 계층
-   · 압축   : 위 코덱으로 감싸 저장한다. 실측 5.6배(398KB→71KB).
-   · 지연쓰기: 한 시즌에 save()가 223회 불린다. 매번 압축하면 느리므로
-              최대 1.2초에 한 번만 실제로 쓴다. 메모리 값은 항상 최신이라
-              읽기는 즉시 정확하다. 화면을 벗어날 때는 즉시 쓴다.
-   · 실패알림: 용량이 넘치면 조용히 실패하지 않고 사용자에게 알린다. */
+/* v0.97 · 세이브 저장 계층 (슬롯 분리)
+   · 슬롯 분리: 슬롯 5개를 각각 따로 저장한다. 저장할 때 바뀐 슬롯만
+     다시 압축하므로, 팀이 늘어도 비용이 슬롯 하나 몫으로 유지된다.
+   · 압축   : LZW. 실측 5.6~10배.
+   · 지연쓰기: 한 시즌에 save()가 223회 불린다. 실제 기록은 최대 1.2초에
+     한 번만 하고, 화면을 벗어날 때는 즉시 한다.
+   · 바깥 코드에는 예전과 똑같은 하나의 JSON으로 보인다. 백업 파일 형식도
+     그대로다. 나누고 합치는 일은 전부 이 안에서만 일어난다. */
 (function(){
   'use strict';
-  var KEYS = {'ourteam_slots_v1':1, 'ourteam_custom_drafts_v1':1};
-  var DELAY = 1200;
+  var SLOT_KEY  = 'ourteam_slots_v1';
+  var DRAFT_KEY = 'ourteam_custom_drafts_v1';
+  var PART      = 'ourteam_part_v2__';      // + meta / 0..4
+  var NSLOT = 5, DELAY = 1200;
+
   var P = Storage.prototype;
   var rawGet = P.getItem, rawSet = P.setItem, rawDel = P.removeItem;
-  var pending = Object.create(null);   // key → 아직 안 쓴 최신 문자열
   var timer = null, warned = false;
+
+  var slotText = new Array(NSLOT);   // 슬롯별 평문 JSON
+  var slotDirty = new Array(NSLOT);
+  var metaText = null, metaDirty = false;
+  var fullText = null;               // 합쳐진 평문 (읽기용 캐시)
+  var loaded = false;
+  var draftPending = undefined;
 
   function codec(){ return window.SaveCodecV96; }
 
-  var cacheIn = null, cacheOut = null;   // 같은 원문을 두 번 풀지 않는다
-  function readThrough(k){
-    var v = rawGet.call(localStorage, k);
-    if(typeof v !== 'string') return v;
+  function packIfSmaller(plain){
+    var C = codec();
+    if(!C) return plain;
+    try{
+      var p = C.pack(plain);
+      return p.length < plain.length ? p : plain;
+    }catch(e){ console.error('v0.97 압축 실패:', e); return plain; }
+  }
+  function unpackMaybe(v){
     var C = codec();
     if(C && C.isPacked(v)){
-      if(v === cacheIn) return cacheOut;
-      try{
-        var plain = C.unpack(v);
-        cacheIn = v; cacheOut = plain;
-        return plain;
-      }
-      catch(e){ console.error('v0.96 압축 해제 실패:', e); return null; }
+      try{ return C.unpack(v); }
+      catch(e){ console.error('v0.97 압축 해제 실패:', e); return null; }
     }
-    return v;                          // 압축 전 세이브도 그대로 읽힌다
+    return v;
   }
 
-  function writeNow(k, plain){
-    var C = codec(), body = plain;
-    if(C){
-      try{
-        var packed = C.pack(plain);
-        if(packed.length < plain.length) body = packed;   // 작아질 때만 압축
-      }catch(e){ console.error('v0.96 압축 실패:', e); }
+  /* ---------- 저장소 → 메모리 ---------- */
+  function loadParts(){
+    if(loaded) return;
+    loaded = true;
+    var meta = rawGet.call(localStorage, PART + 'meta');
+    if(typeof meta === 'string'){
+      metaText = unpackMaybe(meta);
+      for(var i=0;i<NSLOT;i++){
+        var v = rawGet.call(localStorage, PART + i);
+        slotText[i] = (typeof v === 'string') ? unpackMaybe(v) : 'null';
+      }
+      return;
     }
+    // 나뉘기 전 저장을 옮겨 담는다 (한 번만 일어난다)
+    var legacy = rawGet.call(localStorage, SLOT_KEY);
+    if(typeof legacy !== 'string'){ metaText = null; return; }
+    var plain = unpackMaybe(legacy);
+    if(plain == null){ metaText = null; return; }
+    splitInto(plain);
+    for(var k=0;k<NSLOT;k++) slotDirty[k] = true;
+    metaDirty = true;
+  }
+
+  function splitInto(plain){
+    var o;
+    try{ o = JSON.parse(plain); }
+    catch(e){ console.error('v0.97 저장 해석 실패:', e); return false; }
+    if(!o || typeof o !== 'object') return false;
+    var slots = Array.isArray(o.slots) ? o.slots : [];
+    for(var i=0;i<NSLOT;i++){
+      var t;
+      try{ t = JSON.stringify(slots[i] === undefined ? null : slots[i]); }
+      catch(e){ t = 'null'; }
+      if(t !== slotText[i]){ slotText[i] = t; slotDirty[i] = true; }
+    }
+    var rest = {};
+    for(var k in o) if(k !== 'slots') rest[k] = o[k];
+    var mt;
+    try{ mt = JSON.stringify(rest); }catch(e){ mt = '{}'; }
+    if(mt !== metaText){ metaText = mt; metaDirty = true; }
+    return true;
+  }
+
+  function joinAll(){
+    if(metaText == null && !slotText[0]) return null;
+    var head;
+    try{ head = JSON.parse(metaText || '{}'); }catch(e){ head = {}; }
+    var parts = [];
+    for(var i=0;i<NSLOT;i++) parts.push(slotText[i] == null ? 'null' : slotText[i]);
+    var pre = JSON.stringify(head);
+    // {…meta} 에 "slots":[…] 를 끼워 넣는다. 슬롯을 다시 파싱하지 않기 위한 것이다.
+    var body = '"slots":[' + parts.join(',') + ']';
+    if(pre === '{}') return '{' + body + '}';
+    return pre.slice(0, pre.length-1) + ',' + body + '}';
+  }
+
+  /* ---------- 메모리 → 저장소 ---------- */
+  function writeKey(k, plain){
     try{
-      rawSet.call(localStorage, k, body);
-      if(body !== plain){ cacheIn = body; cacheOut = plain; }
+      rawSet.call(localStorage, k, packIfSmaller(plain));
       return true;
     }catch(e){
-      console.error('v0.96 저장 실패:', e);
+      console.error('v0.97 저장 실패:', e);
       if(!warned){
         warned = true;
+        var msg = '저장 공간이 가득 찼습니다.\n\n' +
+                  '진행 내용이 저장되지 않고 있습니다.\n' +
+                  '운영 → 백업에서 백업 파일을 내보낸 뒤,\n' +
+                  '쓰지 않는 슬롯을 지워 주세요.';
         try{
-          var msg = '저장 공간이 가득 찼습니다.\n\n' +
-                    '진행 내용이 저장되지 않고 있습니다.\n' +
-                    '운영 → 백업에서 백업 파일을 내보낸 뒤,\n' +
-                    '쓰지 않는 슬롯을 지워 주세요.';
           if(typeof window.showAlert === 'function') window.showAlert(msg);
           else alert(msg);
         }catch(_){ }
@@ -189,36 +249,69 @@ window.applyGameVersion=function(){
 
   function flush(){
     if(timer){ clearTimeout(timer); timer = null; }
-    var keys = Object.keys(pending);
-    for(var i=0;i<keys.length;i++){
-      var k = keys[i], v = pending[k];
-      delete pending[k];
-      if(v === null) { try{ rawDel.call(localStorage, k); }catch(_){ } }
-      else writeNow(k, v);
+    if(draftPending !== undefined){
+      var dv = draftPending; draftPending = undefined;
+      if(dv === null){ try{ rawDel.call(localStorage, DRAFT_KEY); }catch(_){ } }
+      else writeKey(DRAFT_KEY, dv);
     }
+    if(fullText != null) splitInto(fullText);   // 여기서만 나눈다 (저장 때마다가 아니라)
+    var wrote = false;
+    for(var i=0;i<NSLOT;i++){
+      if(!slotDirty[i]) continue;
+      slotDirty[i] = false;
+      writeKey(PART + i, slotText[i] == null ? 'null' : slotText[i]);
+      wrote = true;
+    }
+    if(metaDirty){
+      metaDirty = false;
+      writeKey(PART + 'meta', metaText == null ? '{}' : metaText);
+      wrote = true;
+    }
+    // 옮겨 담기가 끝나면 옛 키를 정리한다.
+    if(wrote){ try{ rawDel.call(localStorage, SLOT_KEY); }catch(_){ } }
   }
+  function schedule(){ if(!timer) timer = setTimeout(flush, DELAY); }
 
+  /* ---------- 후킹 ---------- */
   P.getItem = function(k){
-    if(KEYS[k] && this === window.localStorage){
-      if(k in pending) return pending[k];
-      return readThrough(k);
+    if(this === window.localStorage){
+      if(k === SLOT_KEY){
+        if(fullText != null) return fullText;
+        loadParts();
+        fullText = joinAll();
+        return fullText;
+      }
+      if(k === DRAFT_KEY){
+        if(draftPending !== undefined) return draftPending;
+        var v = rawGet.call(localStorage, k);
+        return (typeof v === 'string') ? unpackMaybe(v) : v;
+      }
     }
     return rawGet.apply(this, arguments);
   };
   P.setItem = function(k, v){
-    if(KEYS[k] && this === window.localStorage){
-      pending[k] = String(v);
-      if(!timer) timer = setTimeout(flush, DELAY);
-      return;
+    if(this === window.localStorage){
+      if(k === SLOT_KEY){ loadParts(); fullText = String(v); schedule(); return; }
+      if(k === DRAFT_KEY){ draftPending = String(v); schedule(); return; }
     }
     return rawSet.apply(this, arguments);
   };
   P.removeItem = function(k){
-    if(KEYS[k] && this === window.localStorage){ pending[k] = null; flush(); return; }
+    if(this === window.localStorage){
+      if(k === SLOT_KEY){
+        if(timer){ clearTimeout(timer); timer = null; }
+        fullText = null; metaText = null; metaDirty = false;
+        for(var i=0;i<NSLOT;i++){ slotText[i] = null; slotDirty[i] = false;
+          try{ rawDel.call(localStorage, PART + i); }catch(_){ } }
+        try{ rawDel.call(localStorage, PART + 'meta'); }catch(_){ }
+        loaded = true;
+        return rawDel.call(localStorage, SLOT_KEY);
+      }
+      if(k === DRAFT_KEY){ draftPending = null; flush(); return; }
+    }
     return rawDel.apply(this, arguments);
   };
 
-  // 화면을 벗어나거나 앱이 내려갈 때는 반드시 즉시 기록한다.
   ['pagehide','beforeunload','freeze'].forEach(function(ev){
     window.addEventListener(ev, flush);
   });
@@ -226,20 +319,40 @@ window.applyGameVersion=function(){
 
   window.SaveStoreV96 = {
     flush: flush,
-    // 이미 압축돼 저장된 원문을 그대로 준다. 자동 백업이 같은 데이터를
-    // 다시 압축하지 않도록 하기 위한 것이다.
-    raw: function(k){ flush(); return rawGet.call(localStorage, k); },
-    pendingCount: function(){ return Object.keys(pending).length; },
-    // 실제 저장된 크기(압축 후)와 원본 크기를 함께 돌려준다
+    pendingCount: function(){ return (fullText != null ? 1 : 0); },
+    // 이미 압축돼 저장된 조각들을 하나로 묶어 준다 (자동 백업용).
+    raw: function(){
+      flush();
+      var out = { v:2, meta: rawGet.call(localStorage, PART + 'meta') };
+      for(var i=0;i<NSLOT;i++) out['s'+i] = rawGet.call(localStorage, PART + i);
+      return JSON.stringify(out);
+    },
+    // 위 raw()가 만든 묶음을 되돌린다.
+    restoreRaw: function(text){
+      var o = JSON.parse(text);
+      if(!o || o.v !== 2) throw new Error('형식이 다릅니다.');
+      if(typeof o.meta === 'string') rawSet.call(localStorage, PART + 'meta', o.meta);
+      for(var i=0;i<NSLOT;i++){
+        if(typeof o['s'+i] === 'string') rawSet.call(localStorage, PART + i, o['s'+i]);
+      }
+      loaded = false; fullText = null; metaText = null;
+      for(var k=0;k<NSLOT;k++){ slotText[k] = null; slotDirty[k] = false; }
+      return true;
+    },
     usage: function(){
+      flush();
       var out = {stored:0, plain:0, packed:false};
-      Object.keys(KEYS).forEach(function(k){
+      var keys = [PART+'meta', DRAFT_KEY];
+      for(var i=0;i<NSLOT;i++) keys.push(PART+i);
+      keys.forEach(function(k){
         var s = rawGet.call(localStorage, k);
         if(typeof s !== 'string') return;
         out.stored += s.length;
         var C = codec();
-        if(C && C.isPacked(s)){ out.packed = true; try{ out.plain += C.unpack(s).length; }catch(_){ out.plain += s.length; } }
-        else out.plain += s.length;
+        if(C && C.isPacked(s)){
+          out.packed = true;
+          try{ out.plain += C.unpack(s).length; }catch(_){ out.plain += s.length; }
+        } else out.plain += s.length;
       });
       return out;
     }
@@ -248,7 +361,7 @@ window.applyGameVersion=function(){
 </script>
 <!--
 ==============================================================================
-  우리팀을 만들자 — 파일 지도 (v0.96 기준 · 자동 생성)
+  우리팀을 만들자 — 파일 지도 (v0.97 기준 · 자동 생성)
 ==============================================================================
 
   단일 HTML 안에 스타일/스크립트 블록이 순서대로 쌓인 구조입니다.
@@ -265,80 +378,80 @@ window.applyGameVersion=function(){
 ------------------------------------------------------------------------------
   주요 구간 (4KB 이상)
 ------------------------------------------------------------------------------
-  [002]     26행      7.8KB  SC  (제목 없음)
-  [003]    400행     35.8KB  ST  v0.24.2 운영 화면 정리
-  [006]   1218행    712.4KB  SC  v0.28.6 — 저장 슬롯·구버전 데이터 안전 복구
-  [012]   9078행      5.6KB  SC  (제목 없음)
-  [014]   9195행      6.0KB  SC  구형 WebView에서는 메타데이터 인덱스 저장만 유지
-  [015]   9361행      6.6KB  SC  (제목 없음)
-  [018]   9607행      4.6KB  SC  (제목 없음)
-  [020]   9735행     10.0KB  SC  (제목 없음)
-  [021]   9851행      6.3KB  SC  (제목 없음)
-  [022]   9962행      7.6KB  SC  (제목 없음)
-  [024]  10120행     10.2KB  SC  (제목 없음)
-  [026]  10261행      7.9KB  SC  v0.33.5 성장·노화·잠재력·출장 경험 시스템
-  [029]  10402행      7.9KB  SC  v0.33.8 특수능력 획득·각성 시스템
-  [031]  10535행      8.8KB  SC  v0.33.9 선수 히스토리 시스템
-  [033]  10596행      7.1KB  SC  v0.34.0 선수 성격 시스템
-  [035]  10678행      6.3KB  SC  v0.34.1 선수 가치 시스템
-  [037]  10729행      8.2KB  SC  v0.34.2 명예의 전당 시스템
-  [039]  10846행     10.0KB  SC  v0.34.3 구단 역사 시스템
-  [041]  10959행     13.2KB  SC  v0.34.5 기록 기반 동적 라이벌 시스템
-  [043]  11080행      6.5KB  SC  v0.34.5 포지션·보직 기반 OVR 재설계
-  [048]  11303행      5.4KB  SC  (제목 없음)
-  [049]  11423행      5.1KB  SC  (제목 없음)
-  [051]  11539행     32.3KB  SC  v0.53: 감독 지시가 이닝을 알 수 있게 밖으로 내보낸다
-  [053]  11914행     29.6KB  SC  (제목 없음)
-  [057]  12203행     10.5KB  SC  (제목 없음)
-  [058]  12283행      7.7KB  SC  v0.34.13 · AI PLAYER VALUE ENGINE
-  [059]  12397행      7.4KB  SC  v0.34.13 · AI FA 구단 운영
-  [061]  12528행      8.1KB  SC  v0.34.13 · AI 트레이드 구단 운영
-  [063]  12675행     10.2KB  SC  v0.34.13 · AI 구단 운영 코어
-  [065]  12786행     10.9KB  SC  v0.34.13 · AI 로스터 관리
-  [067]  12928행     10.2KB  SC  v0.34.13 · AI 계약·재계약 관리
-  [069]  13035행      8.4KB  SC  v0.34.13 · AI 감독 운영
-  [071]  13138행      8.0KB  SC  v0.34.13 · AI 장기 운영
-  [073]  13212행      9.6KB  SC  v0.34.13 · AI 재정·구단주 운영
-  [075]  13292행     11.0KB  SC  v0.34.13 · AI 외국인 선수 운영
-  [077]  13370행     14.9KB  SC  v0.46.5 · 게임 진단·복구 엔진
-  [079]  13757행     11.4KB  SC  v0.34.13 · AI 감독·코칭스태프
-  [081]  13908행     10.5KB  SC  v0.34.13 · AI 시설 투자
-  [084]  14069행      8.2KB  SC  v0.34.13 · AI 리그 생태계·장기 밸런스
-  [086]  14152행      9.4KB  SC  v0.34.13 · AI 단장 성향
-  [088]  14268행      6.2KB  SC  v0.34.13 선수 개성 보완: 효과 설명 · 희귀 변화 · 주장 판정 안정화
-  [089]  14354행      5.3KB  ST  실제 조작 요소의 터치 영역
-  [092]  14562행      5.5KB  SC  (제목 없음)
-  [097]  14887행      4.5KB  SC  (제목 없음)
-  [099]  14981행      7.8KB  SC  (제목 없음)
-  [101]  15135행      5.9KB  SC  (제목 없음)
-  [102]  15285행      7.6KB  SC  (제목 없음)
-  [109]  15684행      4.8KB  ST  (제목 없음)
-  [110]  15789행     10.2KB  SC  v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭
-  [113]  16081행      6.2KB  SC  v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로
-  [117]  16409행     13.8KB  SC  v0.34.36 · FA 라운드제 입찰
-  [119]  16731행      5.9KB  SC  v0.34.37 · 백업·복원 (자동저장은 그대로)
-  [120]  16876행      4.2KB  ST  상단 3열 요약
-  [122]  16972행      6.4KB  SC  v0.35.0 나의 팀 대시보드
-  [123]  17069행      6.4KB  SC  (제목 없음)
-  [125]  17132행      4.7KB  SC  v0.38 · 이식 기능 통합 보정
-  [127]  17271행      6.2KB  SC  v0.39 · 창단 구단 실제 생성
-  [128]  17405행     12.8KB  SC  v0.39 · 확장 드래프트 진행 + 구단 생성
-  [132]  17923행     17.7KB  SC  v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록
-  [134]  18296행      9.4KB  SC  v0.46.5 · 설정 + 게임 진단·복구
-  [135]  18465행      4.6KB  SC  v0.46.5 · 생성 선수 이름·동명이인 구분
-  [137]  18611행      4.5KB  SC  v0.46.6 · 슬롯 리그 정합 + 슬롯 선택 삭제
-  [144]  18915행      6.2KB  SC  내 경기 결과 파싱
-  [147]  19186행      8.2KB  SC  시드 난수
-  [148]  19378행      5.0KB  SC  재생 타이머 추적
-  [150]  19626행      5.6KB  SC  지시가 켜져 있는 구간인가
-  [152]  19793행      4.5KB  SC  추천
-  [155]  19962행      8.9KB  SC  v0.57과 같은 규칙)
-  [167]  20618행      6.4KB  SC  (제목 없음)
-  [169]  20802행      4.9KB  ST  (제목 없음)
-  [170]  20937행      6.7KB  ST  (제목 없음)
-  [171]  21094행      4.7KB  ST  (제목 없음)
-  [172]  21184행     12.7KB  SC  (제목 없음)
-  [183]  21767행      7.3KB  SC  (제목 없음)
+  [002]     26행     11.9KB  SC  (제목 없음)
+  [003]    513행     35.8KB  ST  v0.24.2 운영 화면 정리
+  [006]   1331행    712.4KB  SC  v0.28.6 — 저장 슬롯·구버전 데이터 안전 복구
+  [012]   9191행      5.6KB  SC  (제목 없음)
+  [014]   9308행      6.0KB  SC  구형 WebView에서는 메타데이터 인덱스 저장만 유지
+  [015]   9474행      6.6KB  SC  (제목 없음)
+  [018]   9720행      4.6KB  SC  (제목 없음)
+  [020]   9848행     10.0KB  SC  (제목 없음)
+  [021]   9964행      6.3KB  SC  (제목 없음)
+  [022]  10075행      7.6KB  SC  (제목 없음)
+  [024]  10233행     10.2KB  SC  (제목 없음)
+  [026]  10374행      7.9KB  SC  v0.33.5 성장·노화·잠재력·출장 경험 시스템
+  [029]  10515행      7.9KB  SC  v0.33.8 특수능력 획득·각성 시스템
+  [031]  10648행      8.8KB  SC  v0.33.9 선수 히스토리 시스템
+  [033]  10709행      7.1KB  SC  v0.34.0 선수 성격 시스템
+  [035]  10791행      6.3KB  SC  v0.34.1 선수 가치 시스템
+  [037]  10842행      8.2KB  SC  v0.34.2 명예의 전당 시스템
+  [039]  10959행     10.0KB  SC  v0.34.3 구단 역사 시스템
+  [041]  11072행     13.2KB  SC  v0.34.5 기록 기반 동적 라이벌 시스템
+  [043]  11193행      6.5KB  SC  v0.34.5 포지션·보직 기반 OVR 재설계
+  [048]  11416행      5.4KB  SC  (제목 없음)
+  [049]  11536행      5.1KB  SC  (제목 없음)
+  [051]  11652행     32.3KB  SC  v0.53: 감독 지시가 이닝을 알 수 있게 밖으로 내보낸다
+  [053]  12027행     29.6KB  SC  (제목 없음)
+  [057]  12316행     10.5KB  SC  (제목 없음)
+  [058]  12396행      7.7KB  SC  v0.34.13 · AI PLAYER VALUE ENGINE
+  [059]  12510행      7.4KB  SC  v0.34.13 · AI FA 구단 운영
+  [061]  12641행      8.1KB  SC  v0.34.13 · AI 트레이드 구단 운영
+  [063]  12788행     10.2KB  SC  v0.34.13 · AI 구단 운영 코어
+  [065]  12899행     10.9KB  SC  v0.34.13 · AI 로스터 관리
+  [067]  13041행     10.2KB  SC  v0.34.13 · AI 계약·재계약 관리
+  [069]  13148행      8.4KB  SC  v0.34.13 · AI 감독 운영
+  [071]  13251행      8.0KB  SC  v0.34.13 · AI 장기 운영
+  [073]  13325행      9.6KB  SC  v0.34.13 · AI 재정·구단주 운영
+  [075]  13405행     11.0KB  SC  v0.34.13 · AI 외국인 선수 운영
+  [077]  13483행     14.9KB  SC  v0.46.5 · 게임 진단·복구 엔진
+  [079]  13870행     11.4KB  SC  v0.34.13 · AI 감독·코칭스태프
+  [081]  14021행     10.5KB  SC  v0.34.13 · AI 시설 투자
+  [084]  14182행      8.2KB  SC  v0.34.13 · AI 리그 생태계·장기 밸런스
+  [086]  14265행      9.4KB  SC  v0.34.13 · AI 단장 성향
+  [088]  14381행      6.2KB  SC  v0.34.13 선수 개성 보완: 효과 설명 · 희귀 변화 · 주장 판정 안정화
+  [089]  14467행      5.3KB  ST  실제 조작 요소의 터치 영역
+  [092]  14675행      5.5KB  SC  (제목 없음)
+  [097]  15000행      4.5KB  SC  (제목 없음)
+  [099]  15094행      7.8KB  SC  (제목 없음)
+  [101]  15248행      5.9KB  SC  (제목 없음)
+  [102]  15398행      7.6KB  SC  (제목 없음)
+  [109]  15797행      4.8KB  ST  (제목 없음)
+  [110]  15902행     10.2KB  SC  v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭
+  [113]  16194행      6.2KB  SC  v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로
+  [117]  16522행     13.8KB  SC  v0.34.36 · FA 라운드제 입찰
+  [119]  16844행      5.9KB  SC  v0.34.37 · 백업·복원 (자동저장은 그대로)
+  [120]  16989행      4.2KB  ST  상단 3열 요약
+  [122]  17085행      6.4KB  SC  v0.35.0 나의 팀 대시보드
+  [123]  17182행      6.4KB  SC  (제목 없음)
+  [125]  17245행      4.7KB  SC  v0.38 · 이식 기능 통합 보정
+  [127]  17384행      6.2KB  SC  v0.39 · 창단 구단 실제 생성
+  [128]  17518행     12.8KB  SC  v0.39 · 확장 드래프트 진행 + 구단 생성
+  [132]  18036행     17.7KB  SC  v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록
+  [134]  18409행      9.4KB  SC  v0.46.5 · 설정 + 게임 진단·복구
+  [135]  18578행      4.6KB  SC  v0.46.5 · 생성 선수 이름·동명이인 구분
+  [137]  18724행      4.5KB  SC  v0.46.6 · 슬롯 리그 정합 + 슬롯 선택 삭제
+  [144]  19029행      6.2KB  SC  내 경기 결과 파싱
+  [147]  19300행      8.2KB  SC  시드 난수
+  [148]  19492행      5.0KB  SC  재생 타이머 추적
+  [150]  19740행      5.6KB  SC  지시가 켜져 있는 구간인가
+  [152]  19907행      4.5KB  SC  추천
+  [155]  20076행      8.9KB  SC  v0.57과 같은 규칙)
+  [167]  20732행      6.4KB  SC  (제목 없음)
+  [169]  20916행      4.9KB  ST  (제목 없음)
+  [170]  21051행      6.7KB  ST  (제목 없음)
+  [171]  21208행      4.7KB  ST  (제목 없음)
+  [172]  21298행     12.7KB  SC  (제목 없음)
+  [183]  21881행      7.5KB  SC  (제목 없음)
 
 ------------------------------------------------------------------------------
   가장 많이 재정의된 이름 — 고칠 때는 반드시 마지막 정의를 찾으세요
@@ -397,7 +510,7 @@ window.applyGameVersion=function(){
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
 /* ─────────────────────────────────────────
-   [003/184] STYLE · 35.8KB · 원본 400행
+   [003/184] STYLE · 35.8KB · 원본 513행
    주제  : v0.24.2 운영 화면 정리
    ───────────────────────────────────────── */
 :root{
@@ -1138,7 +1251,7 @@ nav button.lock{opacity:.32}
 <!-- v0.42 · 시즌 길이 표시 헬퍼 -->
 <script>
 /* ──────────────────────────────────────────────────
-   [004/184] SCRIPT · 0.3KB · 원본 1141행
+   [004/184] SCRIPT · 0.3KB · 원본 1254행
    주제  : 팀 수에 따라 시즌 경기 수가 달라진다(10팀 36 / 12팀 33).
    정의  : seasonLenV42
    ────────────────────────────────────────────────── */
@@ -1154,7 +1267,7 @@ window.seasonLenV42=function(){
 <!-- v0.43 · 모드별 난이도 차등 -->
 <script>
 /* ───────────────────────────────────────────────────────────────────────────────────────
-   [005/184] SCRIPT · 2.2KB · 원본 1157행
+   [005/184] SCRIPT · 2.2KB · 원본 1270행
    주제  : 기존에는 하드가 자금 계수만 달랐고 경기 쪽은 내 팀 OVR -1 하나뿐이라 체감이 없었다.
    정의  : DIFF_V43, diffAdjV43, diffRuleV43, free, hard, normal, set, sig, topAiSetV43
    ─────────────────────────────────────────────────────────────────────────────────────── */
@@ -1215,7 +1328,7 @@ window.diffAdjV43=function(teamId){
 </script>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [006/184] SCRIPT · 712.4KB · 원본 1218행
+   [006/184] SCRIPT · 712.4KB · 원본 1331행
    주제  : v0.28.6 — 저장 슬롯·구버전 데이터 안전 복구
    정의  : AGES, AI_BAT_MIN, AI_BAT_POSITIONS, AI_BAT_TARGET, AI_TARGET_ROSTER, BALANCE_GAME_DEPTH_V287, BALANCE_V287, BASE_IDS_V465, BASE_TEAMS_V465, BASE_TEAM_MARKS_V465, BAT_POSITIONS, BOOST_CUR
    ⚠ 대체됨: POS_ORDER, add, addDraftPlayer, advanceDraftToUser, age, aiDraftChoiceIndex, aiTopUpRosters, amask, applyGrowthWithTraining, autoAssignLineup
@@ -8934,7 +9047,7 @@ try{ensurePlayerProfilesV314();save();}catch(err){console.error('v0.31.4 프로�
 <!-- v0.32.1 라인업 수비배치 스타일 -->
 <style>
 /* ────────────────────────────────────────
-   [007/184] STYLE · 0.4KB · 원본 8937행
+   [007/184] STYLE · 0.4KB · 원본 9050행
    ──────────────────────────────────────── */
 .def-section-v315{margin:12px 0 7px;padding:8px 12px;border-radius:10px;background:rgba(255,196,77,.10);color:var(--gold);font-weight:800;font-size:13px;letter-spacing:.02em}
 .def-slot-v315 .ord{font-size:13px}.def-slot-v315 .lp{font-weight:800;color:#f0c35a}
@@ -8943,7 +9056,7 @@ try{ensurePlayerProfilesV314();save();}catch(err){console.error('v0.31.4 프로�
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [008/184] SCRIPT · 2.6KB · 원본 8946행
+   [008/184] SCRIPT · 2.6KB · 원본 9059행
    감쌈  : benchBatters  (이전 정의를 호출하는 체인)
    정의  : DEFENSE_NAME_V315, DEFENSE_ORDER_V315, lineupRowV315, primaryNote, repairPitchPlansV316, swap
    ⚠ 대체됨: benchBatters
@@ -8990,7 +9103,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ────────────────────────────────────────
-   [009/184] STYLE · 0.5KB · 원본 8993행
+   [009/184] STYLE · 0.5KB · 원본 9106행
    ──────────────────────────────────────── */
 .pitch-section-v313.closer{background:rgba(255,94,77,.11);color:#ffb08e;border:1px solid rgba(255,94,77,.18)}
 .closer-row-v316{border-color:rgba(255,94,77,.32)!important}
@@ -9003,7 +9116,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <script>
 /* ────────────────────────────────────────────────
-   [010/184] SCRIPT · 2.0KB · 원본 9006행
+   [010/184] SCRIPT · 2.0KB · 원본 9119행
    정의  : lineupCaptureV319, openLineupSafeV319
    ⚠ 대체됨: openLineupSafeV319
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
@@ -9059,7 +9172,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.32.1 특수능력 상세·라인업 교체 복구 -->
 <style>
 /* ─────────────────────────────────────────
-   [011/184] STYLE · 1.1KB · 원본 9062행
+   [011/184] STYLE · 1.1KB · 원본 9175행
    ───────────────────────────────────────── */
 .lineup-section-v320{margin:16px 0 8px;padding:10px 13px;border-radius:12px;border:1px solid rgba(255,196,77,.22);background:rgba(255,196,77,.09);font-weight:900;color:var(--gold);display:flex;justify-content:space-between;align-items:center}
 .lineup-section-v320.bench{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.12);color:#e0e7e2}
@@ -9075,7 +9188,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [012/184] SCRIPT · 5.6KB · 원본 9078행
+   [012/184] SCRIPT · 5.6KB · 원본 9191행
    감쌈  : benchBatters, renderPitchStaffV310, specialAbilityPanelV280, specialAbilityPanelV282  (이전 정의를 호출하는 체인)
    정의  : ABILITY_DETAIL_V320, abilityCountsV320, allBenchBattersV320, lineupStarterRowV320, oldPanel, oldPitchRender, openSpecialAbilitiesDetailV320, panelV320, sectionV320
    ⚠ 대체됨: benchBatters, oldPanel, renderPitchStaffV310, specialAbilityPanelV280
@@ -9171,7 +9284,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <script>
 /* ──────────────────────────────────────────
-   [013/184] SCRIPT · 0.5KB · 원본 9174행
+   [013/184] SCRIPT · 0.5KB · 원본 9287행
    정의  : setLuMode
    ────────────────────────────────────────── */
 (function(){
@@ -9192,7 +9305,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.32.6 선수 세부 능력치 데이터 기반 추가 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [014/184] SCRIPT · 6.0KB · 원본 9195행
+   [014/184] SCRIPT · 6.0KB · 원본 9308행
    주제  : 구형 WebView에서는 메타데이터 인덱스 저장만 유지
    감쌈  : save  (이전 정의를 호출하는 체인)
    정의  : META_MARK_V326, batOvrBaseV326, batterStyleV326, bindSkillAliasV326, clampSkillV326, ensureAllSlotsV326, ensureOneV326, ensurePlayerSkillsV326, ensurePlayersV326, ensureTeamV326, generateBatterSkillsV326, generatePitcherSkillsV326
@@ -9358,7 +9471,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.32.7 비시즌 세부 능력치 집중 훈련 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [015/184] SCRIPT · 6.6KB · 원본 9361행
+   [015/184] SCRIPT · 6.6KB · 원본 9474행
    감쌈  : applyGrowthWithTraining, doTrain, openTrainSheet, renderOffseason  (이전 정의를 호출하는 체인)
    정의  : BAT_SKILLS_V327, LABELS_V327, PIT_SKILLS_V327, addDetailedTrainingV327, coachTargetV327, ensurePlanMapV327, expectedTextV327, previousGrowthV327, previousRenderOffseasonV327, skillLabelV327, skillValueV327, teamAndPlayerV327
    ⚠ 대체됨: applyGrowthWithTraining, openTrainSheet, renderOffseason
@@ -9508,7 +9621,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.32.8 선수 상세 세부 능력치 표시 -->
 <style>
 /* ─────────────────────────────────────────
-   [016/184] STYLE · 1.2KB · 원본 9511행
+   [016/184] STYLE · 1.2KB · 원본 9624행
    ───────────────────────────────────────── */
 .skill-detail-v328{margin-top:12px;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.025)}
 .skill-detail-v328 .skill-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;font-size:11px;color:var(--dim);letter-spacing:.06em}
@@ -9523,7 +9636,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [017/184] SCRIPT · 3.1KB · 원본 9526행
+   [017/184] SCRIPT · 3.1KB · 원본 9639행
    감쌈  : openSheet, playerStatsHtml  (이전 정의를 호출하는 체인)
    정의  : BAT_V328, LABELS_V328, PIT_V328, detailedSkillsHtmlV328, ensureSkillsV328, gradeV328, previousOpenSheetV328, previousPlayerStatsHtmlV328
    ⚠ 대체됨: openSheet, playerStatsHtml
@@ -9604,7 +9717,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.33.0 세부 능력치 경기 엔진 보완 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [018/184] SCRIPT · 4.6KB · 원본 9607행
+   [018/184] SCRIPT · 4.6KB · 원본 9720행
    감쌈  : paResult  (이전 정의를 호출하는 체인)
    정의  : blendedBatV329, blendedPitV329, defenseRatingV329, legacyBatV329, legacyPitV329, nV329, skillEngineV329, skillV329
    ⚠ 대체됨: paResult, skillEngineV329
@@ -9717,7 +9830,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.33.1 투수 구종 데이터·비시즌 훈련·상세 표시 -->
 <style>
 /* ─────────────────────────────────────────
-   [019/184] STYLE · 1.0KB · 원본 9720행
+   [019/184] STYLE · 1.0KB · 원본 9833행
    ───────────────────────────────────────── */
 .pitch-repertoire-v331{margin-top:12px;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(86,154,255,.045)}
 .pitch-repertoire-v331 .pr-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;font-size:11px;color:var(--dim);letter-spacing:.05em}
@@ -9732,7 +9845,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [020/184] SCRIPT · 10.0KB · 원본 9735행
+   [020/184] SCRIPT · 10.0KB · 원본 9848행
    감쌈  : applyGrowthWithTraining, openSheet, openTrainSheet, playerStatsHtml, save  (이전 정의를 호출하는 체인)
    정의  : LABEL, META_MARK, PITCH_DB, applyPitchTraining, assignPitchTraining, bind, doLearnPitchV331, doPitchMasteryTrainV331, ensureAll, ensurePitcher, ensurePlayers, generatedPitches
    ⚠ 대체됨: LABEL, applyGrowthWithTraining, bind, ensureAll, ensurePlayers, hash, metaOf, openSheet, playerStatsHtml, prevGrowth
@@ -9848,7 +9961,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.33.2 구종 경기 엔진 반영 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [021/184] SCRIPT · 6.3KB · 원본 9851행
+   [021/184] SCRIPT · 6.3KB · 원본 9964행
    감쌈  : paResult, skillEngineV329  (이전 정의를 호출하는 체인)
    정의  : bat332, clamp332, defense332, legacyBat332, legacyPit332, num332, pit332, pitchProfileV332, profile332, skill332
    ⚠ 대체됨: paResult, skillEngineV329
@@ -9959,7 +10072,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.33.3 숨겨진 선수 DNA 시스템 -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [022/184] SCRIPT · 7.6KB · 원본 9962행
+   [022/184] SCRIPT · 7.6KB · 원본 10075행
    감쌈  : applyGrowthWithTraining, bind, clamp, ensureAll, ensurePlayers, hash, metaOf, prevGrowth, prevSave, save  (이전 정의를 호출하는 체인)
    정의  : BAT_DNA, META, PIT_DNA, chooseBat, choosePit, dnaDef, ensureOne, infoForKey, integrate, playerDnaV333
    ⚠ 대체됨: META, applyGrowthWithTraining, bind, chooseBat, choosePit, clamp, ensureAll, ensureOne, ensurePlayers, hash
@@ -10107,7 +10220,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.33.4 선수 성향 시스템 -->
 <style>
 /* ─────────────────────────────────────────
-   [023/184] STYLE · 0.5KB · 원본 10110행
+   [023/184] STYLE · 0.5KB · 원본 10223행
    ───────────────────────────────────────── */
 .tendency-detail-v334{margin-top:12px;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,190,92,.045)}
 .tendency-detail-v334 .td-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;font-size:11px;color:var(--dim);letter-spacing:.05em}
@@ -10117,7 +10230,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [024/184] SCRIPT · 10.2KB · 원본 10120행
+   [024/184] SCRIPT · 10.2KB · 원본 10233행
    감쌈  : META, bind, clamp, ensureAll, ensureOne, ensurePlayers, hash, level, metaOf, openSheet  (이전 정의를 호출하는 체인)
    정의  : build, dnaType, playerTendenciesV334, prevOpen, previousPa, rng, tendencyHtml, tendencyHtmlV334
    ⚠ 대체됨: META, bind, clamp, ensureAll, ensureOne, hash, level, metaOf, openSheet, paResult
@@ -10249,7 +10362,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [025/184] STYLE · 0.4KB · 원본 10252행
+   [025/184] STYLE · 0.4KB · 원본 10365행
    ───────────────────────────────────────── */
 .growth-profile-v335{margin-top:12px;padding:12px;border:1px solid rgba(143,211,255,.16);border-radius:12px;background:rgba(143,211,255,.045)}
 .growth-profile-v335 .gp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:11px;color:var(--dim)}
@@ -10258,7 +10371,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [026/184] SCRIPT · 7.9KB · 원본 10261행
+   [026/184] SCRIPT · 7.9KB · 원본 10374행
    주제  : v0.33.5 성장·노화·잠재력·출장 경험 시스템
    감쌈  : LABEL, META, applyGrowthWithTraining, clamp, ensureAll, hash, meta, playerStatsHtml, prevGrowth, prevSave  (이전 정의를 호출하는 체인)
    정의  : BAT_KEYS, PIT_KEYS, ageAt, currentOvr, deltaFor, dnaPreferred, ensureProfile, experienceFactor, gamesFor, grade, growthProfileHtmlV335, playerGrowthProfileV335
@@ -10376,7 +10489,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <script>
 /* ────────────────────────────────────────────
-   [027/184] SCRIPT · 0.6KB · 원본 10379행
+   [027/184] SCRIPT · 0.6KB · 원본 10492행
    주제  : v0.33.6 수비 시스템 버전 표시
    감쌈  : skillEngineV329  (이전 정의를 호출하는 체인)
    ⚠ 대체됨: skillEngineV329
@@ -10392,14 +10505,14 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [028/184] STYLE · 0.3KB · 원본 10395행
+   [028/184] STYLE · 0.3KB · 원본 10508행
    ───────────────────────────────────────── */
 .special-history-v338{margin-top:12px;padding:12px;border:1px solid rgba(255,210,74,.22);border-radius:12px;background:rgba(255,210,74,.045);font-size:12px;line-height:1.55}
 .special-history-v338 .sh-title{font-weight:900;color:var(--gold);margin-bottom:6px}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [029/184] SCRIPT · 7.9KB · 원본 10402행
+   [029/184] SCRIPT · 7.9KB · 원본 10515행
    주제  : v0.33.8 특수능력 획득·각성 시스템
    감쌈  : applyGrowthWithTraining, prevGrowth, renderSeasonDone, simGame, skillEngineV329, snap, specialAbilityPanelV280  (이전 정의를 호출하는 체인)
    정의  : abilityIcon, abilityName, addHistory, chooseBatAbility, choosePitAbility, diff, ensureState, gameAwards, grant, historyPanel, prevDone, prevPanel
@@ -10522,7 +10635,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [030/184] STYLE · 0.5KB · 원본 10525행
+   [030/184] STYLE · 0.5KB · 원본 10638행
    ───────────────────────────────────────── */
 .player-history-v339{margin-top:12px;padding:12px;border:1px solid rgba(158,197,255,.24);border-radius:12px;background:rgba(158,197,255,.045);font-size:12px;line-height:1.55}
 .player-history-v339 .ph-title{font-weight:900;color:#9EC5FF;margin-bottom:7px}
@@ -10532,7 +10645,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [031/184] SCRIPT · 8.8KB · 원본 10535행
+   [031/184] SCRIPT · 8.8KB · 원본 10648행
    주제  : v0.33.9 선수 히스토리 시스템
    감쌈  : add, ensureState, metaOf, openSheet, processRetirements, renderSeasonDone, simGame, skillEngineV329, snap  (이전 정의를 호출하는 체인)
    정의  : META_SCHEMA, ensureRoster, escapeHtml, findPlayer, gameMilestones, historyHtml, oldDone, oldRet, oldSheet, oldSim, playerKey, seasonAchievements
@@ -10586,14 +10699,14 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [032/184] STYLE · 0.4KB · 원본 10589행
+   [032/184] STYLE · 0.4KB · 원본 10702행
    ───────────────────────────────────────── */
 .personality-v340{margin-top:12px;padding:12px;border:1px solid rgba(215,170,255,.2);border-radius:12px;background:rgba(215,170,255,.045);font-size:12px;line-height:1.55}
 .personality-v340 .pv-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.personality-v340 .pv-name{font-weight:900;color:#d9b8ff}.personality-v340 .pv-note{color:var(--dim);font-size:11px}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [033/184] SCRIPT · 7.1KB · 원본 10596행
+   [033/184] SCRIPT · 7.1KB · 원본 10709행
    주제  : v0.34.0 선수 성격 시스템
    감쌈  : applyGrowthWithTraining, def, ensureAll, ensureOne, hash, html, meta, openSheet, playerMorale, playerStatsHtml  (이전 정의를 호출하는 체인)
    정의  : TYPES, choose, oldGrowth, oldHealth, oldMorale, oldSheetPersonality, oldStats, personalityModifierV340, playerPersonalityV340
@@ -10668,14 +10781,14 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [034/184] STYLE · 0.6KB · 원본 10671행
+   [034/184] STYLE · 0.6KB · 원본 10784행
    ───────────────────────────────────────── */
 .player-value-v341{margin-top:12px;padding:12px;border:1px solid rgba(255,182,59,.24);border-radius:12px;background:rgba(255,182,59,.055);font-size:12px;line-height:1.55}
 .player-value-v341 .vv-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:7px}.player-value-v341 .vv-title{font-weight:900;color:var(--amber)}.player-value-v341 .vv-grade{font-family:'IBM Plex Mono';font-weight:900;font-size:16px}.player-value-v341 .vv-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:7px;color:var(--dim)}.player-value-v341 .vv-grid b{color:var(--text)}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [035/184] SCRIPT · 6.3KB · 원본 10678행
+   [035/184] SCRIPT · 6.3KB · 원본 10791행
    주제  : v0.34.1 선수 가치 시스템
    감쌈  : clamp, grade, html, meta, oldSheet, oldStats, openSheet, playerStatsHtml, skillEngineV329  (이전 정의를 호출하는 체인)
    정의  : ageOfPlayer, agePremium, estimateMoney, evaluate, personalityValue, playerMarketValueV341, positionPremium, potential, recentPerformance, repertoireValue, skills, specialCount
@@ -10718,7 +10831,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [036/184] STYLE · 0.7KB · 원본 10721행
+   [036/184] STYLE · 0.7KB · 원본 10834행
    ───────────────────────────────────────── */
 .hof-v342{margin-top:12px;padding:12px;border:1px solid rgba(255,211,106,.28);border-radius:14px;background:linear-gradient(135deg,rgba(255,211,106,.08),rgba(255,255,255,.025));font-size:12px;line-height:1.55}
 .hof-v342 .hof-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}.hof-v342 .hof-title{font-weight:900;color:#FFD36A;font-size:14px}.hof-v342 .hof-score{font-family:'IBM Plex Mono';font-weight:900;color:var(--amber)}
@@ -10726,7 +10839,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [037/184] SCRIPT · 8.2KB · 원본 10729행
+   [037/184] SCRIPT · 8.2KB · 원본 10842행
    주제  : v0.34.2 명예의 전당 시스템
    감쌈  : META_SCHEMA, ensureState, grade, meta, oldDone, oldRet, openHistoryRoom, processRetirements, renderSeasonDone, skillEngineV329  (이전 정의를 호출하는 체인)
    정의  : accumulateSeason, addFields, clone, consider, enrichNewRetirees, esc, formatCareer, hallCards, hallScore, historyPoints, migrateRetired, oldHistory
@@ -10833,7 +10946,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [038/184] STYLE · 1.2KB · 원본 10836행
+   [038/184] STYLE · 1.2KB · 원본 10949행
    ───────────────────────────────────────── */
 .franchise-v343{margin-top:12px;padding:12px;border:1px solid rgba(103,201,255,.25);border-radius:14px;background:linear-gradient(135deg,rgba(103,201,255,.07),rgba(255,255,255,.02));font-size:12px;line-height:1.55}
 .franchise-v343 .fh-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}.franchise-v343 .fh-title{font-size:14px;font-weight:900;color:#9EDCFF}.franchise-v343 .fh-badge{font-family:'IBM Plex Mono';font-weight:900;color:var(--amber)}
@@ -10843,7 +10956,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [039/184] SCRIPT · 10.0KB · 원본 10846행
+   [039/184] SCRIPT · 10.0KB · 원본 10959행
    주제  : v0.34.3 구단 역사 시스템
    감쌈  : META_SCHEMA, esc, finishDay, historyHtml, meta, oldDone, oldHistory, openHistoryRoom, renderSeasonDone, skillEngineV329  (이전 정의를 호출하는 체인)
    정의  : chooseCaptain, ensure, migrate, oldFinish, openFranchiseHistoryV343, playerName, recordSeason, seasonLeaders, seasonTeamTotals, summary, teamName, topLegends
@@ -10946,7 +11059,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [040/184] STYLE · 1.0KB · 원본 10949행
+   [040/184] STYLE · 1.0KB · 원본 11062행
    ───────────────────────────────────────── */
 .rival-v344{margin-top:12px;padding:12px;border:1px solid rgba(255,93,93,.28);border-radius:14px;background:linear-gradient(135deg,rgba(255,70,70,.08),rgba(255,255,255,.02));font-size:12px;line-height:1.55}
 .rival-v344 .rv-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}.rival-v344 .rv-title{font-size:14px;font-weight:900;color:#FF9D9D}.rival-v344 .rv-badge{font-family:'IBM Plex Mono';font-weight:900;color:var(--amber)}
@@ -10956,7 +11069,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [041/184] SCRIPT · 13.2KB · 원본 10959행
+   [041/184] SCRIPT · 13.2KB · 원본 11072행
    주제  : v0.34.5 기록 기반 동적 라이벌 시스템
    감쌈  : META_SCHEMA, addHistory, ctx, ensure, esc, findPlayer, meta, oldSheet, oldSim, openFranchiseHistoryV343  (이전 정의를 호출하는 체인)
    정의  : RIVAL_MIN_SCORE, announceRivalChange, bindPlayerRivals, isPostseasonGame, isRival, isTitleRaceGame, keyPair, oldFr, oldPA, oldRoom, openRivalryV344, personalityBoost
@@ -11069,7 +11182,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [042/184] STYLE · 0.7KB · 원본 11072행
+   [042/184] STYLE · 0.7KB · 원본 11185행
    ───────────────────────────────────────── */
 .ovr-redesign-v345{margin-top:12px;padding:12px;border:1px solid rgba(126,231,135,.25);border-radius:13px;background:rgba(126,231,135,.055);font-size:12px;line-height:1.55}
 .ovr-redesign-v345 .or-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}.ovr-redesign-v345 .or-title{font-weight:900;color:#9AF0A2}.ovr-redesign-v345 .or-score{font-family:'IBM Plex Mono';font-size:17px;font-weight:900}
@@ -11077,7 +11190,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [043/184] SCRIPT · 6.5KB · 원본 11080행
+   [043/184] SCRIPT · 6.5KB · 원본 11193행
    주제  : v0.34.5 포지션·보직 기반 OVR 재설계
    감쌈  : batOvr, breakdown, clamp, html, oldSheet, openSheet, pitOvr, rawBatOvrV300, rawPitOvrV300, repertoire  (이전 정의를 호출하는 체인)
    정의  : BAT_WEIGHTS, adjusted, batterBreakdown, num, ovrBreakdownV345, pitcherBreakdown, specialistBonus, velocityScore, weighted
@@ -11195,7 +11308,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <script>
 /* ──────────────────────────────────────────
-   [044/184] SCRIPT · 0.4KB · 원본 11198행
+   [044/184] SCRIPT · 0.4KB · 원본 11311행
    주제  : v0.34.8 진행 방식별 기록 범위 최종 연결
    감쌈  : btn  (이전 정의를 호출하는 체인)
    ────────────────────────────────────────── */
@@ -11216,7 +11329,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.34.10 모바일 훈련 배정 클릭 안정화 -->
 <script>
 /* ──────────────────────────────────────────
-   [045/184] SCRIPT · 0.7KB · 원본 11219행
+   [045/184] SCRIPT · 0.7KB · 원본 11332행
    감쌈  : bindOffseason  (이전 정의를 호출하는 체인)
    정의  : oldBind
    ────────────────────────────────────────── */
@@ -11243,7 +11356,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.34.10 훈련 선택창 호출 수정 -->
 <script>
 /* ────────────────────────────────────────────
-   [046/184] SCRIPT · 1.0KB · 원본 11246행
+   [046/184] SCRIPT · 1.0KB · 원본 11359행
    감쌈  : openSheet  (이전 정의를 호출하는 체인)
    정의  : playerDetailSheetV3410
    ⚠ 대체됨: openSheet
@@ -11279,7 +11392,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.34.12 훈련 선택창 UI 정리 · 경기 시작 강제 복구 -->
 <style>
 /* ─────────────────────────────────────────
-   [047/184] STYLE · 1.6KB · 원본 11282행
+   [047/184] STYLE · 1.6KB · 원본 11395행
    ───────────────────────────────────────── */
 #sheet.training-sheet-v3411{padding-bottom:max(28px,env(safe-area-inset-bottom));}
 #sheet.training-sheet-v3411 .top{position:sticky;top:0;z-index:5;margin:-2px -2px 14px;padding:4px 2px 12px;background:linear-gradient(180deg,rgba(18,35,27,.98) 72%,rgba(18,35,27,0));}
@@ -11300,7 +11413,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [048/184] SCRIPT · 5.4KB · 원본 11303행
+   [048/184] SCRIPT · 5.4KB · 원본 11416행
    감쌈  : closeSheet, openSheet, playMyGame  (이전 정의를 호출하는 체인)
    정의  : exactPositionRepairV3411, previousCloseSheet, previousOpenSheet, previousPlayMyGame, readinessV3411, todayTeamsV3411
    ⚠ 대체됨: openSheet, playMyGame
@@ -11420,7 +11533,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.34.13 season stats repair + unified game start -->
 <script>
 /* ─────────────────────────────────────────────────────────────────────
-   [049/184] SCRIPT · 5.1KB · 원본 11423행
+   [049/184] SCRIPT · 5.1KB · 원본 11536행
    감쌈  : playMyGame  (이전 정의를 호출하는 체인)
    정의  : VERSION, normalizeTeamForGameV3412, unifiedPlayMyGameV3412
    ⚠ 대체됨: VERSION, playMyGame
@@ -11526,7 +11639,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.34.13 player individuality completion: clutch, pinch hitting, bunt/steal traits, leadership, fielding proficiency -->
 <style>
 /* ─────────────────────────────────────────
-   [050/184] STYLE · 0.6KB · 원본 11529행
+   [050/184] STYLE · 0.6KB · 원본 11642행
    ───────────────────────────────────────── */
 .player-archetype-v3413{margin-top:12px;padding:12px;border:1px solid rgba(119,214,155,.22);border-radius:12px;background:rgba(119,214,155,.045);font-size:12px;line-height:1.58}
 .player-archetype-v3413 .pa-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:7px}
@@ -11536,7 +11649,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [051/184] SCRIPT · 32.3KB · 원본 11539행
+   [051/184] SCRIPT · 32.3KB · 원본 11652행
    주제  : v0.53: 감독 지시가 이닝을 알 수 있게 밖으로 내보낸다
    감쌈  : META, VERSION, autoAssignLineup, canPlay, catcherInfoV337, defenderRatingV336, ensureAll, ensureHealthyLineup, halfInning, hash  (이전 정의를 호출하는 체인)
    정의  : FIELD, GAME_CONTEXT_V3413, INF, OUTF, adjustedDefense, candidateBatScore, cap, ensureTraits, gameForm, isBigGame, isFirstEligible, leaderAura
@@ -11897,7 +12010,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [052/184] STYLE · 2.4KB · 원본 11900행
+   [052/184] STYLE · 2.4KB · 원본 12013행
    주제  : v0.34.13 시즌 스카우팅·드래프트 긴장감
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 시즌 스카우팅·드래프트 긴장감 ═══════════ */
@@ -11911,7 +12024,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [053/184] SCRIPT · 29.6KB · 원본 11914행
+   [053/184] SCRIPT · 29.6KB · 원본 12027행
    감쌈  : addDraftPlayer, advanceDraftToUser, aiDraftChoiceIndex, applyGrowthWithTraining, buildOffseasonMarket, clamp, draftOrderStatusHtml, draftPick, ensureKboDraftMarket, generateDraftCandidate  (이전 정의를 호출하는 체인)
    정의  : GROWTH, INJURY, ORIGIN, PATCH, actualOvr, applyDraftProfile, budgetMax, buildSlots, compensationClaim, cooldown, currentPool, ensureCandidate
    ⚠ 대체됨: PATCH, addDraftPlayer, advanceDraftToUser, aiDraftChoiceIndex, applyGrowthWithTraining, buildOffseasonMarket, clamp, draftOrderStatusHtml, draftPick, hash
@@ -12151,7 +12264,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [054/184] STYLE · 0.6KB · 원본 12154행
+   [054/184] STYLE · 0.6KB · 원본 12267행
    ───────────────────────────────────────── */
 .ai-philosophy-v3413{margin-top:14px;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(0,0,0,.12)}
 .ai-philosophy-v3413 .title{font-weight:900;color:var(--amber);margin-bottom:5px}.ai-philosophy-grid-v3413{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
@@ -12160,7 +12273,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [055/184] SCRIPT · 2.9KB · 원본 12163행
+   [055/184] SCRIPT · 2.9KB · 원본 12276행
    감쌈  : ensure, hash, renderFront  (이전 정의를 호출하는 체인)
    정의  : PHILOSOPHIES, aiClubPhilosophiesV3413, aiClubProfileV3413, oldRenderFront, panel
    ⚠ 대체됨: ensure, hash, oldRenderFront, panel, renderFront
@@ -12188,7 +12301,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [056/184] STYLE · 1.1KB · 원본 12191행
+   [056/184] STYLE · 1.1KB · 원본 12304행
    주제  : v0.34.13 스카우트·드래프트 최종 완성 패치
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 스카우트·드래프트 최종 완성 패치 ═══════════ */
@@ -12200,7 +12313,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [057/184] SCRIPT · 10.5KB · 원본 12203행
+   [057/184] SCRIPT · 10.5KB · 원본 12316행
    감쌈  : PATCH, addDraftPlayer, advanceDraftToUser, aiDraftChoiceIndex, clamp, draftPick, kboDraftPanelHtml, oldPanel, oldStats, openDraftSheet  (이전 정의를 호출하는 체인)
    정의  : AI_STYLES, ensureNews, extraCard, oldAdd, oldAdvance, oldAiChoice, oldDraftOpen, oldPick, oldScoutOpen, outcomeLabel, recordNewPicks, runDraftWorkoutV3413
    ⚠ 대체됨: aiDraftChoiceIndex, clamp, kboDraftPanelHtml, oldPanel, oldStats, ovr, playerStatsHtml, pool, skillEngineV329, styleFor
@@ -12280,7 +12393,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [058/184] SCRIPT · 7.7KB · 원본 12283행
+   [058/184] SCRIPT · 7.7KB · 원본 12396행
    주제  : v0.34.13 · AI PLAYER VALUE ENGINE
    감쌈  : ageOfPlayer, aiDraftChoiceIndex, clamp, evaluate, meta, num, perceivedValue, skillEngineV329, team  (이전 정의를 호출하는 체인)
    정의  : VER, aiPlayerValueEngineV3413, aiPlayerValueV3413, evaluatePlayerValue, healthOf, kindOf, ovrOfPlayer, philosophy, positionOf, potentialOf, salaryOfPlayer, scarcity
@@ -12394,7 +12507,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [059/184] SCRIPT · 7.4KB · 원본 12397행
+   [059/184] SCRIPT · 7.4KB · 원본 12510행
    주제  : v0.34.13 · AI FA 구단 운영
    감쌈  : TYPES, VER, buildOffseasonMarket, hash, offseasonChecklist, panel, renderOffseason, score, signFA  (이전 정의를 호출하는 체인)
    정의  : aiState, asking, clubInfo, moveFa, needFor, oldBuild, oldChecklist, oldRender, oldSign, ovrFor, refreshInterest, runAiFaMarketV3413
@@ -12515,7 +12628,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [060/184] STYLE · 0.6KB · 원본 12518행
+   [060/184] STYLE · 0.6KB · 원본 12631행
    주제  : v0.34.13 · AI 트레이드 구단 운영
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 트레이드 구단 운영 ═══════════ */
@@ -12525,7 +12638,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [061/184] SCRIPT · 8.1KB · 원본 12528행
+   [061/184] SCRIPT · 8.1KB · 원본 12641행
    주제  : v0.34.13 · AI 트레이드 구단 운영
    감쌈  : VER, ageAt, candidates, hash, oldRenderFront, panel, renderFront, root, skillEngineV329  (이전 정의를 호출하는 체인)
    정의  : eligibleNow, execute, findDeal, gainScore, moveOne, need, phase, pos, roundKey, runAiTradeMarketV3413, style, value
@@ -12659,7 +12772,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [062/184] STYLE · 1.2KB · 원본 12662행
+   [062/184] STYLE · 1.2KB · 원본 12775행
    주제  : v0.34.13 · AI 구단 운영 코어
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 구단 운영 코어 ═══════════ */
@@ -12672,7 +12785,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [063/184] SCRIPT · 10.2KB · 원본 12675행
+   [063/184] SCRIPT · 10.2KB · 원본 12788행
    주제  : v0.34.13 · AI 구단 운영 코어
    감쌈  : VER, clamp, finishDay, hash, newSeason, oldFinish, oldNewSeason, oldRenderFront, panel, renderFront  (이전 정의를 호출하는 체인)
    정의  : OWNERS, STRATEGIES, aiClubCoreV3413, aiStrategyV3413, analyze, chooseStrategy, ensureRoot, fanLabel, finance, financeLabel, playerAge, profile
@@ -12773,7 +12886,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [064/184] STYLE · 0.8KB · 원본 12776행
+   [064/184] STYLE · 0.8KB · 원본 12889행
    ───────────────────────────────────────── */
 .ai-roster-v3413{margin-top:14px;padding:12px;border:1px solid rgba(110,210,160,.22);border-radius:14px;background:rgba(20,46,38,.28)}
 .ai-roster-v3413 .title{font-weight:900;margin-bottom:4px}.ai-roster-v3413 .sub{font-size:11px;color:var(--dim);line-height:1.55;margin-bottom:9px}
@@ -12783,7 +12896,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [065/184] SCRIPT · 10.9KB · 원본 12786행
+   [065/184] SCRIPT · 10.9KB · 원본 12899행
    주제  : v0.34.13 · AI 로스터 관리
    감쌈  : VER, age, autoAssignLineup, benchBatters, chooseBat, choosePit, clamp, ensure, finishDay, newSeason  (이전 정의를 호출하는 체인)
    정의  : activeCount, aiRosterStateV3413, core, ensureMinimum, health, manageClub, offseasonTrim, oldAssign, oldBench, oldFront, oldPool, oldSeason
@@ -12913,7 +13026,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [066/184] STYLE · 0.9KB · 원본 12916행
+   [066/184] STYLE · 0.9KB · 원본 13029행
    주제  : v0.34.13 · AI 계약·재계약 관리
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 계약·재계약 관리 ═══════════ */
@@ -12925,7 +13038,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [067/184] SCRIPT · 10.2KB · 원본 12928행
+   [067/184] SCRIPT · 10.2KB · 원본 13041행
    주제  : v0.34.13 · AI 계약·재계약 관리
    감쌈  : VER, age, buildOffseasonMarket, clamp, core, ensureAll, hash, key, offseasonChecklist, oldBuild  (이전 정의를 호출하는 체인)
    정의  : aiContractStateV3413, budgetFor, contract, oldAiFa, payroll, process, removePlayer, retainScore, runAiContractMarketV3413, salary
@@ -13020,7 +13133,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [068/184] STYLE · 0.9KB · 원본 13023행
+   [068/184] STYLE · 0.9KB · 원본 13136행
    주제  : v0.34.13 · AI 감독 운영
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 감독 운영 ═══════════ */
@@ -13032,7 +13145,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [069/184] SCRIPT · 8.4KB · 원본 13035행
+   [069/184] SCRIPT · 8.4KB · 원본 13148행
    주제  : v0.34.13 · AI 감독 운영
    감쌈  : VER, age, clamp, core, finishDay, health, newSeason, oldFinish, oldFront, panel  (이전 정의를 호출하는 체인)
    정의  : STYLE, aiManagerBullpenFactorV3413, aiManagerTacticV3413, buildLineup, buildPitchPlan, lineupScore, oldNew, oldRoster, updateAiManagerV3413
@@ -13123,7 +13236,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [070/184] STYLE · 1.1KB · 원본 13126행
+   [070/184] STYLE · 1.1KB · 원본 13239행
    주제  : v0.34.13 · AI 장기 운영
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 장기 운영 ═══════════ */
@@ -13135,7 +13248,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [071/184] SCRIPT · 8.0KB · 원본 13138행
+   [071/184] SCRIPT · 8.0KB · 원본 13251행
    주제  : v0.34.13 · AI 장기 운영
    감쌈  : VER, ageOfPlayer, clamp, core, newSeason, oldFront, oldNew, panel, renderFront, root  (이전 정의를 호출하는 체인)
    정의  : PHASES, aiLongTermBiasV3413, aiLongTermPlanV3413, baseProfile, choosePhase, horizon, oldCore, rosterSnapshot, updateAiLongTermV3413, yearlyRecord
@@ -13197,7 +13310,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [072/184] STYLE · 1.1KB · 원본 13200행
+   [072/184] STYLE · 1.1KB · 원본 13313행
    주제  : v0.34.13 · AI 재정·구단주 운영
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 재정·구단주 운영 ═══════════ */
@@ -13209,7 +13322,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [073/184] SCRIPT · 9.6KB · 원본 13212행
+   [073/184] SCRIPT · 9.6KB · 원본 13325행
    주제  : v0.34.13 · AI 재정·구단주 운영
    감쌈  : VER, buildOffseasonMarket, clamp, core, evaluate, finishDay, hash, key, newSeason, oldBuild  (이전 정의를 호출하는 체인)
    정의  : aiFinanceBudgetV3413, aiFinanceStateV3413, contracts, initClub, longPlan, oldFa, oldOff, ownerLabel, ownerType, record, rosterStars, settleSeason
@@ -13277,7 +13390,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [074/184] STYLE · 0.9KB · 원본 13280행
+   [074/184] STYLE · 0.9KB · 원본 13393행
    주제  : v0.34.13 · AI 외국인 선수 운영
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 외국인 선수 운영 ═══════════ */
@@ -13289,7 +13402,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [075/184] SCRIPT · 11.0KB · 원본 13292행
+   [075/184] SCRIPT · 11.0KB · 원본 13405행
    주제  : v0.34.13 · AI 외국인 선수 운영
    감쌈  : VER, add, age, buildOffseasonMarket, clamp, contract, core, cost, counts, finance  (이전 정의를 호출하는 체인)
    정의  : aiForeignStateV3413, ensureExisting, oldRun, remove, runAiForeignMarketV3413
@@ -13355,7 +13468,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [076/184] STYLE · 0.9KB · 원본 13358행
+   [076/184] STYLE · 0.9KB · 원본 13471행
    주제  : v0.34.13 · 장기 시뮬레이션 안정화
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · 장기 시뮬레이션 안정화 ═══════════ */
@@ -13367,7 +13480,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [077/184] SCRIPT · 14.9KB · 원본 13370행
+   [077/184] SCRIPT · 14.9KB · 원본 13483행
    주제  : v0.46.5 · 게임 진단·복구 엔진
    감쌈  : VER, add, buildOffseasonMarket, clamp, finishDay, newSeason, oldBuild, oldFinish, oldFront, oldNew  (이전 정의를 호출하는 체인)
    정의  : POS, audit, checkRoster, cleanContracts, ensureLineup, ensurePitch, ensureTeam, gameDiagnosticAuditV462, gameDiagnosticStateV462, inspectAmbiguousState, runSimStabilityCheckV3413, scheduled
@@ -13742,7 +13855,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [078/184] STYLE · 0.9KB · 원본 13745행
+   [078/184] STYLE · 0.9KB · 원본 13858행
    주제  : v0.34.13 · AI 감독·코칭스태프
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 감독·코칭스태프 ═══════════ */
@@ -13754,7 +13867,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [079/184] SCRIPT · 11.4KB · 원본 13757행
+   [079/184] SCRIPT · 11.4KB · 원본 13870행
    주제  : v0.34.13 · AI 감독·코칭스태프
    감쌈  : VER, aiManagerBullpenFactorV3413, applyGrowthWithTraining, clamp, core, finance, finishDay, hash, longPlan, managerAttackBonus  (이전 정의를 호출하는 체인)
    정의  : BAT, MANAGER, PIT, aiStaffStateV3413, attackBonus, batScores, initial, managerScores, oldAtk, oldBullpen, oldPit, pitScores
@@ -13893,7 +14006,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [080/184] STYLE · 1.3KB · 원본 13896행
+   [080/184] STYLE · 1.3KB · 원본 14009행
    주제  : v0.34.13 · AI 시설 투자
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 시설 투자 ═══════════ */
@@ -13905,10 +14018,10 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [081/184] SCRIPT · 10.5KB · 원본 13908행
+   [081/184] SCRIPT · 10.5KB · 원본 14021행
    주제  : v0.34.13 · AI 시설 투자
-   감쌈  : KEYS, LABEL, VER, aiDraftChoiceIndex, applyGrowthWithTraining, clamp, club, core, finance, hash  (이전 정의를 호출하는 체인)
-   정의  : COST, aiFacilityLevelV3413, aiFacilityStateV3413, annualBenefit, oldDraft, reserveTarget, updateAiFacilitiesV3413
+   감쌈  : LABEL, VER, aiDraftChoiceIndex, applyGrowthWithTraining, clamp, club, core, finance, hash, initial  (이전 정의를 호출하는 체인)
+   정의  : COST, KEYS, aiFacilityLevelV3413, aiFacilityStateV3413, annualBenefit, oldDraft, reserveTarget, updateAiFacilitiesV3413
    ⚠ 대체됨: LABEL, VER, aiDraftChoiceIndex, clamp, club, core, hash, newSeason, oldFront, oldNew
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────────── */
@@ -14019,7 +14132,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <script>
 /* ─────────────────────────────────────────────────────────────────────────────────────
-   [082/184] SCRIPT · 2.9KB · 원본 14022행
+   [082/184] SCRIPT · 2.9KB · 원본 14135행
    주제  : v0.34.13 · AI 경기 운영 고도화
    감쌈  : VER, oldFront, panel, plan, renderFront, skillEngineV329  (이전 정의를 호출하는 체인)
    정의  : aiInGameTacticsV3413, css
@@ -14054,7 +14167,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [083/184] STYLE · 1.0KB · 원본 14057행
+   [083/184] STYLE · 1.0KB · 원본 14170행
    주제  : v0.34.13 · AI 리그 생태계·장기 밸런스
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 리그 생태계·장기 밸런스 ═══════════ */
@@ -14066,7 +14179,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [084/184] SCRIPT · 8.2KB · 원본 14069행
+   [084/184] SCRIPT · 8.2KB · 원본 14182행
    주제  : v0.34.13 · AI 리그 생태계·장기 밸런스
    감쌈  : VER, audit, clamp, club, evaluatePlayerValue, ids, newSeason, oldDone, oldFront, oldNew  (이전 정의를 호출하는 체인)
    정의  : aiLeagueEcosystemV3413, avgAge, context, financeFlag, oldEval, recOf
@@ -14136,7 +14249,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [085/184] STYLE · 1.0KB · 원본 14139행
+   [085/184] STYLE · 1.0KB · 원본 14252행
    주제  : v0.34.13 · AI 단장 성향
    ───────────────────────────────────────── */
 /* ═══════════ v0.34.13 · AI 단장 성향 ═══════════ */
@@ -14149,7 +14262,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [086/184] SCRIPT · 9.4KB · 원본 14152행
+   [086/184] SCRIPT · 9.4KB · 원본 14265행
    주제  : v0.34.13 · AI 단장 성향
    감쌈  : VER, aiDraftChoiceIndex, aiPlayerValueV3413, clamp, core, eco, evaluatePlayerValue, hash, newSeason, oldEval  (이전 정의를 호출하는 체인)
    정의  : ARCH, aiGmPersonalityV3413, evolve, make, modifiers, traitText
@@ -14254,7 +14367,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
 <style>
 /* ─────────────────────────────────────────
-   [087/184] STYLE · 0.5KB · 원본 14257행
+   [087/184] STYLE · 0.5KB · 원본 14370행
    주제  : v0.34.13 선수 개성 보완
    ───────────────────────────────────────── */
 /* v0.34.13 선수 개성 보완 */
@@ -14265,7 +14378,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [088/184] SCRIPT · 6.2KB · 원본 14268행
+   [088/184] SCRIPT · 6.2KB · 원본 14381행
    주제  : v0.34.13 선수 개성 보완: 효과 설명 · 희귀 변화 · 주장 판정 안정화
    감쌈  : LABEL, VER, ageAt, hash, meta, oldDone, oldSheet, oldStats, openSheet, playerStatsHtml  (이전 정의를 호출하는 체인)
    정의  : EFFECT, candidate, detailHtml, evolveOne, evolveSeason, playerPersonalityPolishV3413, seasonStat
@@ -14351,7 +14464,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <!-- v0.34.14 — 모바일 UI/터치/반응형/모달 안정화 최종 보정 -->
 <style>
 /* ─────────────────────────────────────────
-   [089/184] STYLE · 5.3KB · 원본 14354행
+   [089/184] STYLE · 5.3KB · 원본 14467행
    주제  : 실제 조작 요소의 터치 영역
    ───────────────────────────────────────── */
 :root{
@@ -14471,7 +14584,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ────────────────────────────────────────────────────────────────────
-   [090/184] SCRIPT · 2.1KB · 원본 14474행
+   [090/184] SCRIPT · 2.1KB · 원본 14587행
    주제  : v0.34.14 modal state, focus, viewport and backdrop safety
    감쌈  : amask, body  (이전 정의를 호출하는 체인)
    정의  : lastFocus, mask, sync, visible
@@ -14535,7 +14648,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.13 UX hotfix: faster auto progress + visible game-start feedback -->
 <style>
 /* ─────────────────────────────────────────
-   [091/184] STYLE · 0.7KB · 원본 14538행
+   [091/184] STYLE · 0.7KB · 원본 14651행
    ───────────────────────────────────────── */
 #playBtn{
   position:relative;
@@ -14559,7 +14672,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [092/184] SCRIPT · 5.5KB · 원본 14562행
+   [092/184] SCRIPT · 5.5KB · 원본 14675행
    감쌈  : finish, push, renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : batchRunningV3413, bindV3413, fastSkip5V3413, gameStartingV3413, oldRenderGameSetupV3413, paintV3413, startGameVisibleV3413
    ⚠ 대체됨: finish, push, renderGameSetup
@@ -14722,7 +14835,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 version marker -->
 <script>
 /* ────────────────────────────────────────────────────
-   [093/184] SCRIPT · 0.6KB · 원본 14725행
+   [093/184] SCRIPT · 0.6KB · 원본 14838행
    감쌈  : GAME_VERSION, VERSION  (이전 정의를 호출하는 체인)
    정의  : applyVersionV3414
    ⚠ 대체됨: GAME_VERSION, VERSION, applyVersionV3414
@@ -14750,7 +14863,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 final version display override -->
 <script>
 /* ───────────────────────────────────────────────────────
-   [094/184] SCRIPT · 0.8KB · 원본 14753행
+   [094/184] SCRIPT · 0.8KB · 원본 14866행
    감쌈  : VERSION, applyVersionV3414  (이전 정의를 호출하는 체인)
    ⚠ 대체됨: VERSION
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
@@ -14779,7 +14892,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 instant 5-game simulation -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [095/184] SCRIPT · 2.8KB · 원본 14782행
+   [095/184] SCRIPT · 2.8KB · 원본 14895행
    감쌈  : VERSION, renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : applyVersionV3415, batchRunningV3415, bindFastBatchV3415, prevRenderGameSetupV3415
    ⚠ 대체됨: VERSION, renderGameSetup
@@ -14871,7 +14984,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 fast result simulation + unmistakable game-button feedback -->
 <style>
 /* ─────────────────────────────────────────
-   [096/184] STYLE · 0.4KB · 원본 14874행
+   [096/184] STYLE · 0.4KB · 원본 14987행
    ───────────────────────────────────────── */
 #playBtn.v3416-working,#skip5Btn.v3416-working{
   transform:scale(.975)!important;
@@ -14884,7 +14997,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [097/184] SCRIPT · 4.5KB · 원본 14887행
+   [097/184] SCRIPT · 4.5KB · 원본 15000행
    감쌈  : GAME_VERSION, VERSION, bind, finish, old, push, renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : applyVersion, paintThen, singleRunning, startBatch, startSingle
    ⚠ 대체됨: GAME_VERSION, VERSION, applyVersion, finish, old, push, renderGameSetup
@@ -14969,7 +15082,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 complete pitcher allocation, full rotation, bullpen reserve -->
 <style>
 /* ─────────────────────────────────────────
-   [098/184] STYLE · 0.4KB · 원본 14972행
+   [098/184] STYLE · 0.4KB · 원본 15085행
    ───────────────────────────────────────── */
 .pitch-section-v3417{margin-top:10px;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.055);font-size:12px;font-weight:800;color:#dfe9e3}
 .pitch-section-v3417.reserve{background:rgba(143,163,150,.10);color:#aebdb4}
@@ -14978,7 +15091,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [099/184] SCRIPT · 7.8KB · 원본 14981행
+   [099/184] SCRIPT · 7.8KB · 원본 15094행
    감쌈  : VERSION, bullpenOrderOfV310, pitchPlanOfV310, renderPitchStaffV310, rotOrderOf, setBalancedFirstTeamV300  (이전 정의를 호출하는 체인)
    정의  : orderedIndexes
    ⚠ 대체됨: VERSION
@@ -15120,7 +15233,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.30 authoritative mobile-safe batch runner -->
 <style>
 /* ─────────────────────────────────────────
-   [100/184] STYLE · 0.3KB · 원본 15123행
+   [100/184] STYLE · 0.3KB · 원본 15236행
    ───────────────────────────────────────── */
 #skip5Btn.v3418-working,#playBtn.v3418-working{
   transform:scale(.975)!important;
@@ -15132,7 +15245,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ────────────────────────────────────────────────────────────────────────────────────
-   [101/184] SCRIPT · 5.9KB · 원본 15135행
+   [101/184] SCRIPT · 5.9KB · 원본 15248행
    감쌈  : GAME_VERSION, VERSION, finish, push, renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : batchBusy, bindV3418, cleanButtonV3418, forceVersionV3418, previousRender
    ⚠ 대체됨: GAME_VERSION, VERSION, push, renderGameSetup
@@ -15282,7 +15395,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 <!-- v0.34.31 save migration + guaranteed lineup recovery -->
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [102/184] SCRIPT · 7.6KB · 원본 15285행
+   [102/184] SCRIPT · 7.6KB · 원본 15398행
    감쌈  : GAME_VERSION, VERSION, benchBatters, getLineup, openLineupSafeV319  (이전 정의를 호출하는 체인)
    정의  : buildSafeLineupV3419, ensureCoreStateV3419, forceVersionV3419, migrateAllV3419, repairFirstTeamV3419, validIndex
    ⚠ 대체됨: GAME_VERSION, VERSION
@@ -15450,7 +15563,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ────────────────────────────────────────────────────────────────────────────
-   [103/184] SCRIPT · 1.6KB · 원본 15453행
+   [103/184] SCRIPT · 1.6KB · 원본 15566행
    주제  : v0.34.30 · 하단 내비게이션 화면 동기화
    감쌈  : VERSION, show  (이전 정의를 호출하는 체인)
    정의  : badge, oldShow, screenToNav, syncBottomNav, syncFromVisibleScreen
@@ -15498,7 +15611,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </script>
 <script>
 /* ────────────────────────────────────────────────────────
-   [104/184] SCRIPT · 2.1KB · 원본 15501행
+   [104/184] SCRIPT · 2.1KB · 원본 15614행
    주제  : v0.34.30 · 경기 탭 진입 안정화
    감쌈  : VERSION, badge  (이전 정의를 호출하는 체인)
    정의  : openGameSafeV3423, openGameV3423, syncGameNav
@@ -15554,7 +15667,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ────────────────────────────────────────────────────────
-   [105/184] SCRIPT · 0.3KB · 원본 15557행
+   [105/184] SCRIPT · 0.3KB · 원본 15670행
    주제  : v0.34.30 · lexical state compatibility bridge
    ──────────────────────────────────────────────────────── */
 /* v0.34.30 · lexical state compatibility bridge */
@@ -15573,7 +15686,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ───────────────────────────────────────────────────────────────
-   [106/184] SCRIPT · 1.2KB · 원본 15576행
+   [106/184] SCRIPT · 1.2KB · 원본 15689행
    주제  : v0.34.30 · 충돌 패치 제거 후 안정화
    감쌈  : GAME_VERSION, old, renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : version
@@ -15620,7 +15733,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ─────────────────────────────────────────────────────────────────
-   [107/184] SCRIPT · 0.9KB · 원본 15623행
+   [107/184] SCRIPT · 0.9KB · 원본 15736행
    주제  : v0.34.31 · ensureSquadState 무한 재귀 차단
    감쌈  : GAME_VERSION, base, ensureSquadState  (이전 정의를 호출하는 체인)
    ⚠ 대체됨: GAME_VERSION, base
@@ -15651,7 +15764,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ────────────────────────────────────────────
-   [108/184] SCRIPT · 0.8KB · 원본 15654행
+   [108/184] SCRIPT · 0.8KB · 원본 15767행
    주제  : v0.34.31 · 버전 표기 최종 고정
    감쌈  : GAME_VERSION  (이전 정의를 호출하는 체인)
    정의  : apply
@@ -15681,7 +15794,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <style>
 /* ──────────────────────────────────────────
-   [109/184] STYLE · 4.8KB · 원본 15684행
+   [109/184] STYLE · 4.8KB · 원본 15797행
    ────────────────────────────────────────── */
 /* ═══════════ v0.88 · LINEUP BOARD ═══════════ */
 /* 최종 .prow 라인업 렌더러의 단일 디자인 정의. 과거 .lrow/order-row 전용 스타일은 제거했다. */
@@ -15786,7 +15899,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [110/184] SCRIPT · 10.2KB · 원본 15789행
+   [110/184] SCRIPT · 10.2KB · 원본 15902행
    주제  : v0.34.32 · 라인업 카드 통일 + 운영 AI 구단 탭
    감쌈  : GAME_VERSION, oldFront, renderFront  (이전 정의를 호출하는 체인)
    정의  : AI_SEL, POS_EN, buildAiTab, posBox, prowCard, renderLineup, renderPitchers, sec, subLine, ver
@@ -16007,7 +16120,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <script>
 /* ───────────────────────────────────────────────────────────────
-   [111/184] SCRIPT · 2.1KB · 원본 16010행
+   [111/184] SCRIPT · 2.1KB · 원본 16123행
    주제  : v0.34.33 · 자동 진행 속도 (AI 로스터 재계산 캐싱)
    감쌈  : GAME_VERSION, aiTopUpRosters, base  (이전 정의를 호출하는 체인)
    정의  : invalidateAiRosterCacheV3433, lastSig, signature
@@ -16067,7 +16180,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <style>
 /* ────────────────────────────────────────────
-   [112/184] STYLE · 0.3KB · 원본 16070행
+   [112/184] STYLE · 0.3KB · 원본 16183행
    주제  : v0.34.34 · FA 영입에 따른 지명 순번 페널티 표시
    ──────────────────────────────────────────── */
 /* v0.34.34 · FA 영입에 따른 지명 순번 페널티 표시 */
@@ -16078,7 +16191,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [113/184] SCRIPT · 6.2KB · 원본 16081행
+   [113/184] SCRIPT · 6.2KB · 원본 16194행
    주제  : v0.34.34 · FA 영입 = 드래프트 지명 순번 한 칸 뒤로
    감쌈  : GAME_VERSION, draftOrderStatusHtml, kboDraftPanelHtml, market, oldAiFa, oldPanel, oldSignFA, repairDraftState, runAiFaMarketV3413, signFA  (이전 정의를 호출하는 체인)
    정의  : baseOrder, computePen, faDraftPenaltyV3434, oldRepair, orderWithPenalty, penMap, rebuildSlots, started
@@ -16237,7 +16350,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
 <style>
 /* ──────────────────────────────────────────
-   [114/184] STYLE · 3.3KB · 원본 16240행
+   [114/184] STYLE · 3.3KB · 원본 16353행
    주제  : v0.34.35 · 마감 점검 (줄바꿈·터치·상태·넘침)
    ────────────────────────────────────────── */
 /* ═══════════ v0.34.35 · 마감 점검 (줄바꿈·터치·상태·넘침) ═══════════ */
@@ -16319,7 +16432,7 @@ main *,.sheet *{max-width:100%}
 </style>
 <script>
 /* ────────────────────────────────────────────────────────
-   [115/184] SCRIPT · 1.5KB · 원본 16322행
+   [115/184] SCRIPT · 1.5KB · 원본 16435행
    주제  : v0.34.35 · 마감 점검 (조작 일관성)
    감쌈  : GAME_VERSION, oldShow, show  (이전 정의를 호출하는 체인)
    정의  : syncDisabledV3435
@@ -16369,7 +16482,7 @@ main *,.sheet *{max-width:100%}
 
 <style>
 /* ──────────────────────────────────────────
-   [116/184] STYLE · 1.8KB · 원본 16372행
+   [116/184] STYLE · 1.8KB · 원본 16485행
    주제  : v0.34.36 · FA 라운드제 입찰
    ────────────────────────────────────────── */
 /* ═══════════ v0.34.36 · FA 라운드제 입찰 ═══════════ */
@@ -16406,7 +16519,7 @@ main *,.sheet *{max-width:100%}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [117/184] SCRIPT · 13.8KB · 원본 16409행
+   [117/184] SCRIPT · 13.8KB · 원본 16522행
    주제  : v0.34.36 · FA 라운드제 입찰
    감쌈  : GAME_VERSION, log, needScore, oldRun, openFaSheet, runAiFaMarketV3413  (이전 정의를 호출하는 체인)
    정의  : aiRespond, appealOf, faBidCloseV3436, faBidQuitV3436, faBidRaiseV3436, finishToAi, finishToMe, hashV, lastRank, leader, maxBidOf, money
@@ -16708,7 +16821,7 @@ main *,.sheet *{max-width:100%}
 
 <style>
 /* ──────────────────────────────────────────
-   [118/184] STYLE · 1.0KB · 원본 16711행
+   [118/184] STYLE · 1.0KB · 원본 16824행
    주제  : v0.34.37 · 백업·복원
    ────────────────────────────────────────── */
 /* ═══════════ v0.34.37 · 백업·복원 ═══════════ */
@@ -16728,7 +16841,7 @@ main *,.sheet *{max-width:100%}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [119/184] SCRIPT · 5.9KB · 원본 16731행
+   [119/184] SCRIPT · 5.9KB · 원본 16844행
    주제  : v0.34.37 · 백업·복원 (자동저장은 그대로)
    감쌈  : GAME_VERSION, raw, stamp  (이전 정의를 호출하는 체인)
    정의  : KEY, backupExportV3437, backupImportFileV3437, backupPickFileV3437, backupWipeV3437, openBackupSheetV3437, readStore, slotLine, validate
@@ -16873,7 +16986,7 @@ main *,.sheet *{max-width:100%}
 <!-- v0.44 · 나의 팀 대시보드 스타일 (v0.38 이식 때 누락된 것) -->
 <style>
 /* ──────────────────────────────────────────
-   [120/184] STYLE · 4.2KB · 원본 16876행
+   [120/184] STYLE · 4.2KB · 원본 16989행
    주제  : 상단 3열 요약
    ────────────────────────────────────────── */
 .myteam-dashboard-v350{display:flex;flex-direction:column;gap:12px;margin-top:4px}
@@ -16956,7 +17069,7 @@ main *,.sheet *{max-width:100%}
 <!-- ═══════════ v0.35 이식: 나의 팀 대시보드 + 신생 구단 창단 ═══════════ -->
 <style>
 /* ──────────────────────────────────────────
-   [121/184] STYLE · 2.2KB · 원본 16959행
+   [121/184] STYLE · 2.2KB · 원본 17072행
    ────────────────────────────────────────── */
 .custom-team-launch{margin:10px 0 12px;background:linear-gradient(135deg,var(--amber),#f59e0b);color:#17130a;font-weight:900;min-height:52px}
 .custom-team-draft{margin:0 0 12px;padding:12px;border:1px solid color-mix(in srgb,var(--amber) 50%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--panel) 86%,var(--amber) 14%)}
@@ -16969,7 +17082,7 @@ main *,.sheet *{max-width:100%}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [122/184] SCRIPT · 6.4KB · 원본 16972행
+   [122/184] SCRIPT · 6.4KB · 원본 17085행
    주제  : v0.35.0 나의 팀 대시보드
    감쌈  : VER  (이전 정의를 호출하는 체인)
    정의  : esc350, healthCount350, html350, myTeamDashboardHtml, nextMatch350, openMyTeamSummaryV350, rank350, rec350, recentMine350, tasks350, topPlayers350
@@ -17066,7 +17179,7 @@ main *,.sheet *{max-width:100%}
 </script>
 <script id="custom-team-creator-script">
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [123/184] SCRIPT · 6.4KB · 원본 17069행
+   [123/184] SCRIPT · 6.4KB · 원본 17182행
    감쌈  : body, box, old  (이전 정의를 호출하는 체인)
    정의  : CUSTOM_COLORS, CUSTOM_DRAFT_KEY, CUSTOM_LOGOS, CUSTOM_REGIONS, currentCustomDraft, customCreator, customCreatorNext, customFullName, draft, escCt, openCustomTeamCreator, readCustomDrafts
    ⚠ 대체됨: old, openCustomTeamCreator, renderCustomDraftCard
@@ -17114,7 +17227,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ──────────────────────────────────────────
-   [124/184] STYLE · 0.4KB · 원본 17117행
+   [124/184] STYLE · 0.4KB · 원본 17230행
    주제  : v0.38 · 이식 기능 통합 보정
    ────────────────────────────────────────── */
 /* ═══════════ v0.38 · 이식 기능 통합 보정 ═══════════ */
@@ -17129,10 +17242,10 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [125/184] SCRIPT · 4.7KB · 원본 17132행
+   [125/184] SCRIPT · 4.7KB · 원본 17245행
    주제  : v0.38 · 이식 기능 통합 보정
-   감쌈  : GAME_VERSION, backupExportV3437, backupImportFileV3437, backupWipeV3437, oldShow, show  (이전 정의를 호출하는 체인)
-   정의  : DRAFT_KEY, SLOT_KEY, hintCustom, oldExport, oldImport, oldWipe
+   감쌈  : DRAFT_KEY, GAME_VERSION, SLOT_KEY, backupExportV3437, backupImportFileV3437, backupWipeV3437, oldShow, show  (이전 정의를 호출하는 체인)
+   정의  : hintCustom, oldExport, oldImport, oldWipe
    ⚠ 대체됨: DRAFT_KEY, GAME_VERSION, backupExportV3437, oldShow, show
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────────────────────────────────────────── */
@@ -17243,7 +17356,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ──────────────────────────────────────────
-   [126/184] STYLE · 1.2KB · 원본 17246행
+   [126/184] STYLE · 1.2KB · 원본 17359행
    주제  : v0.39 · 창단 구단 실제 생성 (확장 드래프트)
    ────────────────────────────────────────── */
 /* ═══════════ v0.39 · 창단 구단 실제 생성 (확장 드래프트) ═══════════ */
@@ -17268,7 +17381,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [127/184] SCRIPT · 6.2KB · 원본 17271행
+   [127/184] SCRIPT · 6.2KB · 원본 17384행
    주제  : v0.39 · 창단 구단 실제 생성
    감쌈  : DRAFT_KEY, GAME_VERSION, genSchedule  (이전 정의를 호출하는 체인)
    정의  : AUTO_FILL, PER_TEAM, PROTECT, autoPlayers, drafts, expSetEcoV39, expSetLeagueV39, expansionConfigV39, myDraft, oldGen, openExpansionStartV39, ovrOf
@@ -17402,7 +17515,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [128/184] SCRIPT · 12.8KB · 원본 17405행
+   [128/184] SCRIPT · 12.8KB · 원본 17518행
    주제  : v0.39 · 확장 드래프트 진행 + 구단 생성
    감쌈  : PER_TEAM, POS_ORDER, autoPlayers, oldShow, ovrOf, renderCustomDraftCard, show  (이전 정의를 호출하는 체인)
    정의  : attachStart, countFrom, expAutoPickV39, expFinishV39, expPickV39, expUnpickV39, oldCard, openExpansionDraftV39, pickedSummary, poolOf, renderDraft
@@ -17653,7 +17766,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ────────────────────────────────────────────────────────────────────────
-   [129/184] SCRIPT · 2.8KB · 원본 17656행
+   [129/184] SCRIPT · 2.8KB · 원본 17769행
    주제  : v0.40 · 11팀 리그 부전승(휴식일) 처리
    감쌈  : GAME_VERSION, playMyGame, renderGameSetup  (이전 정의를 호출하는 체인)
    정의  : isMyByeDayV40, oldPlay, oldSetup, passByeDayV40, todayRound
@@ -17733,7 +17846,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ────────────────────────────────────────────────────────────────────────────────
-   [130/184] SCRIPT · 3.7KB · 원본 17736행
+   [130/184] SCRIPT · 3.7KB · 원본 17849행
    주제  : v0.41 · 12팀 확장 (내 구단 + AI 신생 구단)
    감쌈  : GAME_VERSION, genSchedule  (이전 정의를 호출하는 체인)
    정의  : AI_CANDIDATES, addAiExpansionTeamV41, makeRoster, pickAiTeam, prevGen
@@ -17826,7 +17939,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 <!-- v0.45 · 커스텀 구단 인원 보충 + 안전 가드 -->
 <script>
 /* ───────────────────────────────────────────────────────────────────────
-   [131/184] SCRIPT · 3.5KB · 원본 17829행
+   [131/184] SCRIPT · 3.5KB · 원본 17942행
    주제  : 창단·신생 구단은 TEAMS에 선수가 없어, 다른 게임에서 고르면 선수단이 비거나 모자란다.
    감쌈  : POS, getTeam  (이전 정의를 호출하는 체인)
    정의  : BASE_IDS, fixCurrentSlotV45, freshName, topUpCustomRosterV45
@@ -17920,7 +18033,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [132/184] SCRIPT · 17.7KB · 원본 17923행
+   [132/184] SCRIPT · 17.7KB · 원본 18036행
    주제  : v0.46 · 거래/계약 로스터 안전장치 + 구단 활동 기록
    감쌈  : GAME_VERSION, doCut, offerContract, openHistoryRoom, proposeTrade, rosterAfterTrade, signFA, version  (이전 정의를 호출하는 체인)
    정의  : REQ, addActivity, addNewsUnique, addNotice, ensureActivity, gameRosterRequirementTextV46, invalidateRoster, noticeHtml, prevCut, prevHistory, prevOffer, prevSignFA
@@ -18275,7 +18388,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ──────────────────────────────────────────
-   [133/184] STYLE · 1.1KB · 원본 18278행
+   [133/184] STYLE · 1.1KB · 원본 18391행
    주제  : v0.46.5 · 설정 + 게임 진단·복구
    ────────────────────────────────────────── */
 /* ═══════════ v0.46.5 · 설정 + 게임 진단·복구 ═══════════ */
@@ -18293,7 +18406,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [134/184] SCRIPT · 9.4KB · 원본 18296행
+   [134/184] SCRIPT · 9.4KB · 원본 18409행
    주제  : v0.46.5 · 설정 + 게임 진단·복구
    감쌈  : GAME_VERSION, esc, version  (이전 정의를 호출하는 체인)
    정의  : diagRoot, lastSummary, normalizeSettingsLink, openGameDiagnosticHistoryV462, openGameSettingsV462, runGameDiagnosticsV462
@@ -18462,7 +18575,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [135/184] SCRIPT · 4.6KB · 원본 18465행
+   [135/184] SCRIPT · 4.6KB · 원본 18578행
    주제  : v0.46.5 · 생성 선수 이름·동명이인 구분
    감쌈  : BASE_IDS, GAME_VERSION, hash, metaOf, version  (이전 정의를 호출하는 체인)
    정의  : copyLegacyMap, duplicateOrdinal, ensureFlagSlot, migrateExisting, migrateGeneratedPlayersV463, nextId, playerIdentityV463, playerIntroV463, playerMetaV463, tagGeneratedPlayerV463
@@ -18589,7 +18702,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ──────────────────────────────────────────
-   [136/184] STYLE · 0.9KB · 원본 18592행
+   [136/184] STYLE · 0.9KB · 원본 18705행
    주제  : v0.46.6 · 확장 드래프트 지명 현황
    ────────────────────────────────────────── */
 /* v0.46.6 · 확장 드래프트 지명 현황 */
@@ -18608,7 +18721,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </style>
 <script>
 /* ─────────────────────────────────────────────────────────────────────────
-   [137/184] SCRIPT · 4.5KB · 원본 18611행
+   [137/184] SCRIPT · 4.5KB · 원본 18724행
    주제  : v0.46.6 · 슬롯 리그 정합 + 슬롯 선택 삭제
    감쌈  : GAME_VERSION, openGameSettingsV462  (이전 정의를 호출하는 체인)
    정의  : confirmSlotDeleteV466, openPrev, openSlotDeleteV466, slotLabel
@@ -18720,7 +18833,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 </script>
 <style>
 /* ──────────────────────────────────────────
-   [138/184] STYLE · 0.2KB · 원본 18723행
+   [138/184] STYLE · 0.2KB · 원본 18836행
    ────────────────────────────────────────── */
 .slot-del-v466{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;min-height:56px;margin-top:8px}
 .slot-del-v466 b{font-size:13px}
@@ -18731,7 +18844,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <script>
 /* ────────────────────────────────────────────────
-   [139/184] SCRIPT · 0.5KB · 원본 18734행
+   [139/184] SCRIPT · 0.5KB · 원본 18847행
    감쌈  : GAME_VERSION, apply  (이전 정의를 호출하는 체인)
    ⚠ 대체됨: GAME_VERSION
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
@@ -18754,10 +18867,11 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 
 <script>
-/* ────────────────────────────────────────────────
-   [140/184] SCRIPT · 0.9KB · 원본 18758행
-   정의  : a11ySweepV47, queued, schedule, sweep
-   ──────────────────────────────────────────────── */
+/* ───────────────────────────────────────────
+   [140/184] SCRIPT · 0.9KB · 원본 18871행
+   감쌈  : schedule  (이전 정의를 호출하는 체인)
+   정의  : a11ySweepV47, queued, sweep
+   ─────────────────────────────────────────── */
 (()=>{
   'use strict';
   const V='v0.65';
@@ -18788,7 +18902,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ──────────────────────────────────────────────────
-   [141/184] STYLE · 2.2KB · 원본 18791행
+   [141/184] STYLE · 2.2KB · 원본 18905행
    주제  : [글자 크기와 줄바꿈] 한글은 어절 단위로 끊고, 긴 토큰만 넘침 방지
    ────────────────────────────────────────────────── */
 /* [글자 크기와 줄바꿈] 한글은 어절 단위로 끊고, 긴 토큰만 넘침 방지 */
@@ -18857,7 +18971,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
 <style>
 /* ──────────────────────────────────────────
-   [142/184] STYLE · 0.5KB · 원본 18860행
+   [142/184] STYLE · 0.5KB · 원본 18974행
    ────────────────────────────────────────── */
 header .board .ver{display:none}
 header .board h1{margin-right:0}
@@ -18874,7 +18988,7 @@ header .board h1{margin-right:0}
 </style>
 <script>
 /* ───────────────────────────────────────────
-   [143/184] SCRIPT · 1.0KB · 원본 18877행
+   [143/184] SCRIPT · 1.0KB · 원본 18991행
    감쌈  : ver  (이전 정의를 호출하는 체인)
    정의  : attach
    ─────────────────────────────────────────── */
@@ -18912,7 +19026,7 @@ header .board h1{margin-right:0}
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────
-   [144/184] SCRIPT · 6.2KB · 원본 18915행
+   [144/184] SCRIPT · 6.2KB · 원본 19029행
    주제  : ---------- 내 경기 결과 파싱 ----------
    감쌈  : finishDay, mark, news, old  (이전 정의를 호출하는 체인)
    정의  : cool, gameStory, gameStoryV51, once, parseMine, rankStory, rankStoryV51
@@ -19070,7 +19184,7 @@ header .board h1{margin-right:0}
 
 <script>
 /* ──────────────────────────────────────────────────
-   [145/184] SCRIPT · 3.9KB · 원본 19073행
+   [145/184] SCRIPT · 3.9KB · 원본 19187행
    감쌈  : news, nextSeason, old  (이전 정의를 호출하는 체인)
    정의  : review, seasonReviewV52, topOf
    ⚠ 대체됨: old
@@ -19163,7 +19277,7 @@ header .board h1{margin-right:0}
 
 <style>
 /* ──────────────────────────────────────────
-   [146/184] STYLE · 0.8KB · 원본 19166행
+   [146/184] STYLE · 0.8KB · 원본 19280행
    ────────────────────────────────────────── */
 .mgr-pick-v53{display:grid;gap:8px;margin:10px 0}
 .mgr-pick-v53 button{
@@ -19183,7 +19297,7 @@ header .board h1{margin-right:0}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [147/184] SCRIPT · 8.2KB · 원본 19186행
+   [147/184] SCRIPT · 8.2KB · 원본 19300행
    주제  : ---------- 시드 난수 ----------
    감쌈  : cur, hash, oldPlay, playMyGame, simGame  (이전 정의를 호출하는 체인)
    정의  : DUR, MODE_MULT, ORDERS, baseSim, effectOf, effectRawV56, makeRng, mgrModeMultV55, mgrModeV55, mgrOrderApplyV53, mgrOrderOpenV53, mgrOrderStateV53
@@ -19375,7 +19489,7 @@ header .board h1{margin-right:0}
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [148/184] SCRIPT · 5.0KB · 원본 19378행
+   [148/184] SCRIPT · 5.0KB · 원본 19492행
    주제  : ---------- 재생 타이머 추적 ----------
    감쌈  : done, live, push  (이전 정의를 호출하는 체인)
    정의  : clearInterval, draw, findLineV53, fixResultV53, mgrReplayFromV53, nextSpIdxSafe, rawSet, setInterval, spdSelSafe, stopReplay, undoOld
@@ -19521,7 +19635,7 @@ header .board h1{margin-right:0}
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────
-   [149/184] SCRIPT · 3.3KB · 원본 19524행
+   [149/184] SCRIPT · 3.3KB · 원본 19638행
    주제  : ① 마무리 없는 팀 보충 -------------------------------------
    감쌈  : expFinishV39, old, runGameDiagnosticsV462  (이전 정의를 호출하는 체인)
    정의  : fixClosers, fixClosersV54, oldFin, restoreClosers, stripClosers
@@ -19623,7 +19737,7 @@ header .board h1{margin-right:0}
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [150/184] SCRIPT · 5.6KB · 원본 19626행
+   [150/184] SCRIPT · 5.6KB · 원본 19740행
    주제  : ---------- 지시가 켜져 있는 구간인가 ----------
    감쌈  : mgrModeMultV55, oldPA, paResult  (이전 정의를 호출하는 체인)
    정의  : BASE_CONV, BASE_PLAN, MULT_ORDER, MULT_PLAN, OUTS, activeOrder, conv, mgrOrderEffectTextV57, mgrPlanMultV57, mode, myBatEffect, myPitEffect
@@ -19771,7 +19885,7 @@ header .board h1{margin-right:0}
 
 <style>
 /* ──────────────────────────────────────────
-   [151/184] STYLE · 0.6KB · 원본 19774행
+   [151/184] STYLE · 0.6KB · 원본 19888행
    주제  : v0.58 · 감독 방식 추천 + 지시 상시 버튼 ──
    ────────────────────────────────────────── */
 /* ── v0.58 · 감독 방식 추천 + 지시 상시 버튼 ── */
@@ -19790,7 +19904,7 @@ header .board h1{margin-right:0}
 </style>
 <script>
 /* ────────────────────────────────────────────────────────────
-   [152/184] SCRIPT · 4.5KB · 원본 19793행
+   [152/184] SCRIPT · 4.5KB · 원본 19907행
    주제  : ---------- 추천 ----------
    감쌈  : avg, renderManagerSettings  (이전 정의를 호출하는 체인)
    정의  : mgrApplyRecV58, mgrRecommendV58, oldMgr, paintRec
@@ -19897,7 +20011,7 @@ header .board h1{margin-right:0}
 
 <script>
 /* ────────────────────────────────────────────────
-   [153/184] SCRIPT · 0.9KB · 원본 19900행
+   [153/184] SCRIPT · 0.9KB · 원본 20014행
    감쌈  : OUTS, old, paResult  (이전 정의를 호출하는 체인)
    정의  : LEAGUE_BOOST_V59, setLeagueBoostV59
    ⚠ 대체됨: OUTS, paResult
@@ -19932,7 +20046,7 @@ header .board h1{margin-right:0}
 
 <style>
 /* ──────────────────────────────────────────
-   [154/184] STYLE · 1.1KB · 원본 19935행
+   [154/184] STYLE · 1.1KB · 원본 20049행
    주제  : v0.60 · 경기 전 감독 지시 카드 ──
    ────────────────────────────────────────── */
 /* ── v0.60 · 경기 전 감독 지시 카드 ── */
@@ -19959,7 +20073,7 @@ header .board h1{margin-right:0}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [155/184] SCRIPT · 8.9KB · 원본 19962행
+   [155/184] SCRIPT · 8.9KB · 원본 20076행
    주제  : v0.57과 같은 규칙) ----------
    감쌈  : OUTS, avg, detail, mode, oldMgr, oldPA, oldSetup, paResult, renderGameSetup, renderManagerSettings  (이전 정의를 호출하는 체인)
    정의  : CARDS, RATE, batConv, forceDirect, paint, pitConv, preCardActiveV60, preCardCutV60, preCardPaintV60, preCardPickV60, preCardRecV60, preCardResetV60
@@ -20177,7 +20291,7 @@ header .board h1{margin-right:0}
 
 <script>
 /* ───────────────────────────────────────────
-   [156/184] SCRIPT · 1.1KB · 원본 20180행
+   [156/184] SCRIPT · 1.1KB · 원본 20294행
    감쌈  : nowInn  (이전 정의를 호출하는 체인)
    ─────────────────────────────────────────── */
 (()=>{
@@ -20217,14 +20331,14 @@ header .board h1{margin-right:0}
 
 <style>
 /* ──────────────────────────────────────────
-   [157/184] STYLE · 0.1KB · 원본 20220행
+   [157/184] STYLE · 0.1KB · 원본 20334행
    ────────────────────────────────────────── */
 #gameLive{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
 #gamelog{overscroll-behavior:contain}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────
-   [158/184] SCRIPT · 1.1KB · 원본 20227행
+   [158/184] SCRIPT · 1.1KB · 원본 20341행
    주제  : ① 경기 중 지시 막대를 확실히 없앤다
    감쌈  : oldOpen, openGameSettingsV462  (이전 정의를 호출하는 체인)
    ────────────────────────────────────────────────────────── */
@@ -20263,7 +20377,7 @@ header .board h1{margin-right:0}
 
 <style>
 /* ────────────────────────────────────────────
-   [159/184] STYLE · 0.5KB · 원본 20266행
+   [159/184] STYLE · 0.5KB · 원본 20380행
    주제  : v0.62 · 창단 진입 개선 + 대시보드 할 일 보강 ──
    ──────────────────────────────────────────── */
 /* ── v0.62 · 창단 진입 개선 + 대시보드 할 일 보강 ── */
@@ -20279,7 +20393,7 @@ header .board h1{margin-right:0}
 </style>
 <script>
 /* ─────────────────────────────────────────────────────────────────────────
-   [160/184] SCRIPT · 3.5KB · 원본 20282행
+   [160/184] SCRIPT · 3.5KB · 원본 20396행
    주제  : ① 슬롯 목록에 창단 버튼 ------------------------------------
    감쌈  : backupExportV3437, oldShow, show  (이전 정의를 호출하는 체인)
    정의  : addCreateBtn, dropCreateBtn, extraTasks, extraTasksV62, oldExp
@@ -20373,7 +20487,7 @@ header .board h1{margin-right:0}
 
 <style>
 /* ──────────────────────────────────────────
-   [161/184] STYLE · 2.7KB · 원본 20376행
+   [161/184] STYLE · 2.7KB · 원본 20490행
    ────────────────────────────────────────── */
 /* ──────────────────────────────────────────────────────────────
    [수정] v0.63 · 하단 탭 노란 테두리 잔상 + 5경기 버튼 색 통일
@@ -20430,7 +20544,7 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
 </style>
 <script>
 /* ───────────────────────────────────────────
-   [162/184] SCRIPT · 1.2KB · 원본 20433행
+   [162/184] SCRIPT · 1.2KB · 원본 20547행
    감쌈  : oldShow, show  (이전 정의를 호출하는 체인)
    정의  : syncNav
    ─────────────────────────────────────────── */
@@ -20471,7 +20585,7 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [163/184] SCRIPT · 1.7KB · 원본 20474행
+   [163/184] SCRIPT · 1.7KB · 원본 20588행
    감쌈  : GAME_VERSION, clean, playerDisplayName, version  (이전 정의를 호출하는 체인)
    정의  : GENERIC_MODEL, displayName, playerDisplayNameV65, playerDisplayNameV66, realNameTextV65, rebuildRealNameMapV65
    ⚠ 대체됨: GAME_VERSION
@@ -20518,7 +20632,7 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
 
 <style>
 /* ──────────────────────────────────────────
-   [164/184] STYLE · 0.4KB · 원본 20521행
+   [164/184] STYLE · 0.4KB · 원본 20635행
    ────────────────────────────────────────── */
 /* v0.66 · 오프시즌 작업 바로가기 */
 .cl-jump-v66{cursor:pointer;border-radius:9px;padding:8px 6px;transition:background .15s ease,transform .15s ease}
@@ -20529,7 +20643,7 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
 </style>
 <script>
 /* ───────────────────────────────────────────
-   [165/184] SCRIPT · 1.4KB · 원본 20532행
+   [165/184] SCRIPT · 1.4KB · 원본 20646행
    정의  : jumpOffseasonTaskV66, tab
    ─────────────────────────────────────────── */
 /* v0.66 · 새 시즌 조건 6개를 실제 작업 위치로 연결한다. */
@@ -20561,7 +20675,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [166/184] SCRIPT · 2.1KB · 원본 20564행
+   [166/184] SCRIPT · 2.1KB · 원본 20678행
    정의  : GAME_EXTENSION_V67, makeBucket, register, registerInternationalTournamentV67, registerLeagueV67, registerPlayerV67, registerTeamV67, registry
    ────────────────────────────────────────────────────────────────────────────────────────── */
 /* ──────────────────────────────────────────────────────────────
@@ -20615,7 +20729,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [167/184] SCRIPT · 6.4KB · 원본 20618행
+   [167/184] SCRIPT · 6.4KB · 원본 20732행
    감쌈  : GAME_VERSION, addAiExpansionTeamV41, applyVersion, openCustomTeamCreator, startWithMode  (이전 정의를 호출하는 체인)
    정의  : LIVE_BASE_IDS, isBaseTeam, oldAiExpansion, oldCreator, oldStart, resetTeamsToBase, stripLiveExpansionFromState, stripTeamMap, syncCreatorVisibility
    ⚠ 대체됨: GAME_VERSION
@@ -20779,7 +20893,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <script id="single-initial-render-v082">
 /* ───────────────────────────────────────────
-   [168/184] SCRIPT · 0.5KB · 원본 20782행
+   [168/184] SCRIPT · 0.5KB · 원본 20896행
    ─────────────────────────────────────────── */
 (function(){
   'use strict';
@@ -20799,7 +20913,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <style id="game-board-v089">
 /* ──────────────────────────────────────────
-   [169/184] STYLE · 4.9KB · 원본 20802행
+   [169/184] STYLE · 4.9KB · 원본 20916행
    ────────────────────────────────────────── */
 /* ═══════════ v0.89 · GAME BOARD ═══════════
    경기 기능/기록 로직은 유지하고 #scr-game 내부의 시각 구조만 정리한다.
@@ -20934,7 +21048,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <style id="front-office-v090">
 /* ──────────────────────────────────────────
-   [170/184] STYLE · 6.7KB · 원본 20937행
+   [170/184] STYLE · 6.7KB · 원본 21051행
    ────────────────────────────────────────── */
 /* ═══════════ v0.90 · OPERATIONS BOARD ═══════════
    운영 기능은 유지하고 #scr-front 내부만 v0.88~0.89의 짙은 그린 + 골드 톤으로 정리한다. */
@@ -21091,7 +21205,7 @@ window.jumpOffseasonTaskV66=function(key){
 <!-- v0.91 rank/game polish -->
 <style>
 /* ──────────────────────────────────────────
-   [171/184] STYLE · 4.7KB · 원본 21094행
+   [171/184] STYLE · 4.7KB · 원본 21208행
    ────────────────────────────────────────── */
 /* v0.91 · 헤더 팀 칩 */
 .subline .myteam.header-team-chip-v91{
@@ -21181,7 +21295,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [172/184] SCRIPT · 12.7KB · 원본 21184행
+   [172/184] SCRIPT · 12.7KB · 원본 21298행
    감쌈  : myTeamDashboardHtml, refreshHeader, renderGameSetup, renderRank, setRankTab, val  (이전 정의를 호출하는 체인)
    정의  : ensureRankSummaryBoxV91, escHtmlV91, logoHtmlV91, matchTeam, syncVersionV91, teamChipHtmlV91
    ────────────────────────────────────────────────────────────────────────────────────────── */
@@ -21367,7 +21481,7 @@ window.jumpOffseasonTaskV66=function(key){
 <!-- v0.92 game-end action guard -->
 <style>
 /* ──────────────────────────────────────────
-   [173/184] STYLE · 0.4KB · 원본 21370행
+   [173/184] STYLE · 0.4KB · 원본 21484행
    ────────────────────────────────────────── */
 #scr-game #newGameBtn{
   width:100%;min-height:52px;margin-top:12px!important;
@@ -21380,7 +21494,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ────────────────────────────────────────────────────────────
-   [174/184] SCRIPT · 1.4KB · 원본 21383행
+   [174/184] SCRIPT · 1.4KB · 원본 21497행
    정의  : bindV92, gameHasFinishedV92, syncGameEndActionV92
    ──────────────────────────────────────────────────────────── */
 (function(){
@@ -21428,7 +21542,7 @@ window.jumpOffseasonTaskV66=function(key){
 <!-- v0.93 live-layout polish -->
 <style>
 /* ──────────────────────────────────────────
-   [175/184] STYLE · 0.4KB · 원본 21431행
+   [175/184] STYLE · 0.4KB · 원본 21545행
    ────────────────────────────────────────── */
 #scr-game #gameLive{padding-bottom:calc(18px + env(safe-area-inset-bottom))!important}
 #scr-game .gamelog{
@@ -21448,13 +21562,13 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [176/184] SCRIPT · 3.3KB · 원본 21451행
+   [176/184] SCRIPT · 3.3KB · 원본 21565행
    감쌈  : APP_VERSION, GAME_VERSION  (이전 정의를 호출하는 체인)
    정의  : bindGameLayoutV93, clearBtnLayoutV93, currentGameBtnV93, gameLiveVisibleV93, layoutGameLiveV93, syncVersionV93
    ────────────────────────────────────────────────────────────────────────────────────────── */
 (function(){
   'use strict';
-  window.APP_VERSION='v0.96';
+  window.APP_VERSION='v0.97';
   window.GAME_VERSION=window.APP_VERSION;
   function syncVersionV93(){
     try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
@@ -21537,7 +21651,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <style>
 /* ──────────────────────────────────────────
-   [177/184] STYLE · 0.8KB · 원본 21540행
+   [177/184] STYLE · 0.8KB · 원본 21654행
    ────────────────────────────────────────── */
 /* v0.94 · 터치 영역·최소 글자 크기 보정 */
 #scr-front .lb-cat button,
@@ -21564,7 +21678,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ───────────────────────────────────────────
-   [178/184] SCRIPT · 0.6KB · 원본 21567행
+   [178/184] SCRIPT · 0.6KB · 원본 21681행
    ─────────────────────────────────────────── */
 /* v0.94 · role="button" 요소의 Enter/Space 키 입력을 클릭으로 넘긴다 */
 (function(){
@@ -21587,7 +21701,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <script>
 /* ──────────────────────────────────────────────────────
-   [179/184] SCRIPT · 2.6KB · 원본 21590행
+   [179/184] SCRIPT · 2.6KB · 원본 21704행
    감쌈  : VER, renderRankStableV274  (이전 정의를 호출하는 체인)
    정의  : prelude, stableChain, worldNotice
    ⚠ 대체됨: VER
@@ -21660,7 +21774,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <style>
 /* ──────────────────────────────────────────
-   [180/184] STYLE · 0.6KB · 원본 21663행
+   [180/184] STYLE · 0.6KB · 원본 21777행
    ────────────────────────────────────────── */
 /* v0.95 · 새 버전 알림 배너 */
 #swUpdateBar{
@@ -21681,7 +21795,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ────────────────────────────────────────────
-   [181/184] SCRIPT · 2.4KB · 원본 21684행
+   [181/184] SCRIPT · 2.4KB · 원본 21798행
    감쌈  : VER  (이전 정의를 호출하는 체인)
    정의  : showBar
    ⚠ 대체됨: VER
@@ -21744,7 +21858,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <style>
 /* ──────────────────────────────────────────
-   [182/184] STYLE · 0.9KB · 원본 21747행
+   [182/184] STYLE · 0.9KB · 원본 21861행
    ────────────────────────────────────────── */
 /* v0.96 · 자동 백업 목록 */
 .abk-v96{margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line)}
@@ -21764,7 +21878,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [183/184] SCRIPT · 7.3KB · 원본 21767행
+   [183/184] SCRIPT · 7.5KB · 원본 21881행
    감쌈  : VER, list, openBackupSheetV3437, openSheet, paint  (이전 정의를 호출하는 체인)
    정의  : AutoBackupV96, hook, lastAt, open, restore, restoreAutoBackupV96, snapshot, when
    ────────────────────────────────────────────────────────────────────────────────────────── */
@@ -21813,21 +21927,21 @@ window.jumpOffseasonTaskV66=function(key){
     try{
       var now=Date.now();
       if(!force && now-lastAt < MIN_GAP) return Promise.resolve(false);
-      // 저장소에 이미 압축된 원문이 있으므로 그대로 쓴다. 다시 압축하면
-      // 같은 일을 두 번 하게 된다(400KB 기준 약 70ms).
-      var body=null, plainLen=0;
+      // 저장소에 이미 압축된 조각이 있으므로 그대로 담는다. 다시 압축하면
+      // 같은 일을 두 번 하게 된다.
+      var body=null, fmt=1, plainLen=0;
       try{
-        if(window.SaveStoreV96 && window.SaveStoreV96.raw) body=window.SaveStoreV96.raw('ourteam_slots_v1');
+        if(window.SaveStoreV96 && window.SaveStoreV96.raw){ body=window.SaveStoreV96.raw(); fmt=2; }
         else body=localStorage.getItem('ourteam_slots_v1');
       }catch(_){ }
       if(!body) return Promise.resolve(false);
       try{
-        var C=window.SaveCodecV96;
-        plainLen = (C && C.isPacked(body)) ? C.unpack(body).length : body.length;
+        var u=(window.SaveStoreV96&&window.SaveStoreV96.usage)?window.SaveStoreV96.usage():null;
+        plainLen = u ? u.plain : body.length;
       }catch(_){ plainLen=body.length; }
       lastAt=now;
       var rec={id:now, at:new Date(now).toISOString(), ver:(window.APP_VERSION||''),
-               reason:String(reason||''), data:body, plainLen:plainLen};
+               reason:String(reason||''), data:body, fmt:fmt, plainLen:plainLen};
       // 자동 백업은 실패해도 게임에 영향이 없어야 한다.
       // IndexedDB가 없는 환경(일부 WebView·비공개 모드)에서도 조용히 넘어간다.
       return tx('readwrite',function(s){ s.put(rec); }).then(function(){
@@ -21849,6 +21963,11 @@ window.jumpOffseasonTaskV66=function(key){
       for(var i=0;i<rows.length;i++) if(rows[i].id===id) r=rows[i];
       if(!r) throw new Error('백업을 찾지 못했습니다.');
       var text=r.data;
+      if(r.fmt===2 && window.SaveStoreV96 && window.SaveStoreV96.restoreRaw){
+        window.SaveStoreV96.restoreRaw(text);   // 조각 그대로 되돌린다
+        return true;
+      }
+      // v0.96 이전 형식: 통짜 문자열
       var C=window.SaveCodecV96;
       if(C && C.isPacked(text)) text=C.unpack(text);
       JSON.parse(text);                       // 손상 여부를 먼저 확인한다
@@ -21947,7 +22066,7 @@ window.jumpOffseasonTaskV66=function(key){
 </script>
 <script>
 /* ───────────────────────────────────────────
-   [184/184] SCRIPT · 1.0KB · 원본 21950행
+   [184/184] SCRIPT · 1.0KB · 원본 22069행
    감쌈  : save, stamp  (이전 정의를 호출하는 체인)
    정의  : DEFAULT, ensureLeagueIdV96
    ─────────────────────────────────────────── */
