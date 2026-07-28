@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
 <script>
-/* v0.82 · 홈 렌더 구조 정리 */
-window.APP_VERSION='v0.82';
+/* v0.83 · 라인업·경기·운영·순위 레거시 정리 */
+window.APP_VERSION='v0.83';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -359,17 +359,13 @@ nav button.lock{opacity:.38}
 .speedbar button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
 
 .manager-box{margin:12px 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
-.manager-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-.manager-head b{color:var(--amber);font-size:14px}
-.manager-toggle{display:flex;gap:6px}
-.manager-toggle button,.manager-choice button{border:1px solid var(--line);background:var(--panel2);color:var(--dim);font-family:inherit;font-weight:700;border-radius:8px;padding:7px 10px;font-size:12px}
-.manager-toggle button.on,.manager-choice button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
+.manager-choice button{border:1px solid var(--line);background:var(--panel2);color:var(--dim);font-family:inherit;font-weight:700;border-radius:8px;padding:7px 10px;font-size:12px}
+.manager-choice button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
 .manager-plan{border-top:1px dashed var(--line);padding-top:10px}
 .manager-row{display:flex;align-items:center;gap:8px;margin-top:8px}
 .manager-row:first-child{margin-top:0}
 .manager-row .mlabel{width:66px;flex:none;color:var(--dim);font-size:12px;font-weight:700}
 .manager-choice{display:flex;gap:6px;flex:1;overflow-x:auto}
-.manager-note{margin-top:9px;color:var(--dim);font-size:11.5px;line-height:1.5}
 .opp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
 .opp-grid button{padding:10px 4px;border-radius:9px;border:1px solid var(--line);background:var(--panel);
   color:var(--chalk);font-family:inherit;font-size:12px;font-weight:700}
@@ -548,10 +544,10 @@ h2.sec small{white-space:nowrap;color:var(--dim)}
 }
 .tabs button:active{transform:scale(.98)}
 .lb-cat,.sel-sp{gap:7px}
-.lb-cat button,.sel-sp button,.manager-toggle button,.manager-choice button,.opp-grid button,.sortbar button{
+.lb-cat button,.sel-sp button,.manager-choice button,.opp-grid button,.sortbar button{
   border-color:var(--line);background:rgba(21,38,29,.92);border-radius:11px;color:#9EB0A7;
 }
-.lb-cat button.on,.sel-sp button.on,.manager-toggle button.on,.manager-choice button.on,.opp-grid button.on,.sortbar button.on{
+.lb-cat button.on,.sel-sp button.on,.manager-choice button.on,.opp-grid button.on,.sortbar button.on{
   background:linear-gradient(180deg,#FFD16A,#EFA62C);border-color:transparent;color:#231805;box-shadow:0 5px 14px rgba(232,155,28,.18)
 }
 
@@ -748,7 +744,6 @@ nav button.lock{opacity:.32}
 .pitch-choice-v313.available .swap-state{color:var(--gold)}
 .pitch-divider-v313{height:1px;background:var(--line);margin:10px 0}
 
-.pitch-change-note-v311{margin:8px 0 10px;padding:9px 11px;border-radius:10px;background:rgba(119,214,155,.08);border:1px solid rgba(119,214,155,.28);color:#BDE8CC;font-size:12px;line-height:1.45}
 
 /* v0.32.5 라인업·로스터 카드 완전 통일 */
 #scr-lineup .lrow{
@@ -812,17 +807,13 @@ nav button.lock{opacity:.32}
     <button id="ltabRoster">전체 로스터</button>
   </div>
   <div id="lineupWrap">
-    <h2 class="sec">라인업 편성</h2>
     <div class="lb-cat" style="margin-bottom:8px">
       <button id="luModeOrder" class="on" onclick="setLuMode('order')">타순 변경</button>
       <button id="luModeDef" onclick="setLuMode('def')">수비 배치</button>
       <button id="luModePitch" onclick="setLuMode('pitch')">투수 배치</button>
     </div>
-    <div class="hint" id="luModeHint">선발 또는 벤치를 누르면 교체 가능한 선수만 바로 열립니다. 선발끼리 타순을 바꾸려면 ↕ 버튼을 누르세요.</div>
     <div id="lineupList"></div>
     <div id="pitchWrap" style="display:none">
-      <h2 class="sec" style="margin-top:16px">투수 배치</h2>
-      <div class="hint">선발투수와 불펜투수는 서로 다른 선수 종류입니다. 불펜 1·2번은 지정 마무리이며 불펜 안에서 자유롭게 순서를 바꿀 수 있습니다.</div><div class="pitch-change-note-v311">선발 1~5번은 로테이션, 6~7번은 예비입니다. 불펜 1·2번(★)은 마무리 1·2순위이며 자동·직접 감독 모두 이 순서를 사용합니다.</div>
       <div id="spList"></div>
     </div>
   </div>
@@ -842,13 +833,7 @@ nav button.lock{opacity:.32}
   <div id="gameSetup">
     <div class="season-info" id="seasonInfo"></div>
     <div class="manager-box" id="managerBox">
-      <div class="manager-head"><b>감독 방식</b>
-        <div class="manager-toggle">
-          <button id="mgrAuto" class="on" onclick="setManagerControl('auto')">자동 감독</button>
-          <button id="mgrDirect" onclick="setManagerControl('direct')">직접 감독</button>
-        </div>
-      </div>
-      <div class="manager-plan" id="managerPlan" style="display:none">
+      <div class="manager-plan" id="managerPlan">
         <div class="manager-row"><span class="mlabel">공격 작전</span><div class="manager-choice">
           <button data-mgr-attack="balanced" onclick="setManagerAttack('balanced')">정공</button>
           <button data-mgr-attack="power" onclick="setManagerAttack('power')">강공</button>
@@ -859,7 +844,6 @@ nav button.lock{opacity:.32}
           <button data-mgr-bullpen="normal" onclick="setManagerBullpen('normal')">보통</button>
           <button data-mgr-bullpen="late" onclick="setManagerBullpen('late')">길게</button>
         </div></div>
-        <div class="manager-note">1차 감독모드: 경기 전에 공격 성향과 투수 교체 시점을 지시합니다. 작전은 해당 경기 전체에 적용됩니다.</div>
       </div>
     </div>
     <div class="speedbar">
@@ -867,7 +851,6 @@ nav button.lock{opacity:.32}
       <button data-spd="inn">이닝별 · 핵심 기록</button>
       <button data-spd="fast">결과만 · 승패만</button>
     </div>
-    <div class="manager-note" style="margin-top:8px">기록 범위: 타석별은 모든 개인 기록, 이닝별은 안타·투수 이닝·승패, 결과만은 팀 승패만 반영됩니다.</div>
     <button class="btn" id="playBtn">경기 시작</button>
     <button class="btn ghost" id="skip5Btn">다음 5경기 자동 진행 (승패만)</button>
   </div>
@@ -894,7 +877,6 @@ nav button.lock{opacity:.32}
   <div id="rankTeamWrap">
     <table class="rank-table" id="rankTable"></table>
     <div class="other-results" id="lastResults"></div>
-    <button class="btn ghost" id="resetSeasonBtn" style="margin-top:14px">시즌 초기화</button>
   </div>
   <div id="rankPlayerWrap" style="display:none"></div>
 </section>
@@ -2152,8 +2134,7 @@ document.querySelectorAll('nav button').forEach(btn=>{
       // 순위 화면을 먼저 연다. 데이터 렌더 오류가 나도 이전 화면에 남지 않는다.
       show('rank');
       try{
-        if(typeof renderRankStableV275==='function') renderRankStableV275();
-        else if(typeof renderRankStableV274==='function') renderRankStableV274();
+        if(typeof renderRankStableV274==='function') renderRankStableV274();
         else renderRank();
       }catch(err){
         console.error('순위 탭 직접 진입:',err);
@@ -2365,18 +2346,6 @@ let luSel = -1; // 교환 대기 중인 타순 index
 let luBenchSel = -1; // 먼저 선택한 벤치 선수 index
 let rotSel = -1; // 교환 대기 중인 로테이션 자리
 let luMode = "order"; // order=타순, def=수비배치
-function setLuMode(m){ luMode=m; luSel=-1; luBenchSel=-1;
-  document.getElementById("luModeOrder").classList.toggle("on",m==="order");
-  document.getElementById("luModeDef").classList.toggle("on",m==="def");
-  document.getElementById("luModePitch").classList.toggle("on",m==="pitch");
-  const hint=document.getElementById("luModeHint");
-  hint.textContent = m==="order"
-    ? "선발 또는 벤치를 누르면 교체 가능한 선수만 바로 열립니다. 선발끼리 타순을 바꾸려면 ↕ 버튼을 누르세요."
-    : m==="def"
-      ? "선수 두 명을 터치하면 수비 위치를 맞바꿉니다. 벤치 선수는 누르면 교체 선택창이 열립니다."
-      : "선발 로테이션·예비 선발·불펜을 배치합니다. 선발은 선발끼리, 불펜은 불펜끼리만 교체됩니다.";
-  renderLineup();
-}
 function restoreLineupScrollV304(top){
   requestAnimationFrame(()=>{const main=document.querySelector('main');if(main)main.scrollTop=top;});
 }
@@ -2555,66 +2524,6 @@ function renderPitchStaffV310(spBox,t){
     d.innerHTML=`<div class="ord">${slot<2?'★'+(slot+1):slot+1}</div><div class="lp">${role}</div><div class="ln">${playerDisplayName(p)}${slot<2?' <span class="boost">지정 마무리</span>':''}<br><span style="font-size:10px;color:${pci.color}">${pci.label}</span></div><div class="lo num">${pitOvr(p,t.id)}</div>`;
     d.onclick=()=>openPitchStaffPickerV310('bullpen',slot);spBox.appendChild(d);
   });
-}
-function renderLineup(){
-  const t = getTeam(state.myTeam);
-  const lu = ensureHealthyLineup(t.id);
-  const list = document.getElementById('lineupList');
-  const pitchWrap=document.getElementById('pitchWrap');
-  const isPitchMode=luMode==='pitch';
-  list.style.display=isPitchMode?'none':'';
-  pitchWrap.style.display=isPitchMode?'':'none';
-  list.innerHTML = '';
-
-  if(luMode==='order'&&luSel>=0){
-    const guide=document.createElement('div');guide.className='exchange-guide-v303';
-    guide.textContent=`↕ ${luSel+1}번 타순 선택됨 — 바꿀 다른 선발 선수를 누르세요.`;list.appendChild(guide);
-  }
-
-  lu.order.forEach((bi,pos)=>{
-    const p=t.bat[bi],slotPos=lu.pos[pos],posOk=canPlay(p,slotPos),d=document.createElement('div');
-    d.className='lrow'+(luSel===pos?' sel':'');
-    d.innerHTML=`<div class="ord">${pos+1}</div><div class="lp">${slotPos}${p[2]!==slotPos&&slotPos!=='DH'?`<span style="font-size:9px;color:var(--dim)">(${p[2]})</span>`:''}</div>
-      <div class="ln">${playerDisplayName(p)} ${gradeBadge(batOvr(p,t.id))}${!posOk?' <span style="color:#C77;font-size:10px">수비부적합</span>':''}<br><span style="font-size:10px;color:${conditionInfo(t.id,'bat',p).color}">${conditionInfo(t.id,'bat',p).label}</span></div>
-      ${luMode==='order'?'<button type="button" class="order-swap-v304" aria-label="타순 교환">↕</button>':''}<div class="lo num">${batOvr(p,t.id)}</div>`;
-    const swap=d.querySelector('.order-swap-v304');
-    if(swap)swap.onclick=e=>{e.stopPropagation();selectStarterSwapV304(pos);};
-    d.onclick=()=>{
-      if(luMode==='order'){
-        if(luSel>=0)selectStarterSwapV304(pos);else openLineupExchangePickerV304('starter',pos);
-        return;
-      }
-      const main=document.querySelector('main'),keep=main?main.scrollTop:0;
-      if(luSel<0)luSel=pos;
-      else if(luSel===pos)luSel=-1;
-      else{
-        const a=lu.pos[luSel],b2=lu.pos[pos],pa=t.bat[lu.order[luSel]],pb=t.bat[lu.order[pos]];
-        if(canPlay(pa,b2)&&canPlay(pb,a)){[lu.pos[luSel],lu.pos[pos]]=[lu.pos[pos],lu.pos[luSel]];save();}
-        else showAlert('수비 위치 교체가 불가능합니다. DH를 제외하면 선수의 주포지션과 수비 자리가 정확히 일치해야 합니다.');
-        luSel=-1;
-      }
-      renderLineup();restoreLineupScrollV304(keep);
-    };
-    list.appendChild(d);
-  });
-
-  if(!isPitchMode){
-  const bench=benchBatters(t.id);
-  const bt=document.createElement('div');
-  bt.innerHTML='<div class="hint" style="margin-top:8px">벤치 — 선수를 누르면 들어갈 수 있는 선발 자리만 바로 표시됩니다.</div>';
-  list.appendChild(bt);
-  bench.forEach(bi=>{
-    const p=t.bat[bi],d=document.createElement('div'),ci=conditionInfo(t.id,'bat',p),injured=isInjured(t.id,'bat',p);
-    d.className='lrow';d.style.opacity=injured?'.42':'.82';
-    d.innerHTML=`<div class="ord">–</div><div class="lp">${p[2]}</div><div class="ln">${playerDisplayName(p)} ${gradeBadge(batOvr(p,t.id))}<br><span style="font-size:10px;color:${ci.color}">${ci.label}</span></div><div class="lo num">${batOvr(p,t.id)}</div>`;
-    d.onclick=()=>{if(injured){showAlert('부상 중인 선수는 라인업에 넣을 수 없습니다.');return;}openLineupExchangePickerV304('bench',bi);};
-    list.appendChild(d);
-  });
-  }
-
-  const spBox = document.getElementById('spList');
-  spBox.innerHTML = '';
-  renderPitchStaffV310(spBox,t);
 }
 
 /* ═══════════ 시뮬레이션 엔진 ═══════════ */
@@ -3245,14 +3154,12 @@ function ensureManagerSettings(){
 }
 function renderManagerSettings(){
   ensureManagerSettings();
-  const direct = state.gameControl==='direct';
-  const a=document.getElementById('mgrAuto'), d=document.getElementById('mgrDirect'), plan=document.getElementById('managerPlan');
-  if(!a||!d||!plan) return;
-  a.classList.toggle('on',!direct); d.classList.toggle('on',direct); plan.style.display=direct?'':'none';
+  state.gameControl='direct';
+  const plan=document.getElementById('managerPlan');
+  if(plan) plan.style.display='';
   document.querySelectorAll('[data-mgr-attack]').forEach(b=>b.classList.toggle('on',b.dataset.mgrAttack===state.managerPlan.attack));
   document.querySelectorAll('[data-mgr-bullpen]').forEach(b=>b.classList.toggle('on',b.dataset.mgrBullpen===state.managerPlan.bullpen));
 }
-function setManagerControl(v){ state.gameControl=v; save(); renderManagerSettings(); }
 function setManagerAttack(v){ ensureManagerSettings(); state.managerPlan.attack=v; save(); renderManagerSettings(); }
 function setManagerBullpen(v){ ensureManagerSettings(); state.managerPlan.bullpen=v; save(); renderManagerSettings(); }
 
@@ -3959,32 +3866,6 @@ function playerRows(t, isBat){
               : `<div class="ovr num" style="font-size:15px">${sal.toFixed(1)}</div>`}</div>`;
   });
   return html;
-}
-function renderFront(){
-  const t = getTeam(state.myTeam);
-  document.getElementById('frontTitle').textContent = `구단운영 — ${t.name}`;
-  const info = document.getElementById('frontInfo');
-  const body = document.getElementById('frontBody');
-  const salTotal = teamSalary();
-  if(ecoOn()){
-    ensureFanState();
-    info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b><br>시설 평균 <b>Lv.${(Object.values((ensureFacilities(),state.facilities)).reduce((a,b)=>a+b,0)/4).toFixed(1)}</b> · 구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>` +
-      (state.eco==='hard'?' · 하드(적자 3경기 유예 · 전력·AI 강화)':state.eco==='normal'?' · 일반':'') +
-      (state.money<0 && state.eco==='normal'?'<br>⚠️ 잔고 마이너스 — 내 팀 원래팀 보정 감소 중':'') +
-      (state.eco==='hard' && state.money<0 && !state.bankrupt?`<br>⚠️ 적자 유예 중 — ${Math.max(0,3-(state.debtGames||0))}경기 안에 흑자 전환 필요 · -20억 이하 즉시 파산`:'');
-  }else{
-    info.innerHTML = `자유 모드 · 자금 시스템 꺼짐 · 연간 총연봉(참고) ${salTotal.toFixed(1)}억<br><span class="dim">경기 난이도·AI 판단은 일반과 동일합니다</span>`;
-  }
-
-  if(isOffseason()){
-    body.innerHTML = facilityPanel() + staffPanel() + scoutPanel() + renderOffseason(t);
-    bindOffseason();
-  }else{
-    body.innerHTML = facilityPanel() + staffPanel() + scoutPanel() + `
-      <div class="hint">시즌 중에는 선수단 현황과 연봉을 확인할 수 있습니다. 재계약·방출·훈련·FA는 시즌 종료 후 오프시즌에 진행합니다.</div>
-      <h2 class="sec" style="margin-top:14px">타자</h2>${playerRows(t,true)}
-      <h2 class="sec" style="margin-top:14px">투수</h2>${playerRows(t,false)}`;
-  }
 }
 
 function renderOffseason(t){
@@ -5119,9 +5000,6 @@ function toggleRankSort(k){
   else rankSort = {key:k, dir:'desc'};
   renderRank();
 }
-document.getElementById('resetSeasonBtn').onclick = ()=>{
-  showConfirm('시즌 기록을 초기화하고 새로 시작할까요?', ()=>{ newSeason(); renderRank(); });
-};
 function setRankTab(tab){
   const team=tab==='team';
   lbScope=tab==='my'?'my':'all';
@@ -5225,7 +5103,6 @@ function rosterManagementHtml(){
   return h;
 }
 const _renderFrontV231=renderFront;
-renderFront=function(){ _renderFrontV231(); const body=document.getElementById('frontBody'); if(body) body.insertAdjacentHTML('afterbegin',rosterManagementHtml()); };
 const _autoAssignV231=autoAssignLineup;
 autoAssignLineup=function(teamId){
   const t=getTeam(teamId); if(teamId!==state.myTeam) return _autoAssignV231(teamId);
@@ -5415,7 +5292,6 @@ newSeason=function(){snapshotSeasonHistory();const r=_newSeasonV240();ensureLong
 const _openSheetV240=openSheet;
 openSheet=function(team,tab,idx){_openSheetV240(team,tab,idx);if(team.id===state.myTeam&&state.mode==='sim'){const p=(tab==='bat'?team.bat:team.pit)[idx],c=contractOf(tab,p),rem=faRemaining(tab,p);document.getElementById('sheet').insertAdjacentHTML('beforeend',`<div class="reveal"><div class="lbl">계약·FA</div>연봉 ${c.salary.toFixed(1)}억 · 잔여 ${c.years}년 · 만족도 ${Math.round(playerMorale(tab,p))}<br>FA까지 ${rem===0?'자격 충족':rem+'등록 경기'}</div><button class="btn" onclick="openContractSheet('${tab}',${idx})">계약 협상</button>`);}};
 const _renderFrontV240=renderFront;
-renderFront=function(){ensureLongTermState();_renderFrontV240();const body=document.getElementById('frontBody');if(body){body.insertAdjacentHTML('afterbegin',longTermPanel());body.insertAdjacentHTML('beforeend',contractListHtml());}};
 ensureLongTermState();
 
 
@@ -5544,15 +5420,6 @@ const _setTicketPriceV241=setTicketPrice;
 setTicketPrice=function(v){const r=_setTicketPriceV241(v);syncMoneyUi();return r;};
 
 const _renderFrontV241=renderFront;
-renderFront=function(){
-  _renderFrontV241();
-  const body=document.getElementById('frontBody');
-  if(body&&isOffseason()){
-    const cl=body.querySelector('.checklist');
-    if(cl)body.insertBefore(cl,body.firstChild);
-  }
-  syncMoneyUi();
-};
 
 
 
@@ -5719,22 +5586,6 @@ function stripOffseasonRelease(html){
   const i=html.indexOf(marker);return i>=0?html.slice(0,i):html;
 }
 const _renderFrontV244=renderFront;
-renderFront=function(){
-  ensureLongTermState();ensureSquadState();
-  const t=getTeam(state.myTeam),body=document.getElementById('frontBody'),info=document.getElementById('frontInfo');
-  document.getElementById('frontTitle').textContent=`구단 관리 — ${t.name}`;
-  syncMoneyUi();
-  const squad=`${rosterManagementHtml()}${contractListHtml()}${isOffseason()?`<h2 class="sec" style="margin-top:16px">🗑️ 선수 방출</h2><div class="hint">오프시즌에만 방출할 수 있습니다.</div><h2 class="sec" style="font-size:14px">타자</h2>${playerRows(t,true)}<h2 class="sec" style="font-size:14px">투수</h2>${playerRows(t,false)}`:''}`;
-  let market=isOffseason()?stripOffseasonRelease(renderOffseason(t)):`<div class="notice"><b>정규시즌 프런트</b><br>트레이드·직원·시설·구장 경영을 진행할 수 있습니다.</div><button class="btn" onclick="tradeOppId=null;tradeMyPicks=[];tradeOppPicks=[];openTradeSheet()">🔄 시즌 중 트레이드</button>`;
-  const front=`${facilityPanel()}${staffPanel()}${scoutPanel()}${stadiumBusinessOnlyHtml()}${market}`;
-  body.innerHTML=`<div class="front-subtabs"><button data-ftab="status" onclick="setFrontSubTab('status')">구단 현황</button><button data-ftab="squad" onclick="setFrontSubTab('squad')">선수단</button><button data-ftab="front" onclick="setFrontSubTab('front')">프런트</button></div>
-  <div class="front-pane" data-fpane="status">${clubStatusPanelHtml()}</div>
-  <div class="front-pane" data-fpane="squad">${squad}</div>
-  <div class="front-pane" data-fpane="front">${front}</div>`;
-  setFrontSubTab(frontSubTab);
-  if(isOffseason())bindOffseason();
-  syncMoneyUi();
-};
 
 openContractSheet=function(kind,idx){
   ensureLongTermState();
@@ -6854,11 +6705,6 @@ function worldHistoryPanelV269(){
 }
 
 const _renderRankV268=renderRank;
-renderRank=function(){
-  _renderRankV268();
-  const box=document.getElementById('lastResults');
-  if(box) box.insertAdjacentHTML('beforeend',worldHistoryPanelV269());
-};
 
 const _switchSlotV268=switchSlot;
 switchSlot=function(i){
@@ -6898,13 +6744,6 @@ function seasonHistoryPanelV270(){
 
 // 순위 탭에서도 최근 경기 아래에 기록을 확실히 붙인다.
 const _renderRankV269=renderRank;
-renderRank=function(){
-  _renderRankV269();
-  const box=document.getElementById('lastResults');
-  if(box && !box.querySelector('[data-v270-history]')){
-    box.insertAdjacentHTML('beforeend',`<div data-v270-history>${seasonHistoryPanelV270()}</div>`);
-  }
-};
 
 
 // ═══════════ v0.27.1 오래된 슬롯의 순위 탭 안전 복구 ═══════════
@@ -6966,33 +6805,6 @@ seasonHistoryPanelV270=function(){
 };
 
 const _renderRankV270Safe=renderRank;
-renderRank=function(){
-  repairRankStateV271();
-  try{
-    _renderRankV270Safe();
-  }catch(err){
-    console.error('순위 탭 복구:',err);
-    const rec=state.season.rec;
-    const order=TEAMS.map(t=>t.id).sort((a,b)=>{
-      const ra=rec[a],rb=rec[b];
-      const pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0;
-      const pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;
-      return pb-pa || rb.w-ra.w;
-    });
-    let html='<tr><th>#</th><th style="text-align:left;padding-left:10px">팀</th><th>경기</th><th>승</th><th>패</th><th>무</th><th>승률</th><th>게임차</th></tr>';
-    const top=rec[order[0]];
-    order.forEach((id,i)=>{
-      const r=rec[id],gp=r.w+r.l+r.t,pct=(r.w+r.l)?(r.w/(r.w+r.l)).toFixed(3).replace('0.','.'):'-';
-      const gb=i===0?'-':(((top.w-r.w)+(r.l-top.l))/2).toFixed(1);
-      html+=`<tr class="${id===state.myTeam?'me':''}"><td class="rk">${i+1}</td><td class="tm">${safeTeamNameV271(id)}</td><td>${gp}</td><td>${r.w}</td><td>${r.l}</td><td>${r.t}</td><td>${pct}</td><td>${gb}</td></tr>`;
-    });
-    document.getElementById('rankTable').innerHTML=html;
-    document.getElementById('rankTitle').textContent=`${state.mode==='sim'?state.year+'년차 ':''}순위표 — ${state.season.day}/${seasonLenV42()}경기`;
-    const box=document.getElementById('lastResults');
-    if(box) box.innerHTML='<div class="hint">오래된 저장의 순위 데이터를 자동 복구했습니다.</div>'+seasonHistoryPanelV270();
-  }
-  save();
-};
 
 
 // ═══════════ v0.27.2 순위 진입·구단 기록실 통합 ═══════════
@@ -7046,29 +6858,6 @@ function renderRankCoreV272(){
   }
 }
 
-// 순위 화면을 먼저 연 뒤 렌더링한다. 렌더 오류가 나도 이전 화면에 남지 않는다.
-function openRankSafeV272(){
-  show('rank');
-  try{ renderRankCoreV272(); }
-  catch(err){
-    console.error('순위 화면 최종 복구:',err);
-    const box=document.getElementById('lastResults');
-    if(box) box.innerHTML='<div class="hint">순위 데이터를 복구하는 중입니다.</div>'+compactHistorySummaryV272();
-  }
-  const mainEl=document.querySelector('main');
-  if(mainEl) mainEl.scrollTop=0;
-  save();
-}
-
-const rankBtnV272=document.querySelector('nav button[data-nav="rank"]');
-if(rankBtnV272){
-  rankBtnV272.onclick=()=>{
-    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
-    rankBtnV272.classList.add('on');
-    if(!state.myTeam){ show('select'); return; }
-    openRankSafeV272();
-  };
-}
 
 openHistoryRoom=function(){
   ensureLongTermState();
@@ -7282,24 +7071,10 @@ function renderRankStableV274(){
     }catch(err){ console.error('v0.27.4 왕조 요약:',err); }
     box.innerHTML=recent+dynasty+`<button class="btn ghost" style="margin-top:12px" onclick="openHistoryRoom()">📖 구단 기록실 보기</button>`;
   }
-  const reset=document.getElementById('resetSeasonBtn');
-  if(reset) reset.style.display='';
   const mainEl=document.querySelector('main');
   if(mainEl){ mainEl.scrollTop=0; }
 }
 
-// 다른 탭의 기존 onclick이나 오래된 저장 데이터 오류보다 먼저 순위 진입을 처리한다.
-document.addEventListener('click',function rankCaptureV274(e){
-  const btn=e.target && e.target.closest ? e.target.closest('nav button[data-nav="rank"]') : null;
-  if(!btn) return;
-  e.preventDefault();
-  e.stopImmediatePropagation();
-  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
-  btn.classList.add('on');
-  if(!state || !state.myTeam){ show('select'); return; }
-  renderRankStableV274();
-  try{ save(); }catch(err){ console.error('v0.27.4 순위 저장:',err); }
-},true);
 
 // 구단 기록실은 왕조·시즌·세계대회 기록을 한 화면에서 확인하는 공식 위치로 사용한다.
 const _openHistoryRoomV274=openHistoryRoom;
@@ -7314,19 +7089,7 @@ openHistoryRoom=function(){
 };
 
 
-// ═══════════ v0.27.5 순위 본문 강제 전환·왕조 패널 고정 ═══════════
-function renderRankStableV275(){
-  // 화면 전환을 렌더보다 먼저 확정한다.
-  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('on'));
-  const rankScreen=document.getElementById('scr-rank');
-  if(rankScreen) rankScreen.classList.add('on');
-  document.querySelectorAll('nav button').forEach(el=>el.classList.toggle('on',el.dataset.nav==='rank'));
-  try{ renderRankStableV274(); }
-  catch(err){
-    console.error('v0.27.5 안정 순위:',err);
-    try{ repairRankStateV271(); renderRank(); }catch(inner){ console.error(inner); }
-  }
-}
+// ═══════════ v0.27.5 왕조 패널 ═══════════
 
 // 구단 홈과 운영 화면에서 장기 목표가 항상 눈에 보이도록 고정한다.
 function dynastyQuickCardV275(){
@@ -7335,24 +7098,7 @@ function dynastyQuickCardV275(){
     return `<div data-dynasty-v275 class="notice" style="border-color:var(--amber);margin:12px 0"><b>${d.icon} ${d.name} · 명성 ${d.legacy}/999</b><br>한국시리즈 우승 ${d.titles}회 · 정규시즌 1위 ${d.pennants}회 · 가을야구 ${d.playoffs}회${next?`<br><span style="color:var(--dim)">다음 목표: ${next.label} · ${next.progress}</span>`:'<br>모든 장기 목표 달성 🏆'}</div>`;
   }catch(err){ return '<div data-dynasty-v275 class="notice"><b>🏟️ 장기 목표·왕조</b><br>시즌 기록을 계산 중입니다.</div>'; }
 }
-const _renderFrontV275=renderFront;
-renderFront=function(){
-  const r=_renderFrontV275();
-  const body=document.getElementById('frontBody');
-  if(body&&!body.querySelector('[data-dynasty-v275]')) body.insertAdjacentHTML('afterbegin',dynastyQuickCardV275());
-  return r;
-};
 
-// iOS 웹뷰에서도 onclick 속성 경로로 확실히 진입한다.
-const rankNavV275=document.querySelector('nav button[data-nav="rank"]');
-if(rankNavV275){
-  rankNavV275.onclick=function(e){
-    if(e){ e.preventDefault(); e.stopPropagation(); }
-    if(!state||!state.myTeam){ show('select'); return; }
-    renderRankStableV275();
-    try{ save(); }catch(err){ console.error('v0.27.5 순위 저장:',err); }
-  };
-}
 
 
 // ═══════════ v0.27.6 운영 화면 장기 목표 고정 표시 ═══════════
@@ -7372,15 +7118,6 @@ clubStatusPanelHtml=function(){
 
 // ═══════════ v0.27.7 운영 화면 왕조 카드 중복 제거 ═══════════
 // 상단에 임시 삽입되던 v0.27.5 카드는 제거하고, 구단 현황 본문 안의 카드만 유지한다.
-const _renderFrontV277=renderFront;
-renderFront=function(){
-  const result=_renderFrontV277();
-  const body=document.getElementById('frontBody');
-  if(body){
-    body.querySelectorAll('[data-dynasty-v275]').forEach(el=>el.remove());
-  }
-  return result;
-};
 
 
 // ═══════════ v0.28.1 특수 능력 실전 연동 ═══════════
@@ -9002,49 +8739,7 @@ function lineupRowV315(t,lu,pos,displayOrd,defMode){
   return d;
 }
 
-renderLineup=function(){
-  const list=document.getElementById('lineupList'),spBox=document.getElementById('spList');
-  if(!list||!spBox||!state.myTeam)return;
-  const t=getTeam(state.myTeam),lu=ensureHealthyLineup(t.id);
-  if(!lu||!Array.isArray(lu.order)||lu.order.length!==9){list.innerHTML='<div class="notice">라인업을 구성할 수 없습니다. 1군 야수 구성을 확인하세요.</div>';spBox.innerHTML='';renderPitchStaffV310(spBox,t);return;}
-  list.innerHTML='';
-  if(luMode==='order'&&luSel>=0){const g=document.createElement('div');g.className='exchange-guide-v303';g.textContent=`↕ ${luSel+1}번 타순 선택됨 — 바꿀 다른 선발 선수를 누르세요.`;list.appendChild(g);}
 
-  if(luMode==='def'){
-    const h=document.createElement('div');h.className='def-section-v315';h.innerHTML=`수비 선발진 <span class="lineup-count-v315">9명 · 포지션 순서</span>`;list.appendChild(h);
-    DEFENSE_ORDER_V315.forEach((slot,n)=>{
-      const pos=lu.pos.indexOf(slot);
-      if(pos>=0)list.appendChild(lineupRowV315(t,lu,pos,n+1,true));
-    });
-  }else{
-    lu.order.forEach((_,pos)=>list.appendChild(lineupRowV315(t,lu,pos,pos+1,false)));
-  }
-
-  const bench=benchBatters(t.id).sort((a,b)=>{
-    const pa=DEFENSE_ORDER_V315.indexOf(t.bat[a][2]),pb=DEFENSE_ORDER_V315.indexOf(t.bat[b][2]);
-    return (pa<0?99:pa)-(pb<0?99:pb)||batOvr(t.bat[b],t.id)-batOvr(t.bat[a],t.id);
-  });
-  const bh=document.createElement('div');bh.className='def-section-v315 bench-section-v315';bh.innerHTML=`벤치 <span class="lineup-count-v315">${bench.length}명 · 포지션 순서</span>`;list.appendChild(bh);
-  bench.forEach((bi,n)=>{
-    const p=t.bat[bi],d=document.createElement('div'),ci=conditionInfo(t.id,'bat',p),injured=isInjured(t.id,'bat',p);
-    d.className='lrow';d.style.opacity=injured?'.42':'.86';
-    const multi=typeof multiPositionsOfV314==='function'?multiPositionsOfV314(p):[];
-    d.innerHTML=`<div class="ord">${n+1}</div><div class="lp">${p[2]}</div><div class="ln">${playerDisplayName(p)} ${gradeBadge(batOvr(p,t.id))}<br><span style="font-size:10px;color:${ci.color}">${ci.label}${multi.length?' · '+multi.join('/')+' 가능':''}</span></div><div class="lo num">${batOvr(p,t.id)}</div>`;
-    d.onclick=()=>{if(injured){showAlert('부상 중인 선수는 라인업에 넣을 수 없습니다.');return;}openLineupExchangePickerV304('bench',bi);};
-    list.appendChild(d);
-  });
-  spBox.innerHTML='';renderPitchStaffV310(spBox,t);
-};
-
-setLuMode=function(m){
-  luMode=m;luSel=-1;luBenchSel=-1;
-  document.getElementById('luModeOrder').classList.toggle('on',m==='order');
-  document.getElementById('luModeDef').classList.toggle('on',m==='def');
-  document.getElementById('luModeHint').textContent=m==='order'
-    ?'선발과 벤치를 눌러 교체하고, ↕ 버튼으로 타순을 바꿉니다.'
-    :'포수 → 1루수 → 2루수 → 3루수 → 유격수 → 좌익수 → 중견수 → 우익수 → 지명타자 순서입니다. 선발과 벤치 어느 쪽을 눌러도 가능한 자리만 표시됩니다.';
-  renderLineup();
-};
 
 // v0.31.7: 기존 선수단을 임의로 자르지 않고 투수 운용표만 다시 계산한다.
 // 특히 한화 저장 데이터에서 후보 투수가 불펜 화면에 전부 붙던 현상을 막는다.
@@ -9222,37 +8917,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     return d;
   }
 
-  window.renderLineup=function(){
-    const list=document.getElementById('lineupList'),spBox=document.getElementById('spList');
-    if(!list||!spBox||!state?.myTeam)return;
-    const t=getTeam(state.myTeam),lu=ensureHealthyLineup(t.id);
-    list.innerHTML='';spBox.innerHTML='';
-    if(!lu||!Array.isArray(lu.order)||lu.order.length!==9){list.innerHTML='<div class="lineup-empty-v320">라인업을 구성할 수 없습니다.</div>';return;}
-
-    list.appendChild(sectionV320(luMode==='def'?'수비 선발진':'선발 타자', '9명'));
-    if(luMode==='def'){
-      DEFENSE_ORDER_V315.forEach((slot,n)=>{const pos=lu.pos.indexOf(slot);if(pos>=0)list.appendChild(lineupStarterRowV320(t,lu,pos,n+1,true));});
-    }else lu.order.forEach((_,pos)=>list.appendChild(lineupStarterRowV320(t,lu,pos,pos+1,false)));
-
-    const bench=allBenchBattersV320(t.id).sort((a,b)=>{
-      const pa=DEFENSE_ORDER_V315.indexOf(t.bat[a][2]),pb=DEFENSE_ORDER_V315.indexOf(t.bat[b][2]);
-      return (pa<0?99:pa)-(pb<0?99:pb)||batOvr(t.bat[b],t.id)-batOvr(t.bat[a],t.id);
-    });
-    list.appendChild(sectionV320('타자 후보', `${bench.length}명`,'bench'));
-    if(!bench.length)list.appendChild(Object.assign(document.createElement('div'),{className:'lineup-empty-v320',textContent:'등록된 타자 후보가 없습니다.'}));
-    bench.forEach((bi,n)=>{
-      const p=t.bat[bi],ci=conditionInfo(t.id,'bat',p),inj=isInjured(t.id,'bat',p),d=document.createElement('div');
-      d.className='lrow';if(inj)d.style.opacity='.42';
-      const multi=typeof multiPositionsOfV314==='function'?multiPositionsOfV314(p):[];
-      d.innerHTML=`<div class="ord">${n+1}</div><div class="lp">${p[2]}</div><div class="ln"><button type="button" class="name-button-v320" style="all:unset;cursor:pointer;font-weight:900">${playerDisplayName(p)}</button> ${gradeBadge(batOvr(p,t.id))}<br><span style="font-size:10px;color:${ci.color}">${ci.label}${multi.length?' · '+multi.join('/')+' 가능':''}</span></div><div class="lo num">${batOvr(p,t.id)}</div>`;
-      const open=()=>{if(inj)return showAlert('부상 중인 선수는 라인업에 넣을 수 없습니다.');openLineupExchangePickerV304('bench',bi);};
-      d.onclick=open;d.querySelector('.name-button-v320').onclick=e=>{e.stopPropagation();open();};list.appendChild(d);
-    });
-
-    spBox.appendChild(sectionV320('투수', '선발·불펜','pitch'));
-    renderPitchStaffV310(spBox,t);
-  };
-
+  
   // 투수 이름을 눌러도 동일한 교체 선택창을 열 수 있도록 렌더 후 버튼을 보강한다.
   const oldPitchRender=window.renderPitchStaffV310;
   window.renderPitchStaffV310=function(box,t){
@@ -9377,35 +9042,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     d.onclick=()=>openLineupExchangePickerV304('starter',pos);
     return d;
   }
-  window.renderLineup=function(){
-    const list=document.getElementById('lineupList'),spBox=document.getElementById('spList');
-    if(!list||!spBox||!state?.myTeam)return;
-    const t=getTeam(state.myTeam),lu=ensureHealthyLineup(t.id);
-    list.innerHTML='';spBox.innerHTML='';
-    if(!lu||!Array.isArray(lu.order)||lu.order.length!==9){list.innerHTML='<div class="lineup-empty-v320">라인업을 구성할 수 없습니다.</div>';return;}
-    list.appendChild(sectionV322(luMode==='def'?'수비 선발진':'선발 타자','9명'));
-    if(luMode==='def'){
-      DEFENSE_ORDER_V315.forEach((slot,n)=>{const pos=lu.pos.indexOf(slot);if(pos>=0)list.appendChild(starterRowV322(t,lu,pos,n+1,true));});
-    }else{
-      lu.order.forEach((_,pos)=>list.appendChild(starterRowV322(t,lu,pos,pos+1,false)));
-    }
-    const bench=benchBatters(t.id).sort((a,b)=>{
-      const pa=DEFENSE_ORDER_V315.indexOf(t.bat[a][2]),pb=DEFENSE_ORDER_V315.indexOf(t.bat[b][2]);
-      return (pa<0?99:pa)-(pb<0?99:pb)||batOvr(t.bat[b],t.id)-batOvr(t.bat[a],t.id);
-    });
-    list.appendChild(sectionV322('타자 후보',`${bench.length}명`,'bench'));
-    if(!bench.length)list.appendChild(Object.assign(document.createElement('div'),{className:'lineup-empty-v320',textContent:'등록된 타자 후보가 없습니다.'}));
-    bench.forEach((bi,n)=>{
-      const p=t.bat[bi],ci=conditionInfo(t.id,'bat',p),inj=isInjured(t.id,'bat',p),d=document.createElement('div');
-      d.className='lrow def-slot-v315';if(inj)d.style.opacity='.42';
-      d.innerHTML=`<div class="ord">${n+1}</div><div class="lp">${positionTextV322(p)}</div><div class="ln"><span class="player-name-v322">${playerDisplayName(p)}</span><br><span style="font-size:10px;color:${ci.color}">${ci.label}</span></div><div class="lo num">${batOvr(p,t.id)}</div>`;
-      d.onclick=()=>{if(inj)return showAlert('부상 중인 선수는 라인업에 넣을 수 없습니다.');openLineupExchangePickerV304('bench',bi);};
-      list.appendChild(d);
-    });
-    spBox.appendChild(sectionV322('투수','선발·불펜','pitch'));
-    renderPitchStaffV310(spBox,t);
-  };
-})();
+  })();
 </script>
 
 
@@ -9530,33 +9167,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
       box.appendChild(rowV323({num:slot+1,pos:'RP',name:playerDisplayName(p),sub:`${role} · ${ci.label}`,ovr:pitOvr(p,t.id),injured:inj,onClick:()=>openPitchStaffPickerV310('bullpen',slot)}));
     });
   }
-  window.renderLineup=function(){
-    const list=document.getElementById('lineupList'),spBox=document.getElementById('spList');
-    if(!list||!spBox||!state?.myTeam)return;
-    const t=getTeam(state.myTeam),lu=ensureHealthyLineup(t.id);list.innerHTML='';spBox.innerHTML='';
-    if(!lu||!Array.isArray(lu.order)||lu.order.length!==9){list.innerHTML='<div class="lineup-empty-v320">라인업을 구성할 수 없습니다.</div>';return;}
-    list.appendChild(secV323(luMode==='def'?'수비 배치':'타순 변경','9명'));
-    const addStarter=(pos,n,slot)=>{
-      const bi=lu.order[pos],p=t.bat[bi],ci=conditionInfo(t.id,'bat',p),inj=isInjured(t.id,'bat',p),selected=luMode==='order'&&luSel===pos;
-      const badge=luMode==='def'?slot:posEnV323(p[2]);
-      const sub=luMode==='def'?`${multiTextV323(p)} · ${ci.label}`:`${multiTextV323(p)} · ${ci.label}`;
-      list.appendChild(rowV323({num:n,pos:badge,name:playerDisplayName(p),sub,ovr:batOvr(p,t.id),selected,available:luMode==='order'&&luSel>=0&&!selected,injured:inj,onAction:()=>{if(luMode==='order')selectStarterSwapV304(pos);else openLineupExchangePickerV304('starter',pos);},onClick:()=>openLineupExchangePickerV304('starter',pos)}));
-    };
-    if(luMode==='def')DEFENSE_ORDER_V315.forEach((slot,n)=>{const pos=lu.pos.indexOf(slot);if(pos>=0)addStarter(pos,n+1,slot);});
-    else lu.order.forEach((_,pos)=>addStarter(pos,pos+1,lu.pos[pos]));
-    const bench=benchBatters(t.id).sort((a,b)=>{
-      const pa=DEFENSE_ORDER_V315.indexOf(posEnV323(t.bat[a][2])),pb=DEFENSE_ORDER_V315.indexOf(posEnV323(t.bat[b][2]));
-      return (pa<0?99:pa)-(pb<0?99:pb)||batOvr(t.bat[b],t.id)-batOvr(t.bat[a],t.id);
-    });
-    list.appendChild(secV323('타자 후보',`${bench.length}명`,'bench'));
-    if(!bench.length)list.appendChild(Object.assign(document.createElement('div'),{className:'lineup-empty-v320',textContent:'등록된 타자 후보가 없습니다.'}));
-    bench.forEach((bi,n)=>{
-      const p=t.bat[bi],ci=conditionInfo(t.id,'bat',p),inj=isInjured(t.id,'bat',p);
-      list.appendChild(rowV323({num:n+1,pos:posEnV323(p[2]),name:playerDisplayName(p),sub:`${multiTextV323(p)} · ${ci.label}`,ovr:batOvr(p,t.id),injured:inj,onClick:()=>{if(inj)return showAlert('부상 중인 선수는 라인업에 넣을 수 없습니다.');openLineupExchangePickerV304('bench',bi);}}));
-    });
-    renderPitchV323(spBox,t);
-  };
-})();
+  })();
 </script>
 
 
@@ -9612,15 +9223,12 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 <script>
 /* ─────────────────────────────────────────
    [017/164] SCRIPT · 1.5KB · 원본 9675행
-   감쌈  : renderLineup  (이전 정의를 호출하는 체인)
    정의  : renderLineup, setLuMode
    ⚠ 대체됨: renderLineup
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ───────────────────────────────────────── */
 
 (function(){
-  const previousRender=window.renderLineup;
-
   window.setLuMode=function(m){
     if(!['order','def','pitch'].includes(m))m='order';
     luMode=m;luSel=-1;luBenchSel=-1;
@@ -9629,35 +9237,8 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     document.getElementById('luModeOrder')?.classList.toggle('on',m==='order');
     document.getElementById('luModeDef')?.classList.toggle('on',m==='def');
     document.getElementById('luModePitch')?.classList.toggle('on',m==='pitch');
-    const hint=document.getElementById('luModeHint');
-    if(hint)hint.textContent=m==='order'
-      ?'선발과 벤치를 눌러 교체하고, ↕ 버튼으로 타순을 바꿉니다.'
-      :m==='def'
-        ?'C → 1B → 2B → 3B → SS → LF → CF → RF → DH 순서입니다.'
-        :'선발 로테이션·예비 선발·불펜을 배치합니다.';
     window.renderLineup();
   };
-
-  window.renderLineup=function(){
-    previousRender?.();
-    const pitch=luMode==='pitch';
-    const screen=document.getElementById('scr-lineup');
-    const list=document.getElementById('lineupList');
-    const wrap=document.getElementById('pitchWrap');
-    screen?.classList.toggle('pitch-mode-v325',pitch);
-    if(list)list.style.display=pitch?'none':'';
-    if(wrap)wrap.style.display=pitch?'':'none';
-  };
-
-  document.addEventListener('click',function(e){
-    const btn=e.target.closest?.('#luModePitch');
-    if(!btn)return;
-    e.preventDefault();
-    e.stopPropagation();
-    window.setLuMode('pitch');
-  },true);
-
-  try{window.setLuMode(luMode||'order');}catch(err){console.error('v0.32.5 라인업 모드 초기화:',err);}
 })();
 </script>
 
@@ -19651,14 +19232,6 @@ header .board h1{margin-right:0}
 /* ─────────────────────────────────────
    [150/164] STYLE · 1.1KB · 원본 18851행
    ───────────────────────────────────── */
-.mgr-order-v53{
-  position:sticky;bottom:0;z-index:5;margin-top:8px;
-  display:grid;gap:8px;
-  padding:10px 0 calc(6px + env(safe-area-inset-bottom,0px));
-  background:linear-gradient(180deg,transparent,rgba(6,16,11,.92) 30%);
-}
-.mgr-order-v53 .btn{margin-top:0;min-height:var(--tap-min,44px)}
-.mgr-order-v53 .hint{margin:0;font-size:12px;text-align:center}
 .mgr-pick-v53{display:grid;gap:8px;margin:10px 0}
 .mgr-pick-v53 button{
   text-align:left;padding:13px;border-radius:13px;border:1px solid var(--line);
@@ -20013,37 +19586,6 @@ header .board h1{margin-right:0}
     state.season.last[f.i]=`${g.away.name} ${as} : ${hs} ${g.home.name}`;
     try{save();refreshHeader();}catch(_){}
   }
-
-  /* ---------- 지시 버튼 노출 ---------- */
-  function hideOrderBtn(){
-    document.querySelectorAll('.mgr-order-v53').forEach(el=>el.remove());
-  }
-  function showOrderBtn(){
-    if(state?.gameControl!=='direct')return;
-    const st=window.mgrOrderStateV53&&window.mgrOrderStateV53();
-    if(!st||st.kind)return;
-    // 결과만 모드는 재생이 없어 개입할 지점이 없다.
-    if(window.mgrModeV55&&window.mgrModeV55()==='fast')return;
-    const live=document.getElementById('gameLive');
-    if(!live||live.style.display==='none')return;
-    if(live.querySelector('.mgr-order-v53'))return;
-    const box=document.createElement('div');
-    box.className='mgr-order-v53';
-    box.innerHTML=`<button class="btn" onclick="mgrOrderOpenV53()">🎽 감독 지시 (1회)</button>
-      <div class="hint">누른 이닝부터 3이닝 유지 · ${window.mgrModeV55()==='inn'?'이닝별':'타석별'} 위력 ${Math.round((window.mgrModeMultV55?window.mgrModeMultV55():1)*100)}%</div>`;
-    live.appendChild(box);
-  }
-  // 경기 재생이 시작되면 버튼을 띄운다.
-  const btn=document.getElementById('playBtn');
-  document.addEventListener('click',e=>{
-    if(e.target?.closest?.('#playBtn'))setTimeout(showOrderBtn,60);
-    if(e.target?.closest?.('#newGameBtn')||e.target?.closest?.('#skipBtn'))setTimeout(hideOrderBtn,60);
-  },false);
-  const oldSetup=window.renderGameSetup;
-  if(typeof oldSetup==='function'){
-    window.renderGameSetup=function(){const r=oldSetup.apply(this,arguments);hideOrderBtn();return r;};
-  }
-  window.mgrShowOrderBtnV53=showOrderBtn;
 })();
 </script>
 
@@ -20317,22 +19859,6 @@ header .board h1{margin-right:0}
   border-radius:11px;border:1px solid rgba(255,193,77,.5);
   background:rgba(255,193,77,.16);color:var(--amber);font-family:inherit;font-weight:800;font-size:13px;
 }
-.ord-bar-v58{
-  position:sticky;bottom:0;z-index:5;
-  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
-  padding:8px 0 calc(6px + env(safe-area-inset-bottom,0px));
-  background:linear-gradient(180deg,transparent,rgba(6,16,11,.94) 34%);
-}
-.ord-bar-v58 button{
-  min-height:var(--tap-min,44px);border-radius:12px;
-  border:1px solid var(--line);background:var(--panel2);color:var(--chalk);
-  font-family:inherit;font-size:12px;font-weight:800;line-height:1.35;
-  word-break:keep-all;padding:6px 4px;
-}
-.ord-bar-v58 button.sel{border-color:var(--amber);background:rgba(255,193,77,.16);color:var(--amber)}
-.ord-bar-v58 button:disabled{opacity:.4;filter:grayscale(.4)}
-.ord-bar-v58 .full{grid-column:1/-1;font-size:12px;color:var(--dim);text-align:center;padding:2px}
-@media (max-width:360px){.ord-bar-v58 button{font-size:11px}}
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────
@@ -20434,51 +19960,6 @@ header .board h1{margin-right:0}
     window.renderManagerSettings=function(){
       const r=oldMgr.apply(this,arguments);
       try{paintRec();}catch(e){console.error(V+' 추천 표시:',e);}
-      return r;
-    };
-  }
-
-  /* ---------- 감독 지시 상시 버튼 ---------- */
-  const KINDS=[['bat','🏏 타격 집중'],['pit','🧤 마운드 안정'],['mgr','🎽 감독 승부수']];
-  window.mgrDefaultKindV58='mgr';
-  window.mgrPickKindV58=function(k){
-    window.mgrDefaultKindV58=k;
-    try{if(typeof mgrOrderApplyV53==='function')mgrOrderApplyV53(k);}catch(e){console.error(V+' 지시:',e);}
-  };
-  function paintBar(){
-    try{
-      if(state?.gameControl!=='direct')return;
-      if(window.mgrModeV55&&window.mgrModeV55()==='fast')return;
-      const live=document.getElementById('gameLive');
-      if(!live||live.style.display==='none')return;
-      live.querySelectorAll('.mgr-order-v53,.ord-bar-v58').forEach(el=>el.remove());
-      const st=window.mgrOrderStateV53&&window.mgrOrderStateV53();
-      const used=!st||st.kind;
-      const bar=document.createElement('div');
-      bar.className='ord-bar-v58';
-      if(used){
-        bar.innerHTML=`<div class="full">🎽 이번 경기 지시를 이미 사용했습니다.</div>`;
-      }else{
-        bar.innerHTML=KINDS.map(([k,label])=>
-          `<button class="${window.mgrDefaultKindV58===k?'sel':''}" onclick="mgrPickKindV58('${k}')">${label}</button>`
-        ).join('')+`<div class="full">누르면 그 이닝부터 3이닝 적용 · 경기당 1회</div>`;
-      }
-      live.appendChild(bar);
-    }catch(e){console.error(V+' 지시 버튼:',e);}
-  }
-  window.mgrOrderBarV58=paintBar;
-  // 기존 단일 버튼 대신 이 막대를 쓴다.
-  window.mgrShowOrderBtnV53=paintBar;
-  document.addEventListener('click',e=>{
-    if(e.target?.closest?.('#playBtn'))setTimeout(paintBar,80);
-    if(e.target?.closest?.('#newGameBtn'))setTimeout(()=>{
-      document.querySelectorAll('.ord-bar-v58').forEach(el=>el.remove());},60);
-  },false);
-  const oldSetup2=window.renderGameSetup;
-  if(typeof oldSetup2==='function'){
-    window.renderGameSetup=function(){
-      const r=oldSetup2.apply(this,arguments);
-      try{document.querySelectorAll('.ord-bar-v58').forEach(el=>el.remove());paintRec();}catch(_){}
       return r;
     };
   }
@@ -20736,8 +20217,6 @@ header .board h1{margin-right:0}
   function forceDirect(){
     try{
       if(state)state.gameControl='direct';
-      const row=document.getElementById('mgrAuto')?.parentElement;
-      if(row)row.style.display='none';
       const plan=document.getElementById('managerPlan');
       if(plan)plan.style.display='';
     }catch(_){}
@@ -20756,14 +20235,10 @@ header .board h1{margin-right:0}
     window.renderGameSetup=function(){
       try{if(state)state.gameControl='direct';}catch(_){}
       const r=oldSetup.apply(this,arguments);
-      try{forceDirect();window.preCardResetV60();paint();
-        document.querySelectorAll('.ord-bar-v58,.mgr-order-v53').forEach(el=>el.remove());}catch(_){}
+      try{forceDirect();window.preCardResetV60();paint();}catch(_){}
       return r;
     };
   }
-  // 경기 중 하단 막대는 더 이상 쓰지 않는다.
-  window.mgrShowOrderBtnV53=function(){};
-  window.mgrOrderBarV58=function(){};
   try{forceDirect();}catch(_){}
 })();
 </script>
@@ -20813,7 +20288,6 @@ header .board h1{margin-right:0}
 /* ─────────────────────────────────────
    [161/164] STYLE · 0.2KB · 원본 19936행
    ───────────────────────────────────── */
-.ord-bar-v58,.mgr-order-v53{display:none!important}
 #gameLive{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
 #gamelog{overscroll-behavior:contain}
 </style>
@@ -20828,14 +20302,6 @@ header .board h1{margin-right:0}
 (()=>{
   'use strict';
   const V='v0.65';
-
-  /* ① 경기 중 지시 막대를 확실히 없앤다 */
-  function strip(){
-    try{document.querySelectorAll('.ord-bar-v58,.mgr-order-v53').forEach(el=>el.remove());}catch(_){}
-  }
-  document.addEventListener('click',()=>setTimeout(strip,100),false);
-  setInterval(strip,1200);
-  strip();
 
   /* ② 설정 화면의 "확인 필요" 건수를 현재 상태로 맞춘다.
         지금까지는 마지막 진단 기록을 그대로 보여줘서, 이미 자동 복구된 뒤에도
