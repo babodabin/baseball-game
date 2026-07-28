@@ -21557,7 +21557,7 @@ window.jumpOffseasonTaskV66=function(key){
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.69';
+  const V='v0.70';
   const LIVE_BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
 
   function isBaseTeam(t){return !!t&&LIVE_BASE_IDS.has(String(t.id||''));}
@@ -21693,16 +21693,32 @@ window.jumpOffseasonTaskV66=function(key){
   }
   syncCreatorVisibility();
 
-  // 과거 버전 블록의 지연 타이머가 나중에 실행돼도 최종 표시를 v0.69로 되돌린다.
-  function applyVersion(){
-    document.title='우리팀을 만들자 '+V;
-    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
-      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;
-    });
-    window.GAME_VERSION=V;
+  // v0.70 · 버전 단일 기준. 과거 블록의 지연 타이머가 실행돼도 낮은 버전으로 내려가지 않는다.
+  const VERSION_LOCK='v0.70';
+  function paintVersionV70(){
+    try{
+      document.title='우리팀을 만들자 '+VERSION_LOCK;
+      document.querySelectorAll('.ver,.version,.version-badge,[data-version],.set-ver-v49 b').forEach(el=>{
+        const txt=String(el.textContent||'').trim();
+        if(el.matches('.set-ver-v49 b')||el.hasAttribute('data-version')||/v?0\./i.test(txt))el.textContent=VERSION_LOCK;
+      });
+    }catch(e){console.error(VERSION_LOCK+' 버전 표시:',e);}
   }
-  [0,500,800,1200,1500,2000,2800,3200,3600,4200,4600].forEach(ms=>setTimeout(applyVersion,ms));
-  applyVersion();
+  try{
+    // 이후의 window.GAME_VERSION='v0.65' 같은 대입은 조용히 무시한다.
+    Object.defineProperty(window,'GAME_VERSION',{
+      configurable:true,enumerable:true,
+      get(){return VERSION_LOCK;},
+      set(_next){return VERSION_LOCK;}
+    });
+  }catch(e){
+    try{window.GAME_VERSION=VERSION_LOCK;}catch(_){}
+  }
+  paintVersionV70();
+  // 설정 시트가 나중에 열리거나 구버전 타이머가 DOM을 다시 써도 즉시 정상화한다.
+  const versionObserverV70=new MutationObserver(()=>paintVersionV70());
+  try{versionObserverV70.observe(document.documentElement,{subtree:true,childList:true,characterData:true});}catch(_){}
+  [0,500,1500,3200,5000].forEach(ms=>setTimeout(paintVersionV70,ms));
 })();
 </script>
 
