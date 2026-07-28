@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.84 · 라인업·경기·운영·순위 레거시 정리 */
-window.APP_VERSION='v0.89';
+window.APP_VERSION='v0.90';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -20703,5 +20703,159 @@ window.jumpOffseasonTaskV66=function(key){
 }
 </style>
 
+
+
+<style id="front-office-v090">
+/* ═══════════ v0.90 · OPERATIONS BOARD ═══════════
+   운영 기능은 유지하고 #scr-front 내부만 v0.88~0.89의 짙은 그린 + 골드 톤으로 정리한다. */
+
+#scr-front{padding-top:12px}
+#scr-front #frontTitle{margin:0 0 10px;font-size:17px}
+#scr-front #frontTitle::after{background:rgba(244,196,94,.22)}
+
+/* 상단 시즌/자금 정보 */
+#scr-front #frontInfo{
+  min-height:0;margin:0 0 12px;padding:13px 14px;
+  border:1px solid rgba(181,209,191,.14)!important;border-radius:14px;
+  background:#081710;box-shadow:none;color:#AFC0B7;font-size:12px;line-height:1.72;
+}
+#scr-front #frontInfo b{color:#F4C45E}
+
+/* 구단 현황 / 선수단 / 프런트 */
+#scr-front .front-subtabs{
+  position:sticky;top:0;z-index:8;
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;
+  margin:0 0 13px;padding:4px;
+  border:1px solid rgba(181,209,191,.14);border-radius:14px;
+  background:#081710;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;
+}
+#scr-front .front-subtabs button{
+  min-width:0;min-height:40px;padding:8px 4px;border:0;border-radius:10px;
+  background:transparent;color:#8FA499;font-size:12px;font-weight:800;box-shadow:none;
+}
+#scr-front .front-subtabs button.on{
+  background:#1C3326;color:#F4C45E;
+  box-shadow:inset 0 0 0 1px rgba(244,196,94,.28);
+}
+#scr-front .front-pane{padding-bottom:8px}
+
+/* 요약 수치 */
+#scr-front .club-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 10px}
+#scr-front .club-summary-card{
+  min-height:76px;padding:12px 13px;border:1px solid rgba(181,209,191,.13)!important;
+  border-radius:13px;background:#0D1E16;box-shadow:none;
+}
+#scr-front .club-summary-card .k{margin-bottom:7px;color:#8FA499;font-size:10.5px;font-weight:700}
+#scr-front .club-summary-card .v{color:#F3EFE5;font-size:19px;font-weight:900;letter-spacing:-.2px}
+
+/* 운영 안내 카드 */
+#scr-front .notice{
+  margin:8px 0;padding:12px 14px;border:1px solid rgba(181,209,191,.13)!important;
+  border-radius:13px;background:#081710;box-shadow:none;color:#AFC0B7;font-size:12px;line-height:1.65;
+}
+#scr-front .notice::before{top:10px;bottom:10px;width:2px;background:#F4C45E}
+#scr-front .notice b{color:#EDEAE2;font-weight:800}
+#scr-front .hint{font-size:11.5px;line-height:1.62;color:#91A59A!important}
+
+/* 운영 섹션 제목 */
+#scr-front h2.sec{margin:15px 0 9px;font-size:15px}
+#scr-front h2.sec::after{background:rgba(181,209,191,.10)}
+#scr-front h2.sec small{color:#81968A;font-size:10px}
+
+/* 선수단·시설 공통 행 */
+#scr-front .prow{
+  margin-bottom:7px;padding:10px 11px;border:1px solid rgba(181,209,191,.12)!important;
+  border-radius:13px;background:#0D1E16;box-shadow:none;
+}
+#scr-front .prow::before{display:none}
+#scr-front .prow .pos{
+  width:36px;height:36px;border-radius:10px;background:#081710;
+  border:1px solid rgba(181,209,191,.11);color:#D3DDD7;font-size:11px;
+}
+#scr-front .prow .nm{font-size:13.5px;color:#E9ECE8}
+#scr-front .prow .hand{margin-top:3px;color:#83988C;font-size:10.5px;line-height:1.4}
+#scr-front .prow .boost{font-size:10px}
+#scr-front .prow .signbtn,#scr-front .prow .cutbtn{
+  min-width:49px;padding:8px 9px;border-radius:9px;box-shadow:none;font-size:11px;font-weight:900;
+}
+#scr-front .prow .signbtn{background:#F4C45E;color:#211706}
+#scr-front .prow .cutbtn{background:#2A352E;color:#B8C7BF;border:1px solid rgba(181,209,191,.12)}
+
+/* 감독·코치 / 스카우트 선택 */
+#scr-front .lb-cat{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;
+  overflow:visible;margin:0 0 7px;padding:0;
+}
+#scr-front .lb-cat button{
+  min-width:0;min-height:38px;padding:7px 4px;border:1px solid rgba(181,209,191,.13);
+  border-radius:10px;background:#102219;color:#8FA499;font-size:10.5px;font-weight:800;
+  white-space:normal;line-height:1.25;box-shadow:none;
+}
+#scr-front .lb-cat button.on{
+  background:#172D21;border-color:rgba(244,196,94,.48);color:#F4C45E;box-shadow:none;
+}
+
+/* 구단 현황의 2군 육성 */
+#scr-front .growth-report{
+  margin:7px 0 10px;padding:4px 12px;border:1px solid rgba(181,209,191,.12)!important;
+  border-radius:13px;background:#0D1E16;box-shadow:none;
+}
+#scr-front .growth-report .grow-row{
+  padding:9px 0;border-bottom:1px solid rgba(181,209,191,.07);color:#98AAA0;font-size:11px;line-height:1.55;
+}
+#scr-front .growth-report .grow-row b{color:#E4E9E5}
+
+/* 구장 경영 */
+#scr-front .biz-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+#scr-front .biz-card{
+  min-height:116px;padding:12px;border:1px solid rgba(181,209,191,.12)!important;
+  border-radius:13px;background:#0D1E16;box-shadow:none;
+}
+#scr-front .biz-card .biz-name{color:#E9ECE8;font-size:12.5px;font-weight:900;line-height:1.35}
+#scr-front .biz-card .biz-value{margin-top:5px;color:#879B90;font-size:10.5px;line-height:1.45}
+#scr-front .biz-card button{
+  min-height:34px;margin-top:10px;padding:7px 5px;border:0;border-radius:9px;
+  background:#F4C45E;color:#211706;font-size:10.5px;font-weight:900;box-shadow:none;
+}
+#scr-front .biz-card button.secondary{
+  background:#102219;color:#A9B9B0;border:1px solid rgba(181,209,191,.12);
+}
+
+/* 오프시즌 체크리스트 */
+#scr-front .checklist{
+  margin:0 0 12px;padding:12px 13px;border:1px solid rgba(244,196,94,.28)!important;
+  border-radius:14px;background:#0A1A12;box-shadow:none;
+}
+#scr-front .cl-title{margin-bottom:8px;color:#F4C45E;font-size:12px;font-weight:900}
+#scr-front .cl-row{min-height:38px;padding:7px 4px;border-bottom:1px solid rgba(181,209,191,.07);font-size:11.5px}
+#scr-front .cl-row:last-of-type{border-bottom:0}
+#scr-front .cl-lb{color:#D7DFDA}
+#scr-front .cl-note{font-size:10px}
+#scr-front .cl-go-v66{color:#6F8579}
+#scr-front .btn.cl-start{min-height:44px;margin-top:10px;border-radius:11px;font-size:12px}
+#scr-front .btn.cl-start.ready{background:#F4C45E;color:#211706;box-shadow:none}
+#scr-front .btn.cl-start.locked{background:#102219;color:#6F8479;border:1px solid rgba(181,209,191,.10)}
+
+/* 계약·부가 운영 */
+#scr-front .contract-total{
+  border:1px solid rgba(244,196,94,.20)!important;border-radius:13px;background:#081710;box-shadow:none;
+}
+#scr-front .special-card{
+  border-color:rgba(181,209,191,.14)!important;border-radius:13px;
+  background:#0D1E16;box-shadow:none;
+}
+#scr-front .ops-actions{grid-template-columns:1fr;gap:7px;margin-top:9px}
+#scr-front .ops-actions .btn,#scr-front .front-pane>.btn{
+  min-height:44px;margin-top:8px;border-radius:11px;background:#F4C45E;color:#211706;font-size:12px;box-shadow:none;
+}
+
+@media(max-width:360px){
+  #scr-front .club-summary-grid,#scr-front .biz-grid{gap:7px}
+  #scr-front .club-summary-card{padding:11px;min-height:72px}
+  #scr-front .club-summary-card .v{font-size:17px}
+  #scr-front .lb-cat button{font-size:10px;padding-left:2px;padding-right:2px}
+  #scr-front .biz-card{padding:10px;min-height:112px}
+}
+</style>
 </body>
 </html>
