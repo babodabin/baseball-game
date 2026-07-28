@@ -20903,7 +20903,6 @@ window.jumpOffseasonTaskV66=function(key){
   position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));z-index:8;
   box-shadow:0 8px 22px rgba(0,0,0,.28);
 }
-#scr-game #newGameBtn{display:none}
 
 /* v0.91 · 순위 화면 리디자인 */
 #rankSummary{margin:0 0 12px}
@@ -21063,6 +21062,12 @@ window.jumpOffseasonTaskV66=function(key){
       });
       lastBox.innerHTML=rh;
     }
+  };
+  var _setRankTabV91=setRankTab;
+  setRankTab=function(tab){
+    _setRankTabV91(tab);
+    var summary=document.getElementById('rankSummary');
+    if(summary) summary.style.display=(tab==='team'?'':'none');
   };
   window.myTeamDashboardHtml=function(){
     var t=getTeam(state.myTeam);
