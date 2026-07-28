@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.84 · 라인업·경기·운영·순위 레거시 정리 */
-window.APP_VERSION='v0.88';
+window.APP_VERSION='v0.89';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -19267,7 +19267,6 @@ header .board h1{margin-right:0}
       if(ng)ng.style.display='';
       // 다시 계산된 결과로 오늘 기록을 덮어쓴다.
       try{fixResultV53(g,m);}catch(e){console.error(V+' 결과 반영:',e);}
-      hideOrderBtn();
     }
     if(mode==='fast')push(evs.length);
     else{
@@ -19278,7 +19277,6 @@ header .board h1{margin-right:0}
     }
     const sk=document.getElementById('skipBtn');
     if(sk)sk.onclick=()=>push(evs.length);
-    hideOrderBtn();
     return true;
   };
 
@@ -20574,5 +20572,136 @@ window.jumpOffseasonTaskV66=function(key){
   }catch(e){console.error('v0.82 초기 화면 단일 렌더:',e);}
 })();
 </script>
+
+<style id="game-board-v089">
+/* ═══════════ v0.89 · GAME BOARD ═══════════
+   경기 기능/기록 로직은 유지하고 #scr-game 내부의 시각 구조만 정리한다.
+   v0.88 라인업의 짙은 그린 + 골드 포인트, 평평한 카드, 모바일 우선 톤을 이어간다. */
+
+#scr-game{padding-top:12px}
+#scr-game #gameTitle{margin:0 0 12px;font-size:17px}
+#scr-game #gameTitle::after{background:rgba(244,196,94,.22)}
+
+/* 오늘 경기 요약 */
+#scr-game #seasonInfo{
+  min-height:0;margin:0 0 12px;padding:15px 16px;
+  border:1px solid rgba(181,209,191,.14)!important;border-radius:14px;
+  background:#081710;box-shadow:none;
+  color:#AFC0B7;font-size:13px;line-height:1.78;
+}
+#scr-game #seasonInfo b{color:#F4C45E;font-weight:800}
+
+/* 감독 설정 */
+#scr-game #managerBox{
+  margin:0 0 12px;padding:7px 12px;
+  border:1px solid rgba(181,209,191,.14)!important;border-radius:14px;
+  background:#081710;box-shadow:none;
+}
+#scr-game #managerPlan{border:0;padding:0}
+#scr-game .manager-row{
+  display:grid;grid-template-columns:72px minmax(0,1fr);align-items:center;gap:8px;
+  margin:0;padding:9px 0;border-bottom:1px solid rgba(181,209,191,.08);
+}
+#scr-game .manager-row:last-child{border-bottom:0}
+#scr-game .manager-row .mlabel{
+  width:auto;color:#9DAFA5;font-size:11px;font-weight:800;letter-spacing:.15px;
+}
+#scr-game .manager-choice{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;overflow:visible;
+}
+#scr-game .manager-choice button{
+  min-width:0;min-height:36px;padding:7px 4px;
+  border:1px solid rgba(181,209,191,.13);border-radius:10px;
+  background:#102219;color:#8FA499;font-size:11px;font-weight:800;box-shadow:none;
+}
+#scr-game .manager-choice button.on{
+  background:#172D21;border-color:rgba(244,196,94,.48);color:#F4C45E;box-shadow:none;
+}
+
+/* 중계 속도 — 라인업 상단 탭과 같은 세그먼트 구조 */
+#scr-game .speedbar{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;
+  margin:0 0 12px;padding:4px;
+  border:1px solid rgba(181,209,191,.14);border-radius:14px;background:#081710;
+}
+#scr-game .speedbar button{
+  min-width:0;min-height:44px;padding:7px 4px;border:0;border-radius:10px;
+  background:transparent;color:#8FA499;font-size:11px;font-weight:800;line-height:1.28;
+  box-shadow:none;white-space:normal;
+}
+#scr-game .speedbar button.on{
+  background:#1C3326;color:#F4C45E;
+  box-shadow:inset 0 0 0 1px rgba(244,196,94,.28);
+}
+
+/* 경기 진행 버튼 */
+#scr-game #playBtn{
+  min-height:50px;margin-top:0;border-radius:13px;background:#F4C45E;color:#211706;
+  font-size:15px;font-weight:900;box-shadow:none;
+}
+#scr-game #skip5Btn{
+  min-height:44px;margin-top:8px;border-radius:12px;
+  background:#102219;border:1px solid rgba(181,209,191,.13);color:#9FB1A7;
+  font-size:12px;font-weight:700;
+}
+#scr-game #skip5Btn:disabled{opacity:.62}
+
+/* 실시간 경기판 */
+#scr-game #gameLive{padding-top:0}
+#scr-game .scorebox{
+  margin:0 0 10px;padding:10px 11px;
+  border:1px solid rgba(181,209,191,.14)!important;border-radius:14px;
+  background:#06120D;box-shadow:none;overscroll-behavior-x:contain;
+}
+#scr-game .scorebox table{min-width:340px}
+#scr-game .scorebox th{
+  padding:4px 3px;color:#71877B;font-size:10px;font-weight:700;letter-spacing:.35px;
+}
+#scr-game .scorebox td{
+  padding:6px 3px;border-top:1px solid rgba(181,209,191,.055);
+  color:#9EAEA5;font-size:12px;
+}
+#scr-game .scorebox td.tm{
+  color:#E8EEE9;font-size:12px;font-weight:800;padding-right:8px;
+}
+#scr-game .scorebox td.rr{
+  color:#F4C45E;font-size:15px;font-weight:900;text-shadow:none;
+}
+
+/* 문자 중계 */
+#scr-game .gamelog{
+  min-height:220px;max-height:46vh;padding:13px 14px;
+  border:1px solid rgba(181,209,191,.14)!important;border-radius:14px;
+  background:#081710;box-shadow:none;color:#B4C2BA;font-size:13px;line-height:1.72;
+}
+#scr-game .gamelog .inn{
+  display:block;margin:11px 0 5px;padding:6px 8px;border-radius:8px;
+  background:#102219;color:#F4C45E;font-size:11px;font-weight:900;letter-spacing:.2px;
+}
+#scr-game .gamelog .scoreev{color:#F4C45E;font-weight:800}
+#scr-game .gamelog .pitch{color:#82958A;font-size:11.5px;padding-left:10px}
+#scr-game .gamelog .chant{color:#D7B75F;font-size:12px;padding-left:0}
+#scr-game .gamelog .final{
+  margin-top:12px;padding-top:11px;border-top:1px solid rgba(244,196,94,.28);
+  color:#F2F0E8;font-size:14px;font-weight:900;
+}
+#scr-game #skipBtn,#scr-game #newGameBtn{margin-top:10px}
+#scr-game #newGameBtn{min-height:46px}
+
+/* 시즌 종료 */
+#scr-game #seasonDone{
+  margin-top:10px;padding:44px 18px;border:1px solid rgba(181,209,191,.14);
+  border-radius:14px;background:#081710;
+}
+
+@media (max-width:390px){
+  #scr-game .manager-row{grid-template-columns:64px minmax(0,1fr);gap:6px}
+  #scr-game .manager-choice button{font-size:10.5px;padding-left:2px;padding-right:2px}
+  #scr-game .speedbar button{font-size:10.5px}
+  #scr-game .scorebox{margin-left:-2px;margin-right:-2px;padding-left:8px;padding-right:8px}
+  #scr-game .scorebox table{min-width:326px!important}
+}
+</style>
+
 </body>
 </html>
