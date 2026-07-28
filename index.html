@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
 <script>
-/* v0.80 · 첫 화면 구조/로고 정리 */
-window.APP_VERSION='v0.81';
+/* v0.82 · 홈 렌더 구조 정리 */
+window.APP_VERSION='v0.82';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -2277,36 +2277,7 @@ function startWithMode(teamId, mode, eco){
 
 
 
-/* ═══════════ 고정 배경 (v0.81) ═══════════ */
-function applyTheme(){
-  if(!document.body)return;
-  document.body.classList.remove('theme-day','theme-night','theme-rain');
-}
-
-/* ═══════════ 구단 홈 화면 (v0.15 개편) ═══════════ */
-
-function teamStatusHtml(){
-  const t = getTeam(state.myTeam);
-  let s = `모드: ${state.mode==='sim'?'시뮬레이션 '+state.year+'년차':'실황'} · ${state.eco==='normal'?'경영 일반':state.eco==='hard'?'경영 하드':'자유'}<br>`;
-  s += `2025 실제 순위: ${RANK2025[state.myTeam]||'-'}위<br>`;
-  if(state.season && state.season.rec){
-    const order = rankOrder ? rankOrder() : [];
-    const rk = order.indexOf(state.myTeam)+1;
-    const r = state.season.rec[state.myTeam];
-    s += `현재 시즌: ${state.season.day}/${seasonLenV42()}경기 · ${rk}위 (${r.w}승 ${r.l}패 ${r.t}무)<br>`;
-  }else s += `시즌 준비 중<br>`;
-  // 로스터 요약
-  const topBat = [...t.bat].map((p,i)=>({n:playerDisplayName(p),o:batOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
-  const topPit = [...t.pit].map((p,i)=>({n:playerDisplayName(p),o:pitOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
-  s += `간판 타자: ${topBat.n} (OVR ${topBat.o}) · 에이스: ${topPit.n} (OVR ${topPit.o})`;
-  s += `<br>선수 상태: ${healthSummary()}`;
-  if(ecoOn()){
-    ensureFanState();
-    s += `<br>잔고 ${fmtMoney()} · 연간 총연봉 ${teamSalary().toFixed(1)}억`;
-    s += `<br>구단 인기 ${state.popularity.toFixed(1)} · 예상 홈 관중 ${estimateAttendance().toLocaleString()}명`;
-  }
-  return s;
-}
+/* ═══════════ 구단 홈 화면 ═══════════ */
 
 function renderTeamHome(){
   const box = document.getElementById('teamHome');
@@ -2314,7 +2285,7 @@ function renderTeamHome(){
   const md = state.mode==='sim' ? `시뮬레이션 ${state.year}년차` : '실황';
   const eco = state.eco==='normal'?'경영 일반':state.eco==='hard'?'경영 하드':'자유';
   const seasonChip = state.season && state.season.rec
-    ? `<span class="club-chip"><b>${state.season.day}</b>/36 경기</span>`
+    ? `<span class="club-chip"><b>${state.season.day}</b>/${seasonLenV42()} 경기</span>`
     : `<span class="club-chip">시즌 준비 중</span>`;
   box.innerHTML = `
     <div class="club-hero" style="--team:${t.c}">
@@ -2333,14 +2304,11 @@ function renderTeamHome(){
         ${ecoOn()?`<span class="club-chip">인기 <b>${Number(state.popularity||50).toFixed(1)}</b></span>`:''}
       </div>
     </div>
-    <div class="dashboard-panel">
-      <div class="dashboard-title">구단 브리핑 <span>FRONT OFFICE REPORT</span></div>
-      <div class="reveal club-status"><div class="lbl">구단 현황</div>${teamStatusHtml()}</div>
-    </div>
+    ${typeof window.myTeamDashboardHtml==='function'?window.myTeamDashboardHtml():''}
     <h2 class="sec" style="margin-top:22px">저장 슬롯</h2>
     <div id="slotStatusHome"></div>
     <div style="text-align:center;margin-top:12px">
-      <span class="lb-help" onclick="resetCurrentSlot()">이 슬롯 초기화</span>
+      <span class="lb-help" data-settings-v462="1" onclick="openGameSettingsV462()">⚙️ 설정</span>
     </div>`;
   renderSlots();
 }
@@ -5826,12 +5794,7 @@ applySecondTeamDevelopment=function(){
   const mainEl=document.querySelector('main'), btn=document.getElementById('scrollTopBtn');
   if(mainEl&&btn) mainEl.addEventListener('scroll',()=>{ btn.style.display = mainEl.scrollTop>400?'block':'none'; });
 })();
-applyTheme();
-renderTeamGrid();
-refreshHeader();
-renderSlots();
-if(state.myTeam){ renderTeamHome(); show('team'); }
-else show('select');
+/* 초기 화면 렌더는 모든 스크립트 정의가 끝난 뒤 한 번만 실행한다. */
 
 
 // v0.25.1 — 새 시즌 조건을 구단 관리 탭 위에 고정
@@ -6933,13 +6896,6 @@ function seasonHistoryPanelV270(){
   return `<div class="notice" style="max-width:360px;margin:14px auto 0;border-color:var(--amber)">${rows}</div>`;
 }
 
-const _renderTeamHomeV269=renderTeamHome;
-renderTeamHome=function(){
-  _renderTeamHomeV269();
-  const box=document.getElementById('teamHome');
-  if(box) box.insertAdjacentHTML('beforeend',seasonHistoryPanelV270());
-};
-
 // 순위 탭에서도 최근 경기 아래에 기록을 확실히 붙인다.
 const _renderRankV269=renderRank;
 renderRank=function(){
@@ -7379,17 +7335,6 @@ function dynastyQuickCardV275(){
     return `<div data-dynasty-v275 class="notice" style="border-color:var(--amber);margin:12px 0"><b>${d.icon} ${d.name} · 명성 ${d.legacy}/999</b><br>한국시리즈 우승 ${d.titles}회 · 정규시즌 1위 ${d.pennants}회 · 가을야구 ${d.playoffs}회${next?`<br><span style="color:var(--dim)">다음 목표: ${next.label} · ${next.progress}</span>`:'<br>모든 장기 목표 달성 🏆'}</div>`;
   }catch(err){ return '<div data-dynasty-v275 class="notice"><b>🏟️ 장기 목표·왕조</b><br>시즌 기록을 계산 중입니다.</div>'; }
 }
-const _renderTeamHomeV275=renderTeamHome;
-renderTeamHome=function(){
-  const r=_renderTeamHomeV275();
-  const screen=document.getElementById('scr-team');
-  if(screen&&!screen.querySelector('[data-dynasty-v275]')){
-    const anchor=screen.querySelector('.theme-title, .theme-row, #slotList');
-    if(anchor) anchor.insertAdjacentHTML('beforebegin',dynastyQuickCardV275());
-    else screen.insertAdjacentHTML('beforeend',dynastyQuickCardV275());
-  }
-  return r;
-};
 const _renderFrontV275=renderFront;
 renderFront=function(){
   const r=_renderFrontV275();
@@ -7424,12 +7369,6 @@ clubStatusPanelHtml=function(){
   return card+base;
 };
 
-// 이미 운영 화면이 열려 있는 상태에서 새 파일을 불러온 경우도 즉시 다시 그린다.
-try{
-  const frontScreen=document.getElementById('scr-front');
-  if(frontScreen&&frontScreen.classList.contains('on')) renderFront();
-}catch(err){ console.error('v0.27.6 운영 화면 즉시 갱신:',err); }
-
 
 // ═══════════ v0.27.7 운영 화면 왕조 카드 중복 제거 ═══════════
 // 상단에 임시 삽입되던 v0.27.5 카드는 제거하고, 구단 현황 본문 안의 카드만 유지한다.
@@ -7442,11 +7381,6 @@ renderFront=function(){
   }
   return result;
 };
-
-try{
-  const frontScreenV277=document.getElementById('scr-front');
-  if(frontScreenV277&&frontScreenV277.classList.contains('on')) renderFront();
-}catch(err){ console.error('v0.27.7 중복 카드 제거:',err); }
 
 
 // ═══════════ v0.28.1 특수 능력 실전 연동 ═══════════
@@ -7556,8 +7490,6 @@ function eventHistoryPanelV280(){
   return `<div class="notice" data-events-v280 style="margin-top:12px"><b>🎲 최근 랜덤 이벤트</b><br>${arr.length?arr.map(e=>`${e.year}년차 ${e.day}일 · <b>${e.title}</b> — ${e.body}`).join('<br>'):'아직 발생한 이벤트가 없습니다.'}</div>`;
 }
 
-// 기존 저장 데이터도 즉시 보정하고 화면을 갱신한다.
-try{ensureSpecialStateV280();save();if(state.myTeam&&document.getElementById('scr-front')?.classList.contains('on'))renderFront();}catch(err){console.error('v0.28.1 초기화:',err);}
 
 
 // ── v0.28.1: 특수 능력을 실제 타석 결과에 연결 ──
@@ -7976,7 +7908,7 @@ if(state.players){
     (t.bat||[]).forEach(p=>{if(isRookie2026V283(p,true)){const k=specialKeyV280(teamId,true,p);if(!state.specialAbilities?.[k])delete state.specialAbilities?.[k];}});
     (t.pit||[]).forEach(p=>{if(isRookie2026V283(p,false)){const k=specialKeyV280(teamId,false,p);if(!state.specialAbilities?.[k])delete state.specialAbilities?.[k];}});
   });
-  try{refreshSpecialAbilitiesV281();save();if(addedVerifiedV283&&state.myTeam){renderTeamHome();}}catch(err){console.error('v0.28.3 명단 보정:',err);}
+  try{refreshSpecialAbilitiesV281();save();}catch(err){console.error('v0.28.3 명단 보정:',err);}
 }
 
 // v0.28.3 완료: 전 구단 2026 공식 신인 보강, 기존 저장 마이그레이션, 실황 보호·2군·특수 능력 연동.
@@ -8811,32 +8743,7 @@ store.slots=store.slots.map(s=>repairSlotHistoryV300(normalizeSlotV286(s)));stat
 // v0.30.0 완료: 슬롯별 명성 복구, 10개 구단 30인 실제 선수단, 실황 2026 선수 보호, 레전드 14명 추가.
 
 
-// ═══════════ v0.30.1 슬롯 전환 왕조 카드 잔상 수정 ═══════════
-// v0.27.5에서 구단 홈 화면 바깥에 삽입한 왕조 카드는 teamHome.innerHTML 초기화의
-// 영향을 받지 않는다. 슬롯 변경 시 이전 슬롯 카드가 남아 있지 않도록 매번 제거 후 재생성한다.
-const _renderTeamHomeV301=renderTeamHome;
-renderTeamHome=function(){
-  const screen=document.getElementById('scr-team');
-  if(screen){
-    screen.querySelectorAll('[data-dynasty-v275],[data-dynasty-v301]').forEach(el=>el.remove());
-  }
-  const result=_renderTeamHomeV301();
-  // 구버전 삽입기가 동작하지 않은 예외 상황에서도 현재 슬롯 기준 카드를 한 장만 보장한다.
-  if(screen&&!screen.querySelector('[data-dynasty-v275],[data-dynasty-v301]')){
-    const card=dynastyQuickCardV275().replace('data-dynasty-v275','data-dynasty-v301');
-    const anchor=screen.querySelector('.theme-title,.theme-row,#slotList,#slotStatusHome');
-    if(anchor)anchor.insertAdjacentHTML('beforebegin',card);else screen.insertAdjacentHTML('beforeend',card);
-  }
-  return result;
-};
-
-// 현재 열려 있는 화면도 새 슬롯 데이터로 즉시 다시 그린다.
-try{
-  const activeTeamScreen=document.getElementById('scr-team');
-  if(state?.myTeam&&activeTeamScreen?.classList.contains('on'))renderTeamHome();
-}catch(err){console.error('v0.30.1 왕조 카드 갱신:',err);}
-
-// v0.30.1 완료: 슬롯 전환 후 이전 구단의 명성·왕조 카드가 화면에 남는 문제 수정.
+// v0.30.1 홈 왕조 잔상 패치는 v0.82에서 제거됨: 홈 삽입 자체를 사용하지 않는다.
 
 
 
@@ -9356,8 +9263,6 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     });
   };
 
-  // 현재 화면이 라인업이면 즉시 새 구성을 다시 그린다.
-  try{if(document.getElementById('scr-lineup')?.classList.contains('on'))renderLineup();}catch(err){console.error('v0.32.1 라인업 초기화:',err);}
 })();
 </script>
 
@@ -9500,7 +9405,6 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     spBox.appendChild(sectionV322('투수','선발·불펜','pitch'));
     renderPitchStaffV310(spBox,t);
   };
-  try{if(document.getElementById('scr-lineup')?.classList.contains('on'))renderLineup();}catch(err){console.error('v0.32.2 라인업 적용:',err);}
 })();
 </script>
 
@@ -9652,7 +9556,6 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     });
     renderPitchV323(spBox,t);
   };
-  try{if(document.getElementById('scr-lineup')?.classList.contains('on'))renderLineup();}catch(err){console.error('v0.32.3 통합 라인업 적용:',err);}
 })();
 </script>
 
@@ -16565,7 +16468,6 @@ input,select,textarea{font-size:16px;max-width:100%;}
   window.addEventListener('load',()=>setTimeout(ver,1200));
   ver();
 
-  try{if(g('scr-lineup')?.classList.contains('on'))window.renderLineup();}catch(e){console.error(V+' 초기 렌더:',e);}
 })();
 </script>
 
@@ -17428,26 +17330,7 @@ main *,.sheet *{max-width:100%}
     document.getElementById('mask')?.classList.add('on');
   };
 
-  /* ---------- 구단홈 설정 진입 링크 ---------- */
-  function attach(){
-    const sp=document.querySelector('#scr-team [onclick="resetCurrentSlot()"],#scr-team [data-settings-v462]');
-    if(!sp)return;
-    sp.className='lb-help';
-    sp.setAttribute('data-settings-v462','1');
-    sp.setAttribute('onclick','openGameSettingsV462()');
-    sp.textContent='⚙️ 설정';
-    const box=sp.parentElement;
-    if(box)box.querySelectorAll('[data-bk-v3437]').forEach(el=>el.remove());
-  }
-  const oldHome=window.renderTeamHome;
-  if(typeof oldHome==='function'){
-    window.renderTeamHome=function(){
-      const r=oldHome.apply(this,arguments);
-      try{attach();}catch(e){console.error(V+' 백업 링크:',e);}
-      return r;
-    };
-  }
-  try{attach();}catch(_){}
+  /* 구단홈 설정 링크는 기본 렌더러에서 직접 생성한다. */
 
   document.title='우리팀을 만들자 '+window.APP_VERSION;
   document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
@@ -17643,7 +17526,7 @@ main *,.sheet *{max-width:100%}
       </div>
       <div class="myteam-card-v350">
         <div class="myteam-card-head-v350"><div class="myteam-card-title-v350">오늘의 구단 과제</div><div class="myteam-card-sub-v350">CLUB CHECK</div></div>
-        <div class="myteam-tasks-v350">${tasks350().map(x=>`<div class="myteam-task-v350 ${x.c}"><span class="ico">${x.i}</span><span class="txt">${esc350(x.t)}</span></div>`).join('')}</div>
+        <div class="myteam-tasks-v350">${tasks350().concat(typeof window.extraTasksV62==='function'?window.extraTasksV62():[]).map(x=>`<div class="myteam-task-v350 ${x.c}"><span class="ico">${x.i}</span><span class="txt">${esc350(x.t)}</span></div>`).join('')}</div>
       </div>
       <div class="myteam-card-v350">
         <div class="myteam-card-head-v350"><div class="myteam-card-title-v350">빠른 이동</div><div class="myteam-card-sub-v350">QUICK ACTIONS</div></div>
@@ -17656,19 +17539,10 @@ main *,.sheet *{max-width:100%}
       </div>
     </div>`;
   }
-  const old=window.renderTeamHome;
-  if(typeof old==='function')window.renderTeamHome=function(){
-    const out=old.apply(this,arguments);
-    try{
-      const root=document.getElementById('teamHome');
-      if(root){root.querySelectorAll('[data-myteam-v350]').forEach(el=>el.remove());const hero=root.querySelector('.club-hero');if(hero)hero.insertAdjacentHTML('afterend',html350());else root.insertAdjacentHTML('afterbegin',html350());}
-    }catch(e){console.error(VER,e);}
-    return out;
-  };
+  window.myTeamDashboardHtml=html350;
   window.openMyTeamSummaryV350=function(){
     try{document.getElementById('sheet').innerHTML=`<div class="top"><div class="pname">⚾ 나의 팀</div><button class="close" onclick="closeSheet()">✕</button></div>${html350()}`;document.getElementById('mask').classList.add('on');}catch(e){console.error(VER,e);}
   };
-  try{if(state?.myTeam)window.renderTeamHome();}catch(e){console.error(VER,e);}
 })();
 </script>
 <script id="custom-team-creator-script">
@@ -21096,41 +20970,7 @@ header .board h1{margin-right:0}
       return r;
     };
   }
-  // 대시보드가 그려진 뒤 항목을 덧붙인다.
-  function paintTasks(){
-    try{
-      const box=document.querySelector('.myteam-tasks-v350');
-      if(!box||box.querySelector('[data-task-v62]'))return;
-      const add=extraTasks();
-      if(!add.length)return;
-      const one=box.querySelector('.myteam-task-v350');
-      add.forEach(x=>{
-        const d=document.createElement('div');
-        d.className=one?one.className:'myteam-task-v350';
-        d.dataset.taskV62='1';
-        if(one&&one.dataset)Object.keys(one.dataset).forEach(k=>{if(k!=='taskV62')d.dataset[k]=one.dataset[k];});
-        d.classList.add(x.c);
-        d.innerHTML=`<span>${x.i}</span> ${x.t}`;
-        box.appendChild(d);
-      });
-    }catch(e){console.error(V+' 할 일 표시:',e);}
-  }
-  const oldHome=window.renderTeamHome;
-  if(typeof oldHome==='function'){
-    window.renderTeamHome=function(){
-      const r=oldHome.apply(this,arguments);
-      setTimeout(paintTasks,0);
-      return r;
-    };
-  }
-  const oldSum=window.openMyTeamSummaryV350;
-  if(typeof oldSum==='function'){
-    window.openMyTeamSummaryV350=function(){
-      const r=oldSum.apply(this,arguments);
-      setTimeout(paintTasks,0);
-      return r;
-    };
-  }
+  // 대시보드는 extraTasksV62를 렌더 시점에 직접 읽는다.
 })();
 </script>
 
@@ -21505,6 +21345,23 @@ window.jumpOffseasonTaskV66=function(key){
   }
   [0,500,800,1200,1500,2000,2800,3200,3600,4200,4600].forEach(ms=>setTimeout(applyVersion,ms));
   applyVersion();
+})();
+</script>
+
+<script id="single-initial-render-v082">
+(function(){
+  'use strict';
+  try{
+    if(typeof renderTeamGrid==='function')renderTeamGrid();
+    if(typeof refreshHeader==='function')refreshHeader();
+    if(typeof renderSlots==='function')renderSlots();
+    if(state?.myTeam){
+      if(typeof renderTeamHome==='function')renderTeamHome();
+      if(typeof show==='function')show('team');
+    }else if(typeof show==='function'){
+      show('select');
+    }
+  }catch(e){console.error('v0.82 초기 화면 단일 렌더:',e);}
 })();
 </script>
 </body>
