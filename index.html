@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.84 · 라인업·경기·운영·순위 레거시 정리 */
-window.APP_VERSION='v0.92';
+window.APP_VERSION='v0.93';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -21180,6 +21180,107 @@ window.jumpOffseasonTaskV66=function(key){
   },true);
   document.addEventListener('DOMContentLoaded',bindV92);
   [0,80,300,900].forEach(function(ms){setTimeout(bindV92,ms);});
+})();
+</script>
+
+
+<!-- v0.93 live-layout polish -->
+<style>
+#scr-game #gameLive{padding-bottom:calc(18px + env(safe-area-inset-bottom))!important}
+#scr-game .gamelog{
+  margin-bottom:0!important;
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+}
+#scr-game .gamelog::-webkit-scrollbar{display:none}
+#scr-game #skipBtn,
+#scr-game #newGameBtn{
+  position:fixed!important;
+  z-index:42!important;
+  margin:0!important;
+  box-shadow:0 10px 26px rgba(0,0,0,.28)!important;
+}
+</style>
+<script>
+(function(){
+  'use strict';
+  window.APP_VERSION='v0.93';
+  window.GAME_VERSION=window.APP_VERSION;
+  function syncVersionV93(){
+    try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
+      if(el) el.textContent=window.APP_VERSION;
+    });
+  }
+  function gameLiveVisibleV93(){
+    var scr=document.getElementById('scr-game');
+    var live=document.getElementById('gameLive');
+    return !!(scr && live && scr.classList.contains('on') && live.style.display!=='none');
+  }
+  function currentGameBtnV93(){
+    var next=document.getElementById('newGameBtn');
+    var skip=document.getElementById('skipBtn');
+    if(next && next.style.display!=='none') return next;
+    if(skip && skip.style.display!=='none') return skip;
+    return null;
+  }
+  function clearBtnLayoutV93(btn){
+    if(!btn)return;
+    ['left','width','bottom','position','zIndex','margin'].forEach(function(k){btn.style[k]='';});
+  }
+  function layoutGameLiveV93(){
+    syncVersionV93();
+    var scr=document.getElementById('scr-game');
+    var live=document.getElementById('gameLive');
+    var score=document.getElementById('scorebox');
+    var log=document.getElementById('gamelog');
+    var nav=document.querySelector('nav');
+    var skip=document.getElementById('skipBtn');
+    var next=document.getElementById('newGameBtn');
+    var btn=currentGameBtnV93();
+    if(!scr||!live||!score||!log||!nav||!btn||!gameLiveVisibleV93()){
+      clearBtnLayoutV93(skip); clearBtnLayoutV93(next);
+      if(log){ log.style.maxHeight=''; }
+      return;
+    }
+    var navRect=nav.getBoundingClientRect();
+    var liveRect=live.getBoundingClientRect();
+    var scoreRect=score.getBoundingClientRect();
+    var logRect=log.getBoundingClientRect();
+    var gap=8;
+    var navGap=Math.max(6, Math.round(window.innerHeight - navRect.top) + gap);
+    var left=Math.round(liveRect.left);
+    var width=Math.round(liveRect.width);
+    [skip,next].forEach(function(b){
+      if(!b||b.style.display==='none') return;
+      b.style.left=left+'px';
+      b.style.width=width+'px';
+      b.style.bottom=navGap+'px';
+      b.style.position='fixed';
+      b.style.zIndex='42';
+      b.style.margin='0';
+    });
+    var btnH=btn.getBoundingClientRect().height || 58;
+    var topBase=(logRect.top||scoreRect.bottom) + 2;
+    var available=Math.floor(navRect.top - topBase - btnH - 14);
+    var minH=170;
+    if(available<minH) available=minH;
+    log.style.maxHeight=available+'px';
+  }
+  function bindGameLayoutV93(){
+    layoutGameLiveV93();
+    var log=document.getElementById('gamelog');
+    if(log && !log.dataset.layoutGuardV93){
+      log.dataset.layoutGuardV93='1';
+      new MutationObserver(function(){setTimeout(layoutGameLiveV93,0);}).observe(log,{childList:true,subtree:true,characterData:true});
+    }
+  }
+  window.addEventListener('resize', layoutGameLiveV93);
+  window.addEventListener('orientationchange', function(){setTimeout(layoutGameLiveV93,120);});
+  document.addEventListener('click', function(){setTimeout(bindGameLayoutV93,0); setTimeout(layoutGameLiveV93,120);}, true);
+  document.addEventListener('DOMContentLoaded', function(){syncVersionV93(); bindGameLayoutV93();});
+  [0,100,350,900].forEach(function(ms){setTimeout(bindGameLayoutV93,ms);});
 })();
 </script>
 
