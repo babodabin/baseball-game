@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.72 · 게임 전체 버전 단일 기준 */
-window.APP_VERSION='v0.72';
+window.APP_VERSION='v0.73';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -21717,6 +21717,168 @@ window.jumpOffseasonTaskV66=function(key){
   }
   [0,500,800,1200,1500,2000,2800,3200,3600,4200,4600].forEach(ms=>setTimeout(applyVersion,ms));
   applyVersion();
+})();
+</script>
+
+
+<!-- v0.73 · 디자인 1차: 구단 컬러 크롬 + 팀 선택 카드 -->
+<style id="design-v073">
+:root{
+  --club-color:#FFB63B;
+  --club-accent:#FFCB72;
+  --club-rgb:255,182,59;
+  --club-accent-rgb:255,203,114;
+  --club-on:#1D1405;
+}
+
+/* 중앙 운영 화면은 기존 다크 톤을 유지하고, 구단색은 상·하단 크롬에 집중한다. */
+header{
+  background:
+    radial-gradient(circle at 86% -10%, rgba(var(--club-rgb),.24), transparent 38%),
+    linear-gradient(145deg,#06130E 0%,#0B1B14 58%,#06100C 100%)!important;
+  border-bottom-color:rgba(var(--club-accent-rgb),.34)!important;
+}
+header::after{
+  background:linear-gradient(90deg,var(--club-accent),rgba(var(--club-accent-rgb),.16),transparent 92%)!important;
+  box-shadow:0 0 14px rgba(var(--club-accent-rgb),.18);
+}
+.board h1::before{color:var(--club-accent)!important}
+.board .ver{
+  border-color:rgba(var(--club-accent-rgb),.34)!important;
+  background:rgba(var(--club-rgb),.11)!important;
+  color:var(--club-accent)!important;
+}
+.subline .myteam{color:var(--club-accent)!important}
+
+nav{
+  position:relative;
+  background:
+    radial-gradient(ellipse at 50% 115%,rgba(var(--club-rgb),.12),transparent 55%),
+    rgba(4,12,8,.97)!important;
+  border-top-color:rgba(var(--club-accent-rgb),.22)!important;
+}
+nav::before{
+  content:'';position:absolute;left:14px;right:14px;top:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(var(--club-accent-rgb),.72),transparent);
+}
+nav button.on{color:var(--club-accent)!important;background:rgba(var(--club-rgb),.045)!important}
+nav button.on .ic{
+  background:var(--club-accent)!important;
+  color:var(--club-on)!important;
+  box-shadow:0 7px 18px rgba(var(--club-accent-rgb),.22)!important;
+}
+
+/* 팀 선택: 화면 전체를 칠하지 않고 각 팀의 색을 얇은 엠블럼/라인으로만 표시한다. */
+.tcard{
+  --team-color:#FFB63B;
+  --team-accent:#FFCB72;
+  --team-rgb:255,182,59;
+  --team-accent-rgb:255,203,114;
+  background:linear-gradient(155deg,rgba(24,43,34,.98),rgba(8,21,15,.99))!important;
+  border-color:rgba(var(--team-accent-rgb),.16)!important;
+}
+.tcard::before{
+  background:radial-gradient(circle at 50% 18%,rgba(var(--team-rgb),.13),transparent 43%)!important;
+}
+.tcard::after{
+  left:18px!important;right:18px!important;height:2px!important;
+  background:linear-gradient(90deg,transparent,var(--team-accent),transparent)!important;
+  opacity:.72!important;
+}
+.tcard .temblem{
+  border-color:rgba(var(--team-accent-rgb),.36)!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.24),0 0 0 1px rgba(var(--team-accent-rgb),.10),inset 0 0 0 4px rgba(255,255,255,.045)!important;
+}
+.tcard .tname{color:#F7F3E9!important}
+.tcard .treal{color:#8FA69A!important}
+.tcard:active{
+  border-color:rgba(var(--team-accent-rgb),.46)!important;
+  box-shadow:0 5px 17px rgba(0,0,0,.24),0 0 0 3px rgba(var(--team-accent-rgb),.07)!important;
+}
+
+/* 팀 홈의 큰 카드도 상단 크롬과 같은 팀색 계열로 맞춘다. */
+.club-hero{
+  background:linear-gradient(135deg,rgba(var(--club-rgb),.24),#0A1711 62%)!important;
+  border-color:rgba(var(--club-accent-rgb),.26)!important;
+}
+.club-hero::before{background:rgba(var(--club-rgb),.22)!important}
+.club-chip b,.club-kicker{color:var(--club-accent)!important}
+
+/* 기존 주황 강조는 콘텐츠 영역에서 그대로 유지한다. 구단색이 기능 상태색과 섞이지 않게 한다. */
+main{background:var(--bg)!important}
+</style>
+<script id="design-v073-script">
+(function(){
+  'use strict';
+  const DEFAULT='#FFB63B';
+
+  function rgb(hex){
+    let h=String(hex||DEFAULT).replace('#','').trim();
+    if(h.length===3)h=h.split('').map(c=>c+c).join('');
+    if(!/^[0-9a-f]{6}$/i.test(h))h=DEFAULT.slice(1);
+    return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+  }
+  function hex(v){return '#'+v.map(n=>Math.max(0,Math.min(255,Math.round(n))).toString(16).padStart(2,'0')).join('').toUpperCase()}
+  function luminance(v){
+    const q=v.map(n=>{n/=255;return n<=.04045?n/12.92:Math.pow((n+.055)/1.055,2.4)});
+    return .2126*q[0]+.7152*q[1]+.0722*q[2];
+  }
+  function visibleAccent(base){
+    const v=rgb(base), l=luminance(v);
+    const mix=l<.08?.62:l<.18?.46:l<.30?.28:.12;
+    return hex(v.map(n=>n+(255-n)*mix));
+  }
+  function setVars(root,base,prefix){
+    const b=rgb(base), accent=visibleAccent(base), a=rgb(accent);
+    root.style.setProperty(`--${prefix}-color`,hex(b));
+    root.style.setProperty(`--${prefix}-accent`,accent);
+    root.style.setProperty(`--${prefix}-rgb`,b.join(','));
+    root.style.setProperty(`--${prefix}-accent-rgb`,a.join(','));
+    if(prefix==='club')root.style.setProperty('--club-on',luminance(a)>.48?'#161006':'#F7F4EA');
+  }
+  function currentTeam(){
+    try{
+      if(!window.state||!state.myTeam||!Array.isArray(window.TEAMS))return null;
+      return TEAMS.find(t=>t.id===state.myTeam)||null;
+    }catch(_){return null}
+  }
+  window.applyClubChromeV073=function(){
+    const t=currentTeam();
+    setVars(document.documentElement,t&&t.c?t.c:DEFAULT,'club');
+    document.body.classList.toggle('club-selected-v073',!!t);
+    if(t)document.body.setAttribute('data-club-v073',t.id);else document.body.removeAttribute('data-club-v073');
+  };
+  window.applyTeamCardsV073=function(){
+    try{
+      const cards=document.querySelectorAll('#teamGrid .tcard');
+      cards.forEach((card,i)=>{
+        const t=TEAMS[i]; if(!t)return;
+        setVars(card,t.c||DEFAULT,'team');
+        card.setAttribute('data-team-v073',t.id||'');
+      });
+    }catch(e){console.error('v0.73 팀 카드 디자인:',e)}
+  };
+
+  const oldRefresh=window.refreshHeader;
+  if(typeof oldRefresh==='function'){
+    window.refreshHeader=function(){
+      const r=oldRefresh.apply(this,arguments);
+      applyClubChromeV073();
+      return r;
+    };
+  }
+  const oldGrid=window.renderTeamGrid;
+  if(typeof oldGrid==='function'){
+    window.renderTeamGrid=function(){
+      const r=oldGrid.apply(this,arguments);
+      applyTeamCardsV073();
+      return r;
+    };
+  }
+
+  applyClubChromeV073();
+  applyTeamCardsV073();
+  if(typeof window.applyGameVersion==='function')window.applyGameVersion();
 })();
 </script>
 
