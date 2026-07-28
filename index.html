@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
 <script>
-/* v0.75 · 게임 전체 버전 단일 기준 */
-window.APP_VERSION='v0.75';
+/* v0.76 · 게임 전체 버전 단일 기준 */
+window.APP_VERSION='v0.76';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1985,7 +1985,7 @@ function renderTeamGrid(){
     const d = document.createElement('div');
     d.className = 'tcard';
     const mark = teamLogoHtmlV074(t.id,'team-logo-v074',t.real);
-    d.innerHTML = `<div class="temblem" style="background:${hexToSoft(t.c)};box-shadow:inset 0 0 0 2px ${t.c}55">${mark}</div>
+    d.innerHTML = `<div class="temblem">${mark}</div>
       <div class="tinfo"><div class="tname">${t.name}</div><div class="treal">${t.real}</div></div>`;
     d.onclick = ()=>openTeamPreview(t);
     g.appendChild(d);
@@ -21812,8 +21812,9 @@ nav button.on .ic{
   opacity:.72!important;
 }
 .tcard .temblem{
-  border-color:rgba(var(--team-accent-rgb),.36)!important;
-  box-shadow:0 10px 24px rgba(0,0,0,.24),0 0 0 1px rgba(var(--team-accent-rgb),.10),inset 0 0 0 4px rgba(255,255,255,.045)!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
 }
 .tcard .tname{color:#F7F3E9!important}
 .tcard .treal{color:#8FA69A!important}
@@ -21834,9 +21835,9 @@ nav button.on .ic{
 main{background:var(--bg)!important}
 
 /* v0.74 · 실제 KBO 로고 표시 */
-.tcard .temblem{overflow:hidden;display:flex;align-items:center;justify-content:center;padding:7px}
+.tcard .temblem{width:70px;height:70px;overflow:visible;display:flex;align-items:center;justify-content:center;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
 .team-logo-v074,.club-logo-v074,.slot-logo-v074,.slot-mini-logo-v074,.club-scroll-logo-v074{display:block;object-fit:contain;object-position:center}
-.team-logo-v074{width:100%;height:100%;filter:drop-shadow(0 6px 9px rgba(0,0,0,.30))}
+.team-logo-v074{width:58px;height:58px;max-width:100%;max-height:100%;filter:drop-shadow(0 5px 8px rgba(0,0,0,.24))}
 .team-logo-fallback-v074{display:flex;align-items:center;justify-content:center;font-size:30px}
 .club-emblem{display:flex;align-items:center;justify-content:center;overflow:visible!important;background:transparent!important}
 .club-logo-v074{width:112px;height:88px;max-width:29vw;filter:drop-shadow(0 10px 15px rgba(0,0,0,.34))}
@@ -21850,9 +21851,9 @@ main{background:var(--bg)!important}
 .slot-mini-logo-v074{width:23px;height:23px;flex:none}
 .club-scroll-mark-v074{margin:18px 0 2px;padding:12px 15px;display:flex;align-items:center;gap:12px;border:1px solid rgba(var(--club-accent-rgb),.18);border-radius:14px;background:linear-gradient(135deg,rgba(var(--club-rgb),.10),rgba(5,15,10,.74))}
 .club-scroll-mark-v074>div{min-width:0}
-.club-scroll-logo-v074{width:50px;height:40px;flex:none;filter:drop-shadow(0 6px 9px rgba(0,0,0,.24))}
+.club-scroll-logo-v074{width:42px;height:34px;flex:none;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 4px 7px rgba(0,0,0,.22))}
 .club-scroll-mark-v074 b{display:block;color:var(--chalk);font-size:14px}.club-scroll-mark-v074 span{display:block;margin-top:2px;color:var(--dim);font-size:11px}
-@media(max-width:390px){.club-logo-v074{width:96px;height:76px}.slot-logo-v074{width:32px;height:32px}.slot-index-v075,.slot-empty-index-v075{width:39px;height:39px}.club-scroll-logo-v074{width:44px;height:35px}}
+@media(max-width:390px){.club-logo-v074{width:96px;height:76px}.team-logo-v074{width:54px;height:54px}.slot-logo-v074{width:32px;height:32px}.slot-index-v075,.slot-empty-index-v075{width:39px;height:39px}.club-scroll-logo-v074{width:38px;height:31px}}
 
 </style>
 <script id="design-v073-script">
