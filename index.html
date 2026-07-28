@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.84 · 라인업·경기·운영·순위 레거시 정리 */
-window.APP_VERSION='v0.91';
+window.APP_VERSION='v0.92';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -798,7 +798,7 @@ nav button.lock{opacity:.32}
     <div class="scorebox" id="scorebox"></div>
     <div class="gamelog" id="gamelog"></div>
     <button class="btn" id="skipBtn">⏭ 남은 중계 건너뛰기 (기록 유지)</button>
-    <button class="btn ghost" id="newGameBtn" style="display:none">계속</button>
+    <button class="btn ghost" id="newGameBtn" style="display:none">다음 경기 준비</button>
   </div>
   <div id="seasonDone" style="display:none" class="locked-msg">
     <span class="big">🏆</span><span id="seasonDoneText"></span>
@@ -3339,7 +3339,7 @@ document.getElementById('playBtn').onclick = ()=>{
     if(gTimer){ clearInterval(gTimer); gTimer=null; }
     drawScore(g,{a:99,h:99});
     document.getElementById('skipBtn').style.display='none';
-    document.getElementById('newGameBtn').style.display='';
+    document.getElementById('newGameBtn').style.display='block';
   }
   if(spdSel==='fast'){ push(evs.length); }
   else{
@@ -6546,7 +6546,7 @@ document.getElementById('playBtn').onclick = ()=>{
     }
     drawScore(g,innDone); log.scrollTop=log.scrollHeight; if(i>=evs.length)finish();
   }
-  function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='';}
+  function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='block';}
   if(spdSel==='fast')push(evs.length);else{const step=spdSel==='pa'?2:8,ms=spdSel==='pa'?750:700;push(step);gTimer=setInterval(()=>push(step),ms);}
   document.getElementById('skipBtn').onclick=()=>push(evs.length);
   document.getElementById('newGameBtn').onclick=()=>renderGameSetup();
@@ -14423,7 +14423,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
         if(gTimer){clearInterval(gTimer);gTimer=null;}
         drawScore(g,{a:99,h:99});
         document.getElementById('skipBtn').style.display='none';
-        document.getElementById('newGameBtn').style.display='';
+        document.getElementById('newGameBtn').style.display='block';
       }
       if(spdSel==='fast')push(evs.length);
       else{
@@ -14722,7 +14722,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
         const log=document.getElementById('gamelog');log.innerHTML='';
         const evs=spdSel==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant');
         let i=0;const innDone={a:0,h:0};
-        function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='';}
+        function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='block';}
         function push(n){for(let k=0;k<n&&i<evs.length;k++,i++){const e=evs[i],d=document.createElement('div');if(e.cls)d.className=e.cls;d.textContent=e.text;log.appendChild(d);if(e.cls==='inn'){if(e.half==='초'){innDone.a=e.inn-1;innDone.h=e.inn-1;}else innDone.a=e.inn;}if(e.cls==='final'){innDone.a=99;innDone.h=99;}}drawScore(g,innDone);log.scrollTop=log.scrollHeight;if(i>=evs.length)finish();}
         if(spdSel==='fast')push(evs.length);else{const step=spdSel==='pa'?2:8,ms=spdSel==='pa'?750:700;push(step);gTimer=setInterval(()=>push(step),ms);}
         document.getElementById('skipBtn').onclick=()=>push(evs.length);
@@ -14989,7 +14989,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
               const log=document.getElementById('gamelog'); log.innerHTML='';
               const evs=spdSel==='pa'?g.ev:g.ev.filter(function(e){return e.cls!=='pitch'&&e.cls!=='chant';});
               let i=0; const innDone={a:0,h:0};
-              function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='';}
+              function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='block';}
               function push(n){for(let k=0;k<n&&i<evs.length;k++,i++){const e=evs[i],d=document.createElement('div');if(e.cls)d.className=e.cls;d.textContent=e.text;log.appendChild(d);if(e.cls==='inn'){if(e.half==='초'){innDone.a=e.inn-1;innDone.h=e.inn-1;}else innDone.a=e.inn;}if(e.cls==='final'){innDone.a=99;innDone.h=99;}}drawScore(g,innDone);log.scrollTop=log.scrollHeight;if(i>=evs.length)finish();}
               if(spdSel==='fast')push(evs.length);else{const step=spdSel==='pa'?2:8,ms=spdSel==='pa'?750:700;push(step);gTimer=setInterval(function(){push(step);},ms);}
               document.getElementById('skipBtn').onclick=function(){push(evs.length);};
@@ -19264,7 +19264,7 @@ header .board h1{margin-right:0}
       innDone.a=99;innDone.h=99;draw();
       const sk=document.getElementById('skipBtn'),ng=document.getElementById('newGameBtn');
       if(sk)sk.style.display='none';
-      if(ng)ng.style.display='';
+      if(ng)ng.style.display='block';
       // 다시 계산된 결과로 오늘 기록을 덮어쓴다.
       try{fixResultV53(g,m);}catch(e){console.error(V+' 결과 반영:',e);}
     }
@@ -20949,7 +20949,7 @@ window.jumpOffseasonTaskV66=function(key){
 <script>
 (function(){
   'use strict';
-  window.APP_VERSION='v0.91';
+  window.APP_VERSION='v0.92';
   window.GAME_VERSION=window.APP_VERSION;
   function escHtmlV91(v){return String(v??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function logoHtmlV91(id, cls, alt){
@@ -21124,6 +21124,62 @@ window.jumpOffseasonTaskV66=function(key){
   [0,80,400,1200,2200].forEach(function(ms){ setTimeout(syncVersionV91, ms); });
   document.addEventListener('DOMContentLoaded', function(){ ensureRankSummaryBoxV91(); syncVersionV91(); try{refreshHeader();}catch(_){ } });
   setTimeout(function(){ try{refreshHeader();}catch(_){ } }, 60);
+})();
+</script>
+
+
+<!-- v0.92 game-end action guard -->
+<style>
+#scr-game #newGameBtn{
+  width:100%;min-height:52px;margin-top:12px!important;
+  position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));z-index:12;
+  border:1px solid rgba(244,196,94,.48)!important;
+  background:#F4C45E!important;color:#211706!important;
+  font-size:14px!important;font-weight:900!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.30)!important;
+}
+</style>
+<script>
+(function(){
+  'use strict';
+  window.APP_VERSION='v0.92';
+  window.GAME_VERSION=window.APP_VERSION;
+  function gameHasFinishedV92(){
+    var live=document.getElementById('gameLive');
+    var log=document.getElementById('gamelog');
+    if(!live||live.style.display==='none'||!log)return false;
+    if(log.querySelector('.final'))return true;
+    var txt=String(log.textContent||'');
+    return /경기 종료/.test(txt)&&/최종/.test(txt);
+  }
+  function syncGameEndActionV92(){
+    var next=document.getElementById('newGameBtn');
+    var skip=document.getElementById('skipBtn');
+    if(!next)return;
+    if(gameHasFinishedV92()){
+      if(skip)skip.style.display='none';
+      next.style.display='block';
+      next.textContent='다음 경기 준비';
+      next.onclick=function(){
+        try{renderGameSetup();}catch(err){console.error('v0.92 다음 경기 준비:',err);}
+      };
+    }
+  }
+  function bindV92(){
+    var log=document.getElementById('gamelog');
+    if(log && !log.dataset.endGuardV92){
+      log.dataset.endGuardV92='1';
+      new MutationObserver(syncGameEndActionV92).observe(log,{childList:true,subtree:true,characterData:true});
+    }
+    syncGameEndActionV92();
+  }
+  document.addEventListener('click',function(e){
+    if(e.target&&e.target.closest&&e.target.closest('[data-nav="game"],#skipBtn,#playBtn')){
+      setTimeout(bindV92,0);setTimeout(syncGameEndActionV92,120);
+    }
+  },true);
+  document.addEventListener('DOMContentLoaded',bindV92);
+  [0,80,300,900].forEach(function(ms){setTimeout(bindV92,ms);});
 })();
 </script>
 
