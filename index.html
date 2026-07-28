@@ -5913,10 +5913,13 @@ else show('select');
 function seasonStartConditionHtml(){
   if(!isOffseason()) return '';
   const cl=offseasonChecklist();
+  /* 실제 처리 의존성 순서: AI 계약 → AI FA → 드래프트 → AI 외국인 → 최종 선수단 검사 */
+  const taskOrder={nego:5,aicontract:10,aifa:20,draft:30,aiforeign:40,cut:50,roles:60};
+  const items=[...(cl.items||[])].sort((a,b)=>(taskOrder[a.key]??999)-(taskOrder[b.key]??999));
   const nextLabel=state.mode==='sim'?(state.year+1)+'년차 시즌 시작':'새 시즌 시작';
   return `<div class="checklist season-start-global">
     <div class="cl-title">새 시즌 시작 조건</div>
-    ${cl.items.map(it=>`<div class="cl-row"><span class="cl-ic">${it.ok?'✅':'⬜'}</span><span class="cl-lb">${it.label}</span><span class="cl-note ${it.ok?'ok':'todo'}">${it.note}</span></div>`).join('')}
+    ${items.map(it=>`<div class="cl-row cl-jump-v66" role="button" tabindex="0" onclick="jumpOffseasonTaskV66('${it.key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpOffseasonTaskV66('${it.key}')}" aria-label="${it.label}로 이동"><span class="cl-ic">${it.ok?'✅':'⬜'}</span><span class="cl-lb">${it.label}</span><span class="cl-note ${it.ok?'ok':'todo'}">${it.note}</span><span class="cl-go-v66">›</span></div>`).join('')}
     <button class="btn cl-start ${cl.allOk?'ready':'locked'}" id="startNextTop" ${cl.allOk?'':'disabled'}>${cl.allOk?'▶ '+nextLabel:'🔒 '+nextLabel}</button>
   </div>`;
 }
@@ -13014,7 +13017,7 @@ body.theme-night main::after{
   };
 
   function ensureNews(m){m.draftNewsV3413=Array.isArray(m.draftNewsV3413)?m.draftNewsV3413:[];m.draftNewsKeysV3413=Array.isArray(m.draftNewsKeysV3413)?m.draftNewsKeysV3413:[];}
-  function recordNewPicks(m,before){ensureNews(m);(m.draft||[]).forEach(d=>{if(!d.taken||before.has(d))return;const slot=d.takenSlotV3413||{},key=`${slot.overall||0}|${d.taken}|${d.data?.[0]}`;if(m.draftNewsKeysV3413.includes(key))return;m.draftNewsKeysV3413.push(key);const team=getTeam(d.taken)?.name||d.taken,label=outcomeLabel(d);let text=`${team}, 전체 ${slot.overall||'?'}순위로 ${d.data?.[0]}(${d.data?.[2]}) 지명.`;if(label==='숨은 대형 유망주'||label==='다크호스')text+=` 스카우트 사이에서 ‘${label}’ 평가가 나옵니다.`;else if(label==='고위험 고천장')text+=' 높은 잠재력과 낮은 현재 완성도를 함께 감수한 선택입니다.';else if(label==='즉시전력 저성장형')text+=' 즉시전력 확보에 초점을 맞춘 선택입니다.';m.draftNewsV3413.push({text,overall:slot.overall||0,teamId:d.taken,name:d.data?.[0]});});if(m.draftNewsV3413.length>40)m.draftNewsV3413=m.draftNewsV3413.slice(-40);}
+  function recordNewPicks(m,before){ensureNews(m);(m.draft||[]).forEach(d=>{if(!d.taken||before.has(d))return;const slot=d.takenSlotV3413||{},key=`${slot.overall||0}|${d.taken}|${d.data?.[0]}`;if(m.draftNewsKeysV3413.includes(key))return;m.draftNewsKeysV3413.push(key);const team=getTeam(d.taken)?.name||d.taken,label=outcomeLabel(d),displayName=playerDisplayName(d.data);let text=`${team}, 전체 ${slot.overall||'?'}순위로 ${displayName}(${d.data?.[2]}) 지명.`;if(label==='숨은 대형 유망주'||label==='다크호스')text+=` 스카우트 사이에서 ‘${label}’ 평가가 나옵니다.`;else if(label==='고위험 고천장')text+=' 높은 잠재력과 낮은 현재 완성도를 함께 감수한 선택입니다.';else if(label==='즉시전력 저성장형')text+=' 즉시전력 확보에 초점을 맞춘 선택입니다.';m.draftNewsV3413.push({text,overall:slot.overall||0,teamId:d.taken,name:d.data?.[0],displayName});});if(m.draftNewsV3413.length>40)m.draftNewsV3413=m.draftNewsV3413.slice(-40);}
   const oldAdvance=window.advanceDraftToUser;
   if(typeof oldAdvance==='function')window.advanceDraftToUser=function(m){const before=new Set((m?.draft||[]).filter(d=>d.taken));const r=oldAdvance.apply(this,arguments);try{recordNewPicks(m,before);}catch(e){console.error('드래프트 뉴스:',e);}return r;};
   const oldPick=window.draftPick;
@@ -13234,20 +13237,20 @@ body.theme-night main::after{
       const current=m.fa.indexOf(item.fa);if(current<0)continue;
       if(moveFa(item.fa,bid.teamId)){
         const c=clubInfo(m,bid.teamId);c.budget=Math.max(0,c.budget-bid.offer);c.signed++;
-        signed.push({name:item.fa.data[0],teamId:bid.teamId,offer:bid.offer,pos:item.fa.data[2],ovr:item.fa.ovr});
+        signed.push({name:item.fa.data[0],displayName:playerDisplayName(item.fa.data),teamId:bid.teamId,offer:bid.offer,pos:item.fa.data[2],ovr:item.fa.ovr});
         m.fa.splice(current,1);
       }
     }
     ai.results=signed;ai.processed=true;refreshInterest(m);
     try{save();}catch(_){};
-    const lines=signed.length?signed.map(x=>`${getTeam(x.teamId).name} · ${x.name} (${x.pos}, OVR ${x.ovr}) ${x.offer.toFixed(1)}억`).join('\n'):'AI 구단이 조건에 맞는 FA를 찾지 못했습니다.';
+    const lines=signed.length?signed.map(x=>`${getTeam(x.teamId).name} · ${x.displayName||x.name} (${x.pos}, OVR ${x.ovr}) ${x.offer.toFixed(1)}억`).join('\n'):'AI 구단이 조건에 맞는 FA를 찾지 못했습니다.';
     showAlert('AI FA 시장 결과\n\n'+lines);renderFront();
   };
   function panel(m){
     const ai=aiState(m);if(!ai.processed)refreshInterest(m);
     let h=`<h2 class="sec" style="margin-top:14px">🤖 AI 구단 FA 경쟁 <small>${ai.processed?'영입 종료':'시장 진행 전'}</small></h2>`;
     if(ai.processed){
-      h+=`<div class="hint">${ai.results.length?ai.results.map(x=>`${getTeam(x.teamId).name} → <b>${x.name}</b> ${x.offer.toFixed(1)}억`).join('<br>'):'성사된 AI FA 계약이 없습니다.'}</div>`;
+      h+=`<div class="hint">${ai.results.length?ai.results.map(x=>`${getTeam(x.teamId).name} → <b>${x.displayName||x.name}</b> ${x.offer.toFixed(1)}억`).join('<br>'):'성사된 AI FA 계약이 없습니다.'}</div>`;
       return h;
     }
     h+=`<div class="hint">각 구단이 전력 약점·나이·OVR·운영 성향·가상 예산을 비교해 남은 FA에 입찰합니다. 버튼을 누르면 AI 계약이 확정되며 되돌릴 수 없습니다.</div>`;
@@ -13392,13 +13395,13 @@ body.theme-night main::after{
       const d=findDeal(a,b);if(!d)continue;
       if(execute(d)){
         used.add(a);used.add(b);
-        const rec={year:state.year,day:Number(state.season.day)||0,phase:phase(),aTeam:a,bTeam:b,aName:d.a.p[0],aPos:d.a.pos,aOvr:d.a.ovr,bName:d.b.p[0],bPos:d.b.pos,bOvr:d.b.ovr,aStyle:style(a),bStyle:style(b)};
+        const rec={year:state.year,day:Number(state.season.day)||0,phase:phase(),aTeam:a,bTeam:b,aName:d.a.p[0],aDisplay:playerDisplayName(d.a.p),aPos:d.a.pos,aOvr:d.a.ovr,bName:d.b.p[0],bDisplay:playerDisplayName(d.b.p),bPos:d.b.pos,bOvr:d.b.ovr,aStyle:style(a),bStyle:style(b)};
         done.push(rec);r.results.push(rec);
       }
     }
     r.rounds.push(chk.key);r.lastDay=Number(state.season.day)||0;if(r.results.length>30)r.results=r.results.slice(-30);
     try{save();}catch(_){};
-    const text=done.length?done.map(x=>`${getTeam(x.aTeam).name} ${x.aName} ↔ ${getTeam(x.bTeam).name} ${x.bName}`).join('\n'):'양쪽 구단의 전력과 가치가 맞는 거래를 찾지 못했습니다.';
+    const text=done.length?done.map(x=>`${getTeam(x.aTeam).name} ${x.aDisplay||x.aName} ↔ ${getTeam(x.bTeam).name} ${x.bDisplay||x.bName}`).join('\n'):'양쪽 구단의 전력과 가치가 맞는 거래를 찾지 못했습니다.';
     showAlert(`AI 트레이드 시장 결과\n\n${text}`);renderFront();
   };
   function panel(){
@@ -13406,7 +13409,7 @@ body.theme-night main::after{
     const d=Number(state.season.day)||0,tag=phase()==='offseason'?'오프시즌':d<12?'시즌 초반':d<25?'시즌 중반':'트레이드 마감 경쟁';
     let h=`<div class="ai-trade-v3413"><div class="title">🔁 AI 구단 트레이드 · ${tag}</div><div class="sub">AI 구단끼리 전력 약점, 나이, OVR, 포지션 희소성, 구단 철학을 비교합니다. 양쪽 모두 이득으로 판단하는 거래만 성사됩니다.</div>`;
     h+=`<button class="btn" style="margin-top:9px" onclick="runAiTradeMarketV3413()" ${done?'disabled':''}>${done?'이 시기 시장 진행 완료':'AI 트레이드 시장 진행'}</button>`;
-    if(recent.length)h+=`<div class="ai-trade-log-v3413">${recent.map(x=>`<div class="ai-trade-item-v3413"><b>${getTeam(x.aTeam).name}</b> ${x.aName}(${x.aPos}, OVR ${x.aOvr}) ↔ <b>${getTeam(x.bTeam).name}</b> ${x.bName}(${x.bPos}, OVR ${x.bOvr})<br><span style="color:var(--dim)">${x.aStyle} · ${x.bStyle}</span></div>`).join('')}</div>`;
+    if(recent.length)h+=`<div class="ai-trade-log-v3413">${recent.map(x=>`<div class="ai-trade-item-v3413"><b>${getTeam(x.aTeam).name}</b> ${x.aDisplay||x.aName}(${x.aPos}, OVR ${x.aOvr}) ↔ <b>${getTeam(x.bTeam).name}</b> ${x.bDisplay||x.bName}(${x.bPos}, OVR ${x.bOvr})<br><span style="color:var(--dim)">${x.aStyle} · ${x.bStyle}</span></div>`).join('')}</div>`;
     return h+'</div>';
   }
   const oldRenderFront=window.renderFront;
@@ -13739,12 +13742,12 @@ body.theme-night main::after{
         if(isFa&&keep){
           const yrs=x.a<=27?3:x.a<=31?2:1;x.c.salary=ask;x.c.years=yrs;x.c.age=x.a;x.c.ovr=x.o;used+=ask;retainedFa++;renewed++;
           const idx=(m.fa||[]).findIndex(f=>f.from===id&&f.kind===x.kind&&f.data?.[0]===x.p[0]);if(idx>=0)m.fa.splice(idx,1);
-          results.push({type:'FA 잔류',teamId:id,name:x.p[0],years:yrs,salary:ask});
+          results.push({type:'FA 잔류',teamId:id,name:x.p[0],displayName:playerDisplayName(x.p),years:yrs,salary:ask});
         }else if(!isFa&&x.c.years<=0&&keep){
           const yrs=x.a<=26?3:x.a<=31?2:1;x.c.salary=ask;x.c.years=yrs;x.c.age=x.a;x.c.ovr=x.o;used+=ask;renewed++;
-          results.push({type:'재계약',teamId:id,name:x.p[0],years:yrs,salary:ask});
+          results.push({type:'재계약',teamId:id,name:x.p[0],displayName:playerDisplayName(x.p),years:yrs,salary:ask});
         }else if(!isFa&&x.c.years<=0&&!keep&&!mustKeep){
-          if(removePlayer(id,x.kind,x.p)){delete r.players[key(id,x.kind,x.p)];released++;results.push({type:'방출',teamId:id,name:x.p[0],years:0,salary:0});}
+          if(removePlayer(id,x.kind,x.p)){delete r.players[key(id,x.kind,x.p)];released++;results.push({type:'방출',teamId:id,name:x.p[0],displayName:playerDisplayName(x.p),years:0,salary:0});}
         }
       }
       summary[id]={budget,used:Math.round(used*10)/10,renewed,released,retainedFa};
@@ -13752,7 +13755,7 @@ body.theme-night main::after{
     });
     r.processedYears[yk]=true;r.results=results.slice(-100);r.clubSummary=summary;
     try{if(typeof window.updateAiRosterV3413==='function')window.updateAiRosterV3413(true);save();}catch(e){console.error(VER,e);}
-    const msg=results.length?results.slice(0,18).map(x=>`${getTeam(x.teamId).name} · ${x.name} ${x.type}${x.years?` ${x.years}년 ${x.salary.toFixed(1)}억`:''}`).join('\n'):'이번 오프시즌에는 AI 계약 변동이 없습니다.';
+    const msg=results.length?results.slice(0,18).map(x=>`${getTeam(x.teamId).name} · ${x.displayName||x.name} ${x.type}${x.years?` ${x.years}년 ${x.salary.toFixed(1)}억`:''}`).join('\n'):'이번 오프시즌에는 AI 계약 변동이 없습니다.';
     showAlert('AI 계약 관리 결과\n\n'+msg+(results.length>18?`\n외 ${results.length-18}건`:''));renderFront();return true;
   }
   window.runAiContractMarketV3413=process;
@@ -14091,17 +14094,17 @@ body.theme-night main::after{
     for(const tm of (TEAMS||[])){
       if(tm.id===state.myTeam)continue;const id=tm.id,t=getTeam(id),fin=finance(id),c=core(id);let released=0,renewed=0,signed=0,spent=0;
       const existing=[];['bat','pit'].forEach(kind=>(t?.[kind]||[]).forEach((p,i)=>{if(type(p,kind))existing.push({kind,p,i,ct:contract(id,kind,p,i),o:ovr(id,kind,p),a:age(id,kind,p,i)});}));
-      existing.forEach(x=>{if(x.ct.lastYear!==state.year){x.ct.years=Math.max(0,(Number(x.ct.years)||1)-1);x.ct.lastYear=state.year;}if(x.ct.years>0)return;const baseKeep=typeof window.evaluatePlayerValue==='function'?window.evaluatePlayerValue(x.p,id,{kind:x.kind,age:x.a,ovr:x.o,position:x.p?.[2],salary:x.ct.salary,index:x.i}).ContractValue:x.o;const keepScore=baseKeep+(Number(x.ct.adapt)||60)*.08-(x.a-30)*.25+(c.strategy==='title'?4:0)+(fin.directive==='연봉 절감'?-7:0);if(keepScore>=69&&Number(fin.projected||20)>-10){x.ct.years=x.a<=29?2:1;x.ct.salary=Math.round(Math.max(9,(x.o-55)*1.35)*10)/10;renewed++;results.push({teamId:id,name:x.p[0],type:'재계약',years:x.ct.years,salary:x.ct.salary});}else if(remove(id,x.kind,x.p)){released++;results.push({teamId:id,name:x.p[0],type:'방출',years:0,salary:0});}});
+      existing.forEach(x=>{if(x.ct.lastYear!==state.year){x.ct.years=Math.max(0,(Number(x.ct.years)||1)-1);x.ct.lastYear=state.year;}if(x.ct.years>0)return;const baseKeep=typeof window.evaluatePlayerValue==='function'?window.evaluatePlayerValue(x.p,id,{kind:x.kind,age:x.a,ovr:x.o,position:x.p?.[2],salary:x.ct.salary,index:x.i}).ContractValue:x.o;const keepScore=baseKeep+(Number(x.ct.adapt)||60)*.08-(x.a-30)*.25+(c.strategy==='title'?4:0)+(fin.directive==='연봉 절감'?-7:0);if(keepScore>=69&&Number(fin.projected||20)>-10){x.ct.years=x.a<=29?2:1;x.ct.salary=Math.round(Math.max(9,(x.o-55)*1.35)*10)/10;renewed++;results.push({teamId:id,name:x.p[0],displayName:playerDisplayName(x.p),type:'재계약',years:x.ct.years,salary:x.ct.salary});}else if(remove(id,x.kind,x.p)){released++;results.push({teamId:id,name:x.p[0],displayName:playerDisplayName(x.p),type:'방출',years:0,salary:0});}});
       let cnt=counts(id),budget=clamp(Number(fin.faBudget||40)*.55+(fin.directive==='우승 투자'?18:fin.directive==='연봉 절감'?-18:0),8,75);
       while((cnt.regular<3||cnt.asia<1)&&signed<3&&available.length){
         const choices=available.map((f,i)=>({f,i,score:needScore(id,f),cost:cost(f)})).filter(x=>(x.f.asia?cnt.asia<1:cnt.regular<3)&&x.cost<=budget-spent).sort((a,b)=>b.score-a.score);
-        const pick=choices[0];if(!pick||pick.score<75)break;const years=(Number(pick.f.age)||29)<=28?2:1,salary=Math.round(pick.cost*.28*10)/10;if(add(id,pick.f,years,salary)){signed++;spent+=pick.cost;results.push({teamId:id,name:pick.f.data[0],type:pick.f.asia?'아시아쿼터 영입':'외국인 영입',years,salary,ovr:pick.f.ovr});available.splice(pick.i,1);cnt=counts(id);}else break;
+        const pick=choices[0];if(!pick||pick.score<75)break;const years=(Number(pick.f.age)||29)<=28?2:1,salary=Math.round(pick.cost*.28*10)/10;if(add(id,pick.f,years,salary)){signed++;spent+=pick.cost;results.push({teamId:id,name:pick.f.data[0],displayName:playerDisplayName(pick.f.data),type:pick.f.asia?'아시아쿼터 영입':'외국인 영입',years,salary,ovr:pick.f.ovr});available.splice(pick.i,1);cnt=counts(id);}else break;
       }
       if(fin&&spent){fin.cash=Math.max(0,Math.round((Number(fin.cash)||0)-spent*.18)*10/10);fin.faBudget=Math.max(0,Math.round((Number(fin.faBudget)||0)-spent)*10/10);}
       summary[id]={regular:cnt.regular,asia:cnt.asia,released,renewed,signed,spent:Math.round(spent*10)/10};if(state.lineups)state.lineups[id]=null;if(state.rotOrder)state.rotOrder[id]=null;if(state.pitchPlan)state.pitchPlan[id]=null;
     }
     r.processedYears[yk]=true;r.results=results.slice(-120);r.clubSummary=summary;try{if(typeof window.updateAiRosterV3413==='function')window.updateAiRosterV3413(true);if(typeof window.updateAiManagerV3413==='function')window.updateAiManagerV3413(true);save();}catch(e){console.error(VER,e);}
-    const msg=results.length?results.slice(0,22).map(x=>`${getTeam(x.teamId).name} · ${x.name} ${x.type}${x.years?` ${x.years}년 ${Number(x.salary).toFixed(1)}억`:''}`).join('\n'):'AI 구단의 외국인 선수 변동이 없습니다.';showAlert('AI 외국인 선수 운영 결과\n\n'+msg+(results.length>22?`\n외 ${results.length-22}건`:''));renderFront();return true;
+    const msg=results.length?results.slice(0,22).map(x=>`${getTeam(x.teamId).name} · ${x.displayName||x.name} ${x.type}${x.years?` ${x.years}년 ${Number(x.salary).toFixed(1)}억`:''}`).join('\n'):'AI 구단의 외국인 선수 변동이 없습니다.';showAlert('AI 외국인 선수 운영 결과\n\n'+msg+(results.length>22?`\n외 ${results.length-22}건`:''));renderFront();return true;
   }
   window.runAiForeignMarketV3413=process;
   window.aiForeignStateV3413=id=>{ensureExisting();return root().clubSummary[id]||{...counts(id),released:0,renewed:0,signed:0,spent:0};};
@@ -14464,13 +14467,9 @@ body.theme-night main::after{
 
   const oldFront=window.renderFront;
   if(typeof oldFront==='function')window.renderFront=function(){
+    /* 진단 엔진과 12경기 자동 검사는 유지하되, 중복 UI는 설정 화면에만 둔다. */
     scheduled();
-    const out=oldFront.apply(this,arguments);
-    try{
-      const pane=document.querySelector('.front-pane[data-fpane="front"]');
-      if(pane&&!pane.querySelector('.ai-stability-v3413'))pane.insertAdjacentHTML('beforeend',panel());
-    }catch(e){console.error(VER,e);}
-    return out;
+    return oldFront.apply(this,arguments);
   };
 
   const oldFinish=window.finishDay;
@@ -17273,7 +17272,7 @@ main *,.sheet *{max-width:100%}
     if(state.lineups)state.lineups[teamId]=null;
     if(state.rotOrder)state.rotOrder[teamId]=null;
     // 지명 순번 페널티가 이 계약도 반영하도록 기록에 남긴다.
-    const rec={teamId,name:fa.data[0],offer:price,pos:fa.data[2],ovr:fa.ovr,viaBidV3436:true};
+    const rec={teamId,name:fa.data[0],displayName:playerDisplayName(fa.data),offer:price,pos:fa.data[2],ovr:fa.ovr,viaBidV3436:true};
     m.bidResultsV3436=Array.isArray(m.bidResultsV3436)?m.bidResultsV3436:[];
     m.bidResultsV3436.push(rec);
     if(!m.aiFaV3413)m.aiFaV3413={processed:false,clubs:{},interest:{},results:[]};
@@ -21446,6 +21445,42 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
   });
   setInterval(applyRealTeamNames,2000);
 })();
+</script>
+
+
+<style>
+/* v0.66 · 오프시즌 작업 바로가기 */
+.cl-jump-v66{cursor:pointer;border-radius:9px;padding:8px 6px;transition:background .15s ease,transform .15s ease}
+.cl-jump-v66:active{transform:scale(.995);background:rgba(255,255,255,.045)}
+.cl-jump-v66 .cl-note{margin-left:auto}
+.cl-go-v66{font-size:20px;line-height:1;color:var(--dim);margin-left:4px}
+.offseason-jump-target-v66{scroll-margin-top:110px}
+</style>
+<script>
+/* v0.66 · 새 시즌 조건 6개를 실제 작업 위치로 연결한다. */
+window.jumpOffseasonTaskV66=function(key){
+  let tab='front',selector='',heading='';
+  if(key==='aicontract'){tab='ai';selector='.ai-contract-v3413';}
+  else if(key==='aifa'){tab='front';heading='AI 구단 FA 경쟁';}
+  else if(key==='draft'){tab='front';heading='신인 드래프트';}
+  else if(key==='aiforeign'){tab='ai';selector='.ai-foreign-v3413';}
+  else if(key==='cut'||key==='roles'){tab='squad';heading='1군·2군 관리';}
+  else if(key==='nego'){tab='squad';heading='계약';}
+  try{if(typeof setFrontSubTab==='function')setFrontSubTab(tab);}catch(_){}
+  requestAnimationFrame(()=>{
+    let target=selector?document.querySelector(selector):null;
+    if(!target&&heading){
+      const nodes=Array.from(document.querySelectorAll('h2.sec,.ai-contract-v3413 .title,.ai-foreign-v3413 .title'));
+      target=nodes.find(el=>String(el.textContent||'').includes(heading))||null;
+    }
+    if(!target&&tab==='squad')target=document.querySelector('.front-pane[data-fpane="squad"]');
+    if(!target&&tab==='front')target=document.querySelector('.front-pane[data-fpane="front"]');
+    if(!target&&tab==='ai')target=document.querySelector('.front-pane[data-fpane="ai"]');
+    if(!target)return;
+    target.classList.add('offseason-jump-target-v66');
+    target.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+};
 </script>
 
 </body>
