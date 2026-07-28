@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.80 · 첫 화면 구조/로고 정리 */
-window.APP_VERSION='v0.80';
+window.APP_VERSION='v0.81';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -387,27 +387,8 @@ nav button.lock{opacity:.38}
 
 
 /* ── 배경 테마 ── */
-body.theme-day{--bg:#4F776A}
-body.theme-night{--bg:#0B1818}
-body.theme-rain{--bg:#263B43}
-body.theme-day,body.theme-rain{--dim:#C9D6CD;--chalk:#FFFFFF}
-main::before{content:'';position:fixed;inset:0;z-index:-3;pointer-events:none;background:var(--bg)}
+main::before{content:'';position:fixed;inset:0;z-index:-3;pointer-events:none;background:linear-gradient(180deg,#78A1A9 0%,#5C8276 54%,#426650 100%)}
 main::after{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none;background:transparent}
-body.theme-day main::before{background:linear-gradient(180deg,#78A1A9 0%,#5C8276 54%,#426650 100%)}
-body.theme-night main::before{background:linear-gradient(180deg,#091723 0%,#102921 100%)}
-body.theme-rain main::before{background:linear-gradient(180deg,#698694 0%,#526F6D 52%,#3D5B4D 100%)}
-body.theme-rain main::after{background:rgba(5,15,12,.18)}
-/* 비: SVG 빗줄기 레이어 */
-#rainLayer{position:fixed;inset:0;z-index:-1;pointer-events:none;display:none;overflow:hidden}
-body.theme-rain #rainLayer{display:block;
-  background-image:
-    repeating-linear-gradient(72deg, transparent 0 22px, rgba(255,255,255,.5) 22px 24px, transparent 24px 46px);
-  background-size:100% 220px;
-  animation:rainmove .5s linear infinite}
-@keyframes rainmove{from{background-position:0 0}to{background-position:-70px 220px}}
-.theme-pick{display:flex;gap:8px;margin-top:10px}
-.theme-pick button{flex:1;padding:9px 0;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-family:inherit;font-size:13px;font-weight:700}
-.theme-pick button.on{background:var(--amber);border-color:var(--amber);color:#20180A}
 .slot-row button.on{border-color:var(--amber);color:var(--chalk)}
 
 .mode-btns{display:flex;flex-direction:column;gap:12px;margin-top:14px}
@@ -566,11 +547,11 @@ h2.sec small{white-space:nowrap;color:var(--dim)}
   color:#211706;background:linear-gradient(180deg,#FFD36E,#F2A92E);box-shadow:0 5px 15px rgba(232,155,28,.22);
 }
 .tabs button:active{transform:scale(.98)}
-.lb-cat,.sel-sp,.theme-pick{gap:7px}
-.lb-cat button,.sel-sp button,.theme-pick button,.manager-toggle button,.manager-choice button,.opp-grid button,.sortbar button{
+.lb-cat,.sel-sp{gap:7px}
+.lb-cat button,.sel-sp button,.manager-toggle button,.manager-choice button,.opp-grid button,.sortbar button{
   border-color:var(--line);background:rgba(21,38,29,.92);border-radius:11px;color:#9EB0A7;
 }
-.lb-cat button.on,.sel-sp button.on,.theme-pick button.on,.manager-toggle button.on,.manager-choice button.on,.opp-grid button.on,.sortbar button.on{
+.lb-cat button.on,.sel-sp button.on,.manager-toggle button.on,.manager-choice button.on,.opp-grid button.on,.sortbar button.on{
   background:linear-gradient(180deg,#FFD16A,#EFA62C);border-color:transparent;color:#231805;box-shadow:0 5px 14px rgba(232,155,28,.18)
 }
 
@@ -692,8 +673,6 @@ nav button.lock{opacity:.32}
 .dashboard-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:800;color:#F4EFE4}
 .dashboard-title span{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.2px;color:#7F968A}
 .club-status{margin:0;max-width:none!important}
-.weather-ticker{display:flex;align-items:center;gap:9px;margin:10px 0 20px;padding:10px 12px;border:1px solid rgba(184,211,194,.1);border-radius:12px;background:rgba(8,21,15,.62);font-size:12px;color:#A7BBB0}
-.weather-ticker::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);flex:none}
 
 /* 반응형 */
 @media (min-width:700px){
@@ -935,7 +914,6 @@ nav button.lock{opacity:.32}
     <span id="lockText">다음 업데이트에서 열립니다</span>
   </div>
 </section>
-<div id="rainLayer"></div>
 <button id="scrollTopBtn" onclick="document.querySelector('main').scrollTo({top:0,behavior:'smooth'})"
   style="position:fixed;right:14px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:25;display:none;
   width:44px;height:44px;border-radius:50%;border:none;background:var(--amber);color:#20180A;font-size:20px;font-weight:700;box-shadow:0 3px 10px rgba(0,0,0,.4)">↑</button>
@@ -1559,8 +1537,9 @@ function normalizeStoreV286(raw){
   while(slots.length<5)slots.push(EMPTY());
   slots=slots.map(normalizeSlotV286);
   const active=finiteIntV286(src.active,0,0,4);
-  const theme=['day','night','rain'].includes(src.theme)?src.theme:'night';
-  return {...src,active,theme,slots};
+  const out={...src,active,slots};
+  delete out.theme;
+  return out;
 }
 /* ═══════════ v0.45 · 창단 구단을 저장 검증 전에 되살린다 ═══════════
    normalizeSlotV286은 myTeam이 TEAMS에 없으면 슬롯을 통째로 비운다.
@@ -1709,7 +1688,7 @@ function renderSlotStatus(boxId){
       }
       card.style.borderColor = s.c || 'var(--amber)';
       const active = store.active===i;
-      card.innerHTML = `<div class="slot-brand">${teamLogoHtml(t.id,'slot-logo-img',t.real)}<div class="slot-index" style="background:${t.c};">${i+1}</div></div>
+      card.innerHTML = `<div class="slot-brand">${slotTeamLogoHtml(s,t,'slot-logo-img')}<div class="slot-index" style="background:${t.c};">${i+1}</div></div>
         <div class="mid"><div class="nm">${t.real} ${active?'<span style="font-size:10px;color:var(--amber)">사용중</span>':''} <span style="font-size:11px;color:var(--dim)">${md}·${eco}</span></div>
         <div class="hand">${t.real} · ${rankTxt}${s.eco&&s.eco!=='free'?' · 💰'+(s.money||0).toFixed(0)+'억':''}</div></div>
         <div class="ovr num" style="font-size:13px;color:var(--amber)">▶</div>`;
@@ -1723,7 +1702,35 @@ function renderSlotStatus(boxId){
     box.appendChild(card);
   });
 }
-function getTeam2(s){ return TEAMS.find(t=>t.id===s.myTeam) || {name:'?',c:'#888',real:''}; }
+function slotCustomSpec(s){
+  if(!s||!s.myTeam)return null;
+  if(s.customTeamV39&&s.customTeamV39.id===s.myTeam){
+    return {id:s.myTeam,name:s.customTeamV39.name||s.myTeam,real:s.customTeamV39.name||s.myTeam,c:s.customTeamV39.primary||'#C9A227',logo:s.customTeamV39.logo||''};
+  }
+  const list=Array.isArray(s.customTeams)?s.customTeams:[];
+  const saved=list.find(x=>x&&x.id===s.myTeam);
+  if(saved)return {id:s.myTeam,name:saved.name||saved.real||s.myTeam,real:saved.real||saved.name||s.myTeam,c:saved.c||saved.primary||'#C9A227',logo:saved.logo||''};
+  const known=(typeof CUSTOM_CANDIDATES_V45!=='undefined'&&Array.isArray(CUSTOM_CANDIDATES_V45))?CUSTOM_CANDIDATES_V45.find(x=>x.id===s.myTeam):null;
+  if(known)return {id:s.myTeam,name:known.name||s.myTeam,real:known.name||s.myTeam,c:known.c||'#C9A227',logo:known.logo||''};
+  return null;
+}
+function getTeam2(s){
+  const live=TEAMS.find(t=>t.id===s.myTeam);
+  if(live)return live;
+  const base=(typeof BASE_TEAMS_V465!=='undefined'&&Array.isArray(BASE_TEAMS_V465))?BASE_TEAMS_V465.find(t=>t.id===s.myTeam):null;
+  if(base)return base;
+  return slotCustomSpec(s)||{id:s.myTeam||'',name:s.myTeam||'?',real:s.myTeam||'?',c:'#888',logo:''};
+}
+function slotTeamLogoHtml(s,t,cls='slot-logo-img'){
+  const id=(t&&t.id)||s?.myTeam||'';
+  if(typeof TEAM_LOGO_DATA==='object'&&TEAM_LOGO_DATA[id])return teamLogoHtml(id,cls,(t&&t.real)||id);
+  const spec=slotCustomSpec(s);
+  let mark=(spec&&spec.logo)||'';
+  if(!mark&&typeof CUSTOM_LOGO_V465==='object')mark=CUSTOM_LOGO_V465[id]||'';
+  if(!mark&&typeof CUSTOM_TEAM_MARKS==='object')mark=CUSTOM_TEAM_MARKS[id]||'';
+  if(!mark)mark='⚾';
+  return `<span class="${cls} custom-team-mark">${mark}</span>`;
+}
 function switchSlotEmpty(i){
   i=finiteIntV286(i,0,0,4);
   save(); store.active=i; state = normalizeSlotV286(store.slots[i]); store.slots[i]=state; save();
@@ -1758,7 +1765,7 @@ function renderSlots(){
       const b = document.createElement('button');
       b.className = store.active===i?'on':'';
       b.innerHTML = t
-        ? `<span class="slot-mini-head">${teamLogoHtml(t.id,'slot-mini-logo',t.real)}<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b></span>${t.real}<br>${s.mode==='sim'?'시뮬 '+(s.year||1)+'년차':'실황'} · ${gp}경기`
+        ? `<span class="slot-mini-head">${slotTeamLogoHtml(s,t,'slot-mini-logo')}<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b></span>${t.real}<br>${s.mode==='sim'?'시뮬 '+(s.year||1)+'년차':'실황'} · ${gp}경기`
         : `<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b>비어있음`;
       b.onclick = ()=>{ if(store.active!==i) switchSlot(i); };
       row.appendChild(b);
@@ -2270,56 +2277,14 @@ function startWithMode(teamId, mode, eco){
 
 
 
-/* ═══════════ 배경 테마 (v0.18) ═══════════ */
+/* ═══════════ 고정 배경 (v0.81) ═══════════ */
 function applyTheme(){
-  if(!document.body) return;
-  const th = (store && store.theme) || 'night';
+  if(!document.body)return;
   document.body.classList.remove('theme-day','theme-night','theme-rain');
-  document.body.classList.add('theme-'+th);
-  buildRain(th==='rain');
-}
-function buildRain(on){
-  return;   // 비는 CSS 레이어로 처리 (SVG 미사용)
-  const layer = document.getElementById('rainLayer');
-  if(!layer) return;
-  if(!on){ layer.innerHTML=''; return; }
-  if(layer.dataset.built==='1') return;
-  const W=window.innerWidth||390, H=window.innerHeight||800;
-  let drops='';
-  for(let i=0;i<70;i++){
-    const x=Math.random()*W, len=8+Math.random()*14, dur=(0.4+Math.random()*0.5).toFixed(2), delay=(Math.random()*1.2).toFixed(2), op=(0.25+Math.random()*0.4).toFixed(2);
-    drops += `<line x1="${x.toFixed(0)}" y1="-20" x2="${(x-6).toFixed(0)}" y2="${(-20+len).toFixed(0)}" stroke="#Bcd6e6" stroke-width="1.4" stroke-linecap="round" opacity="${op}">
-      <animateTransform attributeName="transform" type="translate" from="0 0" to="${(-30).toFixed(0)} ${(H+60)}" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
-    </line>`;
-  }
-  // 바닥 튀는 물방울
-  let splash='';
-  for(let i=0;i<14;i++){
-    const x=Math.random()*W, y=H-Math.random()*40-10, dur=(0.5+Math.random()*0.4).toFixed(2), delay=(Math.random()*1.5).toFixed(2);
-    splash += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="1" fill="none" stroke="#cfe4f0" stroke-width="1" opacity="0">
-      <animate attributeName="r" from="1" to="7" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" from="0.5" to="0" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
-    </circle>`;
-  }
-  layer.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${drops}${splash}</svg>`;
-  layer.dataset.built='1';
-}
-function setTheme(th){
-  store.theme = th;
-  localStorage.setItem(SAVE_KEY, JSON.stringify(store));
-  const layer=document.getElementById('rainLayer'); if(layer) layer.dataset.built='';
-  applyTheme();
-  renderTeamHome();
 }
 
 /* ═══════════ 구단 홈 화면 (v0.15 개편) ═══════════ */
 
-function weatherMsg(){
-  const th = (store && store.theme) || 'night';
-  if(th==='day') return '☀️ 오늘은 날씨가 좋습니다 — 경기하기 좋은 날!';
-  if(th==='rain') return '🌧 오늘은 비가 내립니다.';
-  return '🌙 조용한 밤 경기입니다.';
-}
 function teamStatusHtml(){
   const t = getTeam(state.myTeam);
   let s = `모드: ${state.mode==='sim'?'시뮬레이션 '+state.year+'년차':'실황'} · ${state.eco==='normal'?'경영 일반':state.eco==='hard'?'경영 하드':'자유'}<br>`;
@@ -2371,13 +2336,6 @@ function renderTeamHome(){
     <div class="dashboard-panel">
       <div class="dashboard-title">구단 브리핑 <span>FRONT OFFICE REPORT</span></div>
       <div class="reveal club-status"><div class="lbl">구단 현황</div>${teamStatusHtml()}</div>
-    </div>
-    <div class="weather-ticker">${weatherMsg()}</div>
-    <h2 class="sec">경기장 분위기</h2>
-    <div class="theme-pick">
-      <button class="${(store.theme||'night')==='day'?'on':''}" onclick="setTheme('day')">☀️ 낮</button>
-      <button class="${(store.theme||'night')==='night'?'on':''}" onclick="setTheme('night')">🌙 밤</button>
-      <button class="${(store.theme||'night')==='rain'?'on':''}" onclick="setTheme('rain')">🌧 비</button>
     </div>
     <h2 class="sec" style="margin-top:22px">저장 슬롯</h2>
     <div id="slotStatusHome"></div>
@@ -16872,7 +16830,7 @@ body,.prow,.nm,.hand,.notice,.hint,.meta,.sec,.reveal,.sheet,
   min-width:var(--tap-min,44px);min-height:var(--tap-min,44px);
   display:grid;place-items:center;font-size:17px;
 }
-.sortbar .sbrow button,.cat-btn,.pill,.theme-pick button{min-height:var(--tap-min,44px)}
+.sortbar .sbrow button,.cat-btn,.pill{min-height:var(--tap-min,44px)}
 /* 목록 안 텍스트 링크도 손가락으로 누를 만하게 */
 .front-pane a,.sheet a,#lineupList a{display:inline-block;padding:6px 2px;min-height:32px}
 
