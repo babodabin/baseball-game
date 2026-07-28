@@ -10195,7 +10195,7 @@ body.theme-night main::after{
     const old=Number(info.p.skills[skill])||0;
     const cap=skill==='velocity'?165:99;
     info.p.skills[skill]=Math.min(cap,old+gain);
-    return {name:info.p[0],skill,gain:info.p.skills[skill]-old,value:info.p.skills[skill]};
+    return {name:playerDisplayName(info.p),skill,gain:info.p.skills[skill]-old,value:info.p.skills[skill]};
   }
 
   const previousGrowthV327=window.applyGrowthWithTraining;
@@ -11311,7 +11311,7 @@ body.theme-night main::after{
   }
   function snap(teamId){const s=state.season?.stats?.[teamId]||{bat:{},pit:{}};return JSON.parse(JSON.stringify(s));}
   function d(a,b,k){return (+b?.[k]||0)-(+a?.[k]||0);}
-  function gameMilestones(teamId,before){const t=getTeam(teamId),after=state.season?.stats?.[teamId];if(!t||!after)return;Object.entries(after.bat||{}).forEach(([i,st])=>{const old=before?.bat?.[i]||{},p=t.bat?.[+i];if(!p)return;const h=d(old,st,'h'),b2=d(old,st,'b2'),b3=d(old,st,'b3'),hr=d(old,st,'hr'),single=h-b2-b3-hr;if(single>=1&&b2>=1&&b3>=1&&hr>=1){if(add(teamId,true,p,'대기록','사이클링 히트','한 경기에서 단타·2루타·3루타·홈런을 모두 기록했습니다.',`cycle:${state.year}:${state.season?.day}:${p[0]}`)&&teamId===state.myTeam&&typeof pushClubNews==='function')pushClubNews(`🚲 ${playerDisplayName(p)} 사이클링 히트`,`구단 역사에 남을 대기록을 달성했습니다.`);}});Object.entries(after.pit||{}).forEach(([name,st])=>{const old=before?.pit?.[name]||{},p=findPlayer(teamId,false,name);if(!p)return;const out=d(old,st,'out'),hits=d(old,st,'h'),er=d(old,st,'er');if(out>=27&&hits===0&&er===0){if(add(teamId,false,p,'대기록','노히트노런','9이닝 이상 안타 없이 경기를 마쳤습니다.',`nohit:${state.year}:${state.season?.day}:${name}`)&&teamId===state.myTeam&&typeof pushClubNews==='function')pushClubNews(`🔥 ${name} 노히트노런`,`단 하나의 안타도 허용하지 않은 역사적인 투구였습니다.`);}});}
+  function gameMilestones(teamId,before){const t=getTeam(teamId),after=state.season?.stats?.[teamId];if(!t||!after)return;Object.entries(after.bat||{}).forEach(([i,st])=>{const old=before?.bat?.[i]||{},p=t.bat?.[+i];if(!p)return;const h=d(old,st,'h'),b2=d(old,st,'b2'),b3=d(old,st,'b3'),hr=d(old,st,'hr'),single=h-b2-b3-hr;if(single>=1&&b2>=1&&b3>=1&&hr>=1){if(add(teamId,true,p,'대기록','사이클링 히트','한 경기에서 단타·2루타·3루타·홈런을 모두 기록했습니다.',`cycle:${state.year}:${state.season?.day}:${p[0]}`)&&teamId===state.myTeam&&typeof pushClubNews==='function')pushClubNews(`🚲 ${playerDisplayName(p)} 사이클링 히트`,`구단 역사에 남을 대기록을 달성했습니다.`);}});Object.entries(after.pit||{}).forEach(([name,st])=>{const old=before?.pit?.[name]||{},p=findPlayer(teamId,false,name);if(!p)return;const out=d(old,st,'out'),hits=d(old,st,'h'),er=d(old,st,'er');if(out>=27&&hits===0&&er===0){if(add(teamId,false,p,'대기록','노히트노런','9이닝 이상 안타 없이 경기를 마쳤습니다.',`nohit:${state.year}:${state.season?.day}:${name}`)&&teamId===state.myTeam&&typeof pushClubNews==='function')pushClubNews(`🔥 ${playerDisplayName(p)} 노히트노런`,`단 하나의 안타도 허용하지 않은 역사적인 투구였습니다.`);}});}
   const oldSheet=window.openSheet;if(typeof oldSheet==='function')window.openSheet=function(team,tab,idx){const r=oldSheet.apply(this,arguments);try{const p=(tab==='bat'?team?.bat:team?.pit)?.[idx],el=document.getElementById('sheet');if(p&&el&&!el.querySelector('.player-history-v339'))el.insertAdjacentHTML('beforeend',historyHtml(p));}catch(e){console.error('v0.33.9 상세 히스토리:',e);}return r;};
   const oldSim=window.simGame;if(typeof oldSim==='function')window.simGame=function(a,b){const sa=snap(a),sb=snap(b),r=oldSim.apply(this,arguments);try{gameMilestones(a,sa);gameMilestones(b,sb);}catch(e){console.error('v0.33.9 경기 대기록:',e);}return r;};
   function wrapRecruit(name,type,textMaker){const old=window[name];if(typeof old!=='function')return;window[name]=function(idx){let info=null;try{const m=state.season?.market;if(name==='draftPick')info=m?.draft?.[idx];else if(name==='signFA')info=m?.fa?.[idx];else if(name==='signLegend')info=m?.legends?.[idx];else if(name==='signForeign')info=m?.foreign?.[idx];}catch(_){}const r=old.apply(this,arguments);try{if(info){const isBat=info.kind==='bat',p=findPlayer(state.myTeam,isBat,info.data?.[0]);if(p)add(state.myTeam,isBat,p,type,textMaker(info),info.from?`${getTeam(info.from)?.name||info.from}에서 이적`:type,`${type}:${state.year}:${p[0]}`);}}catch(e){console.error('v0.33.9 영입 기록:',e);}return r;};}
@@ -11778,7 +11778,7 @@ body.theme-night main::after{
   function addHistory(tid,isBat,p,text,detail,stamp){const m=meta(p);if(!m)return;if(m.historyV339.some(x=>x.stamp===stamp))return;m.historyV339.unshift({year:+state.year||1,day:+state.season?.day+1||1,teamId:tid,isBat,player:p[0],type:'라이벌',text,detail,stamp});m.historyV339=m.historyV339.slice(0,80);}
   function bindPlayerRivals(a,b){
     const r=ensure(),pairs=[[topPlayer(a,true),true,a,topPlayer(b,false),false,b],[topPlayer(a,false),false,a,topPlayer(b,true),true,b]];
-    pairs.forEach(([p1,k1,t1,p2,k2,t2])=>{if(!p1||!p2)return;const id=keyPair(`${t1}:${p1[0]}`,`${t2}:${p2[0]}`);if(!r.playerPairs[id])r.playerPairs[id]={id,a:{team:t1,name:p1[0],isBat:k1},b:{team:t2,name:p2[0],isBat:k2},games:0,wins:{[t1]:0,[t2]:0},createdYear:+state.year||1};const m1=meta(p1),m2=meta(p2);if(!m1.rivalsV344.some(x=>x.id===id))m1.rivalsV344.push({id,oppTeam:t2,oppName:p2[0],oppIsBat:k2,games:0,wins:0});if(!m2.rivalsV344.some(x=>x.id===id))m2.rivalsV344.push({id,oppTeam:t1,oppName:p1[0],oppIsBat:k1,games:0,wins:0});addHistory(t1,k1,p1,`${p2[0]}와 라이벌 관계 형성`,`${teamName(t2)}의 핵심 선수와 맞대결 구도가 만들어졌습니다.`,`rival:${id}`);addHistory(t2,k2,p2,`${p1[0]}와 라이벌 관계 형성`,`${teamName(t1)}의 핵심 선수와 맞대결 구도가 만들어졌습니다.`,`rival:${id}`);});
+    pairs.forEach(([p1,k1,t1,p2,k2,t2])=>{if(!p1||!p2)return;const id=keyPair(`${t1}:${p1[0]}`,`${t2}:${p2[0]}`);if(!r.playerPairs[id])r.playerPairs[id]={id,a:{team:t1,name:p1[0],isBat:k1},b:{team:t2,name:p2[0],isBat:k2},games:0,wins:{[t1]:0,[t2]:0},createdYear:+state.year||1};const m1=meta(p1),m2=meta(p2);if(!m1.rivalsV344.some(x=>x.id===id))m1.rivalsV344.push({id,oppTeam:t2,oppName:p2[0],oppIsBat:k2,games:0,wins:0});if(!m2.rivalsV344.some(x=>x.id===id))m2.rivalsV344.push({id,oppTeam:t1,oppName:p1[0],oppIsBat:k1,games:0,wins:0});addHistory(t1,k1,p1,`${playerDisplayName(p2)}와 라이벌 관계 형성`,`${teamName(t2)}의 핵심 선수와 맞대결 구도가 만들어졌습니다.`,`rival:${id}`);addHistory(t2,k2,p2,`${playerDisplayName(p1)}와 라이벌 관계 형성`,`${teamName(t1)}의 핵심 선수와 맞대결 구도가 만들어졌습니다.`,`rival:${id}`);});
   }
   function findPlayer(tid,isBat,name){const t=getTeam(tid),arr=isBat?t?.bat:t?.pit;return (arr||[]).find(p=>p?.[0]===name)||null;}
   function updatePlayerPairs(a,b,winner){const r=ensure();Object.values(r.playerPairs).forEach(x=>{if(keyPair(x.a.team,x.b.team)!==keyPair(a,b))return;x.games++;if(winner)x.wins[winner]=(x.wins[winner]||0)+1;[x.a,x.b].forEach(side=>{const p=findPlayer(side.team,side.isBat,side.name),m=meta(p),row=m?.rivalsV344?.find(z=>z.id===x.id);if(row){row.games++;if(winner===side.team)row.wins++;}});});}
@@ -11804,7 +11804,7 @@ body.theme-night main::after{
   }
   const oldSim=window.simGame;
   if(typeof oldSim==='function')window.simGame=function(a,b){const active=isRival(a,b),gameFlags={postseason:isPostseasonGame(),titleRace:isTitleRaceGame(a,b)};if(active)bindPlayerRivals(a,b);const prev=ctx;ctx={active,a,b};let g;try{g=oldSim.apply(this,arguments);}finally{ctx=prev;}try{recordGame(a,b,g,active,gameFlags);}catch(e){console.error('v0.34.5 라이벌 경기 기록:',e);}return g;};
-  function playerHtml(p){const arr=meta(p)?.rivalsV344||[];if(!arr.length)return '';return `<div class="rival-v344"><div class="rv-head"><span class="rv-title">⚔️ 선수 라이벌</span><span class="rv-badge">${arr.length}명</span></div>${arr.map(x=>`<div class="rv-row-v344"><b>${esc(x.oppName)}</b> <span class="rv-dim-v344">· ${esc(teamName(x.oppTeam))}</span><br><span class="rv-hot-v344">${x.games}경기 ${x.wins}승</span> · 승률 ${x.games?((x.wins/x.games)*100).toFixed(1):'0.0'}%</div>`).join('')}</div>`;}
+  function playerHtml(p){const arr=meta(p)?.rivalsV344||[];if(!arr.length)return '';return `<div class="rival-v344"><div class="rv-head"><span class="rv-title">⚔️ 선수 라이벌</span><span class="rv-badge">${arr.length}명</span></div>${arr.map(x=>{const opp=findPlayer(x.oppTeam,!!x.oppIsBat,x.oppName),dn=opp?playerDisplayName(opp):x.oppName;return `<div class="rv-row-v344"><b>${esc(dn)}</b> <span class="rv-dim-v344">· ${esc(teamName(x.oppTeam))}</span><br><span class="rv-hot-v344">${x.games}경기 ${x.wins}승</span> · 승률 ${x.games?((x.wins/x.games)*100).toFixed(1):'0.0'}%</div>`;}).join('')}</div>`;}
   function teamHtml(){const r=refreshPrimary(),opp=r.primary[state.myTeam];if(!opp)return '<div class="rival-v344"><div class="rv-head"><span class="rv-title">⚔️ 기록 기반 숙적</span></div><div class="rv-dim-v344">최소 4경기와 라이벌 점수 32점 이상이 필요합니다. 맞대결·접전·포스트시즌·우승 경쟁·전적 균형·연승 흐름을 종합해 숙적이 자동 선정됩니다.</div></div>';const row=r.teamPairs[keyPair(state.myTeam,opp)]||{games:0,wins:{},ties:0,last:[]},w=row.wins[state.myTeam]||0,l=row.wins[opp]||0;return `<div class="rival-v344"><div class="rv-head"><span class="rv-title">⚔️ 기록 기반 숙적 · ${esc(teamName(opp))}</span><span class="rv-badge">${row.games}경기</span></div><div class="rv-grid-v344"><div class="rv-stat-v344"><b>${w}</b><span>승</span></div><div class="rv-stat-v344"><b>${l}</b><span>패</span></div><div class="rv-stat-v344"><b>${row.ties||0}</b><span>무</span></div></div>${row.last?.length?`<div style="margin-top:8px">${row.last.slice(0,5).map(x=>`<div class="rv-row-v344"><b>${x.year}년 ${x.day}일</b> · ${esc(teamName(x.away))} ${x.awayScore}-${x.homeScore} ${esc(teamName(x.home))}</div>`).join('')}</div>`:'<div class="rv-dim-v344" style="margin-top:8px">아직 맞대결 기록이 없습니다.</div>'}</div>`;}
   window.openRivalryV344=function(){document.getElementById('sheet').innerHTML=`<div class="top"><div class="pname">⚔️ 라이벌 기록</div><button class="close" onclick="closeSheet()">✕</button></div>${teamHtml()}`;document.getElementById('mask').classList.add('on');};
   const oldSheet=window.openSheet;if(typeof oldSheet==='function')window.openSheet=function(team,tab,idx){const ret=oldSheet.apply(this,arguments);try{const p=(tab==='bat'?team?.bat:team?.pit)?.[idx],el=document.getElementById('sheet');if(p&&el&&!el.querySelector('.rival-v344'))el.insertAdjacentHTML('beforeend',playerHtml(p));}catch(e){console.error('v0.34.4 선수 라이벌 표시:',e);}return ret;};
@@ -13707,8 +13707,8 @@ body.theme-night main::after{
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number(v)||0));
   function hash(s){let h=2166136261>>>0;for(const c of String(s||'')){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
   function root(){
-    if(!state.aiContractsV3413)state.aiContractsV3413={year:state.year,players:{},processedYears:{},results:[],clubSummary:{}};
-    const r=state.aiContractsV3413;if(!r.players)r.players={};if(!r.processedYears)r.processedYears={};if(!Array.isArray(r.results))r.results=[];if(!r.clubSummary)r.clubSummary={};return r;
+    if(!state.aiContractsV3413)state.aiContractsV3413={year:state.year,players:{},processedYears:{},results:[],clubSummary:{},budgetYears:{}};
+    const r=state.aiContractsV3413;if(!r.players)r.players={};if(!r.processedYears)r.processedYears={};if(!Array.isArray(r.results))r.results=[];if(!r.clubSummary)r.clubSummary={};if(!r.budgetYears)r.budgetYears={};return r;
   }
   function key(id,kind,p){return `${id}|${kind}|${p?.[0]||''}`;}
   function age(id,kind,p,i){const t=getTeam(id);return Number(t?.age?.[kind]?.[i])||Number(p?.[1])||28;}
@@ -13720,7 +13720,17 @@ body.theme-night main::after{
     const r=root(),k=key(id,kind,p);if(!r.players[k]){const a=age(id,kind,p,i),o=ovr(id,kind,p),yrs=a<=25?3:a<=30?2:1;r.players[k]={teamId:id,kind,name:playerDisplayName(p),salary:salary(id,kind,p),years:yrs,age:a,ovr:o,lastYear:state.year};}return r.players[k];
   }
   function ensureAll(){if(state.mode!=='sim'||!state.players)return;const r=root();(TEAMS||[]).filter(t=>t.id!==state.myTeam).forEach(t=>{const team=getTeam(t.id);['bat','pit'].forEach(kind=>(team?.[kind]||[]).forEach((p,i)=>contract(t.id,kind,p,i)));});return r;}
-  function budgetFor(id){const p=profile(id),c=core(id);let b=92;if(p.key==='star')b=125;else if(p.key==='win')b=112;else if(p.key==='value')b=72;else if(p.key==='develop')b=78;else if(p.key==='pitch')b=95;if(c.finance==='긴축'||c.finance==='심각한 긴축')b*=.75;if(c.strategy==='title')b*=1.12;if(c.strategy==='rebuild')b*=.88;return Math.round(b*10)/10;}
+  function budgetFor(id){
+    const r=root(),yk=String(state.year),yearBudgets=r.budgetYears[yk]||(r.budgetYears[yk]={});
+    if(Number.isFinite(+yearBudgets[id])&&+yearBudgets[id]>0)return +yearBudgets[id];
+    const p=profile(id),c=core(id),current=Math.max(180,payroll(id));
+    let mult=1.00;
+    if(p.key==='star')mult=1.10;else if(p.key==='win')mult=1.06;else if(p.key==='value')mult=.90;else if(p.key==='develop')mult=.94;else if(p.key==='pitch')mult=1.00;
+    if(c.finance==='긴축')mult*=.90;else if(c.finance==='심각한 긴축')mult*=.82;
+    if(c.strategy==='title')mult*=1.05;else if(c.strategy==='rebuild')mult*=.94;
+    yearBudgets[id]=Math.round(current*mult*10)/10;
+    return yearBudgets[id];
+  }
   function payroll(id){const r=root();return Object.values(r.players).filter(x=>x.teamId===id&&x.years>0).reduce((s,x)=>s+(Number(x.salary)||0),0);}
   function retainScore(id,kind,p,i){const a=age(id,kind,p,i),o=ovr(id,kind,p),c=core(id),ph=profile(id);if(typeof window.evaluatePlayerValue==='function'){const ct=contract(id,kind,p,i),v=window.evaluatePlayerValue(p,id,{kind,age:a,ovr:o,position:p?.[2],salary:ct?.salary,index:i});return v.ContractValue*.72+v.FutureValue*.18+v.RosterValue*.10;}let v=o+(29-a)*.35;if(c.strategy==='title')v+=(o>=68?5:0)+(a>=27&&a<=33?2:0);if(c.strategy==='rebuild')v+=(a<=26?6:0)-(a>=33?5:0);if(ph.key==='pitch'&&kind==='pit')v+=4;if(ph.key==='defense'&&kind==='bat'&&['C','SS','CF'].includes(p[2]))v+=3;if((c.needs||[]).includes(kind==='bat'?p[2]:(p[2]==='선발'?'선발':'불펜')))v+=5;return v;}
   function removePlayer(id,kind,p){const t=getTeam(id),arr=kind==='bat'?t.bat:t.pit,ages=t.age?.[kind],i=arr.indexOf(p);if(i<0)return false;arr.splice(i,1);if(Array.isArray(ages))ages.splice(i,1);try{delete state.squadLevel?.[id]?.[typeof squadKey==='function'?squadKey(kind,p):`${kind}:${p[0]}`];}catch(_){}return true;}
@@ -13728,17 +13738,18 @@ body.theme-night main::after{
     const m=state.season?.market;if(state.mode!=='sim'||!m)return false;const r=ensureAll(),yk=String(state.year);if(r.processedYears[yk]){showAlert('이번 오프시즌 AI 계약 관리는 이미 완료되었습니다.');return false;}
     const results=[],summary={};
     (TEAMS||[]).filter(t=>t.id!==state.myTeam).forEach(tm=>{
-      const id=tm.id,t=getTeam(id),budget=budgetFor(id);let used=payroll(id),renewed=0,released=0,retainedFa=0;
+      const id=tm.id,t=getTeam(id),budget=budgetFor(id);let used=0,renewed=0,released=0,retainedFa=0;
       const rows=[];['bat','pit'].forEach(kind=>(t?.[kind]||[]).forEach((p,i)=>rows.push({kind,p,i,a:age(id,kind,p,i),o:ovr(id,kind,p),c:contract(id,kind,p,i)})));
       rows.forEach(x=>{if(x.c.lastYear!==state.year){x.c.years=Math.max(0,(Number(x.c.years)||1)-1);x.c.lastYear=state.year;}});
       const faNames=new Set((m.fa||[]).filter(f=>f.from===id).map(f=>`${f.kind}|${f.data?.[0]}`));
+      used=rows.filter(x=>x.c.years>0&&!faNames.has(`${x.kind}|${x.p[0]}`)).reduce((sum,x)=>sum+(Number(x.c.salary)||0),0);
       rows.sort((a,b)=>retainScore(id,b.kind,b.p,b.i)-retainScore(id,a.kind,a.p,a.i));
       for(const x of rows){
         const score=retainScore(id,x.kind,x.p,x.i),isFa=faNames.has(`${x.kind}|${x.p[0]}`),ask=Math.round(salary(id,x.kind,x.p)*(isFa?1.18:1)*10)/10;
         const depth=x.kind==='bat'?t.bat.filter(p=>p[2]===x.p[2]).length:(x.p[2]==='선발'?t.pit.filter(p=>p[2]==='선발').length:t.pit.filter(p=>p[2]!=='선발').length);
         const mustKeep=(x.kind==='bat'&&depth<=1)||(x.kind==='pit'&&x.p[2]==='선발'&&depth<=5);
         const affordable=used+ask<=budget*1.12;
-        const keep=mustKeep||score>=64&&affordable||score>=70;
+        const keep=mustKeep||(score>=64&&affordable);
         if(isFa&&keep){
           const yrs=x.a<=27?3:x.a<=31?2:1;x.c.salary=ask;x.c.years=yrs;x.c.age=x.a;x.c.ovr=x.o;used+=ask;retainedFa++;renewed++;
           const idx=(m.fa||[]).findIndex(f=>f.from===id&&f.kind===x.kind&&f.data?.[0]===x.p[0]);if(idx>=0)m.fa.splice(idx,1);
@@ -18226,7 +18237,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
       pool.sort((a,b)=>b.ovr-a.ovr);
       while(countFrom(tid)<PER_TEAM&&pool.length){
         const x=pool.shift();
-        D.picked.push({key:tid+'|'+x.kind+'|'+x.i,teamId:tid,kind:x.kind,idx:x.i,name:x.p[0],ovr:x.ovr});
+        D.picked.push({key:tid+'|'+x.kind+'|'+x.i,teamId:tid,kind:x.kind,idx:x.i,name:playerDisplayName(x.p),ovr:x.ovr});
       }
     });
     renderDraft();
@@ -21481,6 +21492,56 @@ window.jumpOffseasonTaskV66=function(key){
     target.scrollIntoView({behavior:'smooth',block:'start'});
   });
 };
+</script>
+
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   v0.67 · 미래 확장 슬롯
+   목적  : 새 리그 / 새 팀 / 새 선수 / 해외대회를 나중에 추가할 자리를 미리 마련한다.
+   원칙  : 현재 KBO 데이터·세이브·화면·게임 로직에는 연결하지 않는다.
+           실제 콘텐츠가 추가될 때만 아래 registry에 정의를 등록하고,
+           그 시점에 필요한 연결부를 별도로 붙인다.
+   ────────────────────────────────────────────────────────────── */
+(()=>{
+  'use strict';
+
+  const makeBucket=()=>[];
+  const registry={
+    version:'0.67',
+    leagues:makeBucket(),
+    teams:makeBucket(),
+    players:makeBucket(),
+    internationalTournaments:makeBucket()
+  };
+
+  /* 미래 데이터의 최소 형태를 한 곳에 기록해 둔다.
+     현재 게임에서는 읽거나 실행하지 않는다. */
+  registry.schemas={
+    league:{id:'',name:'',country:'',teamIds:[],rules:{}},
+    team:{id:'',leagueId:'',name:'',shortName:'',logo:'',logoScale:1,meta:{}},
+    player:{id:'',teamId:'',leagueId:'',name:'',kind:'',position:'',age:null,data:null,meta:{}},
+    internationalTournament:{id:'',name:'',participantType:'team',participantIds:[],rules:{},schedule:[]}
+  };
+
+  function register(bucket,def){
+    if(!def||typeof def!=='object')return false;
+    const id=String(def.id||'').trim();
+    if(!id)return false;
+    const list=registry[bucket];
+    if(!Array.isArray(list))return false;
+    const at=list.findIndex(x=>String(x?.id||'')===id);
+    const row={...def,id};
+    if(at>=0)list[at]=row;else list.push(row);
+    return true;
+  }
+
+  window.GAME_EXTENSION_V67=registry;
+  window.registerLeagueV67=def=>register('leagues',def);
+  window.registerTeamV67=def=>register('teams',def);
+  window.registerPlayerV67=def=>register('players',def);
+  window.registerInternationalTournamentV67=def=>register('internationalTournaments',def);
+})();
 </script>
 
 </body>
