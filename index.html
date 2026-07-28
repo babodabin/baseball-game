@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
 <script>
-/* v0.76 · 게임 전체 버전 단일 기준 */
-window.APP_VERSION='v0.76';
+/* v0.78 · 게임 전체 버전 단일 기준 */
+window.APP_VERSION='v0.78';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -181,11 +181,9 @@ h2.sec small{font-family:'IBM Plex Sans KR';font-size:12px;color:var(--dim);marg
   cursor:pointer;transition:transform .08s;
 }
 .tcard:active{transform:scale(.96)}
-.tcard .temblem{
-  width:64px;height:64px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;font-size:34px;
-  line-height:1;
-}
+.team-logo-box-v078{width:64px;height:64px;display:flex;align-items:center;justify-content:center;flex:none;background:transparent;border:0;box-shadow:none}
+.team-logo-box-v078 .team-logo-v074{width:58px;height:58px;object-fit:contain;object-position:center;display:block;filter:drop-shadow(0 5px 8px rgba(0,0,0,.24))}
+.custom-team-mark-v078{display:flex;align-items:center;justify-content:center;font-size:34px;line-height:1}
 .tcard .tinfo{text-align:center}
 .tcard .tname{font-weight:700;font-size:15px}
 .tcard .treal{font-size:11px;color:var(--dim);margin-top:2px}
@@ -610,7 +608,6 @@ h2.sec small{white-space:nowrap;color:var(--dim)}
 .tcard::before{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(circle at 50% 20%,rgba(255,193,77,.13),transparent 42%)}
 .tcard::after{content:'';position:absolute;left:12px;right:12px;bottom:0;height:2px;background:linear-gradient(90deg,transparent,var(--amber),transparent);opacity:.55}
 .tcard:active{transform:scale(.975);border-color:rgba(255,193,77,.4);box-shadow:0 4px 14px rgba(0,0,0,.22)}
-.tcard .temblem{width:70px;height:70px;border:1px solid rgba(255,255,255,.14);box-shadow:0 8px 20px rgba(0,0,0,.22),inset 0 0 0 4px rgba(255,255,255,.05)}
 .tcard .tname{font-size:15.5px;color:var(--chalk)}
 .tcard .treal{margin-top:4px;color:#92A89C}
 
@@ -740,7 +737,8 @@ nav button.lock{opacity:.32}
 .club-hero::before{content:'';position:absolute;width:180px;height:180px;right:-62px;top:-88px;border-radius:50%;background:rgba(255,193,77,.2);background:color-mix(in srgb,var(--team) 32%,transparent);filter:blur(2px);opacity:.75}
 .club-hero::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 30%,transparent 68%,rgba(255,255,255,.035))}
 .club-hero-top{position:relative;display:flex;align-items:center;gap:14px;z-index:1}
-.club-emblem{width:78px;height:78px;flex:none;border-radius:23px;display:flex;align-items:center;justify-content:center;font-size:39px;background:rgba(4,12,8,.36);border:1px solid rgba(255,255,255,.18);box-shadow:0 12px 28px rgba(0,0,0,.25),inset 0 0 0 5px rgba(255,255,255,.045)}
+.club-logo-box-v078{width:82px;height:72px;flex:0 0 82px;display:flex;align-items:center;justify-content:center;overflow:visible;background:transparent;border:0;box-shadow:none}
+.club-logo-box-v078 .club-logo-v074{width:76px;height:64px;max-width:100%;object-fit:contain;object-position:center;display:block;filter:drop-shadow(0 8px 12px rgba(0,0,0,.28))}
 .club-copy{min-width:0;flex:1}
 .club-kicker{display:block;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#FFE6AE}
 .club-name{font-family:'Black Han Sans',sans-serif;font-size:25px;line-height:1.1;color:#FFF9E9;text-shadow:0 2px 14px rgba(0,0,0,.25)}
@@ -767,7 +765,8 @@ nav button.lock{opacity:.32}
 @media (max-width:360px){
   .screen{padding-left:12px;padding-right:12px}
   .club-hero{padding:15px}
-  .club-emblem{width:68px;height:68px;font-size:34px;border-radius:20px}
+  .club-logo-box-v078{width:74px;height:64px;flex-basis:74px}
+  .club-logo-box-v078 .club-logo-v074{width:70px;height:58px}
   .club-name{font-size:22px}
   nav button{font-size:10px}
   nav button .ic{width:37px}
@@ -1146,43 +1145,43 @@ const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, y
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
-{id:'LG', name:'엘즈 트윈즈', real:'LG 트윈스', c:'#C30452',
+{id:'LG', name:'LG 트윈스', real:'LG 트윈스', c:'#C30452',
  bat:[['홍창규','홍창기','RF','좌',82,62,70,74,90],['신민제','신민재','2B','좌',74,45,88,78,72],['어스틴','오스틴 딘','1B','우',78,85,60,70,70],['문보겸','문보경','3B','좌',80,76,62,74,76],['오지완','오지환','SS','좌',68,70,72,86,74],['박동언','박동원','C','우',66,80,40,78,64],['박해빈','박해민','CF','좌',72,48,92,88,70],['문성진','문성주','LF','좌',78,58,68,70,78],['김범섭','김범석','DH','우',70,74,40,60,62,'new']],
  pit:[['임찬귀','임찬규','선발','우',143,80,82,78],['치리노즈','치리노스','선발','우',150,76,82,78],['톨허트','톨허스트','선발','좌',146,74,76,74],['손주엽','손주영','선발','좌',146,72,76,74],['웰즈','라클란 웰스 (아시아쿼터)','선발','좌',145,78,74,72,'new'],['유영천','유영찬','마무리','우',150,74,78,60]]},
 
-{id:'HH', name:'한와 이글스', real:'한화 이글스', c:'#FC4E00',
+{id:'HH', name:'한화 이글스', real:'한화 이글스', c:'#FC4E00',
  bat:[['문현민','문현빈','2B','좌',78,62,70,74,70],['노시완','노시환','3B','우',72,86,58,72,68],['채은승','채은성','1B','우',74,76,50,70,66],['강백후','강백호','DH','좌',78,84,60,58,70,'fa'],['플로리알','플로리얼','CF','좌',72,74,80,78,60],['최재운','최재훈','C','우',68,48,40,78,76],['이진엽','이진영','LF','좌',68,70,74,72,60],['심우진','심우준','SS','우',66,44,78,78,60],['김태윤','김태연','RF','우',70,62,60,68,64]],
  pit:[['문동수','문동주','선발','우',154,72,80,74],['유현진','류현진','선발','좌',143,88,84,72],['에르난데즈','윌켈 에르난데스','선발','우',148,72,76,72,'new'],['오웬 와이트','오웬 화이트','선발','우',149,72,76,74,'new'],['왕옌챙','왕옌청 (아시아쿼터)','선발','우',146,74,74,70,'new'],['주현산','주현상','마무리','우',147,82,78,60]]},
 
-{id:'KIA', name:'기어 타이거스', real:'KIA 타이거즈', c:'#EA0029',
+{id:'KIA', name:'KIA 타이거즈', real:'KIA 타이거즈', c:'#EA0029',
  bat:[['김도녕','김도영','3B','우',85,92,88,76,78],['나성벌','나성범','RF','좌',76,84,62,72,70],['김선민','김선빈','2B','우',84,50,60,78,80],['한준서','한준수','C','우',72,66,45,72,64],['카스트루','해럴드 카스트로','1B','우',74,62,60,70,64,'new'],['김규승','김규성','SS','우',62,44,70,76,58],['김호련','김호령','CF','우',60,40,84,88,54],['박정욱','박정우','LF','좌',72,52,78,70,68],['이우승','이우성','DH','우',70,68,45,60,62]],
  pit:[['네일러','네일','선발','우',148,76,86,80],['양현존','양현종','선발','좌',144,84,80,76],['올레르','애덤 올러','선발','우',148,74,76,76],['윤영섭','윤영철','선발','좌',141,76,72,70],['정해엽','정해영','마무리','우',148,72,74,58]]},
 
-{id:'SS', name:'삼선 라이온즈', real:'삼성 라이온즈', c:'#074CA1',
+{id:'SS', name:'삼성 라이온즈', real:'삼성 라이온즈', c:'#074CA1',
  bat:[['구자옥','구자욱','LF','좌',84,80,70,74,78],['김영옹','김영웅','3B','좌',70,84,64,76,64],['이재헌','이재현','SS','우',72,70,66,82,72],['강민오','강민호','C','우',74,74,35,76,70],['디아스','디아즈','1B','우',76,88,50,64,62],['김지천','김지찬','CF','좌',80,42,94,82,76],['류지현','류지혁','2B','우',72,50,64,76,68],['이성귀','이성규','RF','우',62,78,70,68,56],['최형운','최형우','DH','좌',80,78,40,50,84,'fa']],
  pit:[['원태윤','원태인','선발','우',146,82,82,78],['후라두','후라도','선발','우',147,84,80,84],['마닝','맷 매닝','선발','우',151,70,78,72,'new'],['미야치','미야지 유라 (아시아쿼터)','선발','우',143,74,72,68,'new'],['김재운','김재윤','마무리','우',147,76,74,60]]},
 
-{id:'DS', name:'두손 베어즈', real:'두산 베어스', c:'#131230',
+{id:'DS', name:'두산 베어스', real:'두산 베어스', c:'#131230',
  bat:[['정수민','정수빈','CF','좌',78,48,86,86,74],['강승오','강승호','2B','우',72,68,60,76,64],['케이버','케이브','LF','좌',76,78,68,72,68],['카메룬','다즈 카메론','RF','우',66,78,76,80,58,'new'],['김재완','김재환','DH','좌',68,82,45,55,70],['양석완','양석환','1B','우',68,80,45,70,60],['양의진','양의지','C','우',80,78,45,80,76],['박계법','박계범','3B','우',64,58,62,76,58],['박찬오','박찬호','SS','우',78,58,84,84,72,'fa']],
  pit:[['곽빔','곽빈','선발','우',150,70,80,76],['로거','잭 로그','선발','우',147,74,76,74,'new'],['플렉슨','크리스 플렉센','선발','우',148,76,78,76,'new'],['최승엽','최승용','선발','좌',145,72,74,70],['다무레','다무라 이치로 (아시아쿼터)','선발','우',143,72,70,68,'new'],['김택윤','김택연','마무리','우',152,72,76,62]]},
 
-{id:'KT', name:'케티 위저즈', real:'KT 위즈', c:'#000000',
+{id:'KT', name:'KT 위즈', real:'KT 위즈', c:'#000000',
  bat:[['힐리아드','샘 힐리어드','RF','좌',68,80,72,74,62,'new'],['안현빈','안현민','LF','우',80,84,72,70,74],['최원진','최원준','CF','좌',74,56,80,74,70,'fa'],['김현서','김현수','DH','좌',76,68,45,60,72,'fa'],['장성운','장성우','C','우',70,72,40,74,66],['허경빈','허경민','3B','우',74,56,55,78,70],['김상순','김상수','SS','우',70,50,66,78,66],['문상혁','문상철','1B','우',68,78,50,68,60],['천성오','천성호','2B','우',72,48,68,72,66]],
  pit:[['고영푸','고영표','선발','우',141,88,84,76],['사우얼','맷 사우어','선발','우',150,72,78,74,'new'],['보슐리','케일럽 보쉴리','선발','우',147,74,76,76,'new'],['소형진','소형준','선발','우',147,78,78,74],['스기모또','스기모토 코우키 (아시아쿼터)','선발','우',144,76,74,70,'new'],['박영헌','박영현','마무리','우',151,76,78,62]]},
 
-{id:'SSG', name:'쓱 랜더즈', real:'SSG 랜더스', c:'#CE0E2D',
+{id:'SSG', name:'SSG 랜더스', real:'SSG 랜더스', c:'#CE0E2D',
  bat:[['채정','최정','3B','우',74,90,55,74,76],['에레디야','에레디아','LF','우',84,74,62,68,64],['박성환','박성한','SS','좌',76,62,68,82,74],['한유선','한유섬','RF','좌',66,78,50,68,62],['최지운','최지훈','CF','좌',74,54,84,84,68],['고명진','고명준','1B','우',68,76,50,66,60],['이지엽','이지영','C','우',70,44,45,74,62],['정준제','정준재','2B','좌',72,42,80,70,68],['오태군','오태곤','DH','우',64,68,66,62,58]],
  pit:[['감광현','김광현','선발','좌',145,78,82,74],['화이터','미치 화이트','선발','우',147,74,76,74],['버하건','드류 버하겐','선발','우',146,76,74,72,'new'],['다케따','다케다 쇼타 (아시아쿼터)','선발','우',144,74,76,70,'new'],['조병헌','조병현','마무리','우',149,74,76,60]]},
 
-{id:'LT', name:'롯디 자이언츠', real:'롯데 자이언츠', c:'#041E42',
+{id:'LT', name:'롯데 자이언츠', real:'롯데 자이언츠', c:'#041E42',
  bat:[['윤동히','윤동희','RF','우',76,68,70,72,70],['황성민','황성빈','CF','좌',76,44,92,78,68],['레이에스','빅터 레이예스','DH','양',84,76,60,64,66],['전준욱','전준우','LF','우',76,74,50,62,72],['나승협','나승엽','1B','좌',78,70,60,72,76],['손호엽','손호영','3B','우',76,76,72,70,64],['고승빈','고승민','2B','좌',76,64,70,74,66],['유강담','유강남','C','우',64,70,40,74,62],['전민제','전민재','SS','우',68,50,72,76,64]],
  pit:[['박세욱','박세웅','선발','우',146,76,80,78],['로드리게즈','엘빈 로드리게스','선발','우',149,70,78,74,'new'],['비즐리','제러미 비슬리','선발','우',146,74,74,74,'new'],['쿄야먀','교야마 마사야 (아시아쿼터)','선발','좌',145,76,72,70,'new'],['김원준','김원중','마무리','우',149,72,78,60]]},
 
-{id:'NC', name:'엔시 디노스', real:'NC 다이노스', c:'#315288',
+{id:'NC', name:'NC 다이노스', real:'NC 다이노스', c:'#315288',
  bat:[['박건욱','박건우','RF','우',82,72,60,72,74],['김주언','김주원','SS','양',72,72,74,80,70],['박민욱','박민우','2B','좌',80,54,78,76,74],['권히동','권희동','LF','우',68,70,55,66,72],['데이빗슨','맷 데이비슨','1B','우',62,92,45,62,60],['김형진','김형준','C','우',60,74,40,74,58],['서호천','서호철','3B','우',70,58,62,70,62],['김성옥','김성욱','CF','우',62,68,70,76,56],['오영순','오영수','DH','좌',66,64,50,58,60]],
  pit:[['라일링','라일리 톰슨','선발','우',150,74,80,78],['테일로','커티스 테일러','선발','우',147,72,76,74,'new'],['신민한','신민혁','선발','우',143,80,74,74],['구창무','구창모','선발','좌',149,74,84,64],['도다','도다 나츠키 (아시아쿼터)','선발','좌',142,74,70,68,'new'],['류진옥','류진욱','마무리','우',148,70,74,58]]},
 
-{id:'KW', name:'키윰 히어로즈', real:'키움 히어로즈', c:'#570514',
+{id:'KW', name:'키움 히어로즈', real:'키움 히어로즈', c:'#570514',
  bat:[['송성운','송성문','3B','좌',80,78,66,74,74],['이주혁','이주형','CF','좌',74,66,74,74,66],['브룩즈','트렌튼 브룩스','1B','좌',70,74,50,64,60,'new'],['김건히','김건희','C','우',66,74,45,68,58],['최주완','최주환','DH','좌',66,68,45,62,64],['임지엽','임지열','RF','우',64,72,58,62,56],['박수존','박수종','LF','우',72,44,76,72,64],['김태신','김태진','2B','좌',66,44,64,70,60],['어준석','어준서','SS','좌',62,40,72,74,58]],
  pit:[['안우신','안우진','선발','우',155,78,88,80],['데헤이수즈','엔마누엘 데 헤이수스','선발','좌',149,74,80,76],['요키쉬','에릭 요키시','선발','좌',144,80,76,74],['하영빈','하영민','선발','우',144,74,72,72],['가나쿠부','가나쿠보 유토 (아시아쿼터)','선발','우',143,72,70,66,'new'],['주승욱','주승우','마무리','우',146,72,72,58]]}
 ];
@@ -1632,17 +1631,16 @@ function normalizeStoreV286(raw){
    그래서 저장을 읽기 전에, 저장에 기록된 커스텀 구단을 TEAMS에 먼저 등록한다. */
 const BASE_TEAMS_V465=TEAMS.slice();
 const BASE_IDS_V465=new Set(BASE_TEAMS_V465.map(t=>t.id));
-let BASE_EMOJI_V465=null;              // TEAM_EMOJI가 준비된 뒤에 채운다
+let BASE_TEAM_MARKS_V465=null;         // 창단/신생 구단용 표시만 보존한다
 const CUSTOM_LOGO_V465={};             // 아직 심지 못한 커스텀 구단 로고
 function emojiMapV465(){
-  // TEAM_EMOJI는 이 지점보다 아래에서 const로 선언된다.
-  // const는 선언 전이면 typeof조차 ReferenceError를 내므로 try로 감싼다.
-  try{return (typeof TEAM_EMOJI==='object'&&TEAM_EMOJI)?TEAM_EMOJI:null;}catch(_){return null;}
+  // 기본 KBO 구단은 이미지 로고만 사용하고, 이 맵은 창단/신생 구단에만 쓴다.
+  try{return (typeof CUSTOM_TEAM_MARKS==='object'&&CUSTOM_TEAM_MARKS)?CUSTOM_TEAM_MARKS:null;}catch(_){return null;}
 }
 function applyCustomLogosV465(){
   const map=emojiMapV465();
   if(!map)return null;
-  if(!BASE_EMOJI_V465)BASE_EMOJI_V465=Object.assign({},map);
+  if(!BASE_TEAM_MARKS_V465)BASE_TEAM_MARKS_V465=Object.assign({},map);
   Object.keys(CUSTOM_LOGO_V465).forEach(id=>{if(!map[id])map[id]=CUSTOM_LOGO_V465[id];});
   return map;
 }
@@ -1690,9 +1688,9 @@ function syncLeagueTeamsV466(){
     .concat(keep.filter(t=>!BASE_IDS_V465.has(t.id)));
   TEAMS.length=0; ordered.forEach(t=>TEAMS.push(t));
   const map=applyCustomLogosV465();
-  if(map&&BASE_EMOJI_V465){
+  if(map&&BASE_TEAM_MARKS_V465){
     Object.keys(map).forEach(k=>{
-      if(!want.has(k)&&!(k in BASE_EMOJI_V465))delete map[k];
+      if(!want.has(k)&&!(k in BASE_TEAM_MARKS_V465))delete map[k];
     });
   }
   return TEAMS.length;
@@ -1775,7 +1773,7 @@ function renderSlotStatus(boxId){
       card.style.borderColor = s.c || 'var(--amber)';
       const active = store.active===i;
       card.innerHTML = `<div class="slot-brand-v074">${teamLogoHtmlV074(t.id,'slot-logo-v074',t.real)}<div class="slot-index-v075" style="background:${t.c};">${i+1}</div></div>
-        <div class="mid"><div class="nm">${t.name} ${active?'<span style="font-size:10px;color:var(--amber)">사용중</span>':''} <span style="font-size:11px;color:var(--dim)">${md}·${eco}</span></div>
+        <div class="mid"><div class="nm">${t.real} ${active?'<span style="font-size:10px;color:var(--amber)">사용중</span>':''} <span style="font-size:11px;color:var(--dim)">${md}·${eco}</span></div>
         <div class="hand">${t.real} · ${rankTxt}${s.eco&&s.eco!=='free'?' · 💰'+(s.money||0).toFixed(0)+'억':''}</div></div>
         <div class="ovr num" style="font-size:13px;color:var(--amber)">▶</div>`;
       card.onclick = ()=>{ if(store.active!==i) switchSlot(i); else { renderTeamHome(); document.querySelector('nav button[data-nav="team"]').click(); } };
@@ -1825,7 +1823,7 @@ function renderSlots(){
       const b = document.createElement('button');
       b.className = store.active===i?'on':'';
       b.innerHTML = t
-        ? `<span class="slot-mini-head-v074">${teamLogoHtmlV074(t.id,'slot-mini-logo-v074',t.real)}<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b></span>${t.name}<br>${s.mode==='sim'?'시뮬 '+(s.year||1)+'년차':'실황'} · ${gp}경기`
+        ? `<span class="slot-mini-head-v074">${teamLogoHtmlV074(t.id,'slot-mini-logo-v074',t.real)}<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b></span>${t.real}<br>${s.mode==='sim'?'시뮬 '+(s.year||1)+'년차':'실황'} · ${gp}경기`
         : `<b>슬롯 ${i+1}${store.active===i?' ·사용중':''}</b>비어있음`;
       b.onclick = ()=>{ if(store.active!==i) switchSlot(i); };
       row.appendChild(b);
@@ -1954,10 +1952,7 @@ function refreshHeader(){
 }
 
 /* ───────────── 팀 선택 ───────────── */
-const TEAM_EMOJI = {
-  LG:'👯', HH:'🦅', KIA:'🐯', SS:'🦁', DS:'🐻',
-  KT:'🧙', SSG:'🚀', LT:'🗿', NC:'🦖', KW:'🦸'
-};
+const CUSTOM_TEAM_MARKS = {}; // 창단/신생 구단 전용. KBO 10개 구단은 이미지 로고만 사용한다.
 
 /* v0.75 · KBO 10개 구단 로고: 슬롯/구단 카드 정렬 보정 */
 const TEAM_LOGO_DATA_V074 = {
@@ -1975,7 +1970,8 @@ const TEAM_LOGO_DATA_V074 = {
 function teamLogoHtmlV074(teamId, cls='team-logo-v074', alt='구단 로고'){
   const src=TEAM_LOGO_DATA_V074[teamId];
   if(src) return `<img class="${cls}" src="${src}" alt="${String(alt||'구단 로고').replace(/"/g,'&quot;')}">`;
-  return `<span class="${cls} team-logo-fallback-v074">${TEAM_EMOJI[teamId]||'⚾️'}</span>`;
+  const mark=(typeof CUSTOM_TEAM_MARKS==='object'&&CUSTOM_TEAM_MARKS[teamId])||'';
+  return mark ? `<span class="${cls} custom-team-mark-v078">${mark}</span>` : '';
 }
 
 function renderTeamGrid(){
@@ -1985,8 +1981,8 @@ function renderTeamGrid(){
     const d = document.createElement('div');
     d.className = 'tcard';
     const mark = teamLogoHtmlV074(t.id,'team-logo-v074',t.real);
-    d.innerHTML = `<div class="temblem">${mark}</div>
-      <div class="tinfo"><div class="tname">${t.name}</div><div class="treal">${t.real}</div></div>`;
+    d.innerHTML = `<div class="team-logo-box-v078">${mark}</div>
+      <div class="tinfo"><div class="tname">${t.real}</div></div>`;
     d.onclick = ()=>openTeamPreview(t);
     g.appendChild(d);
   });
@@ -2423,10 +2419,10 @@ function renderTeamHome(){
   box.innerHTML = `
     <div class="club-hero" style="--team:${t.c}">
       <div class="club-hero-top">
-        <div class="club-emblem">${teamLogoHtmlV074(t.id,'club-logo-v074',t.real)}</div>
+        <div class="club-logo-box-v078">${teamLogoHtmlV074(t.id,'club-logo-v074',t.real)}</div>
         <div class="club-copy">
           <span class="club-kicker">MY BALL CLUB</span>
-          <div class="club-name">${t.name}</div>
+          <div class="club-name">${t.real}</div>
           <div class="club-meta">${t.real} · ${md} · ${eco}</div>
         </div>
       </div>
@@ -18389,7 +18385,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
           if(k>=0){delete state.players[D.cfg.replace];TEAMS.splice(k,1,team);}
           else TEAMS.push(team);
         }else TEAMS.push(team);
-        if(typeof TEAM_EMOJI==='object')TEAM_EMOJI[newId]=d.logo||'🌱';
+        if(typeof CUSTOM_TEAM_MARKS==='object')CUSTOM_TEAM_MARKS[newId]=d.logo||'🌱';
         state.players[newId]={bat,pit,age:{bat:ageBat,pit:agePit}};
         // 11팀은 홀수라 부전승이 생긴다. AI 신생 구단을 하나 더 넣어 12팀 짝수로 맞춘다.
         let aiNew=null;
@@ -18618,7 +18614,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
       if(!spec)return null;
       const r=makeRoster(spec);
       TEAMS.push({id:spec.id,name:`${spec.region} ${spec.nick}`,real:`${spec.region} ${spec.nick}`,c:spec.c,bat:[],pit:[]});
-      if(typeof TEAM_EMOJI==='object')TEAM_EMOJI[spec.id]=spec.logo;
+      if(typeof CUSTOM_TEAM_MARKS==='object')CUSTOM_TEAM_MARKS[spec.id]=spec.logo;
       state.players[spec.id]={bat:r.bat,pit:r.pit,age:{bat:r.bat.map(()=>21),pit:r.pit.map(()=>21)}};
       return spec;
     }catch(e){console.error(V+' AI 신생 구단:',e);return null;}
@@ -21460,47 +21456,6 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
 </script>
 
 
-<script>
-/* ──────────────────────────────────────────────────────────────
-   [기능] v0.65 · 구단 이름도 실명으로 표시
-   메모  : TEAMS 각 항목은 name(가명, 예 '엘즈 트윈즈')과 real(실명, 'LG 트윈스')을
-           둘 다 갖고 있다. 팀은 id로 식별하고 name은 표시에만 쓰이므로
-           (.name=== 비교는 전부 국가대표 경기용) name을 real로 바꿔도 안전하다.
-           TEAMS를 한 번만 고치면 순위·경기·뉴스·기록실 등 모든 화면이 함께 바뀐다.
-           BASE_TEAMS_V465는 TEAMS와 같은 객체를 참조하므로 함께 반영된다.
-   ────────────────────────────────────────────────────────────── */
-(()=>{
-  'use strict';
-  const V='v0.65';
-  function applyRealTeamNames(){
-    try{
-      if(typeof TEAMS==='undefined'||!Array.isArray(TEAMS))return 0;
-      let n=0;
-      TEAMS.forEach(t=>{
-        if(!t||!t.real)return;
-        if(t.aliasNameV65==null)t.aliasNameV65=t.name;   // 가명은 남겨둔다
-        if(t.name!==t.real){t.name=t.real;n++;}
-      });
-      return n;
-    }catch(e){console.error(V+' 팀 실명:',e);return 0;}
-  }
-  window.applyRealTeamNamesV65=applyRealTeamNames;
-  applyRealTeamNames();
-
-  // 슬롯 전환·창단으로 TEAMS가 다시 짜인 뒤에도 유지한다.
-  ['syncLeagueTeamsV466','prepareSlotTeamsV466','switchSlot','switchSlotEmpty',
-   'startWithMode','expFinishV39','addAiExpansionTeamV41'].forEach(n=>{
-    const f=window[n];
-    if(typeof f!=='function')return;
-    window[n]=function(){
-      const r=f.apply(this,arguments);
-      try{applyRealTeamNames();}catch(_){}
-      return r;
-    };
-  });
-  setInterval(applyRealTeamNames,2000);
-})();
-</script>
 
 
 <style>
@@ -21811,11 +21766,6 @@ nav button.on .ic{
   background:linear-gradient(90deg,transparent,var(--team-accent),transparent)!important;
   opacity:.72!important;
 }
-.tcard .temblem{
-  border:0!important;
-  background:transparent!important;
-  box-shadow:none!important;
-}
 .tcard .tname{color:#F7F3E9!important}
 .tcard .treal{color:#8FA69A!important}
 .tcard:active{
@@ -21835,12 +21785,7 @@ nav button.on .ic{
 main{background:var(--bg)!important}
 
 /* v0.74 · 실제 KBO 로고 표시 */
-.tcard .temblem{width:70px;height:70px;overflow:visible;display:flex;align-items:center;justify-content:center;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
 .team-logo-v074,.club-logo-v074,.slot-logo-v074,.slot-mini-logo-v074,.club-scroll-logo-v074{display:block;object-fit:contain;object-position:center}
-.team-logo-v074{width:58px;height:58px;max-width:100%;max-height:100%;filter:drop-shadow(0 5px 8px rgba(0,0,0,.24))}
-.team-logo-fallback-v074{display:flex;align-items:center;justify-content:center;font-size:30px}
-.club-emblem{display:flex;align-items:center;justify-content:center;overflow:visible!important;background:transparent!important}
-.club-logo-v074{width:112px;height:88px;max-width:29vw;filter:drop-shadow(0 10px 15px rgba(0,0,0,.34))}
 .slot-brand-v074{display:flex;align-items:center;gap:11px;flex:none;min-width:92px}
 .slot-brand-empty-v075{min-width:56px;justify-content:center}
 .slot-logo-v074{width:36px;height:36px;flex:none;filter:drop-shadow(0 4px 5px rgba(0,0,0,.28))}
@@ -21853,7 +21798,7 @@ main{background:var(--bg)!important}
 .club-scroll-mark-v074>div{min-width:0}
 .club-scroll-logo-v074{width:42px;height:34px;flex:none;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 4px 7px rgba(0,0,0,.22))}
 .club-scroll-mark-v074 b{display:block;color:var(--chalk);font-size:14px}.club-scroll-mark-v074 span{display:block;margin-top:2px;color:var(--dim);font-size:11px}
-@media(max-width:390px){.club-logo-v074{width:96px;height:76px}.team-logo-v074{width:54px;height:54px}.slot-logo-v074{width:32px;height:32px}.slot-index-v075,.slot-empty-index-v075{width:39px;height:39px}.club-scroll-logo-v074{width:38px;height:31px}}
+@media(max-width:390px){.slot-logo-v074{width:32px;height:32px}.slot-index-v075,.slot-empty-index-v075{width:39px;height:39px}.club-scroll-logo-v074{width:38px;height:31px}}
 
 </style>
 <script id="design-v073-script">
