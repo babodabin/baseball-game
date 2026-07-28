@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.84 · 라인업·경기·운영·순위 레거시 정리 */
-window.APP_VERSION='v0.93';
+window.APP_VERSION='v0.94';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -20949,7 +20949,7 @@ window.jumpOffseasonTaskV66=function(key){
 <script>
 (function(){
   'use strict';
-  window.APP_VERSION='v0.92';
+  window.APP_VERSION='v0.94';
   window.GAME_VERSION=window.APP_VERSION;
   function escHtmlV91(v){return String(v??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function logoHtmlV91(id, cls, alt){
@@ -21142,7 +21142,7 @@ window.jumpOffseasonTaskV66=function(key){
 <script>
 (function(){
   'use strict';
-  window.APP_VERSION='v0.92';
+  window.APP_VERSION='v0.94';
   window.GAME_VERSION=window.APP_VERSION;
   function gameHasFinishedV92(){
     var live=document.getElementById('gameLive');
@@ -21205,7 +21205,7 @@ window.jumpOffseasonTaskV66=function(key){
 <script>
 (function(){
   'use strict';
-  window.APP_VERSION='v0.93';
+  window.APP_VERSION='v0.94';
   window.GAME_VERSION=window.APP_VERSION;
   function syncVersionV93(){
     try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
@@ -21281,6 +21281,87 @@ window.jumpOffseasonTaskV66=function(key){
   document.addEventListener('click', function(){setTimeout(bindGameLayoutV93,0); setTimeout(layoutGameLiveV93,120);}, true);
   document.addEventListener('DOMContentLoaded', function(){syncVersionV93(); bindGameLayoutV93();});
   [0,100,350,900].forEach(function(ms){setTimeout(bindGameLayoutV93,ms);});
+})();
+</script>
+
+
+<!-- v0.94 final audit patch -->
+<script>
+(function(){
+  'use strict';
+  window.APP_VERSION='v0.94';
+  window.GAME_VERSION=window.APP_VERSION;
+  function escV94(v){return String(v??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function logoV94(id,cls,name){
+    try{return (typeof teamLogoHtml==='function'?teamLogoHtml(id,cls,name):'')||'';}catch(_){return '';}
+  }
+  function ensureRankSummaryV94(){
+    var scr=document.getElementById('scr-rank');
+    if(!scr)return null;
+    var box=document.getElementById('rankSummary');
+    if(!box){
+      box=document.createElement('div');box.id='rankSummary';
+      var tabs=scr.querySelector('.tabs');if(tabs)tabs.insertAdjacentElement('afterend',box);
+    }
+    return box;
+  }
+  function rankOrderV94(){
+    var rec=(state&&state.season&&state.season.rec)||{};
+    return (TEAMS||[]).map(function(t){return t.id;}).sort(function(a,b){
+      var ra=rec[a]||{w:0,l:0,t:0}, rb=rec[b]||{w:0,l:0,t:0};
+      var pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0, pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;
+      return pb-pa || rb.w-ra.w || ra.l-rb.l || TEAMS.findIndex(function(t){return t.id===a;})-TEAMS.findIndex(function(t){return t.id===b;});
+    });
+  }
+  function applyRankDesignV94(){
+    var table=document.getElementById('rankTable');
+    if(!table||!state||!state.season)return;
+    var rec=state.season.rec||{}, order=rankOrderV94(), topId=order[0], top=rec[topId]||{w:0,l:0,t:0};
+    var rows=Array.from(table.querySelectorAll('tr')).slice(1);
+    rows.forEach(function(tr,i){
+      var id=order[i], team=id&&typeof getTeam==='function'?getTeam(id):null, cell=tr.querySelector('td.tm');
+      if(!cell||!team)return;
+      cell.innerHTML='<div class="rank-team-v91">'+logoV94(id,'rank-team-logo-v91',team.name)+'<span class="rank-team-name-v91">'+escV94(team.name)+'</span></div>';
+    });
+    var rankMap={};order.forEach(function(id,i){rankMap[id]=i+1;});
+    var mine=rec[state.myTeam]||{w:0,l:0,t:0}, myRank=rankMap[state.myTeam]||'-';
+    var myGb=myRank===1?'-':(((top.w-mine.w)+(mine.l-top.l))/2).toFixed(1);
+    var leader=topId&&typeof getTeam==='function'?getTeam(topId):null;
+    var summary=ensureRankSummaryV94();
+    if(summary){
+      summary.style.display='';
+      summary.innerHTML='<div class="rank-summary-v91">'
+        +'<div class="rank-kpi-v91"><div class="k">우리 팀 순위</div><div class="v">'+(myRank==='-'?'-':myRank+'위')+'</div><div class="s">게임차 '+myGb+'</div></div>'
+        +'<div class="rank-kpi-v91"><div class="k">선두 팀</div><div class="v">'+escV94(leader?leader.name:'-')+'</div><div class="s">현재 1위</div></div>'
+        +'<div class="rank-kpi-v91"><div class="k">시즌 진행</div><div class="v">'+(+state.season.day||0)+'</div><div class="s">총 '+(typeof seasonLenV42==='function'?seasonLenV42():'-')+'경기 중</div></div>'
+        +'</div>';
+    }
+  }
+  if(typeof renderRankStableV274==='function'){
+    var _renderRankStableV94=renderRankStableV274;
+    renderRankStableV274=function(){
+      var r=_renderRankStableV94.apply(this,arguments);
+      try{applyRankDesignV94();}catch(err){console.error('v0.94 순위 디자인:',err);}
+      return r;
+    };
+  }
+  if(typeof setRankTab==='function'){
+    var _setRankTabV94=setRankTab;
+    setRankTab=function(tab){
+      var r=_setRankTabV94.apply(this,arguments);
+      var summary=ensureRankSummaryV94();
+      if(summary)summary.style.display=(tab==='team'?'':'none');
+      if(tab==='team')try{applyRankDesignV94();}catch(err){console.error('v0.94 순위 탭:',err);}
+      return r;
+    };
+  }
+  function syncVersionV94(){
+    window.APP_VERSION='v0.94';window.GAME_VERSION=window.APP_VERSION;
+    try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){if(el)el.textContent=window.APP_VERSION;});
+  }
+  document.addEventListener('DOMContentLoaded',function(){syncVersionV94();ensureRankSummaryV94();});
+  [0,80,400,1200,2600].forEach(function(ms){setTimeout(syncVersionV94,ms);});
 })();
 </script>
 
