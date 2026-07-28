@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<script>
+/* v0.72 · 게임 전체 버전 단일 기준 */
+window.APP_VERSION='v0.72';
+window.GAME_VERSION=window.APP_VERSION;
+window.applyGameVersion=function(){
+  const v=window.APP_VERSION;
+  document.title='우리팀을 만들자 '+v;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
+    if(el.hasAttribute('data-version')||/v?0\./i.test(el.textContent||''))el.textContent=v;
+  });
+  window.GAME_VERSION=v;
+  return v;
+};
+</script>
 <!--
 ==============================================================================
   우리팀을 만들자 — 파일 지도 (v0.62 기준)
@@ -12179,8 +12193,8 @@ body.theme-night main::after{
 
 (function(){
   const VERSION='v0.65';
-  document.title='우리팀을 만들자 '+VERSION;
-  document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=window.APP_VERSION;});
 
   function normalizeTeamForGameV3412(teamId){
     if(!teamId||!state?.players?.[teamId]) throw new Error(teamId+' 선수단 데이터가 없습니다.');
@@ -12643,7 +12657,7 @@ body.theme-night main::after{
     }catch(err){console.error('v0.34.13 경기 시작 오류:',err);showAlert(`경기를 시작하지 못했습니다.\n원인: ${err?.message||err}`);return null;}
   };
 
-  document.title='우리팀을 만들자 '+VERSION;document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
+  document.title='우리팀을 만들자 '+window.APP_VERSION;document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=window.APP_VERSION;});
   try{const changed=ensureAll();if(changed&&typeof save==='function')save();window.skillEngineV329=Object.assign({},window.skillEngineV329||{},{individualityVersion:'0.34.13'});}catch(e){console.error('v0.34.13 선수 개성 초기화:',e);}
 })();
 </script>
@@ -15521,18 +15535,18 @@ input,select,textarea{font-size:16px;max-width:100%;}
 (function(){
   'use strict';
   const VERSION='v0.65';
-  document.title='우리팀을 만들자 '+VERSION;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
   function applyVersionV3414(){
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
       const text=(el.textContent||'').trim();
       if(/v?0\.\d+\.\d+/i.test(text) || el.hasAttribute('data-version')){
-        el.textContent=VERSION;
+        el.textContent=window.APP_VERSION;
       }
     });
   }
   applyVersionV3414();
   document.addEventListener('DOMContentLoaded',applyVersionV3414,{once:true});
-  window.GAME_VERSION=VERSION;
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -15548,10 +15562,10 @@ input,select,textarea{font-size:16px;max-width:100%;}
   'use strict';
   const VERSION='v0.65';
   function applyVersionV3414(){
-    document.title='우리팀을 만들자 '+VERSION;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
       const txt=(el.textContent||'').trim();
-      if(/^v?0\.\d+(?:\.\d+)?$/i.test(txt)||/v0\.34\.13/i.test(txt)) el.textContent=VERSION;
+      if(/^v?0\.\d+(?:\.\d+)?$/i.test(txt)||/v0\.34\.13/i.test(txt)) el.textContent=window.APP_VERSION;
       if(el.hasAttribute('data-version')) el.setAttribute('data-version',VERSION);
     });
   }
@@ -15578,9 +15592,9 @@ input,select,textarea{font-size:16px;max-width:100%;}
   const VERSION='v0.65';
 
   function applyVersionV3415(){
-    document.title='우리팀을 만들자 '+VERSION;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{
-      if(/v0\.\d+/i.test(el.textContent||'')) el.textContent=VERSION;
+      if(/v0\.\d+/i.test(el.textContent||'')) el.textContent=window.APP_VERSION;
     });
   }
 
@@ -15686,11 +15700,11 @@ input,select,textarea{font-size:16px;max-width:100%;}
   let singleRunning=false,batchRunning=false;
 
   function applyVersion(){
-    document.title='우리팀을 만들자 '+VERSION;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
-      if(/v?0\.\d+\.\d+/i.test(el.textContent||'')||el.hasAttribute('data-version'))el.textContent=VERSION;
+      if(/v?0\.\d+\.\d+/i.test(el.textContent||'')||el.hasAttribute('data-version'))el.textContent=window.APP_VERSION;
     });
-    window.GAME_VERSION=VERSION;
+    window.GAME_VERSION=window.APP_VERSION;
   }
   function paintThen(fn){ requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(fn,16))); }
 
@@ -15776,8 +15790,8 @@ input,select,textarea{font-size:16px;max-width:100%;}
 (function(){
   'use strict';
   const VERSION='v0.65';
-  document.title='우리팀을 만들자 '+VERSION;
-  document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;});
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=window.APP_VERSION;});
 
   function orderedIndexes(arr,pool){
     const out=[],allow=new Set(pool);
@@ -15900,7 +15914,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
     }
   }catch(e){console.error('v0.34.30 투수진 배치 보정:',e);}
 
-  setTimeout(()=>document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=VERSION;}),900);
+  setTimeout(()=>document.querySelectorAll('.ver,.version,.version-badge').forEach(el=>{if(/v0\.\d+/i.test(el.textContent||''))el.textContent=window.APP_VERSION;}),900);
 })();
 </script>
 
@@ -15935,11 +15949,11 @@ input,select,textarea{font-size:16px;max-width:100%;}
   let batchBusy=false;
 
   function forceVersionV3418(){
-    document.title='우리팀을 만들자 '+VERSION;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
-      el.textContent=VERSION;
+      el.textContent=window.APP_VERSION;
     });
-    window.GAME_VERSION=VERSION;
+    window.GAME_VERSION=window.APP_VERSION;
   }
 
   // Remove every legacy click/touch listener by replacing the buttons once.
@@ -16084,9 +16098,9 @@ input,select,textarea{font-size:16px;max-width:100%;}
   const VERSION='v0.65';
 
   function forceVersionV3419(){
-    document.title='우리팀을 만들자 '+VERSION;
-    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){el.textContent=VERSION;});
-    window.GAME_VERSION=VERSION;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){el.textContent=window.APP_VERSION;});
+    window.GAME_VERSION=window.APP_VERSION;
   }
 
   function validIndex(i,n){return Number.isInteger(i)&&i>=0&&i<n;}
@@ -16281,7 +16295,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
   setTimeout(syncFromVisibleScreen,0);
 
   // 버전 표시는 이 파일의 실제 수정 버전으로 통일한다.
-  document.title=(document.title||'우리팀을 만들자').replace(/v0\.34\.\d+/g,VERSION);
+  document.title=(document.title||'우리팀을 만들자').replace(/v0\.34\.\d+/g,window.APP_VERSION);
   const badge=document.querySelector('.version-badge,.ver,.version');
   if(badge&&/v?0\.34\./.test(badge.textContent||''))badge.textContent=VERSION;
 })();
@@ -16335,7 +16349,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
     openGameV3423();
   },true);
 
-  document.title=(document.title||'우리팀을 만들자').replace(/v0\.34\.\d+/g,VERSION);
+  document.title=(document.title||'우리팀을 만들자').replace(/v0\.34\.\d+/g,window.APP_VERSION);
   const badge=document.querySelector('.version-badge,.ver,.version');
   if(badge&&/v?0\.34\./.test(badge.textContent||''))badge.textContent=VERSION;
 })();
@@ -16378,11 +16392,11 @@ input,select,textarea{font-size:16px;max-width:100%;}
   const V='v0.65';
 
   function version(){
-    document.title='우리팀을 만들자 '+V;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
-      if(el.hasAttribute('data-version') || /v?0\.34\./.test(el.textContent||'')) el.textContent=V;
+      if(el.hasAttribute('data-version') || /v?0\.34\./.test(el.textContent||'')) el.textContent=window.APP_VERSION;
     });
-    window.GAME_VERSION=V;
+    window.GAME_VERSION=window.APP_VERSION;
   }
 
   // 라인업 진입 시 기본 탭은 항상 타순으로 시작.
@@ -16437,9 +16451,9 @@ input,select,textarea{font-size:16px;max-width:100%;}
       finally{busy=false;}
     };
   }
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -16459,11 +16473,11 @@ input,select,textarea{font-size:16px;max-width:100%;}
   // 앞선 패치들이 setTimeout(...,0)과 setTimeout(...,1000)으로 버전 문구를 다시 덮어쓴다.
   // 그 타이머들보다 늦게 여러 번 다시 적용해 최종 표기를 이 버전으로 고정한다.
   function apply(){
-    document.title='우리팀을 만들자 '+V;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
-      if(el.textContent!==V)el.textContent=V;
+      if(el.textContent!==V)el.textContent=window.APP_VERSION;
     });
-    window.GAME_VERSION=V;
+    window.GAME_VERSION=window.APP_VERSION;
   }
   [0,50,300,1100,1600,2500].forEach(ms=>setTimeout(apply,ms));
   document.addEventListener('DOMContentLoaded',apply);
@@ -16714,9 +16728,9 @@ input,select,textarea{font-size:16px;max-width:100%;}
 
   /* ---------- 버전 ---------- */
   function ver(){
-    document.title='우리팀을 만들자 '+V;
-    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{if(el.textContent!==V)el.textContent=V;});
-    window.GAME_VERSION=V;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{if(el.textContent!==V)el.textContent=window.APP_VERSION;});
+    window.GAME_VERSION=window.APP_VERSION;
   }
   [0,50,300,1100,1600,2500].forEach(ms=>setTimeout(ver,ms));
   window.addEventListener('load',()=>setTimeout(ver,1200));
@@ -16781,9 +16795,9 @@ input,select,textarea{font-size:16px;max-width:100%;}
      window[n]=function(){lastSig=null;try{return f.apply(this,arguments);}finally{lastSig=null;}};
    });
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -16953,9 +16967,9 @@ input,select,textarea{font-size:16px;max-width:100%;}
     };
   }
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -17087,9 +17101,9 @@ main *,.sheet *{max-width:100%}
   }
   syncDisabledV3435();
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -17428,9 +17442,9 @@ main *,.sheet *{max-width:100%}
     };
   }
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -17606,9 +17620,9 @@ main *,.sheet *{max-width:100%}
   }
   try{attach();}catch(_){}
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -17998,9 +18012,9 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
   }
   try{hintCustom();}catch(_){}
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -18159,9 +18173,9 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
   window.expSetLeagueV39=function(v){window.expansionConfigV39.league=v;openExpansionStartV39();};
   window.expSetEcoV39=function(v){window.expansionConfigV39.eco=v;openExpansionStartV39();};
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -18490,9 +18504,9 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     };
   }
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -18584,9 +18598,9 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     }catch(e){console.error(V+' AI 신생 구단:',e);return null;}
   };
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  document.title='우리팀을 만들자 '+window.APP_VERSION;
+  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=window.APP_VERSION;});
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 
@@ -19033,9 +19047,9 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
 
   /* 표시 버전은 마지막에 고정. */
   function version(){
-    document.title='우리팀을 만들자 '+V;
-    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;});
-    window.GAME_VERSION=V;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=window.APP_VERSION;});
+    window.GAME_VERSION=window.APP_VERSION;
   }
   version();setTimeout(version,0);setTimeout(version,800);
 })();
@@ -19218,11 +19232,11 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
   try{normalizeSettingsLink();}catch(_){}
 
   function version(){
-    document.title='우리팀을 만들자 '+V;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
-      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;
+      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=window.APP_VERSION;
     });
-    window.GAME_VERSION=V;
+    window.GAME_VERSION=window.APP_VERSION;
   }
   [0,400,1200,2600,3600].forEach(ms=>setTimeout(version,ms));
   version();
@@ -19346,11 +19360,11 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
   try{migrateExisting();}catch(e){console.error(V+' 생성선수 마이그레이션:',e);}
 
   function version(){
-    document.title='우리팀을 만들자 '+V;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
-      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;
+      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=window.APP_VERSION;
     });
-    window.GAME_VERSION=V;
+    window.GAME_VERSION=window.APP_VERSION;
   }
   [0,300,1200,2800,4200].forEach(ms=>setTimeout(version,ms));
   version();
@@ -19487,7 +19501,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
   }
 
   try{if(typeof syncLeagueTeamsV466==='function')syncLeagueTeamsV466();}catch(e){console.error(V+' 초기 정합:',e);}
-  window.GAME_VERSION=V;
+  window.GAME_VERSION=window.APP_VERSION;
 })();
 </script>
 <style>
@@ -19511,11 +19525,11 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
   'use strict';
   const V='v0.65';
   function apply(){
-    document.title='우리팀을 만들자 '+V;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
-      if(el.textContent!==V)el.textContent=V;
+      if(el.textContent!==V)el.textContent=window.APP_VERSION;
     });
-    window.GAME_VERSION=V;
+    window.GAME_VERSION=window.APP_VERSION;
   }
   [0,120,400,900,1200,1800,2600].forEach(ms=>setTimeout(apply,ms));
   window.addEventListener('load',()=>setTimeout(apply,1400));
@@ -21408,11 +21422,11 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
     const cur=String(window.GAME_VERSION||'');
     const num=v=>{const m=String(v).match(/v?(\d+)\.(\d+)(?:\.(\d+))?/i);return m?(+m[1]*1000000+ +m[2]*1000+ +(m[3]||0)):0;};
     const show=num(cur)>num(V)?cur:V;
-    document.title='우리팀을 만들자 '+show;
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
-      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=show;
+      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=window.APP_VERSION;
     });
-    if(num(cur)<=num(V))window.GAME_VERSION=V;
+    if(num(cur)<=num(V))window.GAME_VERSION=window.APP_VERSION;
   }
   [0,500,1500,3200].forEach(ms=>setTimeout(version,ms));
   version();
@@ -21551,13 +21565,13 @@ window.jumpOffseasonTaskV66=function(key){
 
 <script>
 /* ──────────────────────────────────────────────────────────────
-   v0.69 · 실황 10구단 고정 + 창단 경계 보강
+   v0.72 · 실황 10구단 고정 + 창단 경계 보강
    목적  : 실황에 확장팀이 섞이지 않게 하고, 창단 UI의 원래 표시 상태를 보존한다.
    원칙  : 시뮬레이션의 창단·확장 로직은 그대로 둔다.
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.70';
+  const V=window.APP_VERSION;
   const LIVE_BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
 
   function isBaseTeam(t){return !!t&&LIVE_BASE_IDS.has(String(t.id||''));}
@@ -21693,46 +21707,16 @@ window.jumpOffseasonTaskV66=function(key){
   }
   syncCreatorVisibility();
 
-  // v0.70 · 버전 단일 기준. 과거 블록의 지연 타이머가 실행돼도 낮은 버전으로 내려가지 않는다.
-  const VERSION_LOCK='v0.70';
-  const TITLE_V70='우리팀을 만들자 '+VERSION_LOCK;
-  function paintVersionV70(){
-    try{
-      if(document.title!==TITLE_V70)document.title=TITLE_V70;
-      document.querySelectorAll('.ver,.version,.version-badge,[data-version],.set-ver-v49 b').forEach(el=>{
-        const txt=String(el.textContent||'').trim();
-        // 이미 맞는 값이면 절대 다시 쓰지 않는다. textContent 재대입은 값이 같아도
-        // 텍스트 노드를 갈아끼워 childList 변경을 일으키고, 옵저버가 이를 다시 감지해
-        // 무한 루프가 된다. 이 한 줄이 루프를 끊는 핵심이다.
-        if(txt===VERSION_LOCK)return;
-        if(el.matches('.set-ver-v49 b')||el.hasAttribute('data-version')||/v?0\./i.test(txt))el.textContent=VERSION_LOCK;
-      });
-    }catch(e){console.error(VERSION_LOCK+' 버전 표시:',e);}
-  }
-  try{
-    // 이후의 window.GAME_VERSION='v0.65' 같은 대입은 조용히 무시한다.
-    Object.defineProperty(window,'GAME_VERSION',{
-      configurable:true,enumerable:true,
-      get(){return VERSION_LOCK;},
-      set(_next){return VERSION_LOCK;}
+  // 과거 버전 블록의 지연 타이머가 나중에 실행돼도 최종 표시도 단일 버전 기준을 사용한다.
+  function applyVersion(){
+    document.title='우리팀을 만들자 '+window.APP_VERSION;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
+      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=window.APP_VERSION;
     });
-  }catch(e){
-    try{window.GAME_VERSION=VERSION_LOCK;}catch(_){}
+    window.GAME_VERSION=window.APP_VERSION;
   }
-  // 연속 렌더에도 한 번만 돌도록 묶는다.
-  let versionQueuedV70=false;
-  function scheduleVersionPaintV70(){
-    if(versionQueuedV70)return;
-    versionQueuedV70=true;
-    setTimeout(()=>{versionQueuedV70=false;paintVersionV70();},120);
-  }
-  paintVersionV70();
-  // 설정 시트가 나중에 열리거나 구버전 타이머가 DOM을 다시 써도 정상화한다.
-  // 감시 범위는 body, childList만. characterData와 documentElement 전체 감시는 비용이 너무 크다.
-  try{
-    new MutationObserver(scheduleVersionPaintV70).observe(document.body,{subtree:true,childList:true});
-  }catch(_){}
-  [0,500,1500,3200,5000].forEach(ms=>setTimeout(paintVersionV70,ms));
+  [0,500,800,1200,1500,2000,2800,3200,3600,4200,4600].forEach(ms=>setTimeout(applyVersion,ms));
+  applyVersion();
 })();
 </script>
 
