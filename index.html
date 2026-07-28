@@ -2364,8 +2364,8 @@ function teamStatusHtml(){
     s += `현재 시즌: ${state.season.day}/${seasonLenV42()}경기 · ${rk}위 (${r.w}승 ${r.l}패 ${r.t}무)<br>`;
   }else s += `시즌 준비 중<br>`;
   // 로스터 요약
-  const topBat = [...t.bat].map((p,i)=>({n:p[0],o:batOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
-  const topPit = [...t.pit].map((p,i)=>({n:p[0],o:pitOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
+  const topBat = [...t.bat].map((p,i)=>({n:playerDisplayName(p),o:batOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
+  const topPit = [...t.pit].map((p,i)=>({n:playerDisplayName(p),o:pitOvr(p,t.id)})).sort((a,b)=>b.o-a.o)[0];
   s += `간판 타자: ${topBat.n} (OVR ${topBat.o}) · 에이스: ${topPit.n} (OVR ${topPit.o})`;
   s += `<br>선수 상태: ${healthSummary()}`;
   if(ecoOn()){
@@ -11083,7 +11083,7 @@ body.theme-night main::after{
         nv=clamp(nv,key==='velocity'?128:30,key==='velocity'?165:99);
         if(nv!==old){x.p.skills[key]=nv;changes.push(`${LABEL[key]} ${nv>old?'+':''}${nv-old}`);}
       });
-      if(x.tid===state.myTeam&&changes.length)reports.push({name:x.p[0],age:x.age,stage:typeof careerStageOf==='function'?careerStageOf(x.p,x.age):'',games,changes});
+      if(x.tid===state.myTeam&&changes.length)reports.push({name:playerDisplayName(x.p),age:x.age,stage:typeof careerStageOf==='function'?careerStageOf(x.p,x.age):'',games,changes});
     });
     reports.sort((a,b)=>b.changes.length-a.changes.length);
     state.lastGrowthReportV335={year:state.year,players:reports.slice(0,30)};
