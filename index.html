@@ -21404,11 +21404,15 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
   window.realNameTextV65=s=>String(s??'');
   window.rebuildRealNameMapV65=()=>new Map();
   function version(){
-    document.title='우리팀을 만들자 '+V;
+    // 뒤쪽 블록이 더 높은 버전을 설정했다면 절대 낮은 버전으로 되돌리지 않는다.
+    const cur=String(window.GAME_VERSION||'');
+    const num=v=>{const m=String(v).match(/v?(\d+)\.(\d+)(?:\.(\d+))?/i);return m?(+m[1]*1000000+ +m[2]*1000+ +(m[3]||0)):0;};
+    const show=num(cur)>num(V)?cur:V;
+    document.title='우리팀을 만들자 '+show;
     document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
-      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;
+      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=show;
     });
-    window.GAME_VERSION=V;
+    if(num(cur)<=num(V))window.GAME_VERSION=V;
   }
   [0,500,1500,3200].forEach(ms=>setTimeout(version,ms));
   version();
@@ -21547,13 +21551,13 @@ window.jumpOffseasonTaskV66=function(key){
 
 <script>
 /* ──────────────────────────────────────────────────────────────
-   v0.68 · 실황 10구단 고정 + 창단 경계
-   목적  : 다른 슬롯의 신생/확장 구단이 실황 새 게임에 섞이지 않게 한다.
-   원칙  : 시뮬레이션의 창단·12팀 확장 로직은 그대로 둔다.
+   v0.69 · 실황 10구단 고정 + 창단 경계 보강
+   목적  : 실황에 확장팀이 섞이지 않게 하고, 창단 UI의 원래 표시 상태를 보존한다.
+   원칙  : 시뮬레이션의 창단·확장 로직은 그대로 둔다.
    ────────────────────────────────────────────────────────────── */
 (()=>{
   'use strict';
-  const V='v0.68';
+  const V='v0.69';
   const LIVE_BASE_IDS=new Set(['LG','HH','SSG','SS','NC','KT','LT','KIA','DS','KW']);
 
   function isBaseTeam(t){return !!t&&LIVE_BASE_IDS.has(String(t.id||''));}
@@ -21570,16 +21574,30 @@ window.jumpOffseasonTaskV66=function(key){
     }catch(e){console.error(V+' 실황 기본구단 복원:',e);return 0;}
   }
 
+  function stripTeamMap(obj){
+    if(!obj||typeof obj!=='object'||Array.isArray(obj))return 0;
+    let n=0;
+    Object.keys(obj).forEach(id=>{if(!LIVE_BASE_IDS.has(String(id))){delete obj[id];n++;}});
+    return n;
+  }
+
   function stripLiveExpansionFromState(){
     try{
       if(!state||state.mode!=='live')return 0;
       let removed=0;
-      if(state.players&&typeof state.players==='object'){
-        Object.keys(state.players).forEach(id=>{
-          if(!LIVE_BASE_IDS.has(id)){delete state.players[id];removed++;}
-        });
+      // 팀 자체와 팀 id를 키로 쓰는 현재 진행 상태를 함께 정리한다.
+      removed+=stripTeamMap(state.players);
+      ['lineups','rotOrder','squadLevel','pitchPlan','health','spLast','rot'].forEach(k=>{removed+=stripTeamMap(state[k]);});
+      if(state.season&&typeof state.season==='object'){
+        removed+=stripTeamMap(state.season.rec);
+        removed+=stripTeamMap(state.season.stats);
+        if(Array.isArray(state.season.sched)){
+          state.season.sched=state.season.sched
+            .map(rd=>Array.isArray(rd)?rd.filter(m=>m&&LIVE_BASE_IDS.has(String(m.home||''))&&LIVE_BASE_IDS.has(String(m.away||''))):[])
+            .filter(rd=>rd.length>0);
+          if(Number(state.season.day)>state.season.sched.length)state.season.day=state.season.sched.length;
+        }
       }
-      // 실황 슬롯에는 창단팀 메타가 남지 않게 한다. 시뮬 슬롯은 건드리지 않는다.
       delete state.customTeamV39;
       if(Array.isArray(state.customTeams))state.customTeams=[];
       resetTeamsToBase();
@@ -21587,21 +21605,34 @@ window.jumpOffseasonTaskV66=function(key){
     }catch(e){console.error(V+' 실황 확장팀 정리:',e);return 0;}
   }
 
+  // 실황에서 숨기기 전의 inline display/aria-hidden 값을 정확히 기억했다가 그대로 복원한다.
   function syncCreatorVisibility(){
     try{
       const live=state?.mode==='live';
       document.querySelectorAll('.custom-team-launch,[data-create-v62]').forEach(el=>{
-        if(live){el.style.display='none';el.setAttribute('aria-hidden','true');}
-        else if(el.dataset.liveHiddenV68==='1'){el.style.display='';el.removeAttribute('aria-hidden');delete el.dataset.liveHiddenV68;}
+        if(live){
+          if(!el.hasAttribute('data-live-hidden-v69')){
+            el.setAttribute('data-live-hidden-v69','1');
+            el.setAttribute('data-live-display-v69',el.style.display||'');
+            const aria=el.getAttribute('aria-hidden');
+            el.setAttribute('data-live-aria-v69',aria==null?'__NONE__':aria);
+          }
+          el.style.display='none';
+          el.setAttribute('aria-hidden','true');
+        }else if(el.hasAttribute('data-live-hidden-v69')){
+          el.style.display=el.getAttribute('data-live-display-v69')||'';
+          const aria=el.getAttribute('data-live-aria-v69');
+          if(aria==='__NONE__')el.removeAttribute('aria-hidden');
+          else if(aria!=null)el.setAttribute('aria-hidden',aria);
+          el.removeAttribute('data-live-hidden-v69');
+          el.removeAttribute('data-live-display-v69');
+          el.removeAttribute('data-live-aria-v69');
+          delete el.dataset.liveHiddenV68;
+        }
       });
-      if(live){
-        document.querySelectorAll('.custom-team-launch,[data-create-v62]').forEach(el=>el.dataset.liveHiddenV68='1');
-      }
     }catch(e){console.error(V+' 창단 버튼 표시:',e);}
   }
 
-  // 가장 중요한 경계: 실황 시작 직전에 TEAMS를 KBO 기본 10팀으로 되돌린다.
-  // snapshotTeamsV300()이 다른 슬롯의 NEW/JEO 등을 복사하는 것을 여기서 차단한다.
   const oldStart=window.startWithMode;
   if(typeof oldStart==='function'){
     window.startWithMode=function(teamId,mode,eco){
@@ -21610,6 +21641,7 @@ window.jumpOffseasonTaskV66=function(key){
           showAlert('실황 모드는 기존 KBO 10개 구단으로만 시작할 수 있습니다.');
           return false;
         }
+        // 새 슬롯을 만들기 전에 전역 팀 목록부터 10팀으로 고정한다.
         resetTeamsToBase();
       }
       const r=oldStart.apply(this,arguments);
@@ -21623,7 +21655,6 @@ window.jumpOffseasonTaskV66=function(key){
     };
   }
 
-  // 직접 호출까지 막는다. 창단 구단 자체는 시뮬레이션 전용이다.
   const oldCreator=window.openCustomTeamCreator;
   if(typeof oldCreator==='function'){
     window.openCustomTeamCreator=function(){
@@ -21635,7 +21666,6 @@ window.jumpOffseasonTaskV66=function(key){
     };
   }
 
-  // AI 신생팀도 실황 상태에서 직접 호출될 수 없게 방어한다.
   const oldAiExpansion=window.addAiExpansionTeamV41;
   if(typeof oldAiExpansion==='function'){
     window.addAiExpansionTeamV41=function(){
@@ -21657,17 +21687,22 @@ window.jumpOffseasonTaskV66=function(key){
     };
   });
 
-  // 현재 열려 있는 슬롯이 실황이면 즉시 정합만 맞춘다.
-  // 시즌 기록은 임의 재작성하지 않는다.
   if(state?.mode==='live'){
     const removed=stripLiveExpansionFromState();
     if(removed){try{if(typeof save==='function')save();}catch(_){}}
   }
   syncCreatorVisibility();
 
-  document.title='우리팀을 만들자 '+V;
-  document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{el.textContent=V;});
-  window.GAME_VERSION=V;
+  // 과거 버전 블록의 지연 타이머가 나중에 실행돼도 최종 표시를 v0.69로 되돌린다.
+  function applyVersion(){
+    document.title='우리팀을 만들자 '+V;
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(el=>{
+      if(el.hasAttribute('data-version')||/v?0\./.test(el.textContent||''))el.textContent=V;
+    });
+    window.GAME_VERSION=V;
+  }
+  [0,500,800,1200,1500,2000,2800,3200,3600,4200,4600].forEach(ms=>setTimeout(applyVersion,ms));
+  applyVersion();
 })();
 </script>
 
