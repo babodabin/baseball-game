@@ -3,7 +3,7 @@
 <head>
 <script>
 /* v0.84 · 라인업·경기·운영·순위 레거시 정리 */
-window.APP_VERSION='v0.90';
+window.APP_VERSION='v0.91';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -20857,5 +20857,270 @@ window.jumpOffseasonTaskV66=function(key){
   #scr-front .biz-card{padding:10px;min-height:112px}
 }
 </style>
+
+<!-- v0.91 rank/game polish -->
+<style>
+/* v0.91 · 헤더 팀 칩 */
+.subline .myteam.header-team-chip-v91{
+  display:inline-flex;align-items:center;gap:6px;max-width:54vw;
+  padding:3px 8px;border-radius:999px;border:1px solid rgba(244,196,94,.18);
+  background:rgba(255,255,255,.03);box-sizing:border-box;
+}
+.subline .myteam .hdr-logo-v91{width:18px;height:18px;display:block;object-fit:contain;flex:none}
+.subline .myteam .custom-team-mark.hdr-logo-v91{display:grid;place-items:center;font-size:15px;line-height:1}
+.header-team-name-v91{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* v0.91 · 구단 홈 다음 경기 로고 */
+.myteam-match-v350{grid-template-columns:minmax(0,1fr) 48px minmax(0,1fr);gap:12px}
+.myteam-match-team-v91{display:flex;align-items:center;gap:10px;min-width:0}
+.myteam-match-team-v91.r{flex-direction:row-reverse;text-align:right}
+.myteam-match-logo-v91{
+  width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex:none;
+  padding:6px;border-radius:13px;border:1px solid rgba(181,209,191,.14);background:#0A1712;box-sizing:border-box;
+}
+.myteam-match-logo-v91 img,.myteam-match-logo-v91 .custom-team-mark{width:32px;height:32px;display:block;object-fit:contain}
+.myteam-match-logo-v91 .custom-team-mark{display:grid;place-items:center;font-size:24px;line-height:1}
+.myteam-match-name-v91{min-width:0;font-size:15.5px;font-weight:900;color:#F3F1EA;line-height:1.22;word-break:keep-all}
+@media(max-width:360px){
+  .myteam-match-v350{gap:8px;grid-template-columns:minmax(0,1fr) 42px minmax(0,1fr)}
+  .myteam-match-logo-v91{width:40px;height:40px;padding:5px}
+  .myteam-match-logo-v91 img,.myteam-match-logo-v91 .custom-team-mark{width:28px;height:28px}
+  .myteam-match-name-v91{font-size:13.5px}
+}
+
+/* v0.91 · 경기 화면 상단 타이틀/버튼 */
+#scr-game #gameTitle{align-items:center;flex-wrap:wrap;gap:8px}
+#scr-game #gameTitle small{font-size:14px;color:#DDE5E0}
+.sec-team-logo-v91{
+  width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex:none;
+  padding:5px;border-radius:10px;border:1px solid rgba(244,196,94,.20);background:#0A1712;box-sizing:border-box;
+}
+.sec-team-logo-v91 img,.sec-team-logo-v91 .custom-team-mark{width:24px;height:24px;display:block;object-fit:contain}
+.sec-team-logo-v91 .custom-team-mark{display:grid;place-items:center;font-size:19px;line-height:1}
+#scr-game #gameLive{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
+#scr-game #skipBtn,
+#scr-game #newGameBtn{
+  position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));z-index:8;
+  box-shadow:0 8px 22px rgba(0,0,0,.28);
+}
+#scr-game #newGameBtn{display:none}
+
+/* v0.91 · 순위 화면 리디자인 */
+#rankSummary{margin:0 0 12px}
+.rank-summary-v91{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rank-kpi-v91{
+  min-height:88px;padding:12px 10px;border-radius:16px;border:1px solid rgba(181,209,191,.14);
+  background:#0A1712;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center
+}
+.rank-kpi-v91 .k{font-size:10px;letter-spacing:1px;color:#92A79A}
+.rank-kpi-v91 .v{margin-top:3px;font-size:22px;line-height:1.08;font-weight:950;color:#F4C45E}
+.rank-kpi-v91 .s{margin-top:4px;font-size:11px;color:#B8C8C0;line-height:1.35}
+#scr-rank .rank-table{
+  background:#0A1712;border:1px solid rgba(181,209,191,.14);border-radius:18px;overflow:hidden
+}
+#scr-rank .rank-table th{
+  padding:10px 5px;font-size:11px;color:#91A79B;background:#0C1914;border-bottom:1px solid rgba(181,209,191,.12)
+}
+#scr-rank .rank-table td{
+  padding:11px 5px;border-bottom:1px solid rgba(181,209,191,.08);color:#E5ECE7
+}
+#scr-rank .rank-table tr:last-child td{border-bottom:0}
+#scr-rank .rank-table tr.me td{background:rgba(244,196,94,.08);color:#F4E7B6}
+#scr-rank .rank-table td.rk{font-size:15px}
+.rank-team-v91{display:flex;align-items:center;gap:9px;min-width:0}
+.rank-team-logo-v91{width:26px;height:26px;display:block;object-fit:contain;flex:none}
+.rank-team-v91 .custom-team-mark.rank-team-logo-v91{display:grid;place-items:center;font-size:18px;line-height:1}
+.rank-team-name-v91{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#scr-rank #lastResults{
+  margin-top:12px;padding:14px;border-radius:18px;border:1px solid rgba(181,209,191,.14);background:#0A1712
+}
+#scr-rank .rr-title{margin-bottom:10px;font-size:15px}
+#scr-rank .rr-card{
+  background:#0D1E16;border:1px solid rgba(181,209,191,.09);border-radius:12px;margin-bottom:7px
+}
+#scr-rank .rr-card:last-child{margin-bottom:0}
+#scr-rank .rr-card.mine{border-color:rgba(244,196,94,.28);background:rgba(244,196,94,.07)}
+@media(max-width:360px){
+  .rank-summary-v91{grid-template-columns:1fr}
+  .rank-kpi-v91{min-height:78px}
+  #scr-rank .rank-table th,#scr-rank .rank-table td{font-size:11px;padding-left:3px;padding-right:3px}
+  #scr-rank .rank-table td.tm{padding-left:8px}
+}
+</style>
+<script>
+(function(){
+  'use strict';
+  window.APP_VERSION='v0.91';
+  window.GAME_VERSION=window.APP_VERSION;
+  function escHtmlV91(v){return String(v??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function logoHtmlV91(id, cls, alt){
+    try{return (typeof teamLogoHtml==='function'?teamLogoHtml(id, cls, alt):'')||'';}catch(_){return '';}
+  }
+  function teamChipHtmlV91(id,name){
+    return '<span class="myteam header-team-chip-v91">'+logoHtmlV91(id,'hdr-logo-v91',name)+'<span class="header-team-name-v91">'+escHtmlV91(name)+'</span></span>';
+  }
+  function syncVersionV91(){
+    try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
+    document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){
+      if(el) el.textContent=window.APP_VERSION;
+    });
+  }
+  function ensureRankSummaryBoxV91(){
+    var wrap=document.getElementById('scr-rank');
+    if(!wrap) return null;
+    var box=document.getElementById('rankSummary');
+    if(!box){
+      box=document.createElement('div');
+      box.id='rankSummary';
+      var tabs=wrap.querySelector('.tabs');
+      if(tabs && tabs.parentNode) tabs.insertAdjacentElement('afterend', box);
+    }
+    return box;
+  }
+  refreshHeader=function(){
+    var l=document.getElementById('subLeft');
+    var r=document.getElementById('subRight');
+    if(state.myTeam){
+      var t=getTeam(state.myTeam);
+      var md=(state.mode==='sim' ? '시뮬 '+state.year+'년차' : state.mode==='live' ? '실황 '+DATA_DATE : '') + (typeof ecoOn==='function'&&ecoOn() ? ' · 💰'+fmtMoney() : '');
+      if(l) l.textContent='슬롯 '+(store.active+1)+(md?' · '+md:'');
+      if(r) r.innerHTML=teamChipHtmlV91(t.id,t.name);
+    }else{
+      if(l) l.textContent='구단을 선택하세요';
+      if(r) r.textContent='';
+    }
+  };
+  var _renderGameSetupV91=renderGameSetup;
+  renderGameSetup=function(){
+    _renderGameSetupV91();
+    try{
+      var my=getTeam(state.myTeam), title=document.getElementById('gameTitle');
+      if(title && my){
+        title.innerHTML='<span class="sec-team-logo-v91">'+logoHtmlV91(my.id,'sec-team-logo-img-v91',my.name)+'</span><span>경기</span><small>'+escHtmlV91(my.name)+'</small>';
+      }
+    }catch(_){ }
+  };
+  renderRank=function(){
+    if(!state.season) newSeason();
+    ensureRankSummaryBoxV91();
+    var rec=state.season.rec;
+    var order=rankOrder();
+    var rankMap={}; order.forEach(function(id,i){rankMap[id]=i+1;});
+    var top=rec[order[0]]||{w:0,l:0,t:0};
+    var rs=rankSort;
+    var sorted=order.slice().sort(function(a,b){
+      var ra=rec[a], rb=rec[b];
+      function val(r){
+        switch(rs.key){
+          case 'w': return r.w; case 'l': return r.l; case 't': return r.t;
+          case 'gp': return r.w+r.l+r.t;
+          case 'pct': return (r.w+r.l)?r.w/(r.w+r.l):0;
+          default: return (r.w+r.l)?r.w/(r.w+r.l):0;
+        }
+      }
+      var c=val(ra)-val(rb);
+      return rs.dir==='desc' ? -c : c;
+    });
+    var arrow=function(k){return rs.key===k ? (rs.dir==='desc'?' ↓':' ↑') : '';};
+    var th=function(k,label){return '<th onclick="toggleRankSort(\''+k+'\')" style="cursor:pointer">'+label+arrow(k)+'</th>';};
+    var html='<tr><th>#</th><th style="text-align:left;padding-left:10px">팀</th>'+th('gp','경기')+th('w','승')+th('l','패')+th('t','무')+th('pct','승률')+'<th>게임차</th></tr>';
+    sorted.forEach(function(id){
+      var t=getTeam(id), r=rec[id];
+      var gp=r.w+r.l+r.t;
+      var pct=r.w+r.l ? (r.w/(r.w+r.l)).toFixed(3).replace('0.','.') : '-';
+      var gb=rankMap[id]===1 ? '-' : (((top.w-r.w)+(r.l-top.l))/2).toFixed(1);
+      html += '<tr class="'+(id===state.myTeam?'me':'')+'">'
+        +'<td class="rk">'+rankMap[id]+'</td>'
+        +'<td class="tm"><div class="rank-team-v91">'+logoHtmlV91(id,'rank-team-logo-v91',t.name)+'<span class="rank-team-name-v91">'+escHtmlV91(t.name)+'</span></div></td>'
+        +'<td>'+gp+'</td><td>'+r.w+'</td><td>'+r.l+'</td><td>'+r.t+'</td><td>'+pct+'</td><td>'+gb+'</td></tr>';
+    });
+    document.getElementById('rankTable').innerHTML=html;
+    document.getElementById('rankTitle').textContent=(state.mode==='sim'? state.year+'년차 ': '')+'순위표 — '+state.season.day+'/'+seasonLenV42()+'경기';
+    var myRec=rec[state.myTeam]||{w:0,l:0,t:0};
+    var myRank=rankMap[state.myTeam]||'-';
+    var myGb=myRank===1?'-':(((top.w-myRec.w)+(myRec.l-top.l))/2).toFixed(1);
+    var leaderName=order.length?getTeam(order[0]).name:'-';
+    var summary=ensureRankSummaryBoxV91();
+    if(summary){
+      summary.innerHTML='<div class="rank-summary-v91">'
+        +'<div class="rank-kpi-v91"><div class="k">우리 팀 순위</div><div class="v">'+(myRank==='-'?'-':myRank+'위')+'</div><div class="s">게임차 '+myGb+'</div></div>'
+        +'<div class="rank-kpi-v91"><div class="k">선두 팀</div><div class="v">'+escHtmlV91(leaderName)+'</div><div class="s">현재 1위</div></div>'
+        +'<div class="rank-kpi-v91"><div class="k">시즌 진행</div><div class="v">'+state.season.day+'</div><div class="s">총 '+seasonLenV42()+'경기 중</div></div>'
+        +'</div>';
+    }
+    var lastBox=document.getElementById('lastResults');
+    if(!state.season.last.length){ lastBox.innerHTML='<div class="hint">아직 치른 경기가 없습니다.</div>'; }
+    else{
+      var myName=getTeam(state.myTeam).name;
+      var rh='<div class="rr-title">최근 경기 결과</div>';
+      state.season.last.forEach(function(txt){
+        var mt=String(txt).match(/^(.+?)\s+(\d+)\s*:\s*(\d+)\s+(.+)$/);
+        if(mt){
+          var away=mt[1], as=mt[2], hs=mt[3], home=mt[4], av=+as, hv=+hs;
+          var mine=(away===myName||home===myName);
+          rh += '<div class="rr-card '+(mine?'mine':'')+'"><span class="rt '+(av>hv?'win':'')+'">'+escHtmlV91(away)+'</span><span class="rs">'+as+' : '+hs+'</span><span class="rt r '+(hv>av?'win':'')+'">'+escHtmlV91(home)+'</span></div>';
+        }else rh += '<div class="rr-card">'+escHtmlV91(txt)+'</div>';
+      });
+      lastBox.innerHTML=rh;
+    }
+  };
+  window.myTeamDashboardHtml=function(){
+    var t=getTeam(state.myTeam);
+    var rec=(state&&state.season&&state.season.rec&&state.season.rec[state.myTeam])||{w:0,l:0,t:0};
+    var gp=rec.w+rec.l+rec.t;
+    var pct=(rec.w+rec.l)?rec.w/(rec.w+rec.l):0;
+    var rk=(function(){ try{var od=typeof rankOrder==='function'?rankOrder():[]; var n=od.indexOf(state.myTeam); return n>=0?n+1:null;}catch(_){return null;} })();
+    var inj=(function(){
+      try{var tm=getTeam(state.myTeam), n=0; (tm.bat||[]).forEach(function(p){ if(typeof isInjured==='function'&&isInjured(tm.id,'bat',p)) n++; }); (tm.pit||[]).forEach(function(p){ if(typeof isInjured==='function'&&isInjured(tm.id,'pit',p)) n++; }); return n; }catch(_){return 0;}
+    })();
+    var nx=(function(){ try{ if(!state.season||!Array.isArray(state.season.sched)) return null; var rd=state.season.sched[state.season.day]; if(!Array.isArray(rd)) return null; return rd.find(function(m){return m.home===state.myTeam||m.away===state.myTeam;})||null; }catch(_){return null;} })();
+    var stars=(function(){ try{ var tm=getTeam(state.myTeam); var bats=(tm.bat||[]).map(function(p,i){return {p:p,o:typeof batOvr==='function'?batOvr(p,tm.id):0,i:i};}).sort(function(a,b){return b.o-a.o;}); var pits=(tm.pit||[]).map(function(p,i){return {p:p,o:typeof pitOvr==='function'?pitOvr(p,tm.id):0,i:i};}).sort(function(a,b){return b.o-a.o;}); return {bat:bats[0],pit:pits[0]}; }catch(_){return {};}
+    })();
+    var last=(function(){ try{ var mine=getTeam(state.myTeam).name||''; var arr=Array.isArray(state&&state.season&&state.season.last)?state.season.last:[]; return arr.find(function(x){return String(x).includes(mine)&&/\d+\s*:\s*\d+/.test(String(x));})||''; }catch(_){return '';} })();
+    var home=nx?getTeam(nx.home):null, away=nx?getTeam(nx.away):null;
+    var tasks=(function(){
+      var out=[];
+      if(!state.season) out.push({c:'warn',i:'📅',t:'새 시즌을 시작해 첫 일정을 준비하세요.'});
+      else if(typeof seasonOver==='function'&&seasonOver()) out.push({c:'good',i:'🏁',t:'정규시즌이 끝났습니다. 포스트시즌·오프시즌 절차를 확인하세요.'});
+      else out.push({c:'good',i:'⚾',t:'다음 경기 준비 · 현재 '+(state.season.day||0)+'/'+seasonLenV42()+'경기 진행'});
+      if(inj>0) out.push({c:'bad',i:'🩹',t:'부상 선수 '+inj+'명 · 라인업과 투수진 공백을 확인하세요.'});
+      else out.push({c:'good',i:'💚',t:'부상 이탈 없이 선수단이 정상 가동 중입니다.'});
+      if(gp>=5&&rec.l-rec.w>=3) out.push({c:'warn',i:'📉',t:'최근 성적이 기대보다 낮습니다. 라인업과 선발 로테이션을 점검하세요.'});
+      else if(gp>=5&&rec.w-rec.l>=3) out.push({c:'good',i:'🔥',t:'좋은 흐름입니다. 핵심 선수 체력과 불펜 소모를 관리하세요.'});
+      if(typeof ecoOn==='function'&&ecoOn()){
+        var money=Number(state.money||0);
+        if(money<0) out.push({c:'bad',i:'💸',t:'구단 잔고가 적자입니다. 지출과 연봉 구조를 즉시 확인하세요.'});
+        else if(money<25) out.push({c:'warn',i:'💰',t:'운영 자금 여유가 크지 않습니다. 영입과 시설 투자를 신중히 결정하세요.'});
+      }
+      if(typeof window.extraTasksV62==='function') out=out.concat(window.extraTasksV62());
+      return out.slice(0,4);
+    })();
+    function matchTeam(team,right){
+      if(!team) return '<div class="myteam-match-team-v91 '+(right?'r':'')+'"><div class="myteam-match-name-v91">-</div></div>';
+      return '<div class="myteam-match-team-v91 '+(right?'r':'')+'"><div class="myteam-match-logo-v91">'+logoHtmlV91(team.id,'myteam-match-logo-img-v91',team.name)+'</div><div class="myteam-match-name-v91">'+escHtmlV91(team.name)+'</div></div>';
+    }
+    return '<div class="myteam-dashboard-v350" data-myteam-v350>'
+      +'<div class="myteam-overview-v350">'
+      +'<div class="myteam-kpi-v350"><div class="k">현재 순위</div><div class="v">'+(rk?rk+'위':'-')+'</div><div class="s">'+gp+'경기 진행</div></div>'
+      +'<div class="myteam-kpi-v350"><div class="k">시즌 성적</div><div class="v">'+rec.w+'-'+rec.l+'-'+rec.t+'</div><div class="s">승률 '+(gp?pct.toFixed(3).replace('0.','.'):'-')+'</div></div>'
+      +'<div class="myteam-kpi-v350"><div class="k">선수단 상태</div><div class="v">'+(inj?('부상 '+inj):'정상')+'</div><div class="s">'+(typeof teamMood==='function'?'분위기 '+teamMood()+'/100':'로스터 운영 중')+'</div></div>'
+      +'</div>'
+      +'<div class="myteam-card-v350"><div class="myteam-card-head-v350"><div class="myteam-card-title-v350">다음 경기</div><div class="myteam-card-sub-v350">NEXT MATCH</div></div>'
+      +(nx ? ('<div class="myteam-match-v350">'+matchTeam(away,false)+'<div class="vs">VS</div>'+matchTeam(home,true)+'</div><div class="myteam-note-v350">'+(nx.home===state.myTeam?'홈 경기':'원정 경기')+' · 시즌 '+(Number(state.season.day||0)+1)+'번째 일정'+(last?'<br>최근 결과: '+escHtmlV91(last):'')+'</div>') : '<div class="myteam-note-v350">현재 예정된 정규시즌 경기가 없습니다.</div>')
+      +'</div>'
+      +'<div class="myteam-card-v350"><div class="myteam-card-head-v350"><div class="myteam-card-title-v350">우리 팀 중심 선수</div><div class="myteam-card-sub-v350">TEAM CORE</div></div>'
+      +'<div class="myteam-stars-v350">'
+      +'<div class="myteam-star-v350"><div class="role">간판 타자</div><div class="name">'+escHtmlV91(stars.bat&&stars.bat.p?playerDisplayName(stars.bat.p):'-')+'</div><div class="desc">'+escHtmlV91(stars.bat&&stars.bat.p?stars.bat.p[2]:'야수')+' · OVR '+(stars.bat?stars.bat.o:'-')+'</div></div>'
+      +'<div class="myteam-star-v350"><div class="role">마운드 에이스</div><div class="name">'+escHtmlV91(stars.pit&&stars.pit.p?playerDisplayName(stars.pit.p):'-')+'</div><div class="desc">'+escHtmlV91(stars.pit&&stars.pit.p?stars.pit.p[2]:'투수')+' · OVR '+(stars.pit?stars.pit.o:'-')+'</div></div>'
+      +'</div></div>'
+      +'<div class="myteam-card-v350"><div class="myteam-card-head-v350"><div class="myteam-card-title-v350">오늘의 구단 과제</div><div class="myteam-card-sub-v350">CLUB CHECK</div></div>'
+      +'<div class="myteam-tasks-v350">'+tasks.map(function(x){ return '<div class="myteam-task-v350 '+x.c+'"><span class="ico">'+x.i+'</span><span class="txt">'+escHtmlV91(x.t)+'</span></div>'; }).join('')+'</div></div></div>';
+  };
+  [0,80,400,1200,2200].forEach(function(ms){ setTimeout(syncVersionV91, ms); });
+  document.addEventListener('DOMContentLoaded', function(){ ensureRankSummaryBoxV91(); syncVersionV91(); try{refreshHeader();}catch(_){ } });
+  setTimeout(function(){ try{refreshHeader();}catch(_){ } }, 60);
+})();
+</script>
+
 </body>
 </html>
