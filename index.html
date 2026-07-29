@@ -368,7 +368,7 @@ window.applyGameVersion=function(){
   뒤에 오는 블록이 앞의 함수를 다시 감싸므로 [블록 순서 = 실행 우선순위]입니다.
   블록을 옮기면 감싸는 순서가 바뀌어 기능이 깨집니다. 위치는 그대로 두세요.
 
-  블록 총 186개 (STYLE 69 · SCRIPT 117). 각 블록 첫머리에 [번호/전체] 표지가 있습니다.
+  블록 총 168개 (STYLE 69 · SCRIPT 118). 각 블록 첫머리에 [번호/전체] 표지가 있습니다.
     감쌈    이전 정의를 호출하는 체인 (지우면 그 층의 보정이 사라짐)
     정의    이 블록이 처음 만드는 전역
     ⚠대체됨 뒤쪽 블록이 다시 정의함 → 여기를 고쳐도 반영 안 됨
@@ -380,7 +380,7 @@ window.applyGameVersion=function(){
 ------------------------------------------------------------------------------
   [002]     26행     11.9KB  SC  (제목 없음)
   [003]    515행     35.8KB  ST  v0.24.2 운영 화면 정리
-  [006]   1333행    712.4KB  SC  v0.28.6 — 저장 슬롯·구버전 데이터 안전 복구
+  [006]   1333행    712.5KB  SC  v0.28.6 — 저장 슬롯·구버전 데이터 안전 복구
   [012]   9193행      5.6KB  SC  (제목 없음)
   [014]   9310행      6.0KB  SC  구형 WebView에서는 메타데이터 인덱스 저장만 유지
   [015]   9476행      6.6KB  SC  (제목 없음)
@@ -447,13 +447,13 @@ window.applyGameVersion=function(){
   [152]  19913행      4.5KB  SC  추천
   [155]  20082행      8.9KB  SC  v0.57과 같은 규칙)
   [167]  20738행      6.4KB  SC  (제목 없음)
-  [169]  20922행      4.9KB  ST  (제목 없음)
-  [170]  21057행      6.7KB  ST  (제목 없음)
-  [171]  21214행      4.7KB  ST  (제목 없음)
-  [172]  21304행     12.7KB  SC  (제목 없음)
-  [183]  21887행      7.5KB  SC  (제목 없음)
-  [185]  22115행      7.9KB  SC  (제목 없음)
-  [186]  22301행     10.4KB  SC  (제목 없음)
+  [168]  20902행      4.9KB  ST  (제목 없음)
+  [169]  21037행      6.7KB  ST  (제목 없음)
+  [170]  21194행      4.7KB  ST  (제목 없음)
+  [171]  21284행     12.7KB  SC  (제목 없음)
+  [182]  21867행      7.5KB  SC  (제목 없음)
+  [184]  22095행      7.9KB  SC  (제목 없음)
+  [185]  22281행     10.4KB  SC  (제목 없음)
 
 ------------------------------------------------------------------------------
   가장 많이 재정의된 이름 — 고칠 때는 반드시 마지막 정의를 찾으세요
@@ -1330,7 +1330,7 @@ window.diffAdjV43=function(teamId){
 </script>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [006/186] SCRIPT · 712.4KB · 원본 1333행
+   [006/186] SCRIPT · 712.5KB · 원본 1333행
    주제  : v0.28.6 — 저장 슬롯·구버전 데이터 안전 복구
    정의  : AGES, AI_BAT_MIN, AI_BAT_POSITIONS, AI_BAT_TARGET, AI_TARGET_ROSTER, BALANCE_GAME_DEPTH_V287, BALANCE_V287, BASE_IDS_V465, BASE_TEAMS_V465, BASE_TEAM_MARKS_V465, BAT_POSITIONS, BOOST_CUR
    ⚠ 대체됨: POS_ORDER, add, addDraftPlayer, advanceDraftToUser, age, aiDraftChoiceIndex, aiTopUpRosters, amask, applyGrowthWithTraining, arr
@@ -2051,12 +2051,12 @@ function switchSlotEmpty(i){
   if(tp){ tp.style.display=''; }
   const back=document.getElementById('pickBackBtn'); if(back) back.style.display='';
   renderTeamGrid();
-  document.querySelector('main').scrollTo({top:0});
+  try{ var mE=document.querySelector('main'); if(mE&&mE.scrollTo) mE.scrollTo({top:0}); }catch(_){ }
 }
 function backToSlots(){
   const back=document.getElementById('pickBackBtn'); if(back) back.style.display='none';
   renderSlots();   // 슬롯 목록 복원 (renderSlotStatus가 teamPicker 숨김)
-  document.querySelector('main').scrollTo({top:0});
+  try{ var mE2=document.querySelector('main'); if(mE2&&mE2.scrollTo) mE2.scrollTo({top:0}); }catch(_){ }
 }
 
 function renderSlots(){
@@ -20897,29 +20897,9 @@ window.jumpOffseasonTaskV66=function(key){
 })();
 </script>
 
-<script id="single-initial-render-v082">
-/* ───────────────────────────────────────────
-   [168/186] SCRIPT · 0.5KB · 원본 20902행
-   ─────────────────────────────────────────── */
-(function(){
-  'use strict';
-  try{
-    if(typeof renderTeamGrid==='function')renderTeamGrid();
-    if(typeof refreshHeader==='function')refreshHeader();
-    if(typeof renderSlots==='function')renderSlots();
-    if(state?.myTeam){
-      if(typeof renderTeamHome==='function')renderTeamHome();
-      if(typeof show==='function')show('team');
-    }else if(typeof show==='function'){
-      show('select');
-    }
-  }catch(e){console.error('v0.82 초기 화면 단일 렌더:',e);}
-})();
-</script>
-
 <style id="game-board-v089">
 /* ──────────────────────────────────────────
-   [169/186] STYLE · 4.9KB · 원본 20922행
+   [168/186] STYLE · 4.9KB · 원본 20902행
    ────────────────────────────────────────── */
 /* ═══════════ v0.89 · GAME BOARD ═══════════
    경기 기능/기록 로직은 유지하고 #scr-game 내부의 시각 구조만 정리한다.
@@ -21054,7 +21034,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <style id="front-office-v090">
 /* ──────────────────────────────────────────
-   [170/186] STYLE · 6.7KB · 원본 21057행
+   [169/186] STYLE · 6.7KB · 원본 21037행
    ────────────────────────────────────────── */
 /* ═══════════ v0.90 · OPERATIONS BOARD ═══════════
    운영 기능은 유지하고 #scr-front 내부만 v0.88~0.89의 짙은 그린 + 골드 톤으로 정리한다. */
@@ -21211,7 +21191,7 @@ window.jumpOffseasonTaskV66=function(key){
 <!-- v0.91 rank/game polish -->
 <style>
 /* ──────────────────────────────────────────
-   [171/186] STYLE · 4.7KB · 원본 21214행
+   [170/186] STYLE · 4.7KB · 원본 21194행
    ────────────────────────────────────────── */
 /* v0.91 · 헤더 팀 칩 */
 .subline .myteam.header-team-chip-v91{
@@ -21301,7 +21281,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [172/186] SCRIPT · 12.7KB · 원본 21304행
+   [171/186] SCRIPT · 12.7KB · 원본 21284행
    감쌈  : myTeamDashboardHtml, refreshHeader, renderGameSetup, renderRank, setRankTab, val  (이전 정의를 호출하는 체인)
    정의  : ensureRankSummaryBoxV91, escHtmlV91, logoHtmlV91, matchTeam, syncVersionV91, teamChipHtmlV91
    ────────────────────────────────────────────────────────────────────────────────────────── */
@@ -21487,7 +21467,7 @@ window.jumpOffseasonTaskV66=function(key){
 <!-- v0.92 game-end action guard -->
 <style>
 /* ──────────────────────────────────────────
-   [173/186] STYLE · 0.4KB · 원본 21490행
+   [172/186] STYLE · 0.4KB · 원본 21470행
    ────────────────────────────────────────── */
 #scr-game #newGameBtn{
   width:100%;min-height:52px;margin-top:12px!important;
@@ -21500,7 +21480,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ────────────────────────────────────────────────────────────
-   [174/186] SCRIPT · 1.4KB · 원본 21503행
+   [173/186] SCRIPT · 1.4KB · 원본 21483행
    정의  : bindV92, gameHasFinishedV92, syncGameEndActionV92
    ──────────────────────────────────────────────────────────── */
 (function(){
@@ -21548,7 +21528,7 @@ window.jumpOffseasonTaskV66=function(key){
 <!-- v0.93 live-layout polish -->
 <style>
 /* ──────────────────────────────────────────
-   [175/186] STYLE · 0.4KB · 원본 21551행
+   [174/186] STYLE · 0.4KB · 원본 21531행
    ────────────────────────────────────────── */
 #scr-game #gameLive{padding-bottom:calc(18px + env(safe-area-inset-bottom))!important}
 #scr-game .gamelog{
@@ -21568,7 +21548,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [176/186] SCRIPT · 3.3KB · 원본 21571행
+   [175/186] SCRIPT · 3.3KB · 원본 21551행
    감쌈  : APP_VERSION, GAME_VERSION  (이전 정의를 호출하는 체인)
    정의  : bindGameLayoutV93, clearBtnLayoutV93, currentGameBtnV93, gameLiveVisibleV93, layoutGameLiveV93, syncVersionV93
    ────────────────────────────────────────────────────────────────────────────────────────── */
@@ -21657,7 +21637,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <style>
 /* ──────────────────────────────────────────
-   [177/186] STYLE · 0.8KB · 원본 21660행
+   [176/186] STYLE · 0.8KB · 원본 21640행
    ────────────────────────────────────────── */
 /* v0.94 · 터치 영역·최소 글자 크기 보정 */
 #scr-front .lb-cat button,
@@ -21684,7 +21664,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ───────────────────────────────────────────
-   [178/186] SCRIPT · 0.6KB · 원본 21687행
+   [177/186] SCRIPT · 0.6KB · 원본 21667행
    ─────────────────────────────────────────── */
 /* v0.94 · role="button" 요소의 Enter/Space 키 입력을 클릭으로 넘긴다 */
 (function(){
@@ -21707,7 +21687,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <script>
 /* ──────────────────────────────────────────────────────
-   [179/186] SCRIPT · 2.6KB · 원본 21710행
+   [178/186] SCRIPT · 2.6KB · 원본 21690행
    감쌈  : VER, renderRankStableV274  (이전 정의를 호출하는 체인)
    정의  : prelude, stableChain, worldNotice
    ⚠ 대체됨: VER
@@ -21780,7 +21760,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <style>
 /* ──────────────────────────────────────────
-   [180/186] STYLE · 0.6KB · 원본 21783행
+   [179/186] STYLE · 0.6KB · 원본 21763행
    ────────────────────────────────────────── */
 /* v0.95 · 새 버전 알림 배너 */
 #swUpdateBar{
@@ -21801,7 +21781,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ────────────────────────────────────────────
-   [181/186] SCRIPT · 2.4KB · 원본 21804행
+   [180/186] SCRIPT · 2.4KB · 원본 21784행
    감쌈  : VER  (이전 정의를 호출하는 체인)
    정의  : showBar
    ⚠ 대체됨: VER
@@ -21864,7 +21844,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <style>
 /* ──────────────────────────────────────────
-   [182/186] STYLE · 0.9KB · 원본 21867행
+   [181/186] STYLE · 0.9KB · 원본 21847행
    ────────────────────────────────────────── */
 /* v0.96 · 자동 백업 목록 */
 .abk-v96{margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line)}
@@ -21884,7 +21864,7 @@ window.jumpOffseasonTaskV66=function(key){
 </style>
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [183/186] SCRIPT · 7.5KB · 원본 21887행
+   [182/186] SCRIPT · 7.5KB · 원본 21867행
    감쌈  : VER, list, openBackupSheetV3437, openSheet, paint  (이전 정의를 호출하는 체인)
    정의  : AutoBackupV96, hook, lastAt, open, restore, restoreAutoBackupV96, snapshot, when
    ⚠ 대체됨: VER
@@ -22074,7 +22054,7 @@ window.jumpOffseasonTaskV66=function(key){
 </script>
 <script>
 /* ───────────────────────────────────────────
-   [184/186] SCRIPT · 1.0KB · 원본 22077행
+   [183/186] SCRIPT · 1.0KB · 원본 22057행
    감쌈  : save, stamp  (이전 정의를 호출하는 체인)
    정의  : DEFAULT, ensureLeagueIdV96
    ─────────────────────────────────────────── */
@@ -22112,7 +22092,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <script>
 /* ────────────────────────────────────────────
-   [185/186] SCRIPT · 7.9KB · 원본 22115행
+   [184/186] SCRIPT · 7.9KB · 원본 22095행
    감쌈  : VER  (이전 정의를 호출하는 체인)
    정의  : ADD, AGE_ADD
    ⚠ 대체됨: VER
@@ -22298,7 +22278,7 @@ window.jumpOffseasonTaskV66=function(key){
 
 <script>
 /* ──────────────────────────────────────────────────────────────────────────────────────────
-   [186/186] SCRIPT · 10.4KB · 원본 22301행
+   [185/186] SCRIPT · 10.4KB · 원본 22281행
    감쌈  : VER, apply, arr, remove, validate  (이전 정의를 호출하는 체인)
    정의  : applyExtensionLeagueV99, badRow, buildRoster, extensionSelfTestV99, reg, removeExtensionLeagueV99, validateExtensionLeagueV99
    ────────────────────────────────────────────────────────────────────────────────────────── */
@@ -22538,5 +22518,32 @@ window.jumpOffseasonTaskV66=function(key){
 })();
 </script>
 
+
+<script id="single-initial-render-v082">
+/* ───────────────────────────────────────────
+   [186/186] SCRIPT · 1.1KB · 원본 22524행
+   ─────────────────────────────────────────── */
+/* v0.99 · 이 블록은 반드시 파일의 맨 마지막 스크립트여야 한다.
+   모든 정의와 래퍼가 끝난 뒤 화면을 한 번 그리기 위한 것이라,
+   뒤에 블록을 붙이면 그 블록의 변경이 첫 화면에 반영되지 않는다.
+   새 블록은 이 블록 "앞"에 넣고, 이 블록은 항상 끝에 남길 것. */
+/* ───────────────────────────────────────────
+   [168/186] SCRIPT · 0.5KB · 원본 20902행
+   ─────────────────────────────────────────── */
+(function(){
+  'use strict';
+  try{
+    if(typeof renderTeamGrid==='function')renderTeamGrid();
+    if(typeof refreshHeader==='function')refreshHeader();
+    if(typeof renderSlots==='function')renderSlots();
+    if(state?.myTeam){
+      if(typeof renderTeamHome==='function')renderTeamHome();
+      if(typeof show==='function')show('team');
+    }else if(typeof show==='function'){
+      show('select');
+    }
+  }catch(e){console.error('v0.82 초기 화면 단일 렌더:',e);}
+})();
+</script>
 </body>
 </html>
