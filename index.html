@@ -24492,5 +24492,199 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.0.11 · 장효조 사진 + 프런트 실깜빡임 원인 보정 END -->
 
+
+
+<!-- v1.0.12 · 버전 고정 + 영입 무깜빡임 + 트레이드 메뉴 정리 START -->
+<style id="v112-stable-recruit-style">
+/* 영입 결과 반영은 전체 프런트를 다시 그리지 않는다. */
+#frontBody .front-pane,#frontBody .front-legacy-v999,#frontBody .front-concept-v999{animation:none!important}
+</style>
+<script id="v112-stable-recruit-script">
+(function(){
+  'use strict';
+  var V='v1.0.12';
+  var versionLock=false;
+
+  /* v1.0.10에 남아 있던 8.5초/10.5초 지연 버전 타이머가 더 최신 버전을 다시
+     v1.0.10으로 덮어쓰는 문제를 최종 표시 감시로 막는다. */
+  function enforceVersion112(){
+    if(versionLock)return;
+    versionLock=true;
+    try{
+      window.APP_VERSION=V;window.GAME_VERSION=V;
+      if(document.title!=='우리팀을 만들자 '+V)document.title='우리팀을 만들자 '+V;
+      document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){if(el.textContent!==V)el.textContent=V;});
+      document.querySelectorAll('.set-ver-v49 b').forEach(function(el){if(el.textContent!==V)el.textContent=V;});
+    }catch(e){console.error(V+' 버전 표시:',e);}
+    versionLock=false;
+  }
+
+  var versionObserver=null;
+  try{
+    versionObserver=new MutationObserver(function(){requestAnimationFrame(enforceVersion112);});
+    versionObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
+  }catch(_){}
+
+  /* 전체 선수 시장에서 '영입/트레이드'를 별도 영입 메뉴처럼 보이지 않게 한다. */
+  window.openTradeFromMarketV112=function(){
+    try{if(typeof closeSheet==='function')closeSheet();}catch(_){}
+    try{tradeOppId=null;}catch(_){}
+    try{tradeMyPicks=[];}catch(_){try{tradeMyPick=null;}catch(__){}}
+    try{tradeOppPicks=[];}catch(_){try{tradeOppPick=null;}catch(__){}}
+    if(typeof openTradeSheet==='function')openTradeSheet();
+  };
+
+  function normalizeTradeUi112(){
+    try{
+      document.querySelectorAll('#frontBody .front-subtabs button[data-ftab="market-v107"]').forEach(function(b){
+        if(b.textContent!=='트레이드')b.textContent='트레이드';
+      });
+      document.querySelectorAll('#frontBody .front-pane[data-fpane="market-v107"]').forEach(function(pane){
+        if(!pane.dataset.tradeOnlyV112 || /프런트 시장|영입\s*[·/]?\s*트레이드/.test(pane.textContent||'')){
+          pane.dataset.tradeOnlyV112='1';
+          pane.innerHTML='<div class="notice"><b>🔄 트레이드</b><br>다른 구단과 선수를 맞교환합니다.</div>'+
+            '<div class="v107-market-actions"><button class="btn" onclick="openTradeFromMarketV112()">↔️ 트레이드 열기</button></div>';
+        }
+      });
+      document.querySelectorAll('#frontBody .front-tile-v999').forEach(function(tile){
+        var t=tile.querySelector('.t'),sub=tile.querySelector('.s');
+        if(t&&t.textContent.trim()==='전체 선수 시장'&&sub)sub.textContent='선수단·트레이드·AI 구단·프런트';
+      });
+    }catch(e){console.error(V+' 트레이드 UI:',e);}
+  }
+
+  window.openPlayerMarketV107=function(){
+    var sheet=document.getElementById('sheet');if(!sheet)return;
+    sheet.innerHTML='<div class="top"><div class="pname">⚾ 전체 선수 시장</div><button class="close" onclick="closeSheet()">✕</button></div>'+ 
+      '<div class="meta">선수단, 트레이드, AI 구단, 프런트를 한 곳에서 선택합니다.</div>'+ 
+      '<div class="v107-market-grid">'+
+      '<button class="v107-market-card primary" onclick="openMarketSectionV108(\'squad\')"><span class="t">👥 선수단</span><span class="s">1군·2군, 계약과 로스터를 확인합니다.</span></button>'+ 
+      '<button class="v107-market-card" onclick="openTradeFromMarketV112()"><span class="t">↔️ 트레이드</span><span class="s">다른 구단과 선수를 맞교환합니다.</span></button>'+ 
+      '<button class="v107-market-card" onclick="openMarketSectionV108(\'ai\')"><span class="t">🤖 AI 구단</span><span class="s">상대 구단의 운영과 시장 판단을 확인합니다.</span></button>'+ 
+      '<button class="v107-market-card" onclick="openMarketSectionV108(\'front\')"><span class="t">🏢 프런트</span><span class="s">감독·코치와 시즌 운영 항목을 확인합니다.</span></button>'+ 
+      '</div>';
+    var mask=document.getElementById('mask');if(mask)mask.classList.add('on');
+  };
+  window.openFinanceMarketV104=window.openPlayerMarketV107;
+
+  /* 영입 후 화면 전체 renderFront()가 실행되면서 프런트가 순간적으로 지워졌다가 다시 생겼다.
+     영입 처리 동안에만 전체 렌더를 막고, 바뀐 시장 행/체크리스트만 갱신한다. */
+  var realRenderFront112=window.renderFront;
+  var suppressFrontRender112=0;
+  var renderFront112=function(){
+    if(suppressFrontRender112>0){
+      try{if(typeof syncMoneyUi==='function')syncMoneyUi();}catch(_){}
+      try{if(typeof refreshHeader==='function')refreshHeader();}catch(_){}
+      normalizeTradeUi112();enforceVersion112();
+      return;
+    }
+    var r=realRenderFront112&&realRenderFront112.apply(this,arguments);
+    try{normalizeTradeUi112();enforceVersion112();}catch(_){}
+    return r;
+  };
+  renderFront112.__v112=true;
+  window.renderFront=renderFront112;try{renderFront=renderFront112;}catch(_){}
+
+  function marketArray112(type){
+    var m=state&&state.season&&state.season.market;if(!m)return [];
+    return type==='fa'?(m.fa||[]):type==='foreign'?(m.foreign||[]):type==='legend'?(m.legends||[]):[];
+  }
+  function rowSelector112(type){return type==='fa'?'data-fa':type==='foreign'?'data-foreign':'data-legend';}
+  function openFn112(type){return type==='fa'?'openFaSheet':type==='foreign'?'openForeignSheet':'openLegendSheet';}
+
+  function refreshChecklist112(){
+    try{
+      if(typeof offseasonChecklist!=='function'||!state||!state.season)return;
+      var cl=offseasonChecklist(),map={};(cl.items||[]).forEach(function(x){map[x.label]=x;});
+      document.querySelectorAll('#frontBody .cl-row').forEach(function(row){
+        var lb=row.querySelector('.cl-lb'),note=row.querySelector('.cl-note'),ic=row.querySelector('.cl-ic');if(!lb)return;
+        var it=map[(lb.textContent||'').trim()];if(!it)return;
+        if(ic)ic.textContent=it.ok?'✅':'⬜';
+        if(note){note.textContent=it.note||'';note.classList.toggle('ok',!!it.ok);note.classList.toggle('todo',!it.ok);}
+      });
+      var b=document.getElementById('startNextTop');if(b){
+        var label=state.mode==='sim'?((state.year+1)+'년차 시즌 시작'):'새 시즌 시작';
+        b.disabled=!cl.allOk;b.classList.toggle('ready',!!cl.allOk);b.classList.toggle('locked',!cl.allOk);b.textContent=cl.allOk?'▶ '+label:'🔒 '+label;
+      }
+    }catch(_){}
+  }
+
+  function refreshRecruitRows112(type,oldIdx){
+    try{
+      var attr=rowSelector112(type),sel='['+attr+']',rows=Array.from(document.querySelectorAll('#frontBody '+sel));
+      var oldRow=document.querySelector('#frontBody ['+attr+'="'+oldIdx+'"]');if(oldRow)oldRow.remove();
+      rows=Array.from(document.querySelectorAll('#frontBody '+sel));
+      var arr=marketArray112(type),fn=openFn112(type);
+      rows.forEach(function(row,i){
+        if(i>=arr.length){row.remove();return;}
+        row.setAttribute(attr,String(i));row.onclick=function(){var f=window[fn];if(typeof f==='function')f(i);};
+      });
+      if(type==='foreign'){
+        var cnt=typeof foreignCounts==='function'?foreignCounts(state.myTeam):null;
+        document.querySelectorAll('#frontBody h2.sec').forEach(function(h){
+          if(/외국인 선수 시장/.test(h.textContent||'')){
+            var sm=h.querySelector('small');if(sm&&cnt)sm.textContent='일반 '+cnt.regular+'/'+FOREIGN_LIMIT.regular+' · 아시아 '+cnt.asia+'/'+FOREIGN_LIMIT.asia;
+          }
+        });
+      }
+      refreshChecklist112();
+      try{if(typeof bindOffseason==='function')bindOffseason();}catch(_){}
+      try{if(typeof syncMoneyUi==='function')syncMoneyUi();}catch(_){}
+      try{if(typeof refreshHeader==='function')refreshHeader();}catch(_){}
+      normalizeTradeUi112();enforceVersion112();
+    }catch(e){console.error(V+' 영입 부분 갱신:',e);}
+  }
+
+  function wrapRecruit112(name,type){
+    var old=window[name];if(typeof old!=='function'||old.__v112NoFlash)return;
+    var fn=function(idx){
+      var before=marketArray112(type).length;
+      suppressFrontRender112++;
+      var r;
+      try{r=old.apply(this,arguments);}finally{suppressFrontRender112=Math.max(0,suppressFrontRender112-1);}
+      var after=marketArray112(type).length;
+      if(after<before)requestAnimationFrame(function(){refreshRecruitRows112(type,Number(idx)||0);});
+      else{normalizeTradeUi112();enforceVersion112();}
+      return r;
+    };
+    fn.__v112NoFlash=true;window[name]=fn;try{eval(name+'=fn');}catch(_){}
+  }
+  wrapRecruit112('signFA','fa');
+  wrapRecruit112('signForeign','foreign');
+  wrapRecruit112('signLegend','legend');
+
+  /* FA 입찰은 낙찰 뒤 '확인'을 누를 때도 renderFront()를 한 번 더 호출하고 있었다. */
+  var oldFaBidClose112=window.faBidCloseV3436;
+  if(typeof oldFaBidClose112==='function'){
+    window.faBidCloseV3436=function(){
+      suppressFrontRender112++;
+      var r;try{r=oldFaBidClose112.apply(this,arguments);}finally{suppressFrontRender112=Math.max(0,suppressFrontRender112-1);}
+      requestAnimationFrame(function(){
+        /* 낙찰된 선수가 있다면 실제 시장 배열 길이에 맞춰 남은 행을 정리한다. */
+        var rows=Array.from(document.querySelectorAll('#frontBody [data-fa]')),arr=marketArray112('fa');
+        while(rows.length>arr.length){rows.pop().remove();}
+        rows.forEach(function(row,i){row.dataset.fa=String(i);row.onclick=function(){if(typeof openFaSheet==='function')openFaSheet(i);};});
+        refreshChecklist112();normalizeTradeUi112();enforceVersion112();
+      });
+      return r;
+    };
+  }
+
+  /* 설정을 여는 순간에도 최신 버전으로 확정한다. */
+  var oldSettings112=window.openGameSettingsV462;
+  if(typeof oldSettings112==='function'){
+    window.openGameSettingsV462=function(){
+      enforceVersion112();var r=oldSettings112.apply(this,arguments);
+      requestAnimationFrame(enforceVersion112);setTimeout(enforceVersion112,20);return r;
+    };
+    try{openGameSettingsV462=window.openGameSettingsV462;}catch(_){}
+  }
+
+  normalizeTradeUi112();enforceVersion112();
+  [20,100,500,1500,4200,6200,8600,10600,12000].forEach(function(ms){setTimeout(function(){normalizeTradeUi112();enforceVersion112();},ms);});
+})();
+</script>
+<!-- v1.0.12 · 버전 고정 + 영입 무깜빡임 + 트레이드 메뉴 정리 END -->
+
 </body>
 </html>
