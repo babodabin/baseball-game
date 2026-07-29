@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v0.99.3';
+window.APP_VERSION='v0.99.4';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -21586,7 +21586,7 @@ window.jumpOffseasonTaskV66=function(key){
    ────────────────────────────────────────────────────────────────────────────────────────── */
 (function(){
   'use strict';
-  window.APP_VERSION='v0.99.3';
+  window.APP_VERSION='v0.99.4';
   window.GAME_VERSION=window.APP_VERSION;
   function syncVersionV93(){
     try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
@@ -22667,6 +22667,92 @@ window.jumpOffseasonTaskV66=function(key){
     const prev=window[name];if(typeof prev!=='function')return;
     window[name]=function(){const r=prev.apply(this,arguments);try{enforce();}catch(_){ }return r;};
   });
+})();
+</script>
+
+
+<script id="select-screen-recovery-v0994">
+/* ═══════════ v0.99.4 · 구단 미선택 화면 복구 ═══════════
+   - 구단이 없는 상태에서 라인업/경기/운영/순위를 눌러도 빈 화면이 남지 않게 한다.
+   - 슬롯 목록과 구단 선택기 중 사용자가 보고 있던 단계는 유지한다.
+   - 둘 다 숨겨진 비정상 상태라면 슬롯 목록을 다시 그린다.
+   - 선택 화면에서는 하단 내비게이션의 잘못된 활성 표시를 모두 해제한다.
+*/
+(function(){
+  'use strict';
+  function clearSelectNavV994(){
+    document.querySelectorAll('nav button[data-nav]').forEach(function(btn){
+      btn.classList.remove('on');
+      btn.removeAttribute('aria-current');
+    });
+  }
+  function visibleV994(el){
+    if(!el)return false;
+    try{return getComputedStyle(el).display!=='none';}catch(_){return el.style.display!=='none';}
+  }
+  function repairSelectV994(){
+    try{
+      if(typeof state==='undefined'||state?.myTeam)return false;
+      var ss=document.getElementById('slotStatus');
+      var tp=document.getElementById('teamPicker');
+      var hint=document.getElementById('selectHint');
+      var back=document.getElementById('pickBackBtn');
+      clearSelectNavV994();
+
+      var slotVisible=visibleV994(ss), pickerVisible=visibleV994(tp);
+      if(pickerVisible){
+        if(ss)ss.style.display='none';
+        if(hint)hint.style.display='none';
+        if(back)back.style.display='';
+        if(typeof renderTeamGrid==='function')renderTeamGrid();
+        return true;
+      }
+      if(slotVisible){
+        if(tp)tp.style.display='none';
+        if(hint)hint.style.display='';
+        if(back)back.style.display='none';
+        if(ss && !ss.children.length && typeof renderSlots==='function')renderSlots();
+        return true;
+      }
+
+      // 둘 다 숨겨졌다면 기본 단계인 슬롯 목록으로 안전하게 복구한다.
+      if(typeof renderSlots==='function')renderSlots();
+      else{
+        if(ss)ss.style.display='';
+        if(tp)tp.style.display='none';
+        if(hint)hint.style.display='';
+        if(back)back.style.display='none';
+      }
+      clearSelectNavV994();
+      return true;
+    }catch(e){console.error('v0.99.4 선택 화면 복구:',e);return false;}
+  }
+
+  window.repairSelectScreenV994=repairSelectV994;
+  var oldShow=window.show;
+  if(typeof oldShow==='function'){
+    window.show=function(name){
+      var r=oldShow.apply(this,arguments);
+      if(name==='select' && !state?.myTeam){
+        repairSelectV994();
+        setTimeout(repairSelectV994,0);
+        setTimeout(clearSelectNavV994,60);
+      }
+      return r;
+    };
+  }
+
+  document.addEventListener('click',function(e){
+    var btn=e.target?.closest?.('nav button[data-nav]');
+    if(!btn||state?.myTeam)return;
+    setTimeout(function(){
+      try{
+        if(document.getElementById('scr-select')?.classList.contains('on'))repairSelectV994();
+      }catch(_){ }
+    },0);
+  },false);
+
+  if(!state?.myTeam) setTimeout(repairSelectV994,0);
 })();
 </script>
 
