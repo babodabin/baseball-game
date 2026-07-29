@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v0.99.9';
+window.APP_VERSION='v1.0.0';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -21626,7 +21626,7 @@ window.jumpOffseasonTaskV66=function(key){
    ────────────────────────────────────────────────────────────────────────────────────────── */
 (function(){
   'use strict';
-  window.APP_VERSION='v0.99.9';
+  window.APP_VERSION='v1.0.0';
   window.GAME_VERSION=window.APP_VERSION;
   function syncVersionV93(){
     try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
@@ -22991,17 +22991,26 @@ header .subline{align-items:center}
   function playerName(p){try{return typeof playerDisplayName==='function'?playerDisplayName(p):String(p&&p[0]||'선수');}catch(_){return String(p&&p[0]||'선수');}}
   function ovrOf(team,kind,p){try{return kind==='bat'?batOvr(p,team.id):pitOvr(p,team.id);}catch(_){return 0;}}
   function portraitSrc(name,teamColor){
-    var h=hash(name),skins=['#F0C4A2','#E2B28D','#D39B73','#C98F68'],skin=skins[h%skins.length];
-    var hair=['#191B19','#2A211C','#151817'][h%3], eye=(h%2)?'#1B1815':'#2A211C';
-    var c=teamColor||'#2C6BC2',ini=Array.from(String(name||'선수')).slice(-2).join('');
+    var h=hash(name),skins=['#E8B58F','#DFA77E','#C98D68','#B97857'],skin=skins[h%skins.length];
+    var hair=['#171817','#2A211D','#101211','#3A2A22'][h%4], c=teamColor||'#2C6BC2', ini=Array.from(String(name||'선수')).slice(-2).join('');
+    var brow=(h%2)?'#2A211C':'#181A18', jersey=(h%3===0)?'#F4F5F2':'#EEF1ED';
     var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'+
-      '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="'+c+'"/><stop offset="1" stop-color="#091812"/></linearGradient></defs>'+
-      '<rect width="100" height="100" rx="18" fill="url(#g)"/><circle cx="50" cy="44" r="23" fill="'+skin+'"/>'+
-      '<path d="M28 38c2-18 14-27 27-25 11 2 18 10 18 24-9-6-35-7-45 1Z" fill="'+hair+'"/>'+
-      '<path d="M24 29c7-14 19-20 35-17 10 2 17 7 21 15-14-4-38-4-56 2Z" fill="'+c+'"/><path d="M24 29h56l-4 6H29Z" fill="#F4F1E8" opacity=".94"/>'+
-      '<circle cx="42" cy="45" r="2" fill="'+eye+'"/><circle cx="58" cy="45" r="2" fill="'+eye+'"/><path d="M45 55c4 3 7 3 11 0" fill="none" stroke="#8F5D4B" stroke-width="1.8" stroke-linecap="round"/>'+
-      '<path d="M22 100V82c0-14 11-22 28-22s28 8 28 22v18Z" fill="#F6F7F4"/><path d="M42 63l8 11 8-11" fill="none" stroke="'+c+'" stroke-width="3"/>'+
-      '<text x="50" y="93" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="800" fill="'+c+'">'+esc(ini)+'</text></svg>';
+      '<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0B1B14"/><stop offset="1" stop-color="'+c+'" stop-opacity=".72"/></linearGradient><linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".16"/></linearGradient></defs>'+
+      '<rect width="100" height="100" rx="18" fill="url(#bg)"/>'+
+      '<path d="M17 100V82c0-15 13-24 33-24s33 9 33 24v18Z" fill="'+jersey+'"/>'+
+      '<path d="M41 61l9 12 9-12 9 6-8 33H40l-8-33Z" fill="#fff" opacity=".92"/>'+
+      '<path d="M42 62l8 10 8-10" fill="none" stroke="'+c+'" stroke-width="3"/>'+
+      '<rect x="43" y="54" width="14" height="13" rx="5" fill="'+skin+'"/>'+
+      '<ellipse cx="50" cy="42" rx="22" ry="25" fill="'+skin+'"/>'+
+      '<ellipse cx="28" cy="43" rx="3.3" ry="6" fill="'+skin+'"/><ellipse cx="72" cy="43" rx="3.3" ry="6" fill="'+skin+'"/>'+
+      '<path d="M29 38c1-17 11-26 23-26 14 0 22 9 22 26-8-5-15-7-23-7-9 0-16 2-22 7Z" fill="'+hair+'"/>'+
+      '<path d="M23 27c8-12 19-18 31-17 12 1 20 7 24 16-15-3-38-3-55 1Z" fill="'+c+'"/><path d="M23 27h55l-5 6H28Z" fill="#F4F1E8" opacity=".92"/>'+
+      '<path d="M38 40c3-2 6-2 9 0M53 40c3-2 6-2 9 0" fill="none" stroke="'+brow+'" stroke-width="1.7" stroke-linecap="round"/>'+
+      '<ellipse cx="43" cy="45" rx="1.6" ry="1.9" fill="#201C19"/><ellipse cx="58" cy="45" rx="1.6" ry="1.9" fill="#201C19"/>'+
+      '<path d="M50 45l-2 8 4 1" fill="none" stroke="#9F684F" stroke-width="1.2" stroke-linecap="round"/>'+
+      '<path d="M44 58c4 2 8 2 12 0" fill="none" stroke="#8D5446" stroke-width="1.7" stroke-linecap="round"/>'+
+      '<path d="M31 48c2 12 9 19 19 19s18-7 20-19c-2 13-9 23-20 23S33 61 31 48Z" fill="url(#sh)" opacity=".28"/>'+
+      '<text x="50" y="94" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="'+c+'">'+esc(ini)+'</text></svg>';
     return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg);
   }
   function playerList(team){
@@ -23070,7 +23079,7 @@ header .subline{align-items:center}
 })();
 </script>
 
-<!-- v0.99.9 · 5개 주요 화면 콘셉트 UI 실구현 -->
+<!-- v1.0.0 · 5개 주요 화면 콘셉트 UI 실구현 -->
 <style id="concept-five-pages-v999">
 /* 기준: 앞서 확정한 구단/라인업/경기/운영/순위 5개 시안. 기능은 유지하고 정보 구조와 카드 문법을 통일한다. */
 header::before{display:none!important}
@@ -23172,7 +23181,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 <script id="concept-five-pages-v999-script">
 (function(){
   'use strict';
-  var V='v0.99.9'; window.APP_VERSION=V; window.GAME_VERSION=V;
+  var V='v1.0.0'; window.APP_VERSION=V; window.GAME_VERSION=V;
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function num(v,d){v=Number(v)||0;return d==null?String(Math.round(v)):v.toFixed(d);}
   function pName(p){try{return typeof playerDisplayName==='function'?playerDisplayName(p):String(p&&p[0]||'선수');}catch(_){return String(p&&p[0]||'선수');}}
@@ -23181,9 +23190,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   function allPlayers(t){var a=[];(t.bat||[]).forEach(function(p,i){a.push({kind:'bat',idx:i,p:p,ovr:pOvr(t,'bat',p)});});(t.pit||[]).forEach(function(p,i){a.push({kind:'pit',idx:i,p:p,ovr:pOvr(t,'pit',p)});});a.sort(function(x,y){return y.ovr-x.ovr||pName(x.p).localeCompare(pName(y.p),'ko');});return a;}
   function hash(s){var h=2166136261;for(var i=0;i<String(s).length;i++){h^=String(s).charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
   function face(name,color){
-    if(typeof portraitSrc==='function'){try{return portraitSrc(name,color);}catch(_){}}
-    var h=hash(name),skin=['#F0C4A2','#E2B28D','#D39B73','#C98F68'][h%4],hair=['#191B19','#2A211C','#151817'][h%3],c=color||'#255DA7',ini=Array.from(String(name)).slice(-2).join('');
-    var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="18" fill="'+c+'"/><circle cx="50" cy="43" r="23" fill="'+skin+'"/><path d="M27 37c3-18 15-26 28-24 12 2 18 11 18 24-10-6-34-7-46 0Z" fill="'+hair+'"/><path d="M24 29h53l-3 7H28Z" fill="#F5F4EE"/><circle cx="42" cy="46" r="2"/><circle cx="58" cy="46" r="2"/><path d="M45 55c4 3 7 3 11 0" fill="none" stroke="#8F5D4B" stroke-width="2" stroke-linecap="round"/><path d="M22 100V81c0-14 11-22 28-22s28 8 28 22v19Z" fill="#F7F7F4"/><text x="50" y="92" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="800" fill="'+c+'">'+esc(ini)+'</text></svg>';
+    var h=hash(name),skin=['#E8B58F','#DFA77E','#C98D68','#B97857'][h%4],hair=['#171817','#2A211D','#101211','#3A2A22'][h%4],c=color||'#255DA7',ini=Array.from(String(name||'선수')).slice(-2).join('');
+    var jersey=(h%3===0)?'#F5F5F1':'#EEF1ED';
+    var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0A1A13"/><stop offset="1" stop-color="'+c+'" stop-opacity=".72"/></linearGradient></defs><rect width="100" height="100" rx="18" fill="url(#g)"/><path d="M17 100V82c0-15 13-24 33-24s33 9 33 24v18Z" fill="'+jersey+'"/><path d="M42 62l8 10 8-10" fill="none" stroke="'+c+'" stroke-width="3"/><rect x="43" y="54" width="14" height="13" rx="5" fill="'+skin+'"/><ellipse cx="50" cy="42" rx="22" ry="25" fill="'+skin+'"/><path d="M29 38c1-17 11-26 23-26 14 0 22 9 22 26-8-5-15-7-23-7-9 0-16 2-22 7Z" fill="'+hair+'"/><path d="M23 27c8-12 19-18 31-17 12 1 20 7 24 16-15-3-38-3-55 1Z" fill="'+c+'"/><path d="M23 27h55l-5 6H28Z" fill="#F4F1E8" opacity=".92"/><path d="M38 40c3-2 6-2 9 0M53 40c3-2 6-2 9 0" fill="none" stroke="#241F1B" stroke-width="1.7" stroke-linecap="round"/><ellipse cx="43" cy="45" rx="1.6" ry="1.9" fill="#201C19"/><ellipse cx="58" cy="45" rx="1.6" ry="1.9" fill="#201C19"/><path d="M50 45l-2 8 4 1" fill="none" stroke="#9F684F" stroke-width="1.2" stroke-linecap="round"/><path d="M44 58c4 2 8 2 12 0" fill="none" stroke="#8D5446" stroke-width="1.7" stroke-linecap="round"/><text x="50" y="94" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="'+c+'">'+esc(ini)+'</text></svg>';
     return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(s);
   }
   function teamRank(){try{if(state.season&&typeof rankOrder==='function'){var o=rankOrder(),i=o.indexOf(state.myTeam);if(i>=0)return i+1;}return (typeof RANK2025==='object'&&RANK2025[state.myTeam])||'-';}catch(_){return '-';}}
@@ -23296,6 +23305,67 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 
+
+
+<!-- v1.0.0 · 설정 중복 정리 + 슬롯 삭제 UI 개편 -->
+<style id="save-settings-cleanup-v1000">
+.slot-delete-shell-v1000{display:grid;gap:10px;margin-top:16px}
+.slot-delete-card-v1000{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px;border:1px solid rgba(183,211,194,.15);border-radius:15px;background:linear-gradient(145deg,#0D2118,#091911);color:#ECEFEA}
+.slot-delete-card-v1000.active{border-color:rgba(244,196,94,.58);box-shadow:inset 3px 0 #F4C45E;background:linear-gradient(145deg,#12271D,#0A1A13)}
+.slot-delete-card-v1000.empty{opacity:.48;background:#0A1812}
+.slot-delete-logo-v1000{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:#08160F;overflow:hidden}
+.slot-delete-logo-v1000 img,.slot-delete-logo-v1000 .team-logo{max-width:42px;max-height:42px;object-fit:contain}
+.slot-delete-empty-v1000{font-size:22px;color:#708279}
+.slot-delete-copy-v1000{min-width:0}.slot-delete-name-v1000{display:flex;align-items:center;gap:7px;min-width:0;color:#F1F1EB;font-size:13px;font-weight:900}.slot-delete-name-v1000 b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot-delete-badge-v1000{flex:0 0 auto;padding:3px 6px;border:1px solid rgba(244,196,94,.30);border-radius:999px;color:#F4C45E;font:800 7.5px 'IBM Plex Mono',monospace}
+.slot-delete-meta-v1000{margin-top:5px;color:#8FA198;font-size:9.5px;line-height:1.45}.slot-delete-no-v1000{color:#B4C0BA;font:800 8.5px 'IBM Plex Mono',monospace;margin-bottom:2px}
+.slot-delete-action-v1000{min-width:76px;height:38px;padding:0 10px;border:1px solid rgba(240,144,122,.42);border-radius:10px;background:rgba(104,31,25,.15);color:#F0A08B;font-size:9.5px;font-weight:900}
+.slot-delete-action-v1000:disabled{opacity:.35}
+.slot-delete-danger-v1000{margin-top:14px;padding:13px 14px;border:1px solid rgba(240,144,122,.30);border-radius:14px;background:rgba(94,31,25,.10);color:#BDA9A2;font-size:10px;line-height:1.55}
+.slot-delete-danger-v1000 b{color:#F0A08B}
+.slot-confirm-v1000{margin-top:16px;padding:17px;border:1px solid rgba(240,144,122,.36);border-radius:16px;background:linear-gradient(145deg,#171E18,#101612)}
+.slot-confirm-team-v1000{display:flex;align-items:center;gap:13px}.slot-confirm-team-v1000 .slot-delete-logo-v1000{width:58px;height:58px;flex:0 0 58px}.slot-confirm-title-v1000{color:#F3EFE8;font-size:16px;font-weight:900}.slot-confirm-sub-v1000{margin-top:5px;color:#96A69E;font-size:10px;line-height:1.45}
+.slot-confirm-actions-v1000{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}.slot-confirm-actions-v1000 button{height:46px;border-radius:12px;font-weight:900}.slot-confirm-delete-v1000{border:1px solid rgba(240,144,122,.55);background:#54231E;color:#FFD7CD}.slot-confirm-cancel-v1000{border:1px solid rgba(183,211,194,.16);background:#12231A;color:#DCE4DF}
+@media(max-width:390px){.slot-delete-card-v1000{grid-template-columns:46px minmax(0,1fr);gap:10px}.slot-delete-logo-v1000{width:44px;height:44px}.slot-delete-action-v1000{grid-column:1/-1;width:100%;height:40px}.slot-confirm-actions-v1000{grid-template-columns:1fr}}
+</style>
+<script id="save-settings-cleanup-v1000-script">
+(function(){
+  'use strict';
+  var V='v1.0.0';window.APP_VERSION=V;window.GAME_VERSION=V;
+  function esc1000(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function slotInfo1000(i){
+    var sl=(store&&Array.isArray(store.slots))?store.slots[i]:null,cur=!!(store&&store.active===i);
+    if(!sl||!sl.myTeam)return {i:i,empty:true,cur:cur,name:'비어있음',mode:'새 구단을 만들 수 있습니다.',games:0,team:null};
+    var t=null;try{t=getTeam(sl.myTeam);}catch(_){}
+    var games=0;try{var r=sl.season&&sl.season.rec&&sl.season.rec[sl.myTeam];if(r)games=(+r.w||0)+(+r.l||0)+(+r.t||0);else games=Number(sl.season&&sl.season.day)||0;}catch(_){}
+    var mode=sl.mode==='sim'?('시뮬 '+(sl.year||1)+'년차'):'실황';
+    return {i:i,empty:false,cur:cur,name:(t&&t.name)||sl.myTeam,mode:mode,games:games,team:t,teamId:sl.myTeam};
+  }
+  function logo1000(x){
+    if(x.empty)return '<div class="slot-delete-logo-v1000"><span class="slot-delete-empty-v1000">＋</span></div>';
+    try{return '<div class="slot-delete-logo-v1000">'+teamLogoHtml(x.teamId,'slot-delete-logo-img-v1000',x.team&&x.team.real)+'</div>';}catch(_){return '<div class="slot-delete-logo-v1000">⚾</div>';}
+  }
+  window.openSlotDeleteV466=function(){
+    var sheet=document.getElementById('sheet');if(!sheet)return;
+    var rows=[0,1,2,3,4].map(function(i){var x=slotInfo1000(i);return '<div class="slot-delete-card-v1000 '+(x.cur?'active ':'')+(x.empty?'empty':'')+'">'+logo1000(x)+'<div class="slot-delete-copy-v1000"><div class="slot-delete-no-v1000">SLOT '+(i+1)+'</div><div class="slot-delete-name-v1000"><b>'+esc1000(x.name)+'</b>'+(x.cur?'<span class="slot-delete-badge-v1000">사용 중</span>':'')+'</div><div class="slot-delete-meta-v1000">'+(x.empty?x.mode:(esc1000(x.mode)+' · '+x.games+'경기'))+'</div></div><button class="slot-delete-action-v1000" '+(x.empty?'disabled':'')+' onclick="confirmSlotDeleteV466('+i+')">'+(x.cur?'현재 슬롯 삭제':'슬롯 삭제')+'</button></div>';}).join('');
+    sheet.innerHTML='<div class="top"><div class="pname">🗑️ 슬롯 관리</div><button class="close" onclick="closeSheet()">✕</button></div><div class="meta">삭제할 슬롯을 확인한 뒤 선택하세요. 다른 슬롯의 기록은 유지됩니다.</div><div class="slot-delete-shell-v1000">'+rows+'</div><div class="slot-delete-danger-v1000"><b>주의</b> · 슬롯을 삭제하면 해당 구단과 시즌 기록은 되돌릴 수 없습니다. 백업 파일이 있다면 다시 복원할 수 있습니다.</div><button class="btn ghost" style="margin-top:10px" onclick="openGameSettingsV462()">← 설정으로</button>';
+    document.getElementById('mask')&&document.getElementById('mask').classList.add('on');
+  };
+  window.confirmSlotDeleteV466=function(i){
+    var sheet=document.getElementById('sheet');if(!sheet)return;var x=slotInfo1000(i);if(x.empty){window.openSlotDeleteV466();return;}
+    sheet.innerHTML='<div class="top"><div class="pname">🗑️ 삭제 확인</div><button class="close" onclick="closeSheet()">✕</button></div><div class="slot-confirm-v1000"><div class="slot-confirm-team-v1000">'+logo1000(x)+'<div><div class="slot-confirm-title-v1000">슬롯 '+(i+1)+' · '+esc1000(x.name)+'</div><div class="slot-confirm-sub-v1000">'+esc1000(x.mode)+' · '+x.games+'경기'+(x.cur?' · 현재 사용 중인 슬롯':'')+'<br>이 슬롯의 구단과 시즌 기록만 삭제합니다.</div></div></div><div class="slot-delete-danger-v1000"><b>이 작업은 되돌릴 수 없습니다.</b><br>계속하려면 아래 삭제 버튼을 누르세요.</div><div class="slot-confirm-actions-v1000"><button class="slot-confirm-cancel-v1000" onclick="openSlotDeleteV466()">취소</button><button class="slot-confirm-delete-v1000" onclick="deleteSlotV1000('+i+')">슬롯 '+(i+1)+' 삭제</button></div></div>';
+  };
+  window.deleteSlotV1000=function(i){
+    try{var wasActive=store.active===i;store.slots[i]=EMPTY();if(wasActive){state=store.slots[i];try{if(typeof syncLeagueTeamsV466==='function')syncLeagueTeamsV466();}catch(_){}}save();refreshHeader();if(typeof renderSlots==='function')renderSlots();closeSheet();if(wasActive)show('select');else window.openSlotDeleteV466();}catch(e){console.error(V+' 슬롯 삭제:',e);showAlert('삭제 중 문제가 생겼습니다.');}
+  };
+  var prevSettings1000=window.openGameSettingsV462;
+  if(typeof prevSettings1000==='function'){
+    var settings1000=function(){var r=prevSettings1000.apply(this,arguments);try{var sheet=document.getElementById('sheet');if(sheet){var meta=sheet.querySelector('.meta');if(meta)meta.textContent='게임 진행, 진단과 슬롯을 관리합니다. 백업·복원은 운영 화면에서 관리합니다.';sheet.querySelectorAll('.settings-card-v462').forEach(function(card){var head=card.querySelector('.st-head');if(head&&/저장 데이터/.test(head.textContent||''))card.remove();});}}catch(e){console.error(V+' 설정 정리:',e);}return r;};
+    window.openGameSettingsV462=settings1000;try{openGameSettingsV462=settings1000;}catch(_){}
+  }
+  try{document.title='우리팀을 만들자 '+V;document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){el.textContent=V;});}catch(_){}
+})();
+</script>
 
 <script id="single-initial-render-v082">
 /* ───────────────────────────────────────────
