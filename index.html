@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v0.99.1';
+window.APP_VERSION='v0.99.7';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1254,11 +1254,11 @@ nav button.lock{opacity:.32}
 <script>
 /* ──────────────────────────────────────────────────
    [004/186] SCRIPT · 0.3KB · 원본 1256행
-   주제  : 팀 수에 따라 시즌 경기 수가 달라진다(10팀 36 / 12팀 33).
+   주제  : 공통 시즌 규칙 표시(10팀 36 / 12팀 33).
    정의  : seasonLenV42
    ────────────────────────────────────────────────── */
-/* 팀 수에 따라 시즌 경기 수가 달라진다(10팀 36 / 12팀 33).
-   화면에 36이 고정돼 있던 것을 실제 일정 길이로 읽게 한다. */
+/* 공통 시즌 규칙은 10팀 36경기 / 12팀 33경기.
+   화면은 저장된 실제 일정 길이를 읽는다. */
 window.seasonLenV42=function(){
   try{
     var n=window.state&&state.season&&Array.isArray(state.season.sched)?state.season.sched.length:0;
@@ -2184,7 +2184,22 @@ function pitOvr(p, tid){
 const screens = {select:'scr-select', team:'scr-team', lineup:'scr-lineup', game:'scr-game', front:'scr-front', rank:'scr-rank', lock:'scr-lock'};
 function show(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  document.getElementById(screens[name]).classList.add('on');
+  const target=document.getElementById(screens[name]);
+  if(target)target.classList.add('on');
+
+  // v0.99.5 · 구단 미선택 화면은 항상 화면 맨 위에서 정상 내용이 보이게 복구한다.
+  if(name==='select' && (!state || !state.myTeam)){
+    try{
+      const mainEl=document.querySelector('main');
+      if(mainEl){ mainEl.scrollTop=0; try{mainEl.scrollTo({top:0,left:0,behavior:'auto'});}catch(_){ } }
+      document.querySelectorAll('nav button[data-nav]').forEach(btn=>{
+        btn.classList.remove('on'); btn.removeAttribute('aria-current'); btn.setAttribute('aria-pressed','false');
+      });
+      // 기본은 슬롯 목록. 빈 슬롯 선택 함수는 이 호출 뒤에 teamPicker를 다시 켠다.
+      if(typeof renderSlots==='function')renderSlots();
+      if(mainEl)requestAnimationFrame(()=>{mainEl.scrollTop=0;});
+    }catch(e){console.error('v0.99.5 선택 화면 기본 복구:',e);}
+  }
 }
 function refreshHeader(){
   const l = document.getElementById('subLeft');
@@ -3394,7 +3409,7 @@ function advanceRot(teamId){ state.rot[teamId] = ((state.rot[teamId]||0)+1); }
 function pitchingDay(){
   if(!state.season) return 0;
   // 포스트시즌은 정규시즌 경기 수와 별도의 날짜를 사용한다.
-  // 화면의 36/36 표시는 유지하면서도 선발 휴식은 계속 계산된다.
+  // 정규시즌 완료 뒤에도 선발 휴식 계산은 포스트시즌 날짜를 사용한다.
   return Number.isFinite(state.season.postDay) ? state.season.postDay : state.season.day;
 }
 function markStart(teamId, pitIdx){
@@ -3411,21 +3426,49 @@ function restOk(teamId, pitIdx){
 }
 
 function genSchedule(){
-  // 10팀 라운드로빈(서클법) 9라운드 × 4사이클 = 팀당 36경기
+  // 공통 정규시즌 규칙: 10팀은 상대당 4경기(36경기), 12팀은 상대당 3경기(33경기).
+  // 모든 상대를 같은 횟수로 만나고, 홈/원정도 가능한 한 정확히 균형을 맞춘다.
   const ids = TEAMS.map(t=>t.id);
   const n = ids.length;
-  const arr = ids.slice(1);
+  if(n < 2) return [];
+  const cycles = n===10 ? 4 : n===12 ? 3 : 4;
+  const BYE='__BYE__';
+  const list = n%2===0 ? ids.slice() : ids.concat(BYE);
+  const m = list.length;
+  const arr = list.slice(1);
   const rounds = [];
-  for(let r=0;r<n-1;r++){
-    const pairs = [[ids[0], arr[0]]];
-    for(let i=1;i<n/2;i++) pairs.push([arr[i], arr[n-1-i]]);
-    rounds.push(pairs);
+  for(let r=0;r<m-1;r++){
+    const pairs = [[list[0], arr[0]]];
+    for(let i=1;i<m/2;i++) pairs.push([arr[i], arr[m-1-i]]);
+    rounds.push(pairs.filter(([a,b])=>a!==BYE&&b!==BYE));
     arr.unshift(arr.pop());
   }
+
+  // 한 번의 라운드로빈에서 홈 수가 팀별로 n/2 또는 n/2-1이 되도록 방향을 정한다.
+  const pos = new Map(ids.map((id,i)=>[String(id),i]));
+  function balancedHome(a,b){
+    const ia=pos.get(String(a)), ib=pos.get(String(b));
+    const lo=Math.min(ia,ib), hi=Math.max(ia,ib), d=hi-lo;
+    let h;
+    if(d<n/2) h=lo;
+    else if(d>n/2) h=hi;
+    else h=(lo%2===0)?lo:hi;
+    return ids[h];
+  }
+
+  const seasonYear=(typeof state!=='undefined'&&state&&Number.isFinite(+state.year))?+state.year:1;
   const sched = [];
-  for(let c=0;c<4;c++){
+  for(let c=0;c<cycles;c++){
     rounds.forEach(rd=>{
-      sched.push(rd.map(([a,b])=> c%2===0 ? {home:a, away:b} : {home:b, away:a}));
+      sched.push(rd.map(([a,b])=>{
+        let home=balancedHome(a,b), away=home===a?b:a;
+        // 짝수 사이클은 홈/원정을 뒤집어 상대별 균형을 맞춘다.
+        let reverse=(c%2===1);
+        // 12팀은 3사이클이라 한 시즌에 16/17 홈. 다음 시즌에는 17/16으로 뒤집는다.
+        if(n===12&&c===2&&seasonYear%2===0) reverse=!reverse;
+        if(reverse){const t=home;home=away;away=t;}
+        return {home,away};
+      }));
     });
   }
   return sched;
@@ -3855,7 +3898,7 @@ function seasonBonus(){
   // 순위 분배금 + 포스트시즌/우승 보너스 → 성적 좋으면 흑자 전환 가능
   if(!ecoOn()) return {rankMoney:0, psMoney:0};
   const rank = rankOrder().findIndex(id=>id===state.myTeam)+1;
-  const rankMoney = Math.max(0, (11-rank)) * 5;   // 1위 50억 ~ 10위 5억
+  const rankMoney = Math.max(0, ((TEAMS?.length||10)+1-rank)) * 5;   // 리그 최하위도 1단위, 위로 갈수록 증가
   let psMoney = 0;
   const champ = state.season.post && state.season.post.champion===state.myTeam;
   if(rank<=5) psMoney += 20;                       // 포스트시즌 진출
@@ -5652,9 +5695,14 @@ ensureLongTermState();
 function syncMoneyUi(){
   refreshHeader();
   const info=document.getElementById('frontInfo');
-  if(info&&ecoOn()){
+  if(!info)return;
+  if(ecoOn()){
+    info.style.display='';
     const salTotal=teamSalary(); ensureFanState();
     info.innerHTML=`잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b><br>시설 평균 <b>Lv.${(Object.values((ensureFacilities(),state.facilities)).reduce((a,b)=>a+b,0)/4).toFixed(1)}</b> · 구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>`;
+  }else{
+    info.innerHTML='';
+    info.style.display='none';
   }
 }
 function applySecondTeamDevelopment(){
@@ -6340,12 +6388,12 @@ buildOffseasonMarket=function(){
 };
 
 function draftOrderStatusHtml(m){
-  const order=m.draftOrder||[];
+  const order=m.draftOrder||[], total=order.length||TEAMS.length||10;
   const chips=order.map((id,i)=>{
     const current=!m.drafted&&m.draftRound<=DRAFT_ROUNDS&&m.draftCursor===i;
-    return `<span style="display:inline-block;margin:2px 3px;padding:4px 7px;border-radius:8px;border:1px solid ${current?'var(--amber)':'var(--line)'};color:${current?'var(--amber)':'var(--dim)'}">${10-i}위 ${getTeam(id).name}</span>`;
+    return `<span style="display:inline-block;margin:2px 3px;padding:4px 7px;border-radius:8px;border:1px solid ${current?'var(--amber)':'var(--line)'};color:${current?'var(--amber)':'var(--dim)'}">${total-i}위 ${getTeam(id).name}</span>`;
   }).join('');
-  return `<div class="notice"><b>지명 순서 — 10위 → 1위</b><br>${chips}<br><span style="color:var(--dim)">모든 라운드가 이 순서로 반복됩니다.</span></div>`;
+  return `<div class="notice"><b>지명 순서 — ${total}위 → 1위</b><br>${chips}<br><span style="color:var(--dim)">모든 라운드가 이 순서로 반복됩니다.</span></div>`;
 }
 
 kboDraftPanelHtml=function(){
@@ -6356,7 +6404,7 @@ kboDraftPanelHtml=function(){
   const myTurn=!m.drafted&&m.draftOrder[m.draftCursor]===state.myTeam;
   const available=m.draft.map((d,i)=>({d,i})).filter(x=>!x.d.taken);
   let h=`<h2 class="sec" style="margin-top:16px">신인 드래프트 <small>${m.drafted?'3라운드 완료':`${m.draftRound}라운드 · ${myTurn?'우리 팀 차례':getTeam(m.draftOrder[m.draftCursor]).name+' 차례'}`} · ${SCOUT_INFO[state.scout].name}</small></h2>
-  <div class="hint">전년도 정규시즌 10위부터 1위까지 지명하며, 1~3라운드 모두 같은 순서입니다.</div>${draftOrderStatusHtml(m)}`;
+  <div class="hint">전년도 정규시즌 최하위부터 1위까지 지명하며, 1~3라운드 모두 같은 순서입니다.</div>${draftOrderStatusHtml(m)}`;
   if(m.userDraftPicks?.length) h+=`<div class="notice"><b>우리 팀 지명</b><br>${m.userDraftPicks.map(x=>`${x.round}R ${x.name}`).join(' · ')}</div>`;
   if(!myTurn&&!m.drafted) h+=`<div class="hint">AI 팀 지명을 처리하고 있습니다. 창을 다시 열면 우리 팀 차례로 진행됩니다.</div>`;
   available.slice(0,18).forEach(({d,i})=>{const r=prepareScoutReport(d,i);h+=`<div class="prow" role="button" tabindex="0" onclick="openDraftSheet(${i})" style="cursor:${myTurn?'pointer':'default'};${myTurn?'':'opacity:.58'}"><div class="pos">${r.kind==='bat'?r.data[2]:(r.data[2]==='선발'?'SP':'RP')}</div><div class="mid"><div class="nm">${playerDisplayName(r.data)} <span style="font-size:11px;color:var(--amber)">${r.reportPot}</span></div><div class="hand">${r.age}세 · 예상 OVR ${scoutRange(r.reportOvr)}</div></div><div class="ovr num" style="font-size:14px">${r.reportOvr}</div></div>`;});
@@ -6683,7 +6731,7 @@ kboDraftPanelHtml=function(){
   repairDraftState(m); advanceDraftToUser(m);
   const html=_kboDraftPanelHtmlV263();
   const order=(m.draftOrder||[]).map((id,i)=>`${i+1}번째 ${getTeam(id).name}`).join(' → ');
-  return html.replace('전년도 정규시즌 10위부터 1위까지 지명하며, 1~3라운드 모두 같은 순서입니다.',`전년도 최종 순위의 역순으로 지명합니다. 모든 라운드가 같은 순서입니다.<br><b>${order}</b>`);
+  return html.replace('전년도 정규시즌 최하위부터 1위까지 지명하며, 1~3라운드 모두 같은 순서입니다.',`전년도 최종 순위의 역순으로 지명합니다. 모든 라운드가 같은 순서입니다.<br><b>${order}</b>`);
 };
 
 
@@ -8268,14 +8316,15 @@ function previousClubSeasonV285(targetYear){
 }
 function ownerGoalPoolV285(targetYear){
   const prev=previousClubSeasonV285(targetYear), priorWins=+(prev?.rec?.w??prev?.w);
-  const priorRank=+prev?.rank||10, tier=clampV285(+state.dynasty?.tier||0,0,5);
+  const priorRank=+prev?.rank||(TEAMS.length||10), tier=clampV285(+state.dynasty?.tier||0,0,5);
   const winsBase=Number.isFinite(priorWins)?priorWins:15;
   const winsTarget=clampV285(Math.round(winsBase+(priorRank<=5?1:0)+Math.floor(tier/2)),15,22);
   const rankTarget=tier>=3?3:5;
   const capacity=Math.max(12000,+state.stadiumBiz?.seats||12000);
   const popularity=clampV285(+state.popularity||50,0,100);
   const attendanceRate=clampV285(.68+popularity/500+tier*.012,.70,.86);
-  const attendanceTarget=roundToV285(capacity*18*attendanceRate,5000);
+  const homeGames=Array.isArray(state.season?.sched)?state.season.sched.reduce((n,rd)=>n+(Array.isArray(rd)&&rd.some(m=>m?.home===state.myTeam)?1:0),0):18;
+  const attendanceTarget=roundToV285(capacity*Math.max(1,homeGames)*attendanceRate,5000);
   const goals=[
     {type:'wins',target:winsTarget,label:`정규시즌 ${winsTarget}승 달성`,difficulty:tier>=3?'도전':'표준',rewardTrust:tier>=3?8:6,penaltyTrust:tier>=3?5:7,rewardMoney:1.0,rewardPopularity:1},
     {type:'rank',target:rankTarget,label:`정규시즌 ${rankTarget}위 이상`,difficulty:rankTarget<=3?'도전':'표준',rewardTrust:rankTarget<=3?8:6,penaltyTrust:rankTarget<=3?5:7,rewardMoney:1.5,rewardPopularity:1.5},
@@ -8314,7 +8363,7 @@ ownerGoalProgress=function(){
   const rec=state.season?.rec?.[state.myTeam]||{w:0,l:0,t:0};
   if(g.type==='wins')return{value:+rec.w||0,done:(+rec.w||0)>=g.target,text:`${+rec.w||0}/${g.target}승`};
   if(g.type==='rank'){
-    let rank=10;
+    let rank=TEAMS.length||10;
     try{rank=rankOrder().findIndex(x=>x===state.myTeam)+1;}catch(_e){
       const rows=state.season?.rec?TEAMS.map(t=>({id:t.id,...state.season.rec[t.id]})).sort((a,b)=>((b.w/(b.w+b.l||1))-(a.w/(a.w+a.l||1)))):[];
       rank=Math.max(1,rows.findIndex(x=>x.id===state.myTeam)+1);
@@ -8543,7 +8592,7 @@ function ensureSeasonCompletionV286(){
   if(!Array.isArray(state.clubHistory))state.clubHistory=[];
   try{snapshotSeasonHistory();}catch(err){console.error('시즌 연혁 복구:',err);}
   const year=finiteIntV286(state.year,1,1,999),rec=state.season.rec?.[state.myTeam]||{w:0,l:0,t:0};
-  let rank=10;try{rank=rankOrder().findIndex(id=>id===state.myTeam)+1;if(rank<1)rank=10;}catch(_e){}
+  let rank=TEAMS.length||10;try{rank=rankOrder().findIndex(id=>id===state.myTeam)+1;if(rank<1)rank=TEAMS.length||10;}catch(_e){}
   if(!state.history.some(h=>+h.year===year))state.history.push({year,rank,rec:{w:+rec.w||0,l:+rec.l||0,t:+rec.t||0},champion:state.season.post.champion||null,worldFinish:state.season.worldTournament?.finish||''});
   state.history=dedupeByYearV286(state.history);state.clubHistory=dedupeByYearV286(state.clubHistory);
   return true;
@@ -8612,7 +8661,7 @@ stadiumDailyIncome=function(){
 seasonBonus=function(){
   if(!ecoOn())return{rankMoney:0,psMoney:0};
   const r=balanceRuleV287(),rank=Math.max(1,rankOrder().findIndex(id=>id===state.myTeam)+1);
-  const rankMoney=Math.max(0,11-rank)*r.rankUnit;
+  const rankMoney=Math.max(0,((TEAMS?.length||10)+1-rank))*r.rankUnit;
   let psMoney=rank<=5?r.playoff:0;
   if(state.season.post?.champion===state.myTeam)psMoney+=r.champion;
   state.money+=rankMoney+psMoney;save();return{rankMoney,psMoney};
@@ -12852,21 +12901,21 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
       else {next='contend';reason='포스트시즌 경쟁이 가능한 전력으로 판단했습니다.';}
     }else if(rank<=2&&pct>=.56){next='title';reason=`${rank}위 경쟁력을 확인해 우승 도전으로 전환했습니다.`;}
     else if(rank<=5&&pct>=.47){next='contend';reason='포스트시즌 진출권 경쟁을 이어갑니다.';}
-    else if(rank>=8&&pct<.42){next='rebuild';reason='하위권 성적으로 미래 자산 확보를 우선합니다.';}
+    else if(rank>=Math.max(1,(TEAMS?.length||10)-2)&&pct<.42){next='rebuild';reason='하위권 성적으로 미래 자산 확보를 우선합니다.';}
     else if(rank>=6&&(a.avgAge>=29.5||a.prospects<3)){next='transition';reason='성적과 선수단 연령을 고려해 세대교체를 시작합니다.';}
     else {next='evaluate';reason='무리한 승부보다 현재 선수단 평가를 이어갑니다.';}
     if(p.key==='develop'&&next==='evaluate')next='transition';
     if(p.key==='win'&&next==='rebuild'&&gp<24)next='transition';
     return {next,reason,changed:old&&old!==next};
   }
-  function finance(c,s){let f=c.financeBase+(s.rank<=3?1:0)+(s.rank>=8?-1:0)+(c.owner.money||0)*.35;return clamp(Math.round(f),1,5);}
+  function finance(c,s){let f=c.financeBase+(s.rank<=3?1:0)+(s.rank>=Math.max(1,(TEAMS?.length||10)-2)?-1:0)+(c.owner.money||0)*.35;return clamp(Math.round(f),1,5);}
   function fanLabel(n){return ['','낮음','보통','높음','매우 높음','우승 요구'][clamp(n,1,5)];}
   function financeLabel(n){return ['','심각한 긴축','긴축','보통','여유','매우 여유'][clamp(n,1,5)];}
   function update(force){
     if(state.mode!=='sim'||!state.season)return;const r=ensureRoot(),day=Number(state.season.day)||0,key=`${state.year}:${Math.floor(day/4)}`;if(!force&&r.lastUpdateKey===key)return;
     const st=standings();Object.keys(r.clubs).forEach(id=>{const c=r.clubs[id],a=analyze(id),s=st[id]||{rank:5,gp:0,pct:0},pick=chooseStrategy(id,c,a,s),prev=c.strategy;
       Object.assign(c,a,{strategy:pick.next,stage:pick.next==='title'?'우승권':pick.next==='contend'?'경쟁권':pick.next==='rebuild'?'리빌딩':pick.next==='transition'?'세대교체':'중위권',finance:finance(c,s),lastRank:s.rank,lastPct:s.pct,lastDay:day,lastYear:state.year,reason:pick.reason});
-      c.fanExpectation=clamp(c.fanExpectation+(s.rank<=2&&s.gp>=8?1:0)-(s.rank>=8&&s.gp>=12?1:0),1,5);
+      c.fanExpectation=clamp(c.fanExpectation+(s.rank<=2&&s.gp>=8?1:0)-(s.rank>=Math.max(1,(TEAMS?.length||10)-2)&&s.gp>=12?1:0),1,5);
       if(prev&&prev!==c.strategy){r.history.push({year:state.year,day,teamId:id,from:prev,to:c.strategy,reason:c.reason});if(r.history.length>40)r.history=r.history.slice(-40);}
       const p=profile(id),str=STRATEGIES[c.strategy];if(p&&str){p.seasonStrategy=c.strategy;p.seasonStrategyLabel=str.label;p.faType=str.faType;p.activeDraftStyle=str.draftStyle;p.frontFinance=c.finance;p.frontNeeds=c.needs.slice();}
     });r.lastUpdateKey=key;try{save();}catch(_){}
@@ -13348,7 +13397,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
   function payroll(id){let total=0,count=0;const map=contracts();Object.keys(map).forEach(k=>{if(!k.startsWith(id+'|'))return;const c=map[k];if(c&&Number.isFinite(+c.salary)){total+=+c.salary;count++;}});if(count<10){const t=state.players?.[id],all=[...(t?.bat||[]),...(t?.pit||[])];total=Math.max(total,all.reduce((s,p)=>s+Math.max(.5,((Number(p?.[3])||58)-48)*.32),0));}return Math.round(total*10)/10;}
   function initClub(id){const r=root(),c=core(id),ot=ownerType(id),seed=hash(id+'|finance');if(!r.clubs[id]){const base=ot==='spender'?145:ot==='results'?125:ot==='saving'?82:105;r.clubs[id]={teamId:id,cash:Math.round((base+(seed%31-15))*10)/10,debt:0,revenue:0,expense:0,payroll:0,faBudget:45,pressure:20,fanIndex:clamp(55+(c.fanExpectation||2)*8+(seed%11-5),40,95),attendance:0,status:'안정',directive:'균형 운영',lastYear:state.year,lastDay:-1};}return r.clubs[id];}
   function evaluate(id,force){const x=initClub(id),c=core(id),lp=longPlan(id),rec=record(id),stars=rosterStars(id),pay=payroll(id),ot=ownerType(id),day=Number(state.season?.day)||0;
-    const seasonProgress=clamp(day/Math.max(1,Number(state.season?.totalDays)||36),0,1),expect=clamp(.43+(Number(c.fanExpectation)||2)*.045, .46,.68);
+    const seasonTotal=Math.max(1,Array.isArray(state.season?.sched)?state.season.sched.length:(Number(state.season?.totalDays)||36)),seasonProgress=clamp(day/seasonTotal,0,1),expect=clamp(.43+(Number(c.fanExpectation)||2)*.045, .46,.68);
     const fanDelta=(rec.pct-expect)*35+stars*1.8+(lp.phase==='contend'?4:lp.phase==='reset'?-4:0);x.fanIndex=clamp(x.fanIndex*.82+(55+fanDelta)*.18,25,100);
     x.attendance=Math.round((7200+x.fanIndex*180+stars*650)*10)/10;
     const ticket=x.attendance*(28+Math.min(18,stars*2.5))*Math.max(1,rec.g)/10000;
@@ -13697,32 +13746,69 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
   /* 승패·돈·역사 기록은 어느 값이 정답인지 판단할 수 없으므로 발견만 한다. */
   function inspectAmbiguousState(review){
     if(!state.season)return;
-    const ids=teamIds(),rec=state.season.rec;
+    const ids=teamIds(),rec=state.season.rec,sched=state.season.sched;
+    const day=Number(state.season.day);
 
-    if(!Number.isFinite(Number(state.season.day))||Number(state.season.day)<0){
+    if(!Number.isFinite(day)||day<0){
       add(review,'현재 시즌 진행 일차가 올바른 숫자가 아닙니다');
+    }
+    if(Array.isArray(sched)&&Number.isFinite(day)&&day>sched.length){
+      add(review,`현재 시즌 진행 일차(${day})가 전체 일정(${sched.length})보다 큽니다`);
     }
 
     if(!rec||typeof rec!=='object'){
       add(review,'현재 시즌 순위/승패 기록 데이터가 없거나 손상되어 있습니다');
     }else{
+      let sumW=0,sumL=0,sumT=0,recordsValid=true;
       for(const id of ids){
         const r=rec[id];
         if(!r||typeof r!=='object'){
           add(review,`${teamName(id)}: 시즌 승패 기록이 없습니다`);
+          recordsValid=false;
           continue;
         }
         for(const k of ['w','l','t']){
           const v=Number(r[k]);
           if(!Number.isFinite(v)||v<0||!Number.isInteger(v)){
             add(review,`${teamName(id)}: 시즌 ${k==='w'?'승':k==='l'?'패':'무'} 기록 숫자 확인 필요`);
+            recordsValid=false;
           }
+        }
+        if(recordsValid||(['w','l','t'].every(k=>Number.isFinite(Number(r[k]))&&Number(r[k])>=0&&Number.isInteger(Number(r[k]))))){
+          sumW+=Number(r.w)||0;sumL+=Number(r.l)||0;sumT+=Number(r.t)||0;
+        }
+      }
+      if(recordsValid&&sumW!==sumL)add(review,`리그 전적 합계 불일치 — 승 ${sumW} / 패 ${sumL}`);
+      if(recordsValid&&sumT%2!==0)add(review,`리그 무승부 합계 불일치 — 무 ${sumT} (한 경기당 두 팀에 기록되어 짝수여야 합니다)`);
+
+      // 완료된 정규시즌 일정의 출전 횟수와 팀별 W/L/T 합계가 같은지 확인한다.
+      if(recordsValid&&Array.isArray(sched)&&Number.isFinite(day)&&day>=0){
+        const expected={};ids.forEach(id=>expected[id]=0);
+        const completed=sched.slice(0,Math.min(Math.floor(day),sched.length));
+        let scheduleOk=true;
+        completed.forEach((rd,ri)=>{
+          if(!Array.isArray(rd)){scheduleOk=false;add(review,`${ri+1}번째 일정 데이터 형식이 올바르지 않습니다`);return;}
+          const seen=new Set();
+          rd.forEach(m=>{
+            if(!m||!expected.hasOwnProperty(m.home)||!expected.hasOwnProperty(m.away)||m.home===m.away||seen.has(m.home)||seen.has(m.away)){
+              scheduleOk=false;return;
+            }
+            seen.add(m.home);seen.add(m.away);expected[m.home]++;expected[m.away]++;
+          });
+        });
+        if(scheduleOk){
+          ids.forEach(id=>{
+            const r=rec[id],gp=(Number(r.w)||0)+(Number(r.l)||0)+(Number(r.t)||0);
+            if(gp!==expected[id])add(review,`${teamName(id)}: 전적 ${gp}경기 / 완료 일정 ${expected[id]}경기 — 기록 확인 필요`);
+          });
         }
       }
     }
 
-    if(state.season.schedule!==undefined&&!Array.isArray(state.season.schedule)){
+    if(!Array.isArray(sched)){
       add(review,'시즌 일정 데이터 형식이 올바르지 않습니다');
+    }else if((ids.length===10||ids.length===12)&&typeof window.isFairSeasonScheduleV993==='function'&&!window.isFairSeasonScheduleV993(sched)){
+      add(review,`${ids.length}팀 정규시즌 일정의 상대 횟수 또는 홈/원정 균형을 확인해야 합니다`);
     }
     if(state.history!==undefined&&!Array.isArray(state.history)){
       add(review,'시즌 역사 기록 형식이 올바르지 않습니다');
@@ -14312,7 +14398,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     if(state.mode!=='sim')return;const r=root(),year=Number(state.year)||1;if(!force&&r.lastEvolutionYear===year)return;
     (TEAMS||[]).forEach(t=>{if(t.id===state.myTeam)return;const x=gm(t.id),c=core(t.id),e=eco(t.id),rank=Number(c.lastRank)||5,old=x.type;
       x.tenure=Math.max(1,(Number(x.tenure)||1)+Math.max(0,year-(Number(x.lastYear)||year)));
-      if(rank>=8){x.aggression=clamp(x.aggression+2,10,95);x.patience=clamp(x.patience-1,10,95);x.reason='최근 부진을 반영해 선수단 개편 의지가 강해졌습니다.';}
+      if(rank>=Math.max(1,(TEAMS?.length||10)-2)){x.aggression=clamp(x.aggression+2,10,95);x.patience=clamp(x.patience-1,10,95);x.reason='최근 부진을 반영해 선수단 개편 의지가 강해졌습니다.';}
       else if(rank<=2){x.loyalty=clamp(x.loyalty+2,10,95);x.patience=clamp(x.patience+1,10,95);x.reason='좋은 성적을 낸 핵심 선수단과 운영 기조를 신뢰합니다.';}
       if((e.drought||0)>=8)x.youth=clamp(x.youth+2,10,95);
       if((e.financeRisk||0)>0)x.frugality=clamp(x.frugality+3,10,95);
@@ -17406,26 +17492,8 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     return d[slot]||d[Object.keys(d)[0]]||null;
   }
 
-  /* ---------- 홀수 팀 일정 (부전승) ---------- */
-  const oldGen=window.genSchedule;
-  window.genSchedule=function(){
-    const ids=TEAMS.map(t=>t.id);
-    if(ids.length%2===0)return oldGen.apply(this,arguments);
-    // 홀수면 더미를 넣어 서클법을 돌리고, 더미와 만난 팀은 그날 부전승(경기 없음)으로 둔다.
-    const BYE='__BYE__';
-    const list=ids.concat(BYE),n=list.length,arr=list.slice(1),rounds=[];
-    for(let r=0;r<n-1;r++){
-      const pairs=[[list[0],arr[0]]];
-      for(let i=1;i<n/2;i++)pairs.push([arr[i],arr[n-1-i]]);
-      rounds.push(pairs.filter(([a,b])=>a!==BYE&&b!==BYE));
-      arr.unshift(arr.pop());
-    }
-    const sched=[];
-    for(let c=0;c<4;c++){
-      rounds.forEach(rd=>sched.push(rd.map(([a,b])=>c%2===0?{home:a,away:b}:{home:b,away:a})));
-    }
-    return sched;
-  };
+  /* ---------- 일정 생성 ---------- */
+  // 정규시즌 일정은 공통 genSchedule() 하나만 사용한다.
 
   /* ---------- 확장 드래프트 대상 만들기 ---------- */
   function ovrOf(p,tid,isBat){try{return isBat?batOvr(p,tid):pitOvr(p,tid);}catch(_){return 60;}}
@@ -17864,29 +17932,8 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
   'use strict';
   const V='v0.65';
 
-  /* ---------- 팀 수에 맞춰 사이클 수를 정해 36경기 근처를 유지 ---------- */
-  const prevGen=window.genSchedule;
-  window.genSchedule=function(){
-    const ids=TEAMS.map(t=>t.id),n=ids.length;
-    if(n<3)return prevGen.apply(this,arguments);
-    // 10팀 9라운드×4=36경기가 기준. 팀이 늘면 사이클을 줄여 시즌 길이를 비슷하게 맞춘다.
-    const cycles=Math.max(2,Math.round(36/(n-1)));
-    const even=n%2===0;
-    const BYE='__BYE__';
-    const list=even?ids.slice():ids.concat(BYE);
-    const m=list.length,arr=list.slice(1),rounds=[];
-    for(let r=0;r<m-1;r++){
-      const pairs=[[list[0],arr[0]]];
-      for(let i=1;i<m/2;i++)pairs.push([arr[i],arr[m-1-i]]);
-      rounds.push(pairs.filter(([a,b])=>a!==BYE&&b!==BYE));
-      arr.unshift(arr.pop());
-    }
-    const sched=[];
-    for(let c=0;c<cycles;c++){
-      rounds.forEach(rd=>sched.push(rd.map(([a,b])=>c%2===0?{home:a,away:b}:{home:b,away:a})));
-    }
-    return sched;
-  };
+  /* ---------- 일정 생성 ---------- */
+  // 10팀 36경기 / 12팀 33경기 공통 규칙은 genSchedule()에서만 관리한다.
 
   /* ---------- AI 신생 구단 ---------- */
   const AI_CANDIDATES=[
@@ -21554,7 +21601,7 @@ window.jumpOffseasonTaskV66=function(key){
    ────────────────────────────────────────────────────────────────────────────────────────── */
 (function(){
   'use strict';
-  window.APP_VERSION='v0.99.1';
+  window.APP_VERSION='v0.99.7';
   window.GAME_VERSION=window.APP_VERSION;
   function syncVersionV93(){
     try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
@@ -21805,6 +21852,10 @@ window.jumpOffseasonTaskV66=function(key){
                     '<button type="button">새로고침</button>';
       document.body.appendChild(bar);
       bar.querySelector('button').addEventListener('click',function(){
+        // v0.99.7 · 저장은 최대 1.2초 미뤄 쓴다. 먼저 확정하지 않고 새로고침하면
+        // 아직 안 쓰인 내용(열고 있던 슬롯 포함)이 날아가 다른 슬롯으로 돌아온다.
+        try{ if(typeof save==='function') save(); }catch(_){ }
+        try{ if(window.SaveStoreV96 && SaveStoreV96.flush) SaveStoreV96.flush(); }catch(_){ }
         try{ if(reg&&reg.waiting) reg.waiting.postMessage('skipWaiting'); }catch(_){ }
         setTimeout(function(){location.reload();},120);
       });
@@ -22518,6 +22569,278 @@ window.jumpOffseasonTaskV66=function(key){
 })();
 </script>
 
+
+<script id="fair-season-schedule-v0993">
+/* ═══════════ v0.99.3 · 정규시즌 공정성/12팀 호환 보강 ═══════════
+   - 10팀: 36경기, 상대당 4경기, 팀별 홈 18 / 원정 18
+   - 12팀: 33경기, 상대당 3경기, 팀별 홈 16/17 / 원정 17/16
+   - 12팀의 16/17 홈 배정은 다음 시즌에 뒤집어 장기적으로 동일하게 맞춘다.
+   - 예전 44경기 또는 홈 편중 33경기 저장은 완료 경기 결과를 보존할 수 있는 범위에서 교정한다.
+*/
+(function(){
+  'use strict';
+
+  function specFor(n){
+    if(n===10)return {cycles:4,total:36,homeMin:18,homeMax:18};
+    if(n===12)return {cycles:3,total:33,homeMin:16,homeMax:17};
+    return null;
+  }
+  function pairKey(a,b){return String(a)<String(b)?String(a)+'|'+String(b):String(b)+'|'+String(a);}
+  function structureFair(sched,ids,cycles){
+    if(!Array.isArray(sched)||!Array.isArray(ids)||ids.length<2)return false;
+    const roundCount=(ids.length-1)*cycles,gamesPerRound=Math.floor(ids.length/2);
+    if(sched.length!==roundCount)return false;
+    const allowed=new Set(ids.map(String)),pairs=new Map(),gp={};ids.forEach(id=>gp[String(id)]=0);
+    for(const rd of sched){
+      if(!Array.isArray(rd)||rd.length!==gamesPerRound)return false;
+      const seen=new Set();
+      for(const m of rd){
+        if(!m)return false;
+        const h=String(m.home),a=String(m.away);
+        if(h===a||!allowed.has(h)||!allowed.has(a)||seen.has(h)||seen.has(a))return false;
+        seen.add(h);seen.add(a);gp[h]++;gp[a]++;
+        const k=pairKey(h,a);pairs.set(k,(pairs.get(k)||0)+1);
+      }
+    }
+    const expectedGp=(ids.length-1)*cycles;
+    if(ids.some(id=>gp[String(id)]!==expectedGp))return false;
+    for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++)if((pairs.get(pairKey(ids[i],ids[j]))||0)!==cycles)return false;
+    return true;
+  }
+  function homeFair(sched,ids,cycles){
+    if(!structureFair(sched,ids,cycles))return false;
+    const n=ids.length,home={},dir=new Map();ids.forEach(id=>home[String(id)]=0);
+    for(const rd of sched)for(const m of rd){
+      const h=String(m.home),a=String(m.away);home[h]++;
+      const k=h+'>'+a;dir.set(k,(dir.get(k)||0)+1);
+    }
+    if(n===10&&ids.some(id=>home[String(id)]!==18))return false;
+    if(n===12){
+      const vals=ids.map(id=>home[String(id)]);
+      if(vals.some(v=>v!==16&&v!==17)||vals.filter(v=>v===17).length!==6)return false;
+    }
+    for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){
+      const a=String(ids[i]),b=String(ids[j]),ab=dir.get(a+'>'+b)||0,ba=dir.get(b+'>'+a)||0;
+      if(n===10&&(ab!==2||ba!==2))return false;
+      if(n===12&&!(ab+ba===3&&Math.abs(ab-ba)===1))return false;
+    }
+    return true;
+  }
+  function balancedHomeFor(ids,a,b){
+    const n=ids.length,ia=ids.indexOf(a),ib=ids.indexOf(b);
+    if(ia<0||ib<0)return a;
+    const lo=Math.min(ia,ib),hi=Math.max(ia,ib),d=hi-lo;
+    let h;if(d<n/2)h=lo;else if(d>n/2)h=hi;else h=(lo%2===0)?lo:hi;
+    return ids[h];
+  }
+  function rebalanceThirdCycle12(s,ids){
+    if(ids.length!==12||!Array.isArray(s.sched)||s.sched.length!==33||!structureFair(s.sched,ids,3))return false;
+    const day=Math.max(0,Math.floor(Number(s.day)||0));
+    // 23번째 라운드부터가 세 번째 사이클. 이미 그 구간을 치렀다면 과거 홈/원정은 바꾸지 않는다.
+    if(day>22)return false;
+    const evenYear=((Number(state?.year)||1)%2===0),next=s.sched.map(rd=>rd.map(m=>({...m})));
+    for(let r=22;r<33;r++)for(const m of next[r]){
+      let home=balancedHomeFor(ids,m.home,m.away),away=home===m.home?m.away:m.home;
+      if(evenYear){const t=home;home=away;away=t;}
+      m.home=home;m.away=away;
+    }
+    if(!homeFair(next,ids,3))return false;
+    s.sched=next;return true;
+  }
+  function enforce(){
+    try{
+      if(typeof TEAMS==='undefined'||!Array.isArray(TEAMS)||!state?.season)return false;
+      const ids=TEAMS.map(t=>t.id),spec=specFor(ids.length),s=state.season;
+      if(!spec||!Array.isArray(s.sched))return false;
+      if(homeFair(s.sched,ids,spec.cycles))return false;
+      const day=Math.max(0,Math.floor(Number(s.day)||0));
+      let changed=false;
+
+      // 예전 긴 일정은 상대 구성/순서를 보존하면서 필요한 정규시즌 길이까지만 자른다.
+      if(s.sched.length>spec.total&&day<=spec.total){
+        const cut=s.sched.slice(0,spec.total);
+        if(structureFair(cut,ids,spec.cycles)){s.sched=cut;changed=true;}
+      }
+      // 12팀 기존 33경기의 세 번째 사이클만 다시 방향을 잡아 16/17 홈으로 교정한다.
+      if(ids.length===12&&!homeFair(s.sched,ids,3))changed=rebalanceThirdCycle12(s,ids)||changed;
+
+      // 아직 시작 전이면 어떤 비정상 일정이든 새 규칙으로 재생성한다.
+      if(day===0&&!homeFair(s.sched,ids,spec.cycles)&&typeof genSchedule==='function'){
+        const fresh=genSchedule();if(homeFair(fresh,ids,spec.cycles)){s.sched=fresh;changed=true;}
+      }
+      if(changed||homeFair(s.sched,ids,spec.cycles)){
+        if(typeof save==='function')save();
+        return true;
+      }
+      console.warn(window.APP_VERSION+' 일정 공정성 확인 필요:',ids.length+'팀',day+'경기 진행');
+      return false;
+    }catch(e){console.error(window.APP_VERSION+' 일정 규칙 적용:',e);return false;}
+  }
+
+  window.seasonScheduleSpecV993=specFor;
+  window.isFairSeasonScheduleV993=function(sched){try{const ids=TEAMS.map(t=>t.id),sp=specFor(ids.length);return !!sp&&homeFair(sched,ids,sp.cycles);}catch(_){return false;}};
+  window.ensureFairSeasonScheduleV993=enforce;
+
+  enforce();
+  ['switchSlot','switchSlotEmpty','startWithMode','newSeason'].forEach(function(name){
+    const prev=window[name];if(typeof prev!=='function')return;
+    window[name]=function(){const r=prev.apply(this,arguments);try{enforce();}catch(_){ }return r;};
+  });
+})();
+</script>
+
+
+<script id="select-screen-recovery-v0995">
+/* ═══════════ v0.99.5 · 구단 선택 화면 강제 복구 ═══════════
+   - iOS/PWA가 이전 스크롤 위치를 복원해 내용이 화면 위쪽에 숨어 보이던 경우를 차단한다.
+   - 구단 미선택 상태에서 하단 탭을 누르면 다른 화면으로 보내지 않고 선택 화면을 정상 복구한다.
+   - 슬롯 목록/구단 선택기가 비거나 숨은 상태도 다시 그린다.
+*/
+(function(){
+  'use strict';
+
+  function navOff(){
+    document.querySelectorAll('nav button[data-nav]').forEach(function(btn){
+      btn.classList.remove('on');
+      btn.removeAttribute('aria-current');
+      btn.setAttribute('aria-pressed','false');
+    });
+  }
+  function topNow(){
+    var m=document.querySelector('main');
+    if(!m)return;
+    m.scrollTop=0;
+    try{m.scrollTo({top:0,left:0,behavior:'auto'});}catch(_){ }
+  }
+  function displayed(el){
+    if(!el)return false;
+    try{return getComputedStyle(el).display!=='none';}catch(_){return el.style.display!=='none';}
+  }
+  function forceSelectV995(keepPicker){
+    try{
+      if(typeof state==='undefined'||state?.myTeam)return false;
+      var scr=document.getElementById('scr-select');
+      if(!scr)return false;
+      document.querySelectorAll('.screen').forEach(function(el){el.classList.toggle('on',el===scr);});
+      navOff();
+      topNow();
+
+      var ss=document.getElementById('slotStatus');
+      var tp=document.getElementById('teamPicker');
+      var hint=document.getElementById('selectHint');
+      var back=document.getElementById('pickBackBtn');
+      var pickerWasVisible=displayed(tp);
+      var usePicker=keepPicker===true || pickerWasVisible;
+
+      if(usePicker){
+        if(ss)ss.style.display='none';
+        if(hint)hint.style.display='none';
+        if(back)back.style.display='';
+        if(tp)tp.style.display='';
+        if(typeof renderTeamGrid==='function' && (!document.getElementById('teamGrid')?.children.length))renderTeamGrid();
+      }else{
+        if(tp)tp.style.display='none';
+        if(back)back.style.display='none';
+        if(hint)hint.style.display='';
+        if(ss)ss.style.display='';
+        if(typeof renderSlots==='function')renderSlots();
+      }
+
+      topNow();
+      requestAnimationFrame(function(){navOff();topNow();});
+      setTimeout(function(){navOff();topNow();},60);
+      return true;
+    }catch(e){console.error('v0.99.5 선택 화면 강제 복구:',e);return false;}
+  }
+
+  window.repairSelectScreenV995=forceSelectV995;
+
+  // 모든 기존 캡처 리스너보다 뒤에 등록되지만, 구단이 없을 때 최종 화면 상태를 즉시 다시 잡는다.
+  document.addEventListener('click',function(e){
+    var btn=e.target?.closest?.('nav button[data-nav]');
+    if(!btn||state?.myTeam)return;
+    setTimeout(function(){forceSelectV995(false);},0);
+    setTimeout(function(){forceSelectV995(false);},80);
+  },true);
+
+  // PWA 복귀/새로고침 시 브라우저가 스크롤 위치를 되살리는 시점까지 반복 보정한다.
+  function bootFix(){if(!state?.myTeam)forceSelectV995(displayed(document.getElementById('teamPicker')));}
+  [0,50,250,800].forEach(function(ms){setTimeout(bootFix,ms);});
+  window.addEventListener('pageshow',function(){setTimeout(bootFix,0);setTimeout(bootFix,120);});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(bootFix,0);});
+})();
+</script>
+
+
+<script>
+/* ═══════════ v0.99.6 · 선택 화면이 비어 잠기는 문제 ═══════════
+   v0.99.5의 복구는 state.myTeam이 있으면 손을 떼도록 되어 있었다.
+   그런데 구단이 이미 있는 상태에서 선택 화면이 떠 있고 슬롯 목록과
+   구단 목록이 둘 다 숨겨져 있으면, 되살리는 쪽이 아무도 없어 화면이
+   통째로 비고 게임에 들어갈 수 없게 된다.
+
+   여기서는 구단 보유 여부를 따지지 않는다. "선택 화면인데 본문이
+   비어 있다"는 사실만 보고 슬롯 목록을 되살린다. 정상일 때는
+   아무 일도 하지 않는다. */
+(function(){
+  'use strict';
+  var VER='v0.99.6 선택 화면';
+
+  function shown(el){
+    if(!el) return false;
+    try{ return getComputedStyle(el).display !== 'none'; }
+    catch(_){ return el.style.display !== 'none'; }
+  }
+  function filled(el){
+    return !!(el && shown(el) && (el.children.length > 0 || el.textContent.trim().length > 0));
+  }
+
+  function broken(){
+    var scr = document.getElementById('scr-select');
+    if(!scr || !scr.classList.contains('on')) return false;      // 선택 화면이 아니면 관심 없음
+    var ss = document.getElementById('slotStatus');
+    var tp = document.getElementById('teamPicker');
+    return !filled(ss) && !filled(tp);                            // 둘 다 비었을 때만 고장으로 본다
+  }
+
+  function repair(){
+    if(!broken()) return false;
+    try{
+      var ss   = document.getElementById('slotStatus');
+      var tp   = document.getElementById('teamPicker');
+      var hint = document.getElementById('selectHint');
+      var back = document.getElementById('pickBackBtn');
+
+      // 슬롯 목록으로 되돌린다. 여기서 다시 구단을 고르거나 기존 슬롯에 들어갈 수 있다.
+      if(tp)   tp.style.display   = 'none';
+      if(back) back.style.display = 'none';
+      if(hint) hint.style.display = '';
+      if(ss)   ss.style.display   = '';
+      if(typeof renderSlots === 'function') renderSlots();
+
+      // 슬롯 목록마저 비면 구단 목록이라도 띄워 진입로를 남긴다.
+      if(!filled(document.getElementById('slotStatus'))){
+        if(ss) ss.style.display = 'none';
+        if(tp) tp.style.display = '';
+        if(back) back.style.display = '';
+        if(typeof renderTeamGrid === 'function') renderTeamGrid();
+      }
+      console.info(VER + ': 비어 있던 선택 화면을 되살렸습니다.');
+      return true;
+    }catch(e){
+      console.error(VER + ':', e);
+      return false;
+    }
+  }
+  window.repairSelectScreenV996 = repair;
+
+  // 화면이 비는 시점들: 부팅 직후, 탭 조작 뒤, 앱 복귀 뒤
+  [0, 120, 400, 900].forEach(function(ms){ setTimeout(repair, ms); });
+  document.addEventListener('click', function(){ setTimeout(repair, 0); setTimeout(repair, 120); }, true);
+  window.addEventListener('pageshow', function(){ setTimeout(repair, 0); setTimeout(repair, 150); });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(repair, 0); });
+})();
+</script>
 
 <script id="single-initial-render-v082">
 /* ───────────────────────────────────────────
