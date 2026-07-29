@@ -17,7 +17,12 @@ self.addEventListener('install', event => {
     try {
       const cache = await caches.open(CACHE);
       // 하나라도 실패하면 설치 전체가 실패하므로 개별로 처리한다.
-      await Promise.all(PRECACHE.map(u => cache.add(u).catch(() => {})));
+      // 문서는 HTTP 캐시를 건너뛰고 받아야 옛 파일이 굳지 않는다.
+      await Promise.all(PRECACHE.map(u => {
+        const isDoc = /\.html?$/i.test(u) || u.endsWith('/');
+        const r = isDoc ? new Request(u, {cache: 'reload'}) : u;
+        return cache.add(r).catch(() => {});
+      }));
     } catch (err) {
       // 프리캐시 실패는 치명적이지 않다. 설치는 계속한다.
     }
@@ -45,9 +50,19 @@ self.addEventListener('fetch', event => {
   // 폰트 등 외부 도메인은 브라우저에 맡긴다.
   if (url.origin !== self.location.origin) return;
 
+  // 문서(HTML)는 브라우저 HTTP 캐시를 건너뛰고 서버에서 직접 받는다.
+  // 이걸 안 하면 fetch()가 GitHub Pages의 10분짜리 캐시를 그대로 돌려주어
+  // 네트워크 우선으로 만들어도 새 파일이 오지 않는다.
+  const isDoc = req.mode === 'navigate' ||
+                (req.destination === 'document') ||
+                /\.html?($|\?)/i.test(url.pathname + url.search) ||
+                url.pathname.endsWith('/');
+
   event.respondWith((async () => {
     try {
-      const fresh = await fetch(req);
+      const fresh = isDoc
+        ? await fetch(new Request(req.url, {cache: 'reload', credentials: 'same-origin'}))
+        : await fetch(req);
       if (fresh && fresh.ok && fresh.type !== 'opaque') {
         const cache = await caches.open(CACHE);
         cache.put(req, fresh.clone()).catch(() => {});
