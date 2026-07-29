@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.0.0';
+window.APP_VERSION='v1.0.1';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -21626,7 +21626,7 @@ window.jumpOffseasonTaskV66=function(key){
    ────────────────────────────────────────────────────────────────────────────────────────── */
 (function(){
   'use strict';
-  window.APP_VERSION='v1.0.0';
+  window.APP_VERSION='v1.0.1';
   window.GAME_VERSION=window.APP_VERSION;
   function syncVersionV93(){
     try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
@@ -23079,7 +23079,7 @@ header .subline{align-items:center}
 })();
 </script>
 
-<!-- v1.0.0 · 5개 주요 화면 콘셉트 UI 실구현 -->
+<!-- v1.0.1 · 5개 주요 화면 콘셉트 UI 실구현 -->
 <style id="concept-five-pages-v999">
 /* 기준: 앞서 확정한 구단/라인업/경기/운영/순위 5개 시안. 기능은 유지하고 정보 구조와 카드 문법을 통일한다. */
 header::before{display:none!important}
@@ -23181,7 +23181,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 <script id="concept-five-pages-v999-script">
 (function(){
   'use strict';
-  var V='v1.0.0'; window.APP_VERSION=V; window.GAME_VERSION=V;
+  var V='v1.0.1'; window.APP_VERSION=V; window.GAME_VERSION=V;
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function num(v,d){v=Number(v)||0;return d==null?String(Math.round(v)):v.toFixed(d);}
   function pName(p){try{return typeof playerDisplayName==='function'?playerDisplayName(p):String(p&&p[0]||'선수');}catch(_){return String(p&&p[0]||'선수');}}
@@ -23189,6 +23189,13 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   function pPos(x){var p=x.p||[];if(x.kind==='bat')return p[2]||'BAT';return p[2]==='선발'?'SP':p[2]==='마무리'?'CL':'RP';}
   function allPlayers(t){var a=[];(t.bat||[]).forEach(function(p,i){a.push({kind:'bat',idx:i,p:p,ovr:pOvr(t,'bat',p)});});(t.pit||[]).forEach(function(p,i){a.push({kind:'pit',idx:i,p:p,ovr:pOvr(t,'pit',p)});});a.sort(function(x,y){return y.ovr-x.ovr||pName(x.p).localeCompare(pName(y.p),'ko');});return a;}
   function hash(s){var h=2166136261;for(var i=0;i<String(s).length;i++){h^=String(s).charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+  /* v1.0.1 · 선수 사진은 '대표 자리'가 아니라 선수 자체에 귀속한다.
+     대표 5명/TOP3가 바뀌어도 해당 선수의 사진을 따라가며, 등록 사진이 없으면 기존 생성 얼굴을 사용한다. */
+  window.PLAYER_PORTRAITS_V101=window.PLAYER_PORTRAITS_V101||{};
+  function portraitKey(t,x){
+    var id=null;try{id=typeof window.playerIdentityV463==='function'?window.playerIdentityV463(x&&x.p):null;}catch(_){}
+    return id?('id:'+id):('nm:'+pName(x&&x.p));
+  }
   function face(name,color){
     var h=hash(name),skin=['#E8B58F','#DFA77E','#C98D68','#B97857'][h%4],hair=['#171817','#2A211D','#101211','#3A2A22'][h%4],c=color||'#255DA7',ini=Array.from(String(name||'선수')).slice(-2).join('');
     var jersey=(h%3===0)?'#F5F5F1':'#EEF1ED';
@@ -23227,8 +23234,23 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     if(a.length<3){var r=record(),rk=teamRank();var fallback=[{title:t.name+' 시즌 현황',body:r.w+'승 '+r.l+'패 '+r.t+'무 · 현재 '+rk+'위',ico:'📊'},{title:'선수단 운영',body:'핵심 선수와 로스터 상태를 확인하세요.',ico:'⚾'},{title:'다음 경기 준비',body:'라인업과 경기 전략을 점검할 수 있습니다.',ico:'📅'}];fallback.forEach(function(x){if(a.length<3)a.push(x);});}
     return a.slice(0,3);
   }
-  function core3(t){return allPlayers(t).slice(0,3);}
-  function reps5(t){return allPlayers(t).slice(0,5);}
+  function portrait(t,x){
+    var bank=window.PLAYER_PORTRAITS_V101||{},key=portraitKey(t,x),name=pName(x&&x.p);
+    return bank[key]||bank['name:'+name]||bank[name]||face(name,t&&t.c);
+  }
+  window.playerPortraitKeyV101=function(team,kind,idx){
+    try{var a=kind==='bat'?team.bat:team.pit,p=a&&a[idx];return p?portraitKey(team,{kind:kind,idx:idx,p:p}):null;}catch(_){return null;}
+  };
+  window.playerPortraitSrcV101=function(team,kind,idx){
+    try{var a=kind==='bat'?team.bat:team.pit,p=a&&a[idx];return p?portrait(team,{kind:kind,idx:idx,p:p}):'';}catch(_){return '';}
+  };
+  function featuredPlayers(t,n){
+    /* 매 렌더 시 현재 로스터에서 다시 뽑는다. 트레이드/성장/방출 뒤 고정 명단이 남지 않는다. */
+    return allPlayers(t).slice(0,Math.max(0,n|0));
+  }
+  window.featuredPlayersV101=function(team,n){return featuredPlayers(team,n||5).slice();};
+  function core3(t){return featuredPlayers(t,3);}
+  function reps5(t){return featuredPlayers(t,5);}
   function clubDashboardHtml(){
     if(!state||!state.myTeam)return'';var t=getTeam(state.myTeam),r=record(),rk=teamRank(),gp=gameCount(),st=teamStats(t),p=Number(state.popularity||50),tops=core3(t),reps=reps5(t),sched=nextMatches(t),news=newsRows(t),pct=(r.w+r.l)?r.w/(r.w+r.l):0;
     var value=typeof ecoOn==='function'&&ecoOn()?money():'자유 모드';
@@ -23239,7 +23261,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       +'<div class="club-kpi-v999"><div class="k">팬 기대</div><div class="v green">'+esc(fanLabel())+'</div><div class="s">인기 '+num(p,1)+'</div></div>'
       +'<div class="club-kpi-v999"><div class="k">홈구장</div><div class="v small">'+esc(stadium(t))+'</div><div class="s">홈 경기 운영</div></div>'
       +'<div class="club-kpi-v999"><div class="k">구단 가치</div><div class="v">'+esc(value)+'</div><div class="s">'+(Number(state.money||0)>=0?'재정 건전':'재정 주의')+'</div></div></div>'
-      +'<div class="club-reps-v999">'+reps.map(function(x){var n=pName(x.p);return '<button class="club-rep-v999" type="button" data-player-kind-v999="'+x.kind+'" data-player-index-v999="'+x.idx+'"><img alt="" src="'+face(n,t.c)+'"><span class="n">'+esc(n)+'</span><span class="o">OVR '+x.ovr+'</span></button>';}).join('')+'</div></div>'
+      +'<div class="club-reps-v999">'+reps.map(function(x){var n=pName(x.p);return '<button class="club-rep-v999" type="button" data-player-kind-v999="'+x.kind+'" data-player-index-v999="'+x.idx+'"><img alt="" src="'+portrait(t,x)+'"><span class="n">'+esc(n)+'</span><span class="o">OVR '+x.ovr+'</span></button>';}).join('')+'</div></div>'
       +'<div class="club-two-v999">'
       +'<div class="concept-panel-v999"><div class="concept-panel-head-v999"><div class="concept-panel-title-v999">최근 일정</div><div class="concept-panel-more-v999">'+(state.season?'시즌 '+(state.season.day||0)+'일차':'시즌 준비')+'</div></div><div class="club-list-v999">'+(sched.length?sched.map(function(x){return '<div class="club-list-row-v999"><span class="lead">'+x.day+'경기</span><span class="sub">'+(x.where==='홈'?'vs ':'@ ')+esc(x.opp)+'</span><span class="tag">'+(x.done?'완료':x.where)+'</span></div>';}).join(''):'<div class="club-news-item-v999"><div class="txt"><div class="t">시즌 일정 준비 중</div><div class="b">시즌을 시작하면 최근 일정이 표시됩니다.</div></div></div>')+'</div></div>'
       +'<div class="concept-panel-v999"><div class="concept-panel-head-v999"><div class="concept-panel-title-v999">최근 소식</div><div class="concept-panel-more-v999">구단 뉴스</div></div><div class="club-news-v999">'+news.map(function(x){return '<div class="club-news-item-v999"><span class="ico">'+x.ico+'</span><div class="txt"><div class="t">'+esc(x.title)+'</div><div class="b">'+esc(x.body)+'</div></div></div>';}).join('')+'</div></div></div>'
@@ -23248,7 +23270,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       +'<div class="club-goal-v999"><span class="i">🏆</span><span class="t">정규 시즌 1위</span><span class="v">현재 '+rk+'위 ('+r.w+'승 '+r.l+'패)</span></div>'
       +'<div class="club-goal-v999"><span class="i">🚩</span><span class="t">한국시리즈 우승</span><span class="v">'+(state.worldHistory&&state.worldHistory.some(function(x){return x&&x.champion===state.myTeam;})?'달성 기록':'0 / 1')+'</span></div>'
       +'<div class="club-goal-v999"><span class="i">⭐</span><span class="t">팬 만족도 90 이상</span><span class="v">현재 '+num(p,1)+'</span></div></div></div>'
-      +'<div class="concept-panel-v999"><div class="concept-panel-head-v999"><div class="concept-panel-title-v999">핵심 선수 TOP 3</div><div class="concept-panel-more-v999">TEAM CORE</div></div><div class="club-core-v999">'+tops.map(function(x,i){var n=pName(x.p);return '<button type="button" class="club-core-row-v999" data-player-kind-v999="'+x.kind+'" data-player-index-v999="'+x.idx+'"><span class="rk">'+(i+1)+'</span><img alt="" src="'+face(n,t.c)+'"><span><span class="nm">'+esc(n)+'</span><span class="st">'+esc(pPos(x))+'　'+esc(playerStatLine(t,x))+'</span></span><span class="ov">'+x.ovr+'</span></button>';}).join('')+'</div></div></div>'
+      +'<div class="concept-panel-v999"><div class="concept-panel-head-v999"><div class="concept-panel-title-v999">핵심 선수 TOP 3</div><div class="concept-panel-more-v999">TEAM CORE</div></div><div class="club-core-v999">'+tops.map(function(x,i){var n=pName(x.p);return '<button type="button" class="club-core-row-v999" data-player-kind-v999="'+x.kind+'" data-player-index-v999="'+x.idx+'"><span class="rk">'+(i+1)+'</span><img alt="" src="'+portrait(t,x)+'"><span><span class="nm">'+esc(n)+'</span><span class="st">'+esc(pPos(x))+'　'+esc(playerStatLine(t,x))+'</span></span><span class="ov">'+x.ovr+'</span></button>';}).join('')+'</div></div></div>'
       +'<div class="concept-panel-v999 club-teamstats-v999"><div class="club-stat-v999"><div class="k">팀 성적 (현재 순위)</div><div class="v">'+rk+'위</div><div class="s">'+r.w+'승 '+r.l+'패 '+r.t+'무 · 승률 '+(gp?pct.toFixed(3).replace('0.','.'):'-')+'</div></div><div class="club-stat-v999"><div class="k">경기</div><div class="v">'+gp+'</div><div class="s">/ '+(typeof seasonLenV42==='function'?seasonLenV42():36)+'</div></div><div class="club-stat-v999"><div class="k">연봉</div><div class="v">'+num(salary(),1)+'</div><div class="s">억</div></div><div class="club-stat-v999"><div class="k">팀 타율</div><div class="v">'+(st.avg?st.avg.toFixed(3).replace('0.','.'):'-')+'</div><div class="s">시즌 기록</div></div><div class="club-stat-v999"><div class="k">팀 ERA</div><div class="v">'+(st.era?st.era.toFixed(2):'-')+'</div><div class="s">시즌 기록</div></div></div>'
       +'</div>';
   }
@@ -23307,7 +23329,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 
 
 
-<!-- v1.0.0 · 설정 중복 정리 + 슬롯 삭제 UI 개편 -->
+<!-- v1.0.1 · 설정 중복 정리 + 슬롯 삭제 UI 개편 -->
 <style id="save-settings-cleanup-v1000">
 .slot-delete-shell-v1000{display:grid;gap:10px;margin-top:16px}
 .slot-delete-card-v1000{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px;border:1px solid rgba(183,211,194,.15);border-radius:15px;background:linear-gradient(145deg,#0D2118,#091911);color:#ECEFEA}
@@ -23331,7 +23353,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 <script id="save-settings-cleanup-v1000-script">
 (function(){
   'use strict';
-  var V='v1.0.0';window.APP_VERSION=V;window.GAME_VERSION=V;
+  var V='v1.0.1';window.APP_VERSION=V;window.GAME_VERSION=V;
   function esc1000(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function slotInfo1000(i){
     var sl=(store&&Array.isArray(store.slots))?store.slots[i]:null,cur=!!(store&&store.active===i);
@@ -23391,6 +23413,32 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       show('select');
     }
   }catch(e){console.error('v0.82 초기 화면 단일 렌더:',e);}
+})();
+</script>
+
+
+<!-- v1.0.1 · 동적 대표선수 + 선수별 사진 연결 -->
+<script id="dynamic-featured-portraits-v101">
+(function(){
+  'use strict';
+  var V='v1.0.1'; window.APP_VERSION=V; window.GAME_VERSION=V;
+  var prevOpen=window.openSheet;
+  if(typeof prevOpen==='function'&&!prevOpen.__portraitV101){
+    var wrapped=function(team,tab,idx){
+      var r=prevOpen.apply(this,arguments);
+      try{
+        if(team&&(tab==='bat'||tab==='pit')&&Number.isInteger(idx)&&typeof window.playerPortraitSrcV101==='function'){
+          var src=window.playerPortraitSrcV101(team,tab,idx),sheet=document.getElementById('sheet');
+          var img=sheet&&sheet.querySelector('.player-detail-hero-v998 img.player-face-img-v998');
+          if(img&&src)img.src=src;
+        }
+      }catch(e){console.error(V+' 선수 사진 연결:',e);}
+      return r;
+    };
+    wrapped.__portraitV101=true;
+    window.openSheet=wrapped; try{openSheet=wrapped;}catch(_){}
+  }
+  try{document.title='우리팀을 만들자 '+V;document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){el.textContent=V;});}catch(_){}
 })();
 </script>
 </body>
