@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v0.99.4';
+window.APP_VERSION='v0.99.5';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -2184,7 +2184,22 @@ function pitOvr(p, tid){
 const screens = {select:'scr-select', team:'scr-team', lineup:'scr-lineup', game:'scr-game', front:'scr-front', rank:'scr-rank', lock:'scr-lock'};
 function show(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  document.getElementById(screens[name]).classList.add('on');
+  const target=document.getElementById(screens[name]);
+  if(target)target.classList.add('on');
+
+  // v0.99.5 · 구단 미선택 화면은 항상 화면 맨 위에서 정상 내용이 보이게 복구한다.
+  if(name==='select' && (!state || !state.myTeam)){
+    try{
+      const mainEl=document.querySelector('main');
+      if(mainEl){ mainEl.scrollTop=0; try{mainEl.scrollTo({top:0,left:0,behavior:'auto'});}catch(_){ } }
+      document.querySelectorAll('nav button[data-nav]').forEach(btn=>{
+        btn.classList.remove('on'); btn.removeAttribute('aria-current'); btn.setAttribute('aria-pressed','false');
+      });
+      // 기본은 슬롯 목록. 빈 슬롯 선택 함수는 이 호출 뒤에 teamPicker를 다시 켠다.
+      if(typeof renderSlots==='function')renderSlots();
+      if(mainEl)requestAnimationFrame(()=>{mainEl.scrollTop=0;});
+    }catch(e){console.error('v0.99.5 선택 화면 기본 복구:',e);}
+  }
 }
 function refreshHeader(){
   const l = document.getElementById('subLeft');
@@ -21586,7 +21601,7 @@ window.jumpOffseasonTaskV66=function(key){
    ────────────────────────────────────────────────────────────────────────────────────────── */
 (function(){
   'use strict';
-  window.APP_VERSION='v0.99.4';
+  window.APP_VERSION='v0.99.5';
   window.GAME_VERSION=window.APP_VERSION;
   function syncVersionV93(){
     try{document.title='우리팀을 만들자 '+window.APP_VERSION;}catch(_){ }
@@ -22671,88 +22686,84 @@ window.jumpOffseasonTaskV66=function(key){
 </script>
 
 
-<script id="select-screen-recovery-v0994">
-/* ═══════════ v0.99.4 · 구단 미선택 화면 복구 ═══════════
-   - 구단이 없는 상태에서 라인업/경기/운영/순위를 눌러도 빈 화면이 남지 않게 한다.
-   - 슬롯 목록과 구단 선택기 중 사용자가 보고 있던 단계는 유지한다.
-   - 둘 다 숨겨진 비정상 상태라면 슬롯 목록을 다시 그린다.
-   - 선택 화면에서는 하단 내비게이션의 잘못된 활성 표시를 모두 해제한다.
+<script id="select-screen-recovery-v0995">
+/* ═══════════ v0.99.5 · 구단 선택 화면 강제 복구 ═══════════
+   - iOS/PWA가 이전 스크롤 위치를 복원해 내용이 화면 위쪽에 숨어 보이던 경우를 차단한다.
+   - 구단 미선택 상태에서 하단 탭을 누르면 다른 화면으로 보내지 않고 선택 화면을 정상 복구한다.
+   - 슬롯 목록/구단 선택기가 비거나 숨은 상태도 다시 그린다.
 */
 (function(){
   'use strict';
-  function clearSelectNavV994(){
+
+  function navOff(){
     document.querySelectorAll('nav button[data-nav]').forEach(function(btn){
       btn.classList.remove('on');
       btn.removeAttribute('aria-current');
+      btn.setAttribute('aria-pressed','false');
     });
   }
-  function visibleV994(el){
+  function topNow(){
+    var m=document.querySelector('main');
+    if(!m)return;
+    m.scrollTop=0;
+    try{m.scrollTo({top:0,left:0,behavior:'auto'});}catch(_){ }
+  }
+  function displayed(el){
     if(!el)return false;
     try{return getComputedStyle(el).display!=='none';}catch(_){return el.style.display!=='none';}
   }
-  function repairSelectV994(){
+  function forceSelectV995(keepPicker){
     try{
       if(typeof state==='undefined'||state?.myTeam)return false;
+      var scr=document.getElementById('scr-select');
+      if(!scr)return false;
+      document.querySelectorAll('.screen').forEach(function(el){el.classList.toggle('on',el===scr);});
+      navOff();
+      topNow();
+
       var ss=document.getElementById('slotStatus');
       var tp=document.getElementById('teamPicker');
       var hint=document.getElementById('selectHint');
       var back=document.getElementById('pickBackBtn');
-      clearSelectNavV994();
+      var pickerWasVisible=displayed(tp);
+      var usePicker=keepPicker===true || pickerWasVisible;
 
-      var slotVisible=visibleV994(ss), pickerVisible=visibleV994(tp);
-      if(pickerVisible){
+      if(usePicker){
         if(ss)ss.style.display='none';
         if(hint)hint.style.display='none';
         if(back)back.style.display='';
-        if(typeof renderTeamGrid==='function')renderTeamGrid();
-        return true;
-      }
-      if(slotVisible){
+        if(tp)tp.style.display='';
+        if(typeof renderTeamGrid==='function' && (!document.getElementById('teamGrid')?.children.length))renderTeamGrid();
+      }else{
         if(tp)tp.style.display='none';
-        if(hint)hint.style.display='';
         if(back)back.style.display='none';
-        if(ss && !ss.children.length && typeof renderSlots==='function')renderSlots();
-        return true;
-      }
-
-      // 둘 다 숨겨졌다면 기본 단계인 슬롯 목록으로 안전하게 복구한다.
-      if(typeof renderSlots==='function')renderSlots();
-      else{
+        if(hint)hint.style.display='';
         if(ss)ss.style.display='';
-        if(tp)tp.style.display='none';
-        if(hint)hint.style.display='';
-        if(back)back.style.display='none';
+        if(typeof renderSlots==='function')renderSlots();
       }
-      clearSelectNavV994();
+
+      topNow();
+      requestAnimationFrame(function(){navOff();topNow();});
+      setTimeout(function(){navOff();topNow();},60);
       return true;
-    }catch(e){console.error('v0.99.4 선택 화면 복구:',e);return false;}
+    }catch(e){console.error('v0.99.5 선택 화면 강제 복구:',e);return false;}
   }
 
-  window.repairSelectScreenV994=repairSelectV994;
-  var oldShow=window.show;
-  if(typeof oldShow==='function'){
-    window.show=function(name){
-      var r=oldShow.apply(this,arguments);
-      if(name==='select' && !state?.myTeam){
-        repairSelectV994();
-        setTimeout(repairSelectV994,0);
-        setTimeout(clearSelectNavV994,60);
-      }
-      return r;
-    };
-  }
+  window.repairSelectScreenV995=forceSelectV995;
 
+  // 모든 기존 캡처 리스너보다 뒤에 등록되지만, 구단이 없을 때 최종 화면 상태를 즉시 다시 잡는다.
   document.addEventListener('click',function(e){
     var btn=e.target?.closest?.('nav button[data-nav]');
     if(!btn||state?.myTeam)return;
-    setTimeout(function(){
-      try{
-        if(document.getElementById('scr-select')?.classList.contains('on'))repairSelectV994();
-      }catch(_){ }
-    },0);
-  },false);
+    setTimeout(function(){forceSelectV995(false);},0);
+    setTimeout(function(){forceSelectV995(false);},80);
+  },true);
 
-  if(!state?.myTeam) setTimeout(repairSelectV994,0);
+  // PWA 복귀/새로고침 시 브라우저가 스크롤 위치를 되살리는 시점까지 반복 보정한다.
+  function bootFix(){if(!state?.myTeam)forceSelectV995(displayed(document.getElementById('teamPicker')));}
+  [0,50,250,800].forEach(function(ms){setTimeout(bootFix,ms);});
+  window.addEventListener('pageshow',function(){setTimeout(bootFix,0);setTimeout(bootFix,120);});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(bootFix,0);});
 })();
 </script>
 
