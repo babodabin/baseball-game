@@ -23441,5 +23441,136 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   try{document.title='우리팀을 만들자 '+V;document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){el.textContent=V;});}catch(_){}
 })();
 </script>
+
+
+<!-- v1.0.2 · 운영 메뉴 정리 + 팀 교체 + 설정 백업복원 + 스카우트 원클릭 -->
+<style id="ops-settings-v102-style">
+.team-switch-list-v102{display:grid;gap:10px;margin-top:14px}
+.team-switch-card-v102{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px;border:1px solid rgba(183,211,194,.16);border-radius:15px;background:linear-gradient(145deg,#0D2118,#091911)}
+.team-switch-card-v102.current{border-color:rgba(244,196,94,.62);box-shadow:inset 3px 0 #F4C45E;background:linear-gradient(145deg,#14281F,#0A1A13)}
+.team-switch-card-v102.empty{background:#0A1812}
+.team-switch-logo-v102{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:#08160F;overflow:hidden}
+.team-switch-logo-v102 img,.team-switch-logo-v102 .team-logo{max-width:42px;max-height:42px;object-fit:contain}
+.team-switch-logo-v102 .plus{font-size:24px;color:#71847A}
+.team-switch-copy-v102{min-width:0}.team-switch-copy-v102 .slot{color:#A9B8B1;font:800 8.5px 'IBM Plex Mono',monospace}.team-switch-copy-v102 .name{margin-top:2px;color:#F0F2ED;font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.team-switch-copy-v102 .meta{margin-top:4px;color:#8FA198;font-size:9.5px;line-height:1.4}
+.team-switch-badge-v102{display:inline-block;margin-left:6px;padding:3px 6px;border:1px solid rgba(244,196,94,.32);border-radius:999px;color:#F4C45E;font:800 7.5px 'IBM Plex Mono',monospace;vertical-align:1px}
+.team-switch-action-v102{min-width:78px;height:40px;padding:0 10px;border:1px solid rgba(244,196,94,.38);border-radius:10px;background:rgba(244,196,94,.10);color:#F4C45E;font-size:10px;font-weight:900}
+.team-switch-action-v102:disabled{opacity:.45;color:#A8B4AE;border-color:rgba(183,211,194,.15);background:rgba(255,255,255,.03)}
+.scout-grid-v102{display:grid;gap:9px;margin-top:14px}.scout-card-v102{width:100%;text-align:left;padding:13px 14px;border:1px solid rgba(183,211,194,.16);border-radius:14px;background:#0B1D15;color:#E9EEEA}.scout-card-v102.on{border-color:rgba(244,196,94,.62);box-shadow:inset 3px 0 #F4C45E;background:#13271D}.scout-card-v102 .top{display:flex;justify-content:space-between;gap:10px;align-items:center}.scout-card-v102 .name{font-size:13px;font-weight:900}.scout-card-v102 .pick{color:#F4C45E;font-size:10px;font-weight:900}.scout-card-v102 .desc{margin-top:5px;color:#98A9A0;font-size:10px;line-height:1.5}
+#subRight[data-team-switch-v102="1"]{cursor:pointer;user-select:none}
+#subRight[data-team-switch-v102="1"]::after{content:' ↔';font-size:.8em;color:var(--amber);opacity:.9}
+@media(max-width:390px){.team-switch-card-v102{grid-template-columns:44px minmax(0,1fr)}.team-switch-logo-v102{width:44px;height:44px}.team-switch-action-v102{grid-column:1/-1;width:100%}}
+</style>
+<script id="ops-settings-v102-script">
+(function(){
+  'use strict';
+  var V='v1.0.2';
+  window.APP_VERSION=V; window.GAME_VERSION=V;
+  function esc102(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function slotInfo102(i){
+    var sl=store&&Array.isArray(store.slots)?store.slots[i]:null,cur=!!(store&&store.active===i);
+    if(!sl||!sl.myTeam)return {i:i,empty:true,cur:cur,name:'비어 있음',mode:'새 구단을 선택할 수 있습니다.',games:0,team:null,teamId:null};
+    var t=null;try{t=getTeam(sl.myTeam);}catch(_){try{t=TEAMS.find(function(x){return x.id===sl.myTeam;});}catch(__){}}
+    var games=0;try{var rr=sl.season&&sl.season.rec&&sl.season.rec[sl.myTeam];games=rr?((+rr.w||0)+(+rr.l||0)+(+rr.t||0)):(Number(sl.season&&sl.season.day)||0);}catch(_){}
+    return {i:i,empty:false,cur:cur,name:(t&&(t.name||t.real))||sl.myTeam,mode:sl.mode==='sim'?('시뮬 '+(sl.year||1)+'년차'):'실황',games:games,team:t,teamId:sl.myTeam};
+  }
+  function logo102(x){
+    if(x.empty)return '<div class="team-switch-logo-v102"><span class="plus">＋</span></div>';
+    try{return '<div class="team-switch-logo-v102">'+teamLogoHtml(x.teamId,'team-logo',x.name)+'</div>';}catch(_){return '<div class="team-switch-logo-v102">⚾</div>';}
+  }
+  window.openTeamSwitchV102=function(){
+    var sheet=document.getElementById('sheet');if(!sheet)return;
+    var rows=[0,1,2,3,4].map(function(i){var x=slotInfo102(i);return '<div class="team-switch-card-v102 '+(x.cur?'current ':'')+(x.empty?'empty':'')+'">'+logo102(x)+'<div class="team-switch-copy-v102"><div class="slot">SLOT '+(i+1)+'</div><div class="name">'+esc102(x.name)+(x.cur?'<span class="team-switch-badge-v102">현재</span>':'')+'</div><div class="meta">'+(x.empty?esc102(x.mode):(esc102(x.mode)+' · '+x.games+'경기'))+'</div></div><button class="team-switch-action-v102" '+(x.cur?'disabled':'')+' onclick="chooseTeamSlotV102('+i+')">'+(x.cur?'현재 팀':x.empty?'새 구단':'이 팀으로')+'</button></div>';}).join('');
+    sheet.innerHTML='<div class="top"><div class="pname">🔁 팀 교체</div><button class="close" onclick="closeSheet()">✕</button></div><div class="meta">저장 슬롯을 골라 다른 구단으로 이동합니다. 빈 슬롯은 새 구단을 만들 수 있습니다.</div><div class="team-switch-list-v102">'+rows+'</div>';
+    var mask=document.getElementById('mask');if(mask)mask.classList.add('on');
+  };
+  window.chooseTeamSlotV102=function(i){
+    try{
+      i=Math.max(0,Math.min(4,Number(i)||0));
+      var x=slotInfo102(i); if(x.cur)return;
+      closeSheet();
+      if(x.empty){ if(typeof switchSlotEmpty==='function')switchSlotEmpty(i); }
+      else if(typeof switchSlot==='function')switchSlot(i);
+    }catch(e){console.error(V+' 팀 교체:',e);try{showAlert('팀 교체 중 문제가 생겼습니다.');}catch(_){}}
+  };
+
+  window.openScoutV102=function(){
+    var sheet=document.getElementById('sheet');if(!sheet)return;
+    try{if(typeof ensureScout==='function')ensureScout();if(typeof ensureFacilities==='function')ensureFacilities();}catch(_){}
+    var info=(typeof SCOUT_INFO==='object'&&SCOUT_INFO)||{};var cur=state&&state.scout;var fc=1;try{fc=facilityLevel('scouting');}catch(_){}
+    var locked=false;try{locked=!!(isOffseason()&&state.season&&state.season.market);}catch(_){}
+    var rows=Object.keys(info).map(function(k){var v=info[k]||{};var effCount=v.count||0,err=v.ovrErr||0;try{if(typeof effectiveScoutCount==='function'&&k===cur)effCount=effectiveScoutCount();if(typeof effectiveScoutOvrErr==='function'&&k===cur)err=effectiveScoutOvrErr();}catch(_){}
+      return '<button class="scout-card-v102 '+(cur===k?'on':'')+'" onclick="chooseScoutV102(\''+k+'\')"><span class="top"><span class="name">'+esc102(v.name||k)+'</span><span class="pick">'+(cur===k?'선택 중':'선택')+'</span></span><span class="desc">'+esc102(v.desc||'')+(cur===k?(' · 시설 Lv.'+fc+' 적용'):'')+'</span></button>';}).join('');
+    sheet.innerHTML='<div class="top"><div class="pname">🔭 스카우트</div><button class="close" onclick="closeSheet()">✕</button></div><div class="meta">'+(locked?'현재 드래프트 후보는 이미 확정되어 변경 내용은 다음 시즌부터 적용됩니다.':'한 번 눌러 스카우트 등급을 선택할 수 있습니다.')+'</div><div class="scout-grid-v102">'+rows+'</div>';
+    var mask=document.getElementById('mask');if(mask)mask.classList.add('on');
+  };
+  window.chooseScoutV102=function(key){
+    try{if(!SCOUT_INFO||!SCOUT_INFO[key])return;state.scout=key;save();try{renderFront();}catch(_){}window.openScoutV102();}catch(e){console.error(V+' 스카우트:',e);}
+  };
+
+  function patchFront102(){
+    var body=document.getElementById('frontBody');if(!body)return;
+    /* 백업·복원은 설정으로 이동 */
+    body.querySelectorAll('.front-backup-v999').forEach(function(x){x.remove();});
+    var grids=body.querySelectorAll('.front-menu-grid-v999');
+    if(!grids.length)return;
+    var main=grids[0];
+    Array.from(main.querySelectorAll('.front-tile-v999')).forEach(function(btn){
+      var title=btn.querySelector('.t'),sub=btn.querySelector('.s'),txt=title?title.textContent.trim():'';
+      if(txt==='선수 관리'){btn.remove();return;}
+      if(txt==='팀 관리'){
+        if(title)title.textContent='팀 교체';if(sub)sub.textContent='다른 저장 슬롯·구단으로 이동';btn.setAttribute('onclick','openTeamSwitchV102()');var ico=btn.querySelector('.ico');if(ico)ico.textContent='🔁';return;
+      }
+      if(txt==='스카우트'){
+        if(sub)sub.textContent='스카우트 등급을 바로 선택';btn.setAttribute('onclick','openScoutV102()');return;
+      }
+    });
+    /* 구버전/다른 렌더에서 팀 관리가 없을 경우 팀 교체를 보장 */
+    var hasSwitch=Array.from(main.querySelectorAll('.front-tile-v999 .t')).some(function(x){return x.textContent.trim()==='팀 교체';});
+    if(!hasSwitch){var b=document.createElement('button');b.className='front-tile-v999';b.setAttribute('onclick','openTeamSwitchV102()');b.innerHTML='<span class="ico">🔁</span><span class="t">팀 교체</span><span class="s">다른 저장 슬롯·구단으로 이동</span>';main.appendChild(b);}
+  }
+
+  var prevRenderFront102=window.renderFront;
+  if(typeof prevRenderFront102==='function'&&!prevRenderFront102.__v102){
+    var rf=function(){var r=prevRenderFront102.apply(this,arguments);try{patchFront102();}catch(e){console.error(V+' 운영 화면:',e);}return r;};rf.__v102=true;window.renderFront=rf;try{renderFront=rf;}catch(_){}
+  }
+
+  var prevSettings102=window.openGameSettingsV462;
+  if(typeof prevSettings102==='function'&&!prevSettings102.__v102){
+    var gs=function(){var r=prevSettings102.apply(this,arguments);try{
+      var sheet=document.getElementById('sheet');if(!sheet)return r;
+      var meta=sheet.querySelector('.meta');if(meta)meta.textContent='게임 진행, 진단, 팀 교체와 저장 데이터를 관리합니다.';
+      var grid=sheet.querySelector('.settings-grid-v462');if(!grid)return r;
+      /* v1.0.1에서 제거했던 백업·복원과 빠진 팀 교체를 설정에 복구 */
+      if(!grid.querySelector('[data-team-switch-card-v102]')){
+        var sw=document.createElement('div');sw.className='settings-card-v462';sw.setAttribute('data-team-switch-card-v102','1');sw.innerHTML='<div class="st-head"><span>🔁 팀 교체</span><span>슬롯 5개</span></div><div class="st-sub">현재 기록을 지우지 않고 다른 저장 슬롯의 구단으로 이동합니다. 빈 슬롯에서는 새 구단을 시작할 수 있습니다.</div><button class="btn ghost" style="margin-top:10px" onclick="openTeamSwitchV102()">팀 교체</button>';
+        var slotCard=Array.from(grid.querySelectorAll('.settings-card-v462')).find(function(c){var h=c.querySelector('.st-head');return h&&/슬롯 삭제|현재 슬롯/.test(h.textContent||'');});
+        if(slotCard)grid.insertBefore(sw,slotCard);else grid.appendChild(sw);
+      }
+      if(!grid.querySelector('[data-backup-card-v102]')){
+        var bk=document.createElement('div');bk.className='settings-card-v462';bk.setAttribute('data-backup-card-v102','1');bk.innerHTML='<div class="st-head"><span>☁️ 백업 · 복원</span><span>저장 데이터</span></div><div class="st-sub">슬롯 5개를 하나의 JSON 파일로 백업하거나 이전 백업을 복원합니다.</div><button class="btn ghost" style="margin-top:10px" onclick="openBackupSheetV3437()">백업 · 복원</button>';
+        var slotCard2=Array.from(grid.querySelectorAll('.settings-card-v462')).find(function(c){var h=c.querySelector('.st-head');return h&&/슬롯 삭제|현재 슬롯/.test(h.textContent||'');});
+        if(slotCard2)grid.insertBefore(bk,slotCard2);else grid.appendChild(bk);
+      }
+    }catch(e){console.error(V+' 설정:',e);}return r;};gs.__v102=true;window.openGameSettingsV462=gs;try{openGameSettingsV462=gs;}catch(_){}
+  }
+
+  var prevBackup102=window.openBackupSheetV3437;
+  if(typeof prevBackup102==='function'&&!prevBackup102.__v102){
+    var ob=function(){var r=prevBackup102.apply(this,arguments);try{var sheet=document.getElementById('sheet');if(sheet&&!sheet.querySelector('[data-back-settings-v102]')){var b=document.createElement('button');b.className='btn ghost';b.setAttribute('data-back-settings-v102','1');b.textContent='← 설정으로';b.onclick=function(){openGameSettingsV462();};sheet.appendChild(b);}}catch(_){}return r;};ob.__v102=true;window.openBackupSheetV3437=ob;
+  }
+
+  function bindHeader102(){
+    var el=document.getElementById('subRight');if(!el)return;
+    if(state&&state.myTeam){el.setAttribute('data-team-switch-v102','1');el.setAttribute('role','button');el.setAttribute('tabindex','0');el.setAttribute('title','팀 교체');el.onclick=function(){openTeamSwitchV102();};el.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openTeamSwitchV102();}};}
+    else{el.removeAttribute('data-team-switch-v102');el.removeAttribute('role');el.removeAttribute('tabindex');el.removeAttribute('title');el.onclick=null;el.onkeydown=null;}
+  }
+  var prevRefresh102=window.refreshHeader;
+  if(typeof prevRefresh102==='function'&&!prevRefresh102.__v102){var rh=function(){var r=prevRefresh102.apply(this,arguments);try{bindHeader102();}catch(_){}return r;};rh.__v102=true;window.refreshHeader=rh;try{refreshHeader=rh;}catch(_){} }
+
+  try{bindHeader102();if(document.getElementById('scr-front')&&document.getElementById('scr-front').classList.contains('on'))patchFront102();document.title='우리팀을 만들자 '+V;document.querySelectorAll('.ver,.version,.version-badge,[data-version]').forEach(function(el){el.textContent=V;});}catch(_){}
+})();
+</script>
+
 </body>
 </html>
