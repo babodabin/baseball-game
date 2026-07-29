@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v0.99.1';
+window.APP_VERSION='v0.99.2';
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1254,11 +1254,11 @@ nav button.lock{opacity:.32}
 <script>
 /* ──────────────────────────────────────────────────
    [004/186] SCRIPT · 0.3KB · 원본 1256행
-   주제  : 팀 수에 따라 시즌 경기 수가 달라진다(10팀 36 / 12팀 33).
+   주제  : 공통 시즌 규칙 표시(10팀 36 / 12팀 33).
    정의  : seasonLenV42
    ────────────────────────────────────────────────── */
-/* 팀 수에 따라 시즌 경기 수가 달라진다(10팀 36 / 12팀 33).
-   화면에 36이 고정돼 있던 것을 실제 일정 길이로 읽게 한다. */
+/* 공통 시즌 규칙은 10팀 36경기 / 12팀 33경기.
+   화면은 저장된 실제 일정 길이를 읽는다. */
 window.seasonLenV42=function(){
   try{
     var n=window.state&&state.season&&Array.isArray(state.season.sched)?state.season.sched.length:0;
@@ -3411,19 +3411,25 @@ function restOk(teamId, pitIdx){
 }
 
 function genSchedule(){
-  // 10팀 라운드로빈(서클법) 9라운드 × 4사이클 = 팀당 36경기
+  // 공통 정규시즌 규칙: 10팀은 상대당 4경기(36경기), 12팀은 상대당 3경기(33경기).
+  // 한 시즌 안에서 모든 상대와 정확히 같은 횟수만 만나도록 한다.
   const ids = TEAMS.map(t=>t.id);
   const n = ids.length;
-  const arr = ids.slice(1);
+  if(n < 2) return [];
+  const cycles = n===10 ? 4 : n===12 ? 3 : 4;
+  const BYE='__BYE__';
+  const list = n%2===0 ? ids.slice() : ids.concat(BYE);
+  const m = list.length;
+  const arr = list.slice(1);
   const rounds = [];
-  for(let r=0;r<n-1;r++){
-    const pairs = [[ids[0], arr[0]]];
-    for(let i=1;i<n/2;i++) pairs.push([arr[i], arr[n-1-i]]);
-    rounds.push(pairs);
+  for(let r=0;r<m-1;r++){
+    const pairs = [[list[0], arr[0]]];
+    for(let i=1;i<m/2;i++) pairs.push([arr[i], arr[m-1-i]]);
+    rounds.push(pairs.filter(([a,b])=>a!==BYE&&b!==BYE));
     arr.unshift(arr.pop());
   }
   const sched = [];
-  for(let c=0;c<4;c++){
+  for(let c=0;c<cycles;c++){
     rounds.forEach(rd=>{
       sched.push(rd.map(([a,b])=> c%2===0 ? {home:a, away:b} : {home:b, away:a}));
     });
@@ -17406,26 +17412,8 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     return d[slot]||d[Object.keys(d)[0]]||null;
   }
 
-  /* ---------- 홀수 팀 일정 (부전승) ---------- */
-  const oldGen=window.genSchedule;
-  window.genSchedule=function(){
-    const ids=TEAMS.map(t=>t.id);
-    if(ids.length%2===0)return oldGen.apply(this,arguments);
-    // 홀수면 더미를 넣어 서클법을 돌리고, 더미와 만난 팀은 그날 부전승(경기 없음)으로 둔다.
-    const BYE='__BYE__';
-    const list=ids.concat(BYE),n=list.length,arr=list.slice(1),rounds=[];
-    for(let r=0;r<n-1;r++){
-      const pairs=[[list[0],arr[0]]];
-      for(let i=1;i<n/2;i++)pairs.push([arr[i],arr[n-1-i]]);
-      rounds.push(pairs.filter(([a,b])=>a!==BYE&&b!==BYE));
-      arr.unshift(arr.pop());
-    }
-    const sched=[];
-    for(let c=0;c<4;c++){
-      rounds.forEach(rd=>sched.push(rd.map(([a,b])=>c%2===0?{home:a,away:b}:{home:b,away:a})));
-    }
-    return sched;
-  };
+  /* ---------- 일정 생성 ---------- */
+  // 정규시즌 일정은 공통 genSchedule() 하나만 사용한다.
 
   /* ---------- 확장 드래프트 대상 만들기 ---------- */
   function ovrOf(p,tid,isBat){try{return isBat?batOvr(p,tid):pitOvr(p,tid);}catch(_){return 60;}}
@@ -17864,29 +17852,8 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
   'use strict';
   const V='v0.65';
 
-  /* ---------- 팀 수에 맞춰 사이클 수를 정해 36경기 근처를 유지 ---------- */
-  const prevGen=window.genSchedule;
-  window.genSchedule=function(){
-    const ids=TEAMS.map(t=>t.id),n=ids.length;
-    if(n<3)return prevGen.apply(this,arguments);
-    // 10팀 9라운드×4=36경기가 기준. 팀이 늘면 사이클을 줄여 시즌 길이를 비슷하게 맞춘다.
-    const cycles=Math.max(2,Math.round(36/(n-1)));
-    const even=n%2===0;
-    const BYE='__BYE__';
-    const list=even?ids.slice():ids.concat(BYE);
-    const m=list.length,arr=list.slice(1),rounds=[];
-    for(let r=0;r<m-1;r++){
-      const pairs=[[list[0],arr[0]]];
-      for(let i=1;i<m/2;i++)pairs.push([arr[i],arr[m-1-i]]);
-      rounds.push(pairs.filter(([a,b])=>a!==BYE&&b!==BYE));
-      arr.unshift(arr.pop());
-    }
-    const sched=[];
-    for(let c=0;c<cycles;c++){
-      rounds.forEach(rd=>sched.push(rd.map(([a,b])=>c%2===0?{home:a,away:b}:{home:b,away:a})));
-    }
-    return sched;
-  };
+  /* ---------- 일정 생성 ---------- */
+  // 10팀 36경기 / 12팀 33경기 공통 규칙은 genSchedule()에서만 관리한다.
 
   /* ---------- AI 신생 구단 ---------- */
   const AI_CANDIDATES=[
@@ -22515,6 +22482,97 @@ window.jumpOffseasonTaskV66=function(key){
       return '자체 점검 오류: '+(e&&e.message||e);
     }
   };
+})();
+</script>
+
+
+<script id="fair-season-schedule-v0992">
+/* ═══════════ v0.99.2 · 공통 정규시즌 10팀 36경기 / 12팀 33경기 ═══════════
+   - 10팀: 9개 상대 × 4경기 = 36경기
+   - 12팀: 11개 상대 × 3경기 = 33경기
+   - 예전 12팀 44경기(4사이클) 저장은 이미 치른 경기 순서를 보존한 채
+     앞 33경기가 완전한 3사이클이면 33경기로 안전하게 잘라낸다.
+*/
+(function(){
+  'use strict';
+
+  function specFor(n){
+    if(n===10)return {cycles:4,total:36};
+    if(n===12)return {cycles:3,total:33};
+    return null;
+  }
+  function pairKey(a,b){return String(a)<String(b)?String(a)+'|'+String(b):String(b)+'|'+String(a);}
+  function fairSchedule(sched,ids,cycles){
+    if(!Array.isArray(sched)||!Array.isArray(ids)||ids.length<2)return false;
+    const even=ids.length%2===0;
+    const roundCount=(even?ids.length-1:ids.length)*cycles;
+    const gamesPerRound=Math.floor(ids.length/2);
+    if(sched.length!==roundCount)return false;
+    const allowed=new Set(ids.map(String)), pairs=new Map(), gp={};
+    ids.forEach(id=>gp[String(id)]=0);
+    for(const rd of sched){
+      if(!Array.isArray(rd)||rd.length!==gamesPerRound)return false;
+      const seen=new Set();
+      for(const m of rd){
+        if(!m)return false;
+        const h=String(m.home),a=String(m.away);
+        if(h===a||!allowed.has(h)||!allowed.has(a)||seen.has(h)||seen.has(a))return false;
+        seen.add(h);seen.add(a);gp[h]++;gp[a]++;
+        const k=pairKey(h,a);pairs.set(k,(pairs.get(k)||0)+1);
+      }
+    }
+    const expectedGp=(ids.length-1)*cycles;
+    if(ids.some(id=>gp[String(id)]!==expectedGp))return false;
+    for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){
+      if((pairs.get(pairKey(ids[i],ids[j]))||0)!==cycles)return false;
+    }
+    return true;
+  }
+  function enforce(){
+    try{
+      if(typeof TEAMS==='undefined'||!Array.isArray(TEAMS)||!state?.season)return false;
+      const ids=TEAMS.map(t=>t.id), spec=specFor(ids.length), s=state.season;
+      if(!spec||!Array.isArray(s.sched))return false;
+      if(fairSchedule(s.sched,ids,spec.cycles))return false;
+
+      const day=Math.max(0,Number(s.day)||0);
+      // 예전 4사이클 일정은 앞쪽 완전 사이클을 그대로 살려 결과/상대 순서를 건드리지 않는다.
+      if(day<=spec.total && s.sched.length>spec.total){
+        const cut=s.sched.slice(0,spec.total);
+        if(fairSchedule(cut,ids,spec.cycles)){
+          s.sched=cut;
+          if(typeof save==='function')save();
+          console.log(window.APP_VERSION+' 시즌 일정 마이그레이션:',ids.length+'팀 '+spec.total+'경기');
+          return true;
+        }
+      }
+      // 아직 한 경기도 하지 않은 비정상 일정은 새 공통 규칙으로 다시 만든다.
+      if(day===0 && typeof genSchedule==='function'){
+        const fresh=genSchedule();
+        if(fairSchedule(fresh,ids,spec.cycles)){
+          s.sched=fresh;
+          if(typeof save==='function')save();
+          return true;
+        }
+      }
+      return false;
+    }catch(e){console.error(window.APP_VERSION+' 일정 규칙 적용:',e);return false;}
+  }
+
+  window.seasonScheduleSpecV992=specFor;
+  window.ensureFairSeasonScheduleV992=enforce;
+
+  // 현재 슬롯을 즉시 정리하고, 슬롯 전환 뒤에도 예전 일정이 다시 살아나지 않게 한다.
+  enforce();
+  ['switchSlot','switchSlotEmpty','startWithMode','newSeason'].forEach(function(name){
+    const prev=window[name];
+    if(typeof prev!=='function')return;
+    window[name]=function(){
+      const r=prev.apply(this,arguments);
+      try{enforce();}catch(_){ }
+      return r;
+    };
+  });
 })();
 </script>
 
