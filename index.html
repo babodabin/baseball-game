@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.0.16';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.0.17';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -24871,6 +24871,140 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 
+
+<!-- v1.0.18 · 프런트 렌더 경로 단계 통합 + 스카우트 색상 정확 보정 START -->
+<style id="v118-front-render-heal-style">
+/* 스카우트 세 선택지는 모두 같은 진한 초록색. 현재 선택은 배경이 아니라 금색 테두리/글씨만 표시. */
+.scout-card-v102,
+.scout-card-v102.on,
+#scr-front .lb-cat button,
+#scr-front .lb-cat button.on{
+  background:#0A1912!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+.scout-card-v102,
+#scr-front .lb-cat button{color:#A7B6AE!important;border-color:rgba(183,211,194,.16)!important}
+.scout-card-v102.on,
+#scr-front .lb-cat button.on{color:#F4C45E!important;border-color:rgba(244,196,94,.68)!important}
+.scout-card-v102::before,.scout-card-v102::after,
+#scr-front .lb-cat button::before,#scr-front .lb-cat button::after{display:none!important;content:none!important;box-shadow:none!important}
+
+/* AI 시장 완료 버튼은 disabled여도 노란색을 유지하고 검은 오버레이/그림자를 없앤다. */
+.ai-trade-v3413 button[disabled],
+.ai-trade-v3413 .btn:disabled,
+.ai-trade-v3413 button[disabled]:hover,
+.ai-trade-v3413 button[disabled]:active{
+  opacity:1!important;filter:none!important;background:#F4C45E!important;color:#211706!important;
+  border-color:#F4C45E!important;box-shadow:none!important;text-shadow:none!important;
+}
+.ai-trade-v3413 button[disabled]::before,.ai-trade-v3413 button[disabled]::after,
+.ai-trade-v3413 .btn:disabled::before,.ai-trade-v3413 .btn:disabled::after{display:none!important;content:none!important;background:none!important;box-shadow:none!important}
+</style>
+<script id="v118-front-render-heal-script">
+(function(){
+  'use strict';
+  var V='v1.0.18';
+  try{window.APP_VERSION=V;window.GAME_VERSION=V;document.title='우리팀을 만들자 '+V;}catch(_){}
+
+  /* 프런트 관련 부분 갱신의 공통 입구. 앞으로 개별 기능을 고칠 때 여기로 흡수한다. */
+  var FR=window.FrontRenderV118=window.FrontRenderV118||{};
+  FR.header=function(){try{if(typeof refreshHeader==='function')refreshHeader();}catch(_){}};
+  FR.checklist=function(){try{if(typeof refreshChecklist112==='function')refreshChecklist112();}catch(_){}};
+  FR.scout=function(){
+    try{if(typeof refreshScoutFront111==='function')refreshScoutFront111();}catch(_){}
+    try{if(typeof refreshScoutSheet111==='function'&&document.getElementById('sheet')?.closest('#mask.on'))refreshScoutSheet111();}catch(_){}
+  };
+  FR.roster=function(){
+    try{if(typeof repaintRoster114==='function'&&repaintRoster114())return true;}catch(_){}
+    return false;
+  };
+
+  function suppressFullRender(run){
+    var oldW=window.renderFront,oldG;
+    try{oldG=renderFront;}catch(_){}
+    var noop=function(){FR.header();};
+    window.renderFront=noop;try{renderFront=noop;}catch(_){}
+    try{return run();}finally{window.renderFront=oldW;try{renderFront=oldG||oldW;}catch(_){}}
+  }
+
+  /* 방출: 데이터 변경은 기존 로직, 화면은 해당 로스터 부분만 갱신. */
+  var baseCut=window.doCut;
+  if(typeof baseCut==='function'&&!baseCut.__v118Healed){
+    var cut=function(){
+      var kind=arguments[0],idx=arguments[1];
+      var t=state&&state.players&&state.players[state.myTeam],arr=t&&(kind==='bat'?t.bat:t.pit),before=arr?arr.length:0;
+      var out=suppressFullRender(()=>baseCut.apply(this,arguments));
+      t=state&&state.players&&state.players[state.myTeam];arr=t&&(kind==='bat'?t.bat:t.pit);
+      if(arr&&arr.length<before){
+        if(!FR.roster()){
+          var row=document.querySelector('#frontBody [data-cut="'+kind+'"][data-ci="'+idx+'"]');
+          row=row&&row.closest('.prow');if(row)row.remove();
+        }
+        FR.checklist();FR.header();
+      }
+      return out;
+    };
+    cut.__v118Healed=true;window.doCut=cut;try{doCut=cut;}catch(_){}
+  }
+
+  /* 트레이드 성공: 전체 운영 화면 재생성 금지. */
+  var baseTrade=window.proposeTrade;
+  if(typeof baseTrade==='function'&&!baseTrade.__v118Healed){
+    var trade=function(){
+      var before=Number(state&&state.season&&state.season.tradeCount||0);
+      var out=suppressFullRender(()=>baseTrade.apply(this,arguments));
+      var after=Number(state&&state.season&&state.season.tradeCount||0);
+      if(after>before){FR.roster();FR.checklist();FR.header();}
+      return out;
+    };
+    trade.__v118Healed=true;window.proposeTrade=trade;try{proposeTrade=trade;}catch(_){}
+  }
+
+  /* 스카우트 선택: state/save 후 버튼과 설명만 갱신. renderFront/openScout 재생성은 하지 않는다. */
+  window.setScout=function(key){
+    try{
+      if(typeof ensureScout==='function')ensureScout();
+      if(typeof SCOUT_INFO==='undefined'||!SCOUT_INFO[key])return;
+      state.scout=key;
+      if(typeof save==='function')save();
+      FR.scout();
+    }catch(e){console.error(V+' 스카우트 선택:',e);}
+  };
+  try{setScout=window.setScout;}catch(_){}
+  window.chooseScoutV102=function(key){
+    try{
+      if(typeof SCOUT_INFO==='undefined'||!SCOUT_INFO[key])return;
+      state.scout=key;
+      if(typeof save==='function')save();
+      FR.scout();
+    }catch(e){console.error(V+' 스카우트 시트 선택:',e);}
+  };
+
+  /* 운영 탭 재클릭: 이미 운영이면 아무것도 다시 그리지 않는다. */
+  function bindNav(){
+    var b=document.querySelector('nav button[data-nav="front"]');
+    if(!b||b.__v118Bound)return;
+    b.addEventListener('click',function(ev){
+      var scr=document.getElementById('scr-front');
+      if(b.classList.contains('on')&&scr&&scr.classList.contains('on')){
+        ev.preventDefault();ev.stopImmediatePropagation();
+        var body=document.getElementById('frontBody');
+        if(body&&body.classList.contains('v108-market-focus')&&typeof window.returnOpsMainV108==='function')window.returnOpsMainV108();
+      }
+    },true);
+    b.__v118Bound=true;
+  }
+  bindNav();document.addEventListener('DOMContentLoaded',bindNav,{once:true});
+
+  function stamp(){
+    try{window.APP_VERSION=V;window.GAME_VERSION=V;document.querySelectorAll('.ver,.version,.version-badge,[data-version],.set-ver-v49 b').forEach(function(el){if((el.textContent||'').trim()!==V)el.textContent=V;});}catch(_){}
+  }
+  stamp();setTimeout(stamp,80);setTimeout(stamp,700);
+})();
+</script>
+<!-- v1.0.18 · 프런트 렌더 경로 단계 통합 + 스카우트 색상 정확 보정 END -->
+
 <!-- v1.0.14 · 아래 블록은 반드시 파일의 마지막 스크립트로 유지할 것. -->
 <script id="single-initial-render-v082">
 /* ───────────────────────────────────────────
@@ -24898,6 +25032,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   }catch(e){console.error('v0.82 초기 화면 단일 렌더:',e);}
 })();
 </script>
+
+
+
+
 
 </body>
 </html>
