@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.0.15';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.0.16';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -24816,6 +24816,60 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.0.15 · 사용자 지정 KIA 5인 사진 정확 매핑 END -->
+
+
+<!-- v1.0.16 · 빈 슬롯 → 구단 선택 렌더 단일화 -->
+<style id="team-picker-render-v116-style">
+#teamPicker{padding-bottom:8px}
+#teamPicker #teamGrid.team-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+#teamPicker #teamGrid .tcard{
+  min-height:118px!important;padding:14px 8px!important;display:flex!important;
+  flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:8px!important;
+  border:1px solid rgba(255,193,77,.20)!important;border-radius:17px!important;
+  background:rgba(9,25,18,.94)!important;box-shadow:0 5px 14px rgba(0,0,0,.12)!important;
+}
+#teamPicker #teamGrid .team-logo-box{width:62px!important;height:62px!important}
+#teamPicker #teamGrid .team-logo-box .team-logo-img{max-width:60px!important;max-height:60px!important}
+#teamPicker #teamGrid .tinfo{display:block!important;text-align:center!important;min-height:22px}
+#teamPicker #teamGrid .tname{display:block!important;color:var(--chalk)!important;font-size:14px!important;font-weight:800!important;line-height:1.25}
+#teamPicker .custom-team-launch{margin-bottom:2px}
+</style>
+<script id="team-picker-render-v116">
+(function(){
+  'use strict';
+  function esc116(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}
+  window.renderTeamGrid=function renderTeamGridV116(){
+    var g=document.getElementById('teamGrid');
+    if(!g)return false;
+    var teams=(typeof TEAMS!=='undefined'&&Array.isArray(TEAMS))?TEAMS:[];
+    g.innerHTML='';
+    teams.forEach(function(t){
+      if(!t||!t.id)return;
+      var d=document.createElement('button');
+      d.type='button';
+      d.className='tcard';
+      d.setAttribute('aria-label',String(t.real||t.name||t.id)+' 선택');
+      var mark='';
+      try{mark=typeof teamLogoHtml==='function'?teamLogoHtml(t.id,'team-logo-img',t.real||t.name||t.id):'';}catch(_){mark='';}
+      d.innerHTML='<div class="team-logo-box">'+mark+'</div><div class="tinfo"><div class="tname">'+esc116(t.real||t.name||t.id)+'</div></div>';
+      d.onclick=function(){if(typeof openTeamPreview==='function')openTeamPreview(t);};
+      g.appendChild(d);
+    });
+    return true;
+  };
+
+  // 빈 슬롯 진입 뒤 과거 복구 타이머가 실행돼도 현재 구단 선택 화면을 유지한다.
+  window.renderEmptySlotPickerV116=function(){
+    var tp=document.getElementById('teamPicker'),ss=document.getElementById('slotStatus'),hint=document.getElementById('selectHint'),back=document.getElementById('pickBackBtn');
+    if(ss)ss.style.display='none';
+    if(hint)hint.style.display='none';
+    if(tp)tp.style.display='';
+    if(back)back.style.display='';
+    window.renderTeamGrid();
+    return true;
+  };
+})();
+</script>
 
 <!-- v1.0.14 · 아래 블록은 반드시 파일의 마지막 스크립트로 유지할 것. -->
 <script id="single-initial-render-v082">
