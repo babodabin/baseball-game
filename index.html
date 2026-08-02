@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.0.26';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.0.27';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -25149,69 +25149,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 
 
 
-<!-- v1.0.25 · 하단 탭 검은 띠 진단(임시) — 확인이 끝나면 이 블록만 통째로 지우면 됩니다 -->
-<script id="nav-gap-probe-v1025">
-(function(){
-  'use strict';
-  function ready(fn){
-    if(document.readyState!=='loading') fn();
-    else document.addEventListener('DOMContentLoaded',fn);
-  }
-  ready(function(){
-    try{
-      var pB=document.createElement('div');
-      pB.style.cssText='position:absolute;left:-9999px;top:0;width:1px;height:env(safe-area-inset-bottom,0px)';
-      document.body.appendChild(pB);
-      var pT=document.createElement('div');
-      pT.style.cssText='position:absolute;left:-9999px;top:0;width:1px;height:env(safe-area-inset-top,0px)';
-      document.body.appendChild(pT);
 
-      var box=document.createElement('div');
-      box.id='navProbeBoxV1025';
-      box.style.cssText='position:fixed;left:8px;right:8px;top:calc(6px + env(safe-area-inset-top));'+
-        'z-index:99999;background:rgba(0,0,0,.9);color:#F6BE4A;border:1px solid #F6BE4A;'+
-        'border-radius:10px;padding:9px 11px;font:600 11px/1.55 ui-monospace,monospace;'+
-        'white-space:pre;overflow:auto;max-height:52vh;-webkit-user-select:text';
-      box.addEventListener('click',function(){ box.remove(); });
-      document.body.appendChild(box);
-
-      function px(v){ return (v==null)?'-':v.toFixed(1); }
-      function read(){
-        var nav=document.querySelector('nav');
-        if(!nav){ box.textContent='nav 요소를 찾지 못했습니다'; return; }
-        var cs=getComputedStyle(nav), r=nav.getBoundingClientRect();
-        var btn=nav.querySelector('button');
-        var bcs=btn?getComputedStyle(btn):null, br=btn?btn.getBoundingClientRect():null;
-        var mainEl=document.querySelector('main');
-        var vv=window.visualViewport;
-        box.textContent=
-          'nav rect   h='+px(r.height)+'  top='+px(r.top)+'  bot='+px(r.bottom)+'\n'+
-          'nav style  h='+cs.height+'  min='+cs.minHeight+'  max='+cs.maxHeight+'\n'+
-          'nav pad    top='+cs.paddingTop+'  bot='+cs.paddingBottom+'\n'+
-          'nav flex   '+cs.flexGrow+' '+cs.flexShrink+' '+cs.flexBasis+'   box='+cs.boxSizing+'\n'+
-          'nav align  items='+cs.alignItems+'  content='+cs.alignContent+'\n'+
-          'button     h='+px(br?br.height:null)+'  min='+(bcs?bcs.minHeight:'-')+'\n'+
-          'env        top='+pT.offsetHeight+'   bottom='+pB.offsetHeight+'\n'+
-          'viewport   innerH='+window.innerHeight+
-                    '  clientH='+document.documentElement.clientHeight+
-                    '  vv='+px(vv?vv.height:null)+'\n'+
-          'body h='+px(document.body.getBoundingClientRect().height)+
-          '   main h='+px(mainEl?mainEl.getBoundingClientRect().height:null)+'\n'+
-          '탭하면 닫힘 · '+(window.APP_VERSION||'');
-      }
-      read();
-      var n=0;
-      var t=setInterval(function(){ read(); if(++n>20) clearInterval(t); },500);
-      window.addEventListener('resize',read);
-      if(vvSafe()) window.visualViewport.addEventListener('resize',read);
-      function vvSafe(){ return !!window.visualViewport; }
-    }catch(e){
-      try{ console.error('nav-gap-probe-v1025:',e); }catch(_){}
-    }
-  });
-})();
-</script>
-<!-- v1.0.25 · 하단 탭 검은 띠 진단(임시) END -->
 
 </body>
 </html>
