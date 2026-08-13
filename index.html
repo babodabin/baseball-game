@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.0.33';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.1.1';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1388,7 +1388,8 @@ function showConfirm(msg, onYes){
 }
 const SAVE_KEY = 'ourteam_slots_v1';
 const RANK2025 = {LG:1, HH:2, SSG:3, SS:4, NC:5, KT:6, LT:7, KIA:8, DS:9, KW:10};
-const DATA_DATE = '2026.07.20';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
+const DATA_DATE = '2026.08.13';   // 선수 데이터 기준일 — 데이터 갱신 시 변경
+const LIVE_RANK2026 = {KT:1, SS:2, LG:3, KIA:4, DS:5, HH:6, NC:7, LT:8, SSG:9, KW:10};
 const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, year:1, players:null, lineups:{}, season:null, rot:{}, rotOrder:{}, pitchPlan:{}, spLast:{}, history:[], salaryAdjustments:{}, debtGames:0, popularity:50, winStreak:0, lastAttendance:0, gameControl:'auto', managerPlan:{attack:'balanced',bullpen:'normal'}, staff:{manager:'balanced',batCoach:'contact',pitCoach:'control'}, scout:'standard', foreignContracts:{}, facilities:{training:1,analytics:1,stadium:1,scouting:1}, health:{}, retired:[], retirementNews:[], worldHistory:[], squadLevel:{}, faGames:{}, faSeasonGames:{}, specialAbilities:{}, specialAbilityStats:{}, legendsOwned:[], legendMeta:{}, eventHistory:[], eventFlags:{lastStamp:-99,lastTitle:''}});
 
 /* ───────────── 데이터 (2026시즌) ───────────── */
@@ -2528,7 +2529,7 @@ function openTeamPreview(t){
   const teamOvr = Math.round([...bats.slice(0,9),...pits.slice(0,6)].reduce((s,x)=>s+x.ovr,0)/15);
   let h = `<div class="top"><div class="pname">${t.name}</div>
     <button class="close" onclick="closeSheet()">✕</button></div>
-    <div class="meta">${t.real} · 2025 실제 순위 <b>${RANK2025[t.id]||'-'}위</b> · 팀 전력 OVR ${teamOvr}</div>
+    <div class="meta">${t.real} · 2026.08.12 순위 <b>${LIVE_RANK2026[t.id]||'-'}위</b> · 팀 전력 OVR ${teamOvr}</div>
     <div class="reveal"><div class="lbl">이 구단으로 시작</div>소속(원래팀) 선수 보정 +${BOOST_MY}. 아래 로스터를 확인하고 시작하세요.</div>
     <button class="btn" onclick="openModeSheet(TEAMS.find(x=>x.id==='${t.id}'))">이 구단으로 시작하기</button>
     <h2 class="sec" style="font-size:14px;margin-top:14px">주요 타자</h2>`;
@@ -2645,7 +2646,7 @@ function renderTeamHome(){
       </div>
       <div class="club-chips">
         ${seasonChip}
-        <span class="club-chip">2025 <b>${RANK2025[state.myTeam]||'-'}위</b></span>
+        <span class="club-chip">2026.08.12 <b>${LIVE_RANK2026[state.myTeam]||'-'}위</b></span>
         ${ecoOn()?`<span class="club-chip">잔고 <b>${fmtMoney()}</b></span>`:''}
         ${ecoOn()?`<span class="club-chip">인기 <b>${Number(state.popularity||50).toFixed(1)}</b></span>`:''}
       </div>
@@ -4269,12 +4270,12 @@ function renderFront(){
   const salTotal = teamSalary();
   if(ecoOn()){
     ensureFanState();
-    info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b>${salTotal.toFixed(1)}억</b><br>시설 평균 <b>Lv.${(Object.values((ensureFacilities(),state.facilities)).reduce((a,b)=>a+b,0)/4).toFixed(1)}</b> · 구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>` +
+    info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b id="frontSalaryTotal">${salTotal.toFixed(1)}억</b><br>시설 평균 <b>Lv.${(Object.values((ensureFacilities(),state.facilities)).reduce((a,b)=>a+b,0)/4).toFixed(1)}</b> · 구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>` +
       (state.eco==='hard'?' · 하드(적자 3경기 유예 · 전력·AI 강화)':state.eco==='normal'?' · 일반':'') +
       (state.money<0 && state.eco==='normal'?'<br>⚠️ 잔고 마이너스 — 내 팀 원래팀 보정 감소 중':'') +
       (state.eco==='hard' && state.money<0 && !state.bankrupt?`<br>⚠️ 적자 유예 중 — ${Math.max(0,3-(state.debtGames||0))}경기 안에 흑자 전환 필요 · -20억 이하 즉시 파산`:'');
   }else{
-    info.innerHTML = `자유 모드 · 자금 시스템 꺼짐 · 연간 총연봉(참고) ${salTotal.toFixed(1)}억<br><span class="dim">경기 난이도·AI 판단은 일반과 동일합니다</span>`;
+    info.innerHTML = `자유 모드 · 자금 시스템 꺼짐 · 연간 총연봉(참고) <span id="frontSalaryTotal">${salTotal.toFixed(1)}억</span><br><span class="dim">경기 난이도·AI 판단은 일반과 동일합니다</span>`;
   }
 
   if(isOffseason()){
@@ -4298,9 +4299,9 @@ function renderOffseason(t){
   // ── 필수 체크리스트 + 새 시즌 시작 (상단 고정) ──
   const cl = offseasonChecklist();
   const nextLabel = state.mode==='sim'?(state.year+1)+'년차 시즌 시작':'2026 시즌 다시 시작';
-  h += `<div class="checklist">
+  h += `<div class="checklist" id="offseasonChecklistTop">
     <div class="cl-title">새 시즌 시작 조건</div>
-    ${cl.items.map(it=>`<div class="cl-row"><span class="cl-ic">${it.ok?'✅':'⬜'}</span><span class="cl-lb">${it.label}</span><span class="cl-note ${it.ok?'ok':'todo'}">${it.note}</span></div>`).join('')}
+    ${cl.items.map(it=>`<div class="cl-row" data-check-key="${it.key}"><span class="cl-ic">${it.ok?'✅':'⬜'}</span><span class="cl-lb">${it.label}</span><span class="cl-note ${it.ok?'ok':'todo'}">${it.note}</span></div>`).join('')}
     <button class="btn cl-start ${cl.allOk?'ready':'locked'}" id="startNextTop" ${cl.allOk?'':'disabled'}>${cl.allOk?'▶ '+nextLabel:'🔒 '+nextLabel}</button>
   </div>`;
   // 연봉 협상 (경영 모드)
@@ -4310,7 +4311,7 @@ function renderOffseason(t){
     if(dm.length){
       const pend = countPendingDemands();
       h += `<h2 class="sec" style="margin-top:14px">💵 연봉 협상 <small>우수 선수의 인상 요구</small></h2>
-        <div class="hint">수락(실제 연봉↑) / 거절(불만·능력치 소폭↓) / 재협상(성적 따라 확률로 인상폭 절반 합의). ${pend>0?`<b style="color:var(--amber)">미처리 ${pend}명 — 전부 처리해야 새 시즌 시작 가능</b>`:'<b style="color:#3FD99A">✅ 모두 처리 완료</b>'}</div>`;
+        <div class="hint" id="salaryDemandHint">수락(실제 연봉↑) / 거절(불만·능력치 소폭↓) / 재협상(성적 따라 확률로 인상폭 절반 합의). ${pend>0?`<b style="color:var(--amber)">미처리 ${pend}명 — 전부 처리해야 새 시즌 시작 가능</b>`:'<b style="color:#3FD99A">✅ 모두 처리 완료</b>'}</div>`;
       dm.forEach((d,i)=>{
         const res = state.season.demandResults?.[i];
         const renegUsed = state.season.demandResults?.['reneg_used_'+i];
@@ -4323,10 +4324,10 @@ function renderOffseason(t){
             + `<button class="cutbtn" onclick="rejectDemand(${i})" style="margin-left:4px">거절</button>`
             + (renegUsed ? '' : `<button class="cutbtn" onclick="renegoDemand(${i})" style="margin-left:4px;border-color:var(--amber);color:var(--amber)">재협상</button>`);
         }
-        h += `<div class="prow">
+        h += `<div class="prow" data-demand-index="${i}">
           <div class="mid"><div class="nm">${d.name} <span style="font-size:11px;color:var(--amber)">${d.why}</span></div>
           <div class="hand">연봉 ${d.cur.toFixed(1)}억 → ${(d.cur+d.raise).toFixed(1)}억 요구 (+${d.raise}억)</div></div>
-          ${statusBtns}</div>`;
+          <span data-demand-actions style="display:contents">${statusBtns}</span></div>`;
       });
     }
   }
@@ -5152,13 +5153,52 @@ function buildSalaryDemands(){
   state.season.demandResults={};
   save();
 }
+/* v1.1.1 · 연봉 협상은 운영 화면 전체 대신 변경된 행과 체크리스트만 갱신한다. */
+function salaryDemandActionsHtml(i){
+  const res = state.season.demandResults?.[i];
+  const renegUsed = state.season.demandResults?.['reneg_used_'+i];
+  if(res==='accept') return '<span class="boost">✅ 수락</span>';
+  if(res==='reject') return '<span class="boost" style="color:#8FA396">❌ 거절</span>';
+  if(res==='renego_ok') return '<span class="boost" style="color:#3FD99A">🤝 재협상 합의</span>';
+  return `<button class="signbtn" onclick="acceptDemand(${i})">수락</button>`
+    + `<button class="cutbtn" onclick="rejectDemand(${i})" style="margin-left:4px">거절</button>`
+    + (renegUsed ? '' : `<button class="cutbtn" onclick="renegoDemand(${i})" style="margin-left:4px;border-color:var(--amber);color:var(--amber)">재협상</button>`);
+}
+function refreshSalaryNegotiationUi(i){
+  const row=document.querySelector(`#frontBody [data-demand-index="${i}"]`);
+  const actions=row?.querySelector('[data-demand-actions]');
+  if(actions) actions.innerHTML=salaryDemandActionsHtml(i);
+
+  const pend=countPendingDemands();
+  const hint=document.getElementById('salaryDemandHint');
+  if(hint) hint.innerHTML=`수락(실제 연봉↑) / 거절(불만·능력치 소폭↓) / 재협상(성적 따라 확률로 인상폭 절반 합의). ${pend>0?`<b style="color:var(--amber)">미처리 ${pend}명 — 전부 처리해야 새 시즌 시작 가능</b>`:'<b style="color:#3FD99A">✅ 모두 처리 완료</b>'}`;
+
+  const cl=offseasonChecklist();
+  cl.items.forEach(it=>{
+    const el=document.querySelector(`#offseasonChecklistTop [data-check-key="${it.key}"]`);
+    if(!el) return;
+    const icon=el.querySelector('.cl-ic'), note=el.querySelector('.cl-note');
+    if(icon) icon.textContent=it.ok?'✅':'⬜';
+    if(note){ note.textContent=it.note; note.className=`cl-note ${it.ok?'ok':'todo'}`; }
+  });
+  const start=document.getElementById('startNextTop');
+  if(start){
+    const nextLabel=state.mode==='sim'?(state.year+1)+'년차 시즌 시작':'2026 시즌 다시 시작';
+    start.disabled=!cl.allOk;
+    start.className=`btn cl-start ${cl.allOk?'ready':'locked'}`;
+    start.textContent=(cl.allOk?'▶ ':'🔒 ')+nextLabel;
+  }
+  const sal=document.getElementById('frontSalaryTotal');
+  if(sal) sal.textContent=teamSalary().toFixed(1)+'억';
+  try{ if(typeof refreshHeader==='function') refreshHeader(); }catch(_){ }
+}
 function acceptDemand(i){
   const d = state.season.demands[i]; if(!d) return;
   const t = getTeam(state.myTeam);
   const p = (d.kind==='bat'?t.bat:t.pit)[d.idx];
   if(p) addSalaryRaise(p, d.kind==='bat', d.raise);
   state.season.demandResults[i] = 'accept';
-  save(); renderFront();
+  save(); refreshSalaryNegotiationUi(i);
 }
 function rejectDemand(i){
   const d = state.season.demands[i]; if(!d) return;
@@ -5171,7 +5211,7 @@ function rejectDemand(i){
     if(d.kind==='bat'){ for(let k=4;k<=8;k++) p[k]=Math.max(30,p[k]-1); }
     else{ for(let k=5;k<=7;k++) p[k]=Math.max(30,p[k]-1); }
   }
-  save(); renderFront();
+  save(); refreshSalaryNegotiationUi(i);
 }
 // 미처리 협상 개수 (무시 불가 — 전부 처리해야 시즌 진행)
 function countPendingDemands(){
@@ -5211,7 +5251,7 @@ function renegoDemand(i){
     showAlert(`재협상 결렬!\n${d.name} 선수가 원래 요구를 고수합니다. 수락 또는 거절해야 합니다.`);
   }
   state.season.demandResults = res;
-  save(); renderFront();
+  save(); refreshSalaryNegotiationUi(i);
 }
 
 /* ═══════════ 타이틀·MVP 시상 (v0.11) ═══════════ */
@@ -25305,6 +25345,104 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.0.32 · 시작(타이틀) 화면 END -->
 
+<!-- v1.1.0 · 2026.08.12 KBO 기록 기반 로스터·능력치 보정 START -->
+<script id="v110-kbo-roster-ratings">
+(function(){
+  'use strict';
+  /*
+   * 기존 선수 배열과 저장 키를 보존하면서 표시 이름을 기준으로 능력치만 보정한다.
+   * 타자: 컨택/파워/주루/수비/선구안, 투수: 구속/구위/제구/체력.
+   * 단기 성적을 그대로 복사하지 않고 기존 수치와 2026 누적 기록을 함께 반영한 게임용 값이다.
+   */
+  const hitterRatings={
+    '최원준':[88,64,82,76,80],
+    '빅터 레이예스':[88,78,62,66,76],
+    '구자욱':[86,82,72,76,84],
+    '오스틴 딘':[86,94,62,72,84],
+    '박민우':[84,62,80,78,82],
+    '이우성':[82,72,48,64,72],
+    '최형우':[82,84,40,52,88],
+    '박성한':[82,64,72,86,84],
+    '김지찬':[82,48,94,84,82],
+    '강백호':[80,90,62,60,80],
+    '김민석':[78,64,80,76,72],
+    '맷 데이비슨':[76,82,46,64,68],
+    '박건우':[76,84,62,74,80],
+    '디아즈':[76,86,52,66,68],
+    '한준수':[76,70,46,74,72],
+    '류지혁':[74,64,68,78,76],
+    '박찬호':[74,66,86,86,76],
+    '다즈 카메론':[74,78,78,82,68],
+    '에레디아':[72,82,64,70,70],
+    '김도영':[78,94,88,78,82],
+    '요나단 페라자':[78,86,70,70,82],
+    '해럴드 카스트로':[78,74,70,76,74]
+  };
+  const pitcherRatings={
+    '최민석':[147,86,76,82],
+    '곽빈':[150,88,82,84],
+    '애덤 올러':[148,88,82,84],
+    '후라도':[147,82,86,86],
+    '김진욱':[148,82,78,82],
+    '류현진':[143,84,92,82]
+  };
+  const rosterReplacements={
+    LG:{bat:{'문성주':['천성오','천성호','2B','좌',72,48,72,74,68,'transfer26']}},
+    KT:{bat:{'천성호':['배정태','배정대','CF','우',72,62,82,84,68,'transfer26']}},
+    HH:{bat:{'플로리얼':['페라자','요나단 페라자','LF','양',78,86,70,70,82,'transfer26']}},
+    KIA:{bat:{
+      '이우성':['하주석','하주석','SS','좌',68,62,72,78,62,'transfer26'],
+      '소크라테스 브리토':['카스트로','해럴드 카스트로','CF','좌',78,74,70,76,74,'transfer26']
+    }},
+    NC:{bat:{'오영수':['이우승','이우성','LF','우',82,72,48,64,72,'transfer26']}},
+    DS:{bat:{'김재환':['김민석','김민석','LF','좌',78,64,80,76,72,'transfer26']}},
+    SSG:{bat:{'에레디아':['김재환','김재환','LF','좌',68,82,45,55,70,'transfer26']}}
+  };
+  function displayName(p){return String((p&&p[1])||'').replace(/\s*\([^)]*\)\s*$/,'').trim();}
+  function applyRatings(rows,map,start){
+    (rows||[]).forEach(function(p){
+      const values=map[displayName(p)];
+      if(values)values.forEach(function(v,i){p[start+i]=v;});
+    });
+  }
+  function applyTeam(team,replaceRoster){
+    if(!team)return;
+    if(replaceRoster!==false){
+      const replacement=rosterReplacements[team.id];
+      ['bat','pit'].forEach(function(kind){
+        const map=replacement&&replacement[kind];
+        if(!map)return;
+        (team[kind]||[]).forEach(function(p,index){
+          const next=map[displayName(p)];
+          if(next)team[kind][index]=next.slice();
+        });
+        /* 확장 로스터에 이적 선수가 이미 있던 경우, 이번 교체 대상 이름만 중복 제거한다. */
+        const movedNames=new Set(Object.values(map).map(displayName));
+        const seen=new Set();
+        for(let index=0;index<(team[kind]||[]).length;index+=1){
+          const name=displayName(team[kind][index]);
+          if(movedNames.has(name)&&seen.has(name)){
+            team[kind].splice(index,1);
+            index-=1;
+          }else if(movedNames.has(name)){
+            seen.add(name);
+          }
+        }
+      });
+    }
+    applyRatings(team.bat,hitterRatings,4);
+    applyRatings(team.pit,pitcherRatings,4);
+  }
+  (window.TEAMS||TEAMS||[]).forEach(function(team){applyTeam(team,true);});
+  /* 기존 저장은 선수 식별자를 보존한다. 실황 저장은 명단 교체 없이 능력치만 최신 기준으로 보정한다. */
+  if(typeof state!=='undefined'&&state&&state.players&&state.mode==='live'){
+    Object.values(state.players).forEach(function(team){applyTeam(team,false);});
+  }
+  window.ROSTER_DATA_VERSION='2026.08.13-v1';
+})();
+</script>
+<!-- v1.1.0 · 2026.08.12 KBO 기록 기반 로스터·능력치 보정 END -->
+
 <!-- v1.0.14 · 아래 블록은 반드시 파일의 마지막 스크립트로 유지할 것. -->
 <script id="single-initial-render-v082">
 /* ───────────────────────────────────────────
@@ -25364,6 +25502,32 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.0.33 · 임찬규 사진 및 렌더 안정화 END -->
+
+<!-- v1.1.1 · 사용자 제공 대표 선수 사진 START -->
+<script id="v111-featured-player-photos">
+(function(){
+  'use strict';
+  var bank=window.PLAYER_PORTRAITS_V101=window.PLAYER_PORTRAITS_V101||{};
+  var photos={
+    '요나단 페라자':'assets/players/yonathan-peraza.webp',
+    '페라자':'assets/players/yonathan-peraza.webp',
+    '배정대':'assets/players/bae-jeong-dae.webp',
+    '배정태':'assets/players/bae-jeong-dae.webp',
+    '해럴드 카스트로':'assets/players/harold-castro.webp',
+    '카스트로':'assets/players/harold-castro.webp'
+  };
+  Object.entries(photos).forEach(function(entry){
+    var name=entry[0], url=entry[1];
+    bank[name]=url;
+    bank['name:'+name]=url;
+  });
+  window.USER_PHOTO_NAMES_V115=window.USER_PHOTO_NAMES_V115||[];
+  ['요나단 페라자','페라자','배정대','배정태','해럴드 카스트로','카스트로'].forEach(function(name){
+    if(window.USER_PHOTO_NAMES_V115.indexOf(name)<0)window.USER_PHOTO_NAMES_V115.push(name);
+  });
+})();
+</script>
+<!-- v1.1.1 · 사용자 제공 대표 선수 사진 END -->
 
 </body>
 </html>
