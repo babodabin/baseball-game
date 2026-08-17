@@ -9,7 +9,7 @@
      → 뒤쪽 블록이 다시 정의합니다. 여기를 고쳐도 반영되지 않습니다.
    ────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.1.1';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.1.2';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -12715,10 +12715,10 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
   };
   function panel(m){
     const ai=aiState(m);if(!ai.processed)refreshInterest(m);
-    let h=`<h2 class="sec" style="margin-top:14px">🤖 AI 구단 FA 경쟁 <small>${ai.processed?'영입 종료':'시장 진행 전'}</small></h2>`;
+    let h=`<div class="ai-fa-v3413"><h2 class="sec" style="margin-top:14px">🤖 AI 구단 FA 경쟁 <small>${ai.processed?'영입 종료':'시장 진행 전'}</small></h2>`;
     if(ai.processed){
       h+=`<div class="hint">${ai.results.length?ai.results.map(x=>`${getTeam(x.teamId).name} → <b>${x.displayName||x.name}</b> ${x.offer.toFixed(1)}억`).join('<br>'):'성사된 AI FA 계약이 없습니다.'}</div>`;
-      return h;
+      return h+'</div>';
     }
     h+=`<div class="hint">각 구단이 전력 약점·나이·OVR·운영 성향·가상 예산을 비교해 남은 FA에 입찰합니다. 버튼을 누르면 AI 계약이 확정되며 되돌릴 수 없습니다.</div>`;
     (m.fa||[]).slice(0,6).forEach((fa,i)=>{
@@ -12726,7 +12726,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
       h+=`<div class="prow"><div class="pos">${fa.kind==='bat'?fa.data[2]:(fa.data[2]==='선발'?'SP':fa.data[2]==='마무리'?'CL':'RP')}</div><div class="mid"><div class="nm">${playerDisplayName(fa.data)}</div><div class="hand">${bids.length?bids.map(b=>`${getTeam(b.teamId).name} 관심 · ${clubInfo(m,b.teamId).label}`).join(' / '):'현재 적극 관심 구단 없음'}</div></div></div>`;
     });
     h+=`<button class="btn" onclick="runAiFaMarketV3413()" style="margin-top:8px">AI FA 시장 진행</button>`;
-    return h;
+    return h+'</div>';
   }
   const oldBuild=window.buildOffseasonMarket;
   if(typeof oldBuild==='function')window.buildOffseasonMarket=function(){const r=oldBuild.apply(this,arguments);try{const m=state.season?.market;if(m){aiState(m);refreshInterest(m);}}catch(e){console.error(VER,e);}return r;};
@@ -13236,7 +13236,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     const cards=(TEAMS||[]).filter(t=>t.id!==state.myTeam).map(t=>{const x=r.clubSummary[t.id],pay=payroll(t.id),bud=budgetFor(t.id);return `<div class="ai-contract-card-v3413"><div class="head"><span>${getTeam(t.id).name}</span><span>${pay.toFixed(1)} / ${bud.toFixed(1)}억</span></div><div class="dim">${x?`재계약 ${x.renewed}명 · FA 잔류 ${x.retainedFa}명 · 방출 ${x.released}명`:'계약 검토 대기'}</div></div>`;}).join('');
     return `<div class="ai-contract-v3413"><div class="title">📝 AI 계약·재계약 관리</div><div class="sub">AI 구단이 시즌 전략, 나이, OVR, 포지션 수요와 가상 연봉 예산을 비교해 재계약·FA 잔류·방출을 결정합니다. 먼저 처리하면 잔류한 선수는 FA 시장에서 제외됩니다.</div><div class="ai-contract-grid-v3413">${cards}</div>${done?'':`<button class="btn" style="margin-top:9px" onclick="runAiContractMarketV3413()">AI 계약 관리 진행</button>`}</div>`;
   }
-  const oldRender=window.renderOffseason;if(typeof oldRender==='function')window.renderOffseason=function(t){let h=oldRender.apply(this,arguments);try{const add=panel();const marker='<h2 class="sec" style="margin-top:14px">🤖 AI 구단 FA 경쟁';const at=h.indexOf(marker);h=at>=0?h.slice(0,at)+add+h.slice(at):h+add;}catch(e){console.error(VER,e);}return h;};
+  const oldRender=window.renderOffseason;if(typeof oldRender==='function')window.renderOffseason=function(t){let h=oldRender.apply(this,arguments);try{const add=panel();const marker='<div class="ai-fa-v3413">';const at=h.indexOf(marker);h=at>=0?h.slice(0,at)+add+h.slice(at):h+add;}catch(e){console.error(VER,e);}return h;};
   const oldChecklist=window.offseasonChecklist;if(typeof oldChecklist==='function')window.offseasonChecklist=function(){const cl=oldChecklist.apply(this,arguments);try{if(state.mode==='sim'&&state.season?.market){const ok=!!root().processedYears[String(state.year)];cl.items.push({key:'aicontract',label:'AI 계약 관리',ok,note:ok?'재계약·방출 검토 완료':'계약 검토 필요'});cl.allOk=cl.items.every(x=>x.ok);}}catch(e){console.error(VER,e);}return cl;};
   const oldAiFa=window.runAiFaMarketV3413;if(typeof oldAiFa==='function')window.runAiFaMarketV3413=function(){if(!root().processedYears[String(state.year)]){showAlert('AI 계약 관리를 먼저 진행해 각 구단의 내부 FA 잔류 여부를 확정하세요.');return;}const before=(state.season?.market?.aiFaV3413?.results||[]).length,r=oldAiFa.apply(this,arguments);try{const m=state.season?.market,items=m?.aiFaV3413?.results||[];items.slice(before).forEach(x=>{const t=getTeam(x.teamId),kind=t.bat.some(p=>p[0]===x.name)?'bat':'pit',p=(kind==='bat'?t.bat:t.pit).find(p=>p[0]===x.name);if(p){const c=contract(x.teamId,kind,p,(kind==='bat'?t.bat:t.pit).indexOf(p));c.salary=x.offer;c.years=(Number(x.ovr)||60)>=75?4:3;c.lastYear=state.year;}});save();}catch(e){console.error(VER,e);}return r;};
   const oldBuild=window.buildOffseasonMarket;if(typeof oldBuild==='function')window.buildOffseasonMarket=function(){const out=oldBuild.apply(this,arguments);try{ensureAll();}catch(e){console.error(VER,e);}return out;};
@@ -20766,7 +20766,7 @@ nav button.on .ic{box-shadow:0 6px 15px rgba(232,155,28,.28)}
 window.jumpOffseasonTaskV66=function(key){
   let tab='front',selector='',heading='';
   if(key==='aicontract'){tab='ai';selector='.ai-contract-v3413';}
-  else if(key==='aifa'){tab='front';heading='AI 구단 FA 경쟁';}
+  else if(key==='aifa'){tab='ai';selector='.ai-fa-v3413';}
   else if(key==='draft'){tab='front';heading='신인 드래프트';}
   else if(key==='aiforeign'){tab='ai';selector='.ai-foreign-v3413';}
   else if(key==='cut'||key==='roles'){tab='squad';heading='1군·2군 관리';}
@@ -24145,7 +24145,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var tabs=legacy.querySelector('.front-subtabs');if(!tabs)return;
     var pane=legacy.querySelector('.front-pane[data-fpane="ai"]');
     if(!pane){
-      var sels=['philosophy','style','trade','core','roster','contract','manager','longterm','finance','foreign','stability','staff','facility','tactic','ecosystem','gm'].map(function(k){return '.ai-'+k+'-v3413';}).join(',');
+      var sels=['philosophy','style','trade','core','roster','contract','fa','manager','longterm','finance','foreign','stability','staff','facility','tactic','ecosystem','gm'].map(function(k){return '.ai-'+k+'-v3413';}).join(',');
       var found=Array.from(legacy.querySelectorAll(sels)).filter(function(el,_,arr){return !el.closest('.front-pane[data-fpane="ai"]')&&!arr.some(function(o){return o!==el&&o.contains(el);});});
       pane=document.createElement('div');pane.className='front-pane';pane.dataset.fpane='ai';
       legacy.appendChild(pane);found.forEach(function(el){el.style.marginTop='14px';pane.appendChild(el);});
@@ -24969,8 +24969,27 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   FR.header=function(){try{if(typeof refreshHeader==='function')refreshHeader();}catch(_){}};
   FR.checklist=function(){try{if(typeof refreshChecklist112==='function')refreshChecklist112();}catch(_){}};
   FR.scout=function(){
-    try{if(typeof refreshScoutFront111==='function')refreshScoutFront111();}catch(_){}
-    try{if(typeof refreshScoutSheet111==='function'&&document.getElementById('sheet')?.closest('#mask.on'))refreshScoutSheet111();}catch(_){}
+    try{
+      var key=state&&state.scout,fc=1;try{fc=facilityLevel('scouting');}catch(_){}
+      document.querySelectorAll('#frontBody button[onclick*="setScout("]').forEach(function(btn){
+        var m=(btn.getAttribute('onclick')||'').match(/setScout\(\s*['"]([^'"]+)['"]\s*\)/);
+        btn.classList.toggle('on',!!m&&m[1]===key);
+      });
+      var cur=typeof SCOUT_INFO!=='undefined'&&SCOUT_INFO[key];
+      var probe=document.querySelector('#frontBody button[onclick*="setScout("]'),cat=probe&&probe.closest('.lb-cat'),hint=cat&&cat.nextElementSibling;
+      if(cur&&hint&&hint.classList.contains('hint')){
+        var count=cur.count||0,err=cur.ovrErr||0;try{count=effectiveScoutCount();err=effectiveScoutOvrErr();}catch(_){}
+        hint.textContent=(cur.desc||'')+' · 시설 Lv.'+fc+' 적용 후 후보 '+count+'명, OVR 오차 ±'+err;
+      }
+      document.querySelectorAll('#sheet .scout-card-v102').forEach(function(btn){
+        var m=(btn.getAttribute('onclick')||'').match(/chooseScoutV102\(\s*['"]([^'"]+)['"]\s*\)/);if(!m)return;
+        var k=m[1],v=(typeof SCOUT_INFO!=='undefined'&&SCOUT_INFO[k])||{},on=k===key;
+        btn.classList.toggle('on',on);
+        var pick=btn.querySelector('.pick'),desc=btn.querySelector('.desc');
+        if(pick)pick.textContent=on?'선택 중':'선택';
+        if(desc)desc.textContent=(v.desc||'')+(on?' · 시설 Lv.'+fc+' 적용':'');
+      });
+    }catch(e){console.error(V+' 스카우트 표시:',e);}
   };
   FR.roster=function(){
     try{if(typeof repaintRoster114==='function'&&repaintRoster114())return true;}catch(_){}
