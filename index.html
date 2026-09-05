@@ -26458,5 +26458,149 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.1.6 · 감독 지시 버튼 END -->
 
+<!-- v1.1.6 · 관전 보너스 + 시상 상금 -->
+<script id="watch-bonus-awards-v116">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov116')>=0) return;
+  var NL = String.fromCharCode(10);
+
+  /* ── 관전 보너스 ───────────────────────────────────────────────
+     직접 보고 있으면 홈 경기 수입에 얹어 준다. 결과만으로 넘기면 0.
+     경기 수입은 시즌 32억쯤이라 투구별로 다 보면 시즌 +16억 정도가 된다. */
+  var WATCH = {pitch:0.50, pa:0.25, inn:0.10, fast:0};
+  window.WATCH_BONUS_V116 = WATCH;
+
+  function mode(){
+    try{ if(typeof spdSelSafe === 'function') return spdSelSafe(); }catch(_){ }
+    try{ return spdSel; }catch(_){ return 'pa'; }
+  }
+  var baseStadium = window.stadiumDailyIncome;
+  if(typeof baseStadium === 'function'){
+    window.stadiumDailyIncome = function(){
+      var before = 0; try{ before = +state.money || 0; }catch(_){ }
+      var r = baseStadium.apply(this, arguments);
+      try{
+        var gained = (+state.money || 0) - before;
+        var rate = WATCH[mode()] || 0;
+        if(gained > 0 && rate > 0){
+          var bonus = gained * rate;
+          state.money += bonus;
+          if(state.season){
+            state.season.watchBonusV116 = (+state.season.watchBonusV116 || 0) + bonus;
+          }
+        }
+      }catch(_){ }
+      return r;
+    };
+    try{ stadiumDailyIncome = window.stadiumDailyIncome; }catch(_){ }
+  }
+
+  /* ── 시상 상금 ─────────────────────────────────────────────────
+     seasonLeaders() 가 이미 MVP·부문 1위를 뽑고 있었지만 기록만 남기고 상금은 없었다.
+     골든글러브는 없어서 포지션별 최고 성적으로 새로 만든다. */
+  var PRIZE = {mvp:10, title:3, glove:2};
+  window.AWARD_PRIZE_V116 = PRIZE;
+
+  function pool(){
+    var stats = (state.season && state.season.stats) || {}, bat = [], pit = [];
+    Object.keys(stats).forEach(function(tid){
+      var S = stats[tid] || {}, t = null;
+      try{ t = getTeam(tid); }catch(_){ }
+      if(!t) return;
+      Object.keys(S.bat || {}).forEach(function(idx){
+        var x = S.bat[idx] || {}, p = t.bat[+idx];
+        if(!p) return;
+        var ab = +x.ab || 0, h = +x.h || 0;
+        bat.push({tid:tid, name:playerDisplayName(p), pos:p[2] || 'DH',
+          h:h, hr:+x.hr||0, rbi:+x.rbi||0, sb:+x.sb||0,
+          value: h*0.45 + (+x.hr||0)*2.2 + (+x.rbi||0)*0.8 + (+x.sb||0)*0.6});
+      });
+      Object.keys(S.pit || {}).forEach(function(nm){
+        var x = S.pit[nm] || {}, p = null;
+        for(var i=0;i<(t.pit||[]).length;i++) if(t.pit[i] && t.pit[i][0] === nm){ p = t.pit[i]; break; }
+        if(!p) return;
+        var out = +x.out || 0;
+        pit.push({tid:tid, name:playerDisplayName(p), pos:'투수',
+          w:+x.w||0, sv:+x.sv||0, so:+x.so||0, out:out,
+          era: out >= 45 ? (+x.er||0)*27/out : 99,
+          value: (+x.w||0)*5 + (+x.sv||0)*2 + (+x.so||0)*0.18 + out*0.06});
+      });
+    });
+    return {bat:bat, pit:pit};
+  }
+
+  function computeAwards(){
+    var P = pool(), mine = state.myTeam, won = [], total = 0;
+    function give(label, who, prize){
+      if(!who) return;
+      if(who.tid === mine){ won.push({label:label, name:who.name, prize:prize}); total += prize; }
+    }
+    var top = function(arr, key){ return arr.slice().sort(function(a,b){ return (+b[key]||0)-(+a[key]||0); })[0]; };
+    var all = P.bat.concat(P.pit);
+    give('MVP', top(all, 'value'), PRIZE.mvp);
+    give('홈런왕',   top(P.bat, 'hr'),  PRIZE.title);
+    give('타점왕',   top(P.bat, 'rbi'), PRIZE.title);
+    give('최다안타', top(P.bat, 'h'),   PRIZE.title);
+    give('도루왕',   top(P.bat, 'sb'),  PRIZE.title);
+    give('다승왕',   top(P.pit, 'w'),   PRIZE.title);
+    give('세이브왕', top(P.pit, 'sv'),  PRIZE.title);
+    give('탈삼진왕', top(P.pit, 'so'),  PRIZE.title);
+    var era = P.pit.filter(function(x){ return x.out >= 45; }).sort(function(a,b){ return a.era - b.era; })[0];
+    give('평균자책 1위', era, PRIZE.title);
+    /* 골든글러브 — 포지션별 최고 + 투수 1명 */
+    var byPos = {};
+    P.bat.forEach(function(x){ if(!byPos[x.pos] || x.value > byPos[x.pos].value) byPos[x.pos] = x; });
+    Object.keys(byPos).forEach(function(pos){ give('골든글러브 ' + pos, byPos[pos], PRIZE.glove); });
+    give('골든글러브 투수', top(P.pit, 'value'), PRIZE.glove);
+    return {list:won, total:Math.round(total * 10) / 10};
+  }
+
+  var baseBonus = window.seasonBonus;
+  if(typeof baseBonus === 'function'){
+    window.seasonBonus = function(){
+      var r = baseBonus.apply(this, arguments);
+      try{
+        if(state.season && !state.season.awardsV116){
+          var a = computeAwards();
+          state.season.awardsV116 = a;
+          if(a.total > 0){ state.money += a.total; try{ save(); }catch(_){ } }
+        }
+      }catch(e){ console.error('v1.1.6 시상:', e); }
+      return r;
+    };
+    try{ seasonBonus = window.seasonBonus; }catch(_){ }
+  }
+
+  /* ── 시즌 종료 화면에 표시 ── */
+  var baseDone = window.renderSeasonDone;
+  if(typeof baseDone === 'function'){
+    window.renderSeasonDone = function(){
+      var r = baseDone.apply(this, arguments);
+      try{
+        var box = document.getElementById('seasonDoneText');
+        if(box && state.season && !box.dataset.v116){
+          box.dataset.v116 = '1';
+          var w = +state.season.watchBonusV116 || 0;
+          var a = state.season.awardsV116 || {list:[], total:0};
+          var html = '';
+          if(w > 0) html += '<br>👀 직접 관전 보너스 <b>+' + w.toFixed(1) + '억</b>';
+          if(a.total > 0){
+            html += '<br>🏅 시상 상금 <b>+' + a.total.toFixed(1) + '억</b><br>'
+                 + a.list.map(function(x){ return '&nbsp;&nbsp;· ' + x.label + ' ' + x.name + ' +' + x.prize + '억'; }).join('<br>');
+          }else if(a.list){
+            html += '<br>🏅 시상 상금 없음';
+          }
+          if(html) box.innerHTML += html;
+        }
+      }catch(e){ console.error('v1.1.6 시상 표시:', e); }
+      return r;
+    };
+    try{ renderSeasonDone = window.renderSeasonDone; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.1.6 · 보너스·시상 END -->
+
 </body>
 </html>
