@@ -23912,9 +23912,21 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     try{if(state&&state.players)Object.keys(state.players).forEach(function(id){addTeam(state.players[id]);});}catch(_){}
     return Object.keys(map).sort(function(a,b){return b.length-a.length;}).map(function(k){return [k,map[k]];});
   }
+  /* v1.1.7 · 가명이 실명의 일부일 때(페라자 → 요나단 페라자) 이미 실명으로 바뀐 자리에
+     다시 붙어 "요나단 요나단 페라자"가 되던 문제. 이미 실명인 부분을 잠깐 치워두고 바꾼다. */
+  var PH105 = String.fromCharCode(1);
+  function applyPair105(out, from, to){
+    if(!from || out.indexOf(from) < 0) return out;
+    if(to.indexOf(from) >= 0){
+      out = out.split(to).join(PH105);      /* 이미 실명인 곳을 보호 */
+      out = out.split(from).join(to);
+      return out.split(PH105).join(to);
+    }
+    return out.split(from).join(to);
+  }
   function cleanGameText105(txt){
     var out=String(txt==null?'':txt);
-    namePairs105().forEach(function(x){ if(out.indexOf(x[0])>=0) out=out.split(x[0]).join(x[1]); });
+    namePairs105().forEach(function(x){ out = applyPair105(out, x[0], x[1]); });
     return out;
   }
   var prevChant=window.chantFor;
@@ -23936,10 +23948,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
             var ev=g.ev[i];
             if(!ev||typeof ev.text!=='string') continue;
             var out=ev.text;
-            for(var j=0;j<pairs.length;j++){
-              var from=pairs[j][0];
-              if(out.indexOf(from)>=0) out=out.split(from).join(pairs[j][1]);
-            }
+            for(var j=0;j<pairs.length;j++) out = applyPair105(out, pairs[j][0], pairs[j][1]);
             ev.text=out;
           }
         }
