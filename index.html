@@ -25873,5 +25873,127 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.1.3 · 사용자 제공 사진 END -->
 
+<!-- v1.1.4 · ensureSquadState 재훑기 방지 -->
+<script id="squad-state-signature-v114">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov114')>=0) return;   /* 검증용 스위치 */
+
+  /* ensureSquadState 는 "빠진 기본값 채우기" 함수인데 squadLevelOf·faGamesOf 안에 들어
+     있어서, 선수 한 명을 조회할 때마다 전 구단 전 선수를 다시 훑는다. 화면 한 번 그리는
+     데 squadKey 가 12만 번 넘게 불렸다.
+
+     기존 4겹(원본 / V250 / V283 / v0.65)은 건드리지 않고 위에 한 겹만 얹는다.
+     · aiTopUpRosters 는 V250 이 부르던 것이므로 건너뛸 때도 반드시 부른다.
+     · 로스터 지문(구단·인원·선수 이름)이 그대로면 훑기만 생략한다.
+       트레이드처럼 인원이 같고 사람만 바뀌는 경우까지 이름으로 잡는다.
+     · 이 겹만 지우면 원래 동작으로 되돌아간다. */
+  var base = window.ensureSquadState;
+  if(typeof base !== 'function') return;
+  var lastSig = null, busy = false;
+
+  /* 문자열을 만들지 않고 숫자 해시만 굴린다. 선수 600명이라도 한 번에 1ms 미만. */
+  function mix(h, str){
+    str = String(str == null ? '' : str);
+    for(var i=0;i<str.length;i++){ h = (h ^ str.charCodeAt(i)) >>> 0; h = Math.imul(h, 16777619) >>> 0; }
+    return h;
+  }
+  function sig(){
+    var st = window.state;
+    if(!st || !st.players) return null;
+    var ids = Object.keys(st.players).sort(), h = 2166136261;
+    for(var i=0;i<ids.length;i++){
+      var t = st.players[ids[i]];
+      if(!t) continue;
+      h = mix(h, ids[i]);
+      var kinds = ['bat','pit'];
+      for(var m=0;m<kinds.length;m++){
+        var a = t[kinds[m]] || [];
+        h = mix(h, kinds[m]);
+        h = (h ^ a.length) >>> 0; h = Math.imul(h, 16777619) >>> 0;
+        for(var j=0;j<a.length;j++) h = mix(h, a[j] && a[j][0]);
+      }
+    }
+    return h;
+  }
+
+  window.ensureSquadState = function(){
+    if(busy) return;            /* v0.65 가 막던 재진입을 이 겹에서도 막는다 */
+    busy = true;
+    try{
+      if(typeof window.aiTopUpRosters === 'function'){
+        try{ window.aiTopUpRosters(); }catch(_){ }
+      }
+      var cur = sig();
+      if(cur !== null && cur === lastSig) return;   /* 로스터가 그대로면 훑지 않는다 */
+      var r = base.apply(this, arguments);
+      lastSig = sig();          /* 체인이 선수를 늘렸을 수 있으니 끝난 뒤 다시 찍는다 */
+      return r;
+    } finally { busy = false; }
+  };
+  try{ ensureSquadState = window.ensureSquadState; }catch(_){ }
+})();
+</script>
+<!-- v1.1.4 · ensureSquadState END -->
+
+<!-- v1.1.4 · validTeamIdV286 조회 캐시 -->
+<script id="valid-team-id-cache-v114">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov114')>=0) return;   /* 검증용 스위치 */
+
+  /* seasonOver() 가 ensureSeasonRuntimeV286 → validScheduleV286 을 타면서 36일치 일정을
+     매번 재검증한다. 화면 한 번 그리는 데 validTeamIdV286 이 27,000번 불렸다.
+
+     구단 목록은 거의 안 바뀌므로 Set 으로 조회한다. 캐시에 없으면(=미스) 원래대로
+     TEAMS 를 훑어 확인하므로 답은 항상 원본과 같다. 확장 구단 창단으로 팀이 늘면
+     길이가 달라져 자동으로 다시 만든다. */
+  var base = window.validTeamIdV286;
+  if(typeof base !== 'function') return;
+  var set = null, len = -1;
+  function rebuild(){
+    set = new Set();
+    for(var i=0;i<TEAMS.length;i++) if(TEAMS[i]) set.add(TEAMS[i].id);
+    len = TEAMS.length;
+  }
+  window.validTeamIdV286 = function(id){
+    try{
+      if(set === null || len !== TEAMS.length) rebuild();
+      if(set.has(id)) return true;
+      var real = base(id);          /* 미스일 때만 원본 확인 — 답이 달라질 여지를 없앤다 */
+      if(real) rebuild();
+      return real;
+    }catch(_){ return base(id); }
+  };
+  try{ validTeamIdV286 = window.validTeamIdV286; }catch(_){ }
+})();
+</script>
+<!-- v1.1.4 · validTeamIdV286 END -->
+
+<!-- v1.1.4 · validScheduleV286 결과 캐시 -->
+<script id="valid-schedule-cache-v114">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov114')>=0) return;   /* 검증용 스위치 */
+
+  /* 일정 검증은 36일 × 5경기를 매번 훑는다. seasonOver() 가 이걸 타고 있어서 화면 한 번에
+     77번 재검증했다. 일정 배열은 시즌당 한 번 만들어지고 그 뒤로는 day 만 올라가므로,
+     같은 배열이면 결과도 같다. 배열이 바뀌면(길이 변화 포함) 다시 검증한다. */
+  var base = window.validScheduleV286;
+  if(typeof base !== 'function') return;
+  var seen = new WeakMap();   /* sched 배열 -> {len, ok} */
+  window.validScheduleV286 = function(sched){
+    if(!Array.isArray(sched)) return base(sched);
+    var hit = seen.get(sched);
+    if(hit && hit.len === sched.length) return hit.ok;
+    var ok = base(sched);
+    seen.set(sched, {len: sched.length, ok: ok});
+    return ok;
+  };
+  try{ validScheduleV286 = window.validScheduleV286; }catch(_){ }
+})();
+</script>
+<!-- v1.1.4 · validScheduleV286 END -->
+
 </body>
 </html>
