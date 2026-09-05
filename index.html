@@ -26499,9 +26499,14 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   /* ── 시상 상금 ─────────────────────────────────────────────────
      seasonLeaders() 가 이미 MVP·부문 1위를 뽑고 있었지만 기록만 남기고 상금은 없었다.
      골든글러브는 없어서 포지션별 최고 성적으로 새로 만든다. */
-  var PRIZE = {mvp:10, title:3, glove:2};
+  var PRIZE = {mvp:10, rookie:5, title:3, glove:2};
   window.AWARD_PRIZE_V116 = PRIZE;
 
+  /* isRookie2026V283 은 최상위 함수라 그대로 부를 수 있다. 2026 신인 표식을 본다. */
+  function rookieOf(p, isBat){
+    try{ return typeof isRookie2026V283 === 'function' ? !!isRookie2026V283(p, isBat) : false; }
+    catch(_){ return false; }
+  }
   function pool(){
     var stats = (state.season && state.season.stats) || {}, bat = [], pit = [];
     Object.keys(stats).forEach(function(tid){
@@ -26512,7 +26517,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         var x = S.bat[idx] || {}, p = t.bat[+idx];
         if(!p) return;
         var ab = +x.ab || 0, h = +x.h || 0;
-        bat.push({tid:tid, name:playerDisplayName(p), pos:p[2] || 'DH',
+        bat.push({tid:tid, name:playerDisplayName(p), pos:p[2] || 'DH', rookie:rookieOf(p, true),
           h:h, hr:+x.hr||0, rbi:+x.rbi||0, sb:+x.sb||0,
           value: h*0.45 + (+x.hr||0)*2.2 + (+x.rbi||0)*0.8 + (+x.sb||0)*0.6});
       });
@@ -26521,7 +26526,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         for(var i=0;i<(t.pit||[]).length;i++) if(t.pit[i] && t.pit[i][0] === nm){ p = t.pit[i]; break; }
         if(!p) return;
         var out = +x.out || 0;
-        pit.push({tid:tid, name:playerDisplayName(p), pos:'투수',
+        pit.push({tid:tid, name:playerDisplayName(p), pos:'투수', rookie:rookieOf(p, false),
           w:+x.w||0, sv:+x.sv||0, so:+x.so||0, out:out,
           era: out >= 45 ? (+x.er||0)*27/out : 99,
           value: (+x.w||0)*5 + (+x.sv||0)*2 + (+x.so||0)*0.18 + out*0.06});
@@ -26539,6 +26544,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var top = function(arr, key){ return arr.slice().sort(function(a,b){ return (+b[key]||0)-(+a[key]||0); })[0]; };
     var all = P.bat.concat(P.pit);
     give('MVP', top(all, 'value'), PRIZE.mvp);
+    give('신인왕', top(all.filter(function(x){ return x.rookie; }), 'value'), PRIZE.rookie);
     give('홈런왕',   top(P.bat, 'hr'),  PRIZE.title);
     give('타점왕',   top(P.bat, 'rbi'), PRIZE.title);
     give('최다안타', top(P.bat, 'h'),   PRIZE.title);
