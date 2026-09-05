@@ -1200,9 +1200,15 @@ nav button.lock{opacity:.32}
       </div>
     </div>
     <div class="speedbar">
-      <button data-spd="pa" class="on">타석별 · 전체 기록</button>
-      <button data-spd="inn">이닝별 · 핵심 기록</button>
+      <button data-spd="pitch">투구별 · 공 하나까지</button>
+      <button data-spd="pa" class="on">타석별 · 타석 결과</button>
+      <button data-spd="inn">이닝별 · 핵심만</button>
       <button data-spd="fast">결과만 · 승패만</button>
+    </div>
+    <div class="ratebar-v116" id="rateBarV116">
+      <button data-rate="1">1배속</button>
+      <button data-rate="2" class="on">2배속</button>
+      <button data-rate="3">3배속</button>
     </div>
     <button class="btn" id="playBtn">경기 시작</button>
     <button class="btn ghost" id="skip5Btn">다음 5경기 자동 진행 (승패만)</button>
@@ -1210,6 +1216,7 @@ nav button.lock{opacity:.32}
   <div id="gameLive" style="display:none">
     <div class="scorebox" id="scorebox"></div>
     <div class="gamelog" id="gamelog"></div>
+    <button class="btn" id="mgrOrderBtnV116" style="display:none">🎽 감독 지시 — 지금부터 3이닝 (경기당 1번)</button>
     <button class="btn" id="skipBtn">⏭ 남은 중계 건너뛰기 (기록 유지)</button>
     <button class="btn ghost" id="newGameBtn" style="display:none">다음 경기 준비</button>
   </div>
@@ -3797,8 +3804,8 @@ document.getElementById('playBtn').onclick = ()=>{
   }
   if(spdSel==='fast'){ push(evs.length); }
   else{
-    const step = spdSel==='pa' ? 2 : 8;
-    const ms = spdSel==='pa' ? 750 : 700;
+    const step = window.gameStepV116?window.gameStepV116():(spdSel==='pa' ? 2 : 8);
+    const ms = window.gameMsV116?window.gameMsV116():(spdSel==='pa' ? 750 : 700);
     push(step);
     gTimer = setInterval(()=>push(step), ms);
   }
@@ -7032,7 +7039,7 @@ document.getElementById('playBtn').onclick = ()=>{
   document.getElementById('newGameBtn').style.display='none';
   document.getElementById('skipBtn').style.display='';
   const log=document.getElementById('gamelog'); log.innerHTML='';
-  const evs=spdSel==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant');
+  const evs=window.gameEventsV116?window.gameEventsV116(g):(spdSel==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant'));
   let i=0; const innDone={a:0,h:0};
   function push(n){
     for(let k=0;k<n&&i<evs.length;k++,i++){
@@ -7043,7 +7050,7 @@ document.getElementById('playBtn').onclick = ()=>{
     drawScore(g,innDone); log.scrollTop=log.scrollHeight; if(i>=evs.length)finish();
   }
   function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='block';}
-  if(spdSel==='fast')push(evs.length);else{const step=spdSel==='pa'?2:8,ms=spdSel==='pa'?750:700;push(step);gTimer=setInterval(()=>push(step),ms);}
+  if(spdSel==='fast')push(evs.length);else{const step=window.gameStepV116?window.gameStepV116():(spdSel==='pa'?2:8),ms=window.gameMsV116?window.gameMsV116():(spdSel==='pa'?750:700);push(step);gTimer=setInterval(()=>push(step),ms);}
   document.getElementById('skipBtn').onclick=()=>push(evs.length);
   document.getElementById('newGameBtn').onclick=()=>renderGameSetup();
 };
@@ -14857,7 +14864,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
       document.getElementById('skipBtn').style.display='';
       const log=document.getElementById('gamelog');
       log.innerHTML='';
-      const evs=spdSel==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant');
+      const evs=window.gameEventsV116?window.gameEventsV116(g):(spdSel==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant'));
       let i=0;
       const innDone={a:0,h:0};
       function push(n){
@@ -14884,8 +14891,8 @@ input,select,textarea{font-size:16px;max-width:100%;}
       }
       if(spdSel==='fast')push(evs.length);
       else{
-        const step=spdSel==='pa'?2:8;
-        const ms=spdSel==='pa'?750:700;
+        const step=window.gameStepV116?window.gameStepV116():(spdSel==='pa'?2:8);
+        const ms=window.gameMsV116?window.gameMsV116():(spdSel==='pa'?750:700);
         push(step);
         gTimer=setInterval(()=>push(step),ms);
       }
@@ -15176,11 +15183,11 @@ input,select,textarea{font-size:16px;max-width:100%;}
         document.getElementById('newGameBtn').style.display='none';
         document.getElementById('skipBtn').style.display='';
         const log=document.getElementById('gamelog');log.innerHTML='';
-        const evs=spdSel==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant');
+        const evs=window.gameEventsV116?window.gameEventsV116(g):(spdSel==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant'));
         let i=0;const innDone={a:0,h:0};
         function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='block';}
         function push(n){for(let k=0;k<n&&i<evs.length;k++,i++){const e=evs[i],d=document.createElement('div');if(e.cls)d.className=e.cls;d.textContent=e.text;log.appendChild(d);if(e.cls==='inn'){if(e.half==='초'){innDone.a=e.inn-1;innDone.h=e.inn-1;}else innDone.a=e.inn;}if(e.cls==='final'){innDone.a=99;innDone.h=99;}}drawScore(g,innDone);log.scrollTop=log.scrollHeight;if(i>=evs.length)finish();}
-        if(spdSel==='fast')push(evs.length);else{const step=spdSel==='pa'?2:8,ms=spdSel==='pa'?750:700;push(step);gTimer=setInterval(()=>push(step),ms);}
+        if(spdSel==='fast')push(evs.length);else{const step=window.gameStepV116?window.gameStepV116():(spdSel==='pa'?2:8),ms=window.gameMsV116?window.gameMsV116():(spdSel==='pa'?750:700);push(step);gTimer=setInterval(()=>push(step),ms);}
         document.getElementById('skipBtn').onclick=()=>push(evs.length);
         document.getElementById('newGameBtn').onclick=()=>renderGameSetup();
       }catch(err){console.error(VERSION+' 경기 시작:',err);showAlert('경기를 시작하지 못했습니다.\n원인: '+(err?.message||err));}
@@ -15440,11 +15447,11 @@ input,select,textarea{font-size:16px;max-width:100%;}
               document.getElementById('newGameBtn').style.display='none';
               document.getElementById('skipBtn').style.display='';
               const log=document.getElementById('gamelog'); log.innerHTML='';
-              const evs=spdSel==='pa'?g.ev:g.ev.filter(function(e){return e.cls!=='pitch'&&e.cls!=='chant';});
+              const evs=window.gameEventsV116?window.gameEventsV116(g):(spdSel==='pa'?g.ev:g.ev.filter(function(e){return e.cls!=='pitch'&&e.cls!=='chant';}));
               let i=0; const innDone={a:0,h:0};
               function finish(){if(gTimer){clearInterval(gTimer);gTimer=null;}drawScore(g,{a:99,h:99});document.getElementById('skipBtn').style.display='none';document.getElementById('newGameBtn').style.display='block';}
               function push(n){for(let k=0;k<n&&i<evs.length;k++,i++){const e=evs[i],d=document.createElement('div');if(e.cls)d.className=e.cls;d.textContent=e.text;log.appendChild(d);if(e.cls==='inn'){if(e.half==='초'){innDone.a=e.inn-1;innDone.h=e.inn-1;}else innDone.a=e.inn;}if(e.cls==='final'){innDone.a=99;innDone.h=99;}}drawScore(g,innDone);log.scrollTop=log.scrollHeight;if(i>=evs.length)finish();}
-              if(spdSel==='fast')push(evs.length);else{const step=spdSel==='pa'?2:8,ms=spdSel==='pa'?750:700;push(step);gTimer=setInterval(function(){push(step);},ms);}
+              if(spdSel==='fast')push(evs.length);else{const step=window.gameStepV116?window.gameStepV116():(spdSel==='pa'?2:8),ms=window.gameMsV116?window.gameMsV116():(spdSel==='pa'?750:700);push(step);gTimer=setInterval(function(){push(step);},ms);}
               document.getElementById('skipBtn').onclick=function(){push(evs.length);};
               document.getElementById('newGameBtn').onclick=function(){renderGameSetup();};
             }catch(err){console.error(VERSION+' 경기 시작',err);showAlert('경기를 시작하지 못했습니다.');}
@@ -19627,7 +19634,7 @@ header .board h1{margin-right:0}
     }catch(e){console.error(V+' 재계산:',e);return false;}
 
     const mode=(typeof spdSelSafe==='function')?spdSelSafe():'pa';
-    const evs=mode==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant');
+    const evs=window.gameEventsV116?window.gameEventsV116(g):(mode==='pa'?g.ev:g.ev.filter(e=>e.cls!=='pitch'&&e.cls!=='chant'));
     let i=Math.min(log.children.length,evs.length);
 
     // 지시가 반영된 사실을 로그에 남긴다.
@@ -26315,6 +26322,141 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.1.5 · 자동 변경 버튼 END -->
+
+<!-- v1.1.6 · 경기 재생 4단 + 배속 -->
+<style id="rate-bar-style-v116">
+.ratebar-v116{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.ratebar-v116 button{min-height:var(--tap-min,44px);border-radius:11px;padding:8px 4px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--dim);
+  font-family:inherit;font-size:12.5px;font-weight:800}
+.ratebar-v116 button.on{border-color:rgba(244,196,94,.5);background:rgba(244,196,94,.14);color:var(--amber,#F4C45E)}
+.speedbar button{word-break:keep-all}
+</style>
+<script id="game-speed-v116">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov116')>=0) return;
+  /* 원래는 '타석별'이 사실 투구별이었다. 433개 이벤트 중 265개가 투구라 한 경기에 2분 42초가
+     걸렸다. 네 단계로 나누고 배속을 붙인다.
+
+       투구별  전부                433개   3개씩 300ms  → 1배속 43초 / 3배속 14초
+       타석별  투구 제외           168개   2개씩 420ms  → 1배속 35초 / 3배속 12초
+       이닝별  투구·응원 제외      120개   8개씩 700ms  → 1배속 10초
+       결과만  즉시                                     → 0초
+
+     재생 코드가 문서 네 군데에 복사돼 있어서, 그 자리마다 이 훅을 부르도록 해 두었다. */
+  var RATE_KEY = 'ourteam_rate_v116';
+  var rate = 2;
+  try{ var v = +localStorage.getItem(RATE_KEY); if(v===1||v===2||v===3) rate = v; }catch(_){ }
+
+  function mode(){
+    try{ if(typeof spdSelSafe === 'function') return spdSelSafe(); }catch(_){ }
+    try{ return spdSel; }catch(_){ return 'pa'; }
+  }
+  window.gameEventsV116 = function(g){
+    if(!g || !Array.isArray(g.ev)) return [];
+    var m = mode();
+    if(m === 'pitch') return g.ev;
+    if(m === 'inn')   return g.ev.filter(function(e){ return e.cls!=='pitch' && e.cls!=='chant'; });
+    return g.ev.filter(function(e){ return e.cls!=='pitch'; });      /* 타석별 */
+  };
+  window.gameStepV116 = function(){
+    var m = mode();
+    return m==='pitch' ? 3 : m==='inn' ? 8 : 2;
+  };
+  window.gameMsV116 = function(){
+    var m = mode();
+    var base = m==='pitch' ? 300 : m==='inn' ? 700 : 420;
+    return Math.max(60, Math.round(base / rate));
+  };
+  window.gameRateV116 = function(){ return rate; };
+
+  function bind(){
+    var bar = document.getElementById('rateBarV116');
+    if(!bar || bar.dataset.boundV116) return;
+    bar.dataset.boundV116 = '1';
+    var btns = bar.querySelectorAll('button');
+    Array.prototype.forEach.call(btns, function(b){
+      if(+b.dataset.rate === rate) b.classList.add('on'); else b.classList.remove('on');
+      b.onclick = function(){
+        rate = +b.dataset.rate || 1;
+        try{ localStorage.setItem(RATE_KEY, String(rate)); }catch(_){ }
+        Array.prototype.forEach.call(btns, function(x){ x.classList.remove('on'); });
+        b.classList.add('on');
+      };
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, {once:true});
+  else bind();
+  var oldShow = window.show;
+  if(typeof oldShow === 'function'){
+    window.show = function(n){ var r = oldShow.apply(this, arguments); try{ bind(); }catch(_){ } return r; };
+    try{ show = window.show; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.1.6 · 경기 재생 END -->
+
+<!-- v1.1.6 · 감독 지시 버튼 -->
+<style id="mgr-order-style-v116">
+#mgrOrderBtnV116{background:rgba(244,196,94,.14);border:1px solid rgba(244,196,94,.5);
+  color:var(--amber,#F4C45E);font-weight:800}
+#mgrOrderBtnV116.used{background:var(--panel2);border-color:var(--line);color:var(--dim);font-weight:700}
+</style>
+<script id="mgr-order-button-v116">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov116')>=0) return;
+  /* mgrOrderOpenV53 은 v0.53부터 완성돼 있었지만 부르는 버튼이 문서 어디에도 없어서
+     실제로는 쓸 수 없는 기능이었다. 중계 화면에 버튼을 붙인다.
+     결과만 모드는 경기를 보지 않으므로 지시를 쓸 수 없다(원래 규칙 그대로). */
+  function mode(){
+    try{ if(typeof spdSelSafe === 'function') return spdSelSafe(); }catch(_){ }
+    try{ return spdSel; }catch(_){ return 'pa'; }
+  }
+  function used(){
+    try{ var c = window.mgrOrderStateV53 && mgrOrderStateV53(); return !!(c && c.kind); }catch(_){ return false; }
+  }
+  function sync(){
+    var btn = document.getElementById('mgrOrderBtnV116');
+    var live = document.getElementById('gameLive');
+    var done = document.getElementById('newGameBtn');
+    if(!btn || !live) return;
+    var showing = getComputedStyle(live).display !== 'none';
+    var finished = done && getComputedStyle(done).display !== 'none';
+    if(!showing || finished || mode() === 'fast'){ btn.style.display = 'none'; return; }
+    btn.style.display = '';
+    if(used()){
+      btn.classList.add('used');
+      btn.textContent = '🎽 감독 지시 — 이미 사용함';
+      btn.disabled = true;
+    }else{
+      btn.classList.remove('used');
+      btn.textContent = '🎽 감독 지시 — 지금부터 3이닝 (경기당 1번)';
+      btn.disabled = false;
+    }
+  }
+  function attach(){
+    var btn = document.getElementById('mgrOrderBtnV116');
+    if(!btn || btn.dataset.boundV116) return;
+    btn.dataset.boundV116 = '1';
+    btn.onclick = function(){
+      try{
+        if(typeof mgrOrderOpenV53 === 'function') mgrOrderOpenV53();
+        else showAlert('감독 지시를 불러오지 못했습니다.');
+      }catch(e){ console.error('v1.1.6 감독 지시:', e); }
+      setTimeout(sync, 300);
+    };
+  }
+  function tick(){ try{ attach(); sync(); }catch(_){ } }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tick, {once:true});
+  else tick();
+  /* v0.65 가 300~1500ms 짜리 setInterval 을 "경기 재생 타이머"로 보고 전부 지운다.
+     (감독 지시를 적용할 때 stopReplay 가 돈다) 그 범위를 피해 250ms 로 둔다. */
+  setInterval(tick, 250);
+})();
+</script>
+<!-- v1.1.6 · 감독 지시 버튼 END -->
 
 </body>
 </html>
