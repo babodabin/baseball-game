@@ -25995,5 +25995,326 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.1.4 · validScheduleV286 END -->
 
+<!-- v1.1.5 · 투수 피로 — 실제 등판을 반영 -->
+<script id="pitcher-fatigue-v115">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov115')>=0) return;   /* 검증용 스위치 */
+  /* 원래 코드는 투수 피로를 state.spLast(=선발 등판 기록)로만 매겼다. 그래서
+     · 불펜·마무리는 매 경기 던져도 피로가 한 번도 쌓이지 않고 매일 -12 회복만 했고
+     · 선발도 등판일 +20, 쉬는 4일 -48 이라 다음 등판 때 늘 0으로 돌아왔다.
+     결과적으로 투수는 언제나 최상 상태였다.
+
+     이 겹은 원본을 그대로 돌린 뒤(타자·부상 처리는 원본 담당) 투수 피로만 다시 계산한다.
+     오늘 실제로 던진 양은 시즌 기록의 아웃카운트 증가분으로 알아낸다.
+     '결과만' 모드는 경기를 시뮬레이션하지 않아 기록이 없으므로 추정치를 쓴다. */
+
+  var LOAD_BASE    = 4;    /* 등판만 해도 붙는 기본 부하 */
+  var LOAD_PER_OUT = 2.0;  /* 아웃 1개당 — 선발 6이닝(18아웃)이면 8+32=40 */
+  var REST         = 9;   /* 안 던진 날 회복 */
+  var EST_SP_OUTS  = 17;   /* 결과만 모드 추정: 선발 약 5.2이닝 */
+  var EST_RP_OUTS  = 3;    /* 결과만 모드 추정: 불펜 1이닝 */
+  var EST_RP_COUNT = 3;    /* 결과만 모드 추정: 불펜 등판 인원 */
+  var BAT_LOAD      = 6;     /* 선발 출장 부하 */
+  var BAT_REC_BASE  = 2;     /* 출장한 날에도 붙는 기본 회복 */
+  var BAT_REC_RATE  = 0.048;  /* 피로에 비례한 추가 회복 — 매일 나가면 65 근처에서 평형 */
+  var BAT_BENCH_REC = 12;    /* 결장한 날 회복 */
+  window.PITCHER_FATIGUE_V115 = {LOAD_BASE:LOAD_BASE, LOAD_PER_OUT:LOAD_PER_OUT, REST:REST,
+    BAT_LOAD:BAT_LOAD, BAT_REC_BASE:BAT_REC_BASE, BAT_REC_RATE:BAT_REC_RATE, BAT_BENCH_REC:BAT_BENCH_REC};
+
+  var base = window.updateDailyHealth;
+  if(typeof base !== 'function') return;
+
+  function outsOf(tid, name){
+    try{ return +(state.season.stats[tid].pit[name].out) || 0; }catch(_){ return 0; }
+  }
+  function eachPitcher(fn){
+    try{
+      TEAMS.forEach(function(tm){
+        var t = getTeam(tm.id); if(!t) return;
+        (t.pit||[]).forEach(function(p,i){ if(p) fn(tm.id, p, i, t); });
+      });
+    }catch(_){ }
+  }
+  function eachBatter(fn){
+    try{
+      TEAMS.forEach(function(tm){
+        var t = getTeam(tm.id); if(!t) return;
+        (t.bat||[]).forEach(function(p,i){ if(p) fn(tm.id, p, i, t); });
+      });
+    }catch(_){ }
+  }
+  function clamp(v){ return Math.max(0, Math.min(100, v)); }
+
+  /* 결과만 모드에서 오늘 던졌을 투수 추정 */
+  function estimatedOuts(tid, i, t){
+    var today = (typeof pitchingDay==='function') ? pitchingDay() : null;
+    var last = (state.spLast && state.spLast[tid]) ? state.spLast[tid][i] : undefined;
+    if(today !== null && last === today) return EST_SP_OUTS;      /* 오늘 선발 */
+    try{
+      var order = window.bullpenOrderOfV310 ? bullpenOrderOfV310(tid) : [];
+      var pos = order.indexOf(i);
+      if(pos >= 0 && pos <= EST_RP_COUNT) return EST_RP_OUTS;     /* 마무리 + 상위 불펜 */
+    }catch(_){ }
+    return 0;
+  }
+
+  /* 어제까지 본 누적 아웃카운트. 시즌에 같이 저장되므로 새로고침해도 이어진다.
+     경기는 updateDailyHealth 가 불리기 전에 이미 끝나 있으므로, 이 함수 안에서
+     전후를 비교하면 항상 0이 된다. 어제 값을 남겨 두고 비교해야 한다. */
+  function seenMap(){
+    if(!state.season) return null;
+    if(!state.season.pitOutsSeenV115 || typeof state.season.pitOutsSeenV115 !== 'object'){
+      state.season.pitOutsSeenV115 = {};
+      return null;                       /* 처음 한 번은 기준만 잡고 넘어간다 */
+    }
+    return state.season.pitOutsSeenV115;
+  }
+
+  window.updateDailyHealth = function(){
+    var saved = {}, resultMode = false;
+    try{ resultMode = (typeof GAME_RECORD_MODE !== 'undefined' && GAME_RECORD_MODE === 'result'); }catch(_){ }
+    var seen = seenMap();
+    var beforeOuts = seen || {};
+    var first = !seen;
+
+    eachPitcher(function(tid,p,i){
+      var h = playerHealth(tid,'pit',p);
+      saved[tid+'|'+i] = { f: +h.fatigue || 0, inj: +h.injury || 0 };
+    });
+    var savedBat = {};
+    eachBatter(function(tid,p,i){
+      var h = playerHealth(tid,'bat',p);
+      savedBat[tid+'|'+i] = { f: +h.fatigue || 0, inj: +h.injury || 0 };
+    });
+
+    var r = base.apply(this, arguments);
+
+    var news = [];
+    eachPitcher(function(tid,p,i,t){
+      var sv = saved[tid+'|'+i]; if(!sv) return;
+      if(sv.inj > 0) return;                      /* 부상 회복은 원본 처리를 그대로 둔다 */
+      var h = playerHealth(tid,'pit',p);
+      var outs = first ? 0 : (outsOf(tid, p[0]) - (beforeOuts[tid+'|'+p[0]] || 0));
+      if(outs <= 0 && resultMode && !first) outs = estimatedOuts(tid, i, t);
+      if(first) return;                  /* 기준을 잡는 첫 호출은 피로를 건드리지 않는다 */
+      h.fatigue = clamp(outs > 0 ? sv.f + LOAD_BASE + outs*LOAD_PER_OUT : sv.f - REST);
+      var chance = h.fatigue>=94 ? .025 : h.fatigue>=86 ? .008 : 0;
+      if(chance && Math.random() < chance){
+        h.injury = 2 + Math.floor(Math.random()*4);
+        h.fatigue = Math.max(45, h.fatigue - 20);
+        if(tid === state.myTeam) news.push('🤕 ' + playerDisplayName(p) + ' ' + h.injury + '경기 부상');
+      }
+    });
+    /* 타자 — 원래는 출장 +5 / 결장 -12 라서 주전은 20경기면 100에 박혔다.
+       회복량이 피로에 비례하도록 바꿔 매일 나가는 주전이 65 근처에서 평형을 이루게 한다. */
+    eachBatter(function(tid,p,i,t){
+      var sv = savedBat[tid+'|'+i]; if(!sv) return;
+      if(sv.inj > 0) return;                     /* 부상 회복은 원본 처리를 그대로 둔다 */
+      var h = playerHealth(tid,'bat',p);
+      var played = h.fatigue > sv.f;             /* 원본이 +5 를 줬으면 오늘 선발 출장 */
+      var rec = BAT_REC_BASE + sv.f * BAT_REC_RATE;
+      h.fatigue = clamp(played ? sv.f + BAT_LOAD - rec : sv.f - (BAT_BENCH_REC + sv.f * BAT_REC_RATE));
+      var chance = h.fatigue>=94 ? .025 : h.fatigue>=86 ? .008 : 0;
+      if(chance && Math.random() < chance){
+        h.injury = 2 + Math.floor(Math.random()*4);
+        h.fatigue = Math.max(45, h.fatigue - 20);
+        if(tid === state.myTeam) news.push('🤕 ' + playerDisplayName(p) + ' ' + h.injury + '경기 부상');
+      }
+    });
+
+    /* 오늘까지의 누적을 기준으로 갱신 */
+    try{
+      if(state.season){
+        var m = state.season.pitOutsSeenV115 || (state.season.pitOutsSeenV115 = {});
+        eachPitcher(function(tid,p){ m[tid+'|'+p[0]] = outsOf(tid, p[0]); });
+      }
+    }catch(_){ }
+    try{
+      if(news.length && state.season){
+        state.season.healthNews = (state.season.healthNews||[]).concat(news);
+      }
+    }catch(_){ }
+    return r;
+  };
+})();
+</script>
+<!-- v1.1.5 · 투수 피로 END -->
+
+<!-- v1.1.5 · 지친 불펜은 뒤로 -->
+<script id="bullpen-rest-v115">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov115')>=0) return;
+  /* 불펜 순번이 고정이라 같은 투수만 매 경기 나와 피로가 100까지 찼다.
+     짜둔 순서는 그대로 두되, 지친 투수만 뒤로 민다. 등급 안에서는 원래 순서를 지킨다. */
+  var TIRED = 75, WARN = 55;
+  var base = window.bullpenOrderOfV310;
+  if(typeof base !== 'function') return;
+  window.bullpenOrderOfV310 = function(teamId){
+    var order = base(teamId);
+    try{
+      if(!Array.isArray(order) || order.length < 2) return order;
+      var t = getTeam(teamId); if(!t) return order;
+
+      /* 로테이션에 못 드는 선발을 롱릴리프로 뒤에 붙인다. 불펜이 4명뿐인데 선발이
+         9명이라 앞의 몇 명만 매 경기 던지고 나머지는 놀고 있었다. */
+      var plan = (typeof pitchPlanOfV310==='function') ? pitchPlanOfV310(teamId) : null;
+      var extra = [];
+      if(plan && Array.isArray(plan.starters)){
+        extra = plan.starters.slice(5).filter(function(i){ return order.indexOf(i) < 0; });
+      }
+      var pool = order.concat(extra);
+
+      var tier = function(i){
+        var p = t.pit[i]; if(!p) return 9;
+        var h = playerHealth(teamId,'pit',p);
+        if((+h.injury||0) > 0) return 9;                    /* 부상자는 맨 뒤 */
+        var f = +h.fatigue || 0;
+        return f >= TIRED ? 2 : f >= WARN ? 1 : 0;
+      };
+      return pool.map(function(v,k){ return {v:v, k:k, t:tier(v)}; })
+                 .sort(function(a,b){ return a.t - b.t || a.k - b.k; })
+                 .map(function(x){ return x.v; });
+    }catch(_){ return order; }
+  };
+  try{ bullpenOrderOfV310 = window.bullpenOrderOfV310; }catch(_){ }
+})();
+</script>
+<!-- v1.1.5 · 불펜 순번 END -->
+
+<!-- v1.1.5 · 자동 변경 버튼 -->
+<style id="auto-rest-style-v115">
+#autoRestBoxV115{margin:0 0 10px}
+#autoRestBtnV115{width:100%;min-height:var(--tap-min,44px);border-radius:12px;
+  border:1px solid rgba(244,196,94,.42);background:rgba(244,196,94,.12);color:var(--amber,#F4C45E);
+  font-family:inherit;font-size:14px;font-weight:800;letter-spacing:.01em}
+#autoRestBtnV115:active{transform:scale(.995)}
+#autoRestBoxV115 .hint{margin-top:5px;font-size:11.5px;color:var(--dim,#9BB0A4);line-height:1.45}
+</style>
+<script id="auto-rest-swap-v115">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov115')>=0) return;
+  /* 누르면 지친 선수를 컴퓨터가 바꿔 준다. 자동으로 몰래 바뀌지 않고, 이 버튼을 누를 때만
+     동작한다. 무엇이 바뀌었는지 전부 보여 준다. */
+  var TIRED    = 75;   /* 이 이상이면 교체 대상 (🥵 매우 피곤) */
+  var FRESH    = 45;   /* 대체 선수는 이 미만이어야 한다 */
+  var MAX_DROP = 7;    /* 능력치가 이보다 크게 떨어지면 바꾸지 않는다 */
+  var PIT_TIRED = 70;  /* 투수 등판 순서를 미루는 기준 */
+  window.AUTO_REST_V115 = {TIRED:TIRED, FRESH:FRESH, MAX_DROP:MAX_DROP, PIT_TIRED:PIT_TIRED};
+
+  function fat(kind,p){ try{ return +playerHealth(state.myTeam,kind,p).fatigue || 0; }catch(_){ return 0; } }
+  function hurt(kind,p){ try{ return (+playerHealth(state.myTeam,kind,p).injury || 0) > 0; }catch(_){ return false; } }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return (p&&p[1])||(p&&p[0])||'선수'; } }
+
+  function swapBatters(t, log, skipped){
+    var lu = getLineup(state.myTeam);
+    if(!lu || !Array.isArray(lu.order)) return;
+    var used = {}; lu.order.forEach(function(i){ used[i] = true; });
+    for(var pos=0; pos<lu.order.length; pos++){
+      var cur = lu.order[pos], cp = t.bat[cur];
+      if(!cp) continue;
+      if(!hurt('bat',cp) && fat('bat',cp) < TIRED) continue;
+      var slot = lu.pos ? lu.pos[pos] : 'DH';
+      var best = null, bestOvr = -1;
+      for(var i=0;i<t.bat.length;i++){
+        var p = t.bat[i];
+        if(!p || used[i]) continue;
+        if(hurt('bat',p) || fat('bat',p) >= FRESH) continue;
+        if(typeof canPlay==='function' && !canPlay(p, slot)) continue;
+        try{ if(typeof isFirstTeam==='function' && !isFirstTeam(state.myTeam,'bat',p)) continue; }catch(_){ }
+        var o = 0; try{ o = batOvr(p, state.myTeam); }catch(_){ }
+        if(o > bestOvr){ bestOvr = o; best = i; }
+      }
+      if(best !== null){
+        var curOvr = 0; try{ curOvr = batOvr(cp, state.myTeam); }catch(_){ }
+        var drop = curOvr - bestOvr;
+        if(!hurt('bat',cp) && drop > MAX_DROP){
+          skipped.push('· ' + nm(cp) + ' (피로 ' + Math.round(fat('bat',cp)) + ') — 대체 선수가 ' + Math.round(drop) + ' 약해서 그대로 둠');
+          continue;
+        }
+        var why = hurt('bat',cp) ? '부상' : '피로 ' + Math.round(fat('bat',cp));
+        delete used[cur]; used[best] = true; lu.order[pos] = best;
+        log.push('🧤 ' + (pos+1) + '번 ' + nm(cp) + ' (' + why + ') → ' + nm(t.bat[best])
+                 + (drop > 0 ? ' (OVR -' + Math.round(drop) + ')' : ''));
+      }
+    }
+    state.lineups[state.myTeam] = lu;
+  }
+
+  function restOrder(t, list, kind, log, label){
+    /* 지친 투수를 뒤로. 같은 등급 안에서는 짜둔 순서를 지킨다. */
+    var tier = function(i){
+      var p = t.pit[i]; if(!p) return 9;
+      if(hurt('pit',p)) return 9;
+      var f = fat('pit',p);
+      return f >= PIT_TIRED ? 2 : f >= FRESH ? 1 : 0;
+    };
+    var before = list.slice();
+    var out = list.map(function(v,k){ return {v:v,k:k,t:tier(v)}; })
+                  .sort(function(a,b){ return a.t - b.t || a.k - b.k; })
+                  .map(function(x){ return x.v; });
+    for(var k=0;k<out.length;k++){
+      if(out[k] !== before[k]){
+        log.push('⚾ ' + label + ' 순서 조정 — ' + before.slice(0,3).map(function(i){return nm(t.pit[i]);}).join(' · ')
+                 + ' → ' + out.slice(0,3).map(function(i){return nm(t.pit[i]);}).join(' · '));
+        break;
+      }
+    }
+    return out;
+  }
+
+  function run(){
+    try{
+      if(!state || !state.myTeam){ showAlert('먼저 구단을 선택하세요.'); return; }
+      var t = getTeam(state.myTeam), log = [];
+      var skipped = [];
+      swapBatters(t, log, skipped);
+      var plan = pitchPlanOfV310(state.myTeam);
+      var starters = restOrder(t, plan.starters.slice(), 'pit', log, '선발 로테이션');
+      var bullpen  = restOrder(t, plan.bullpen.slice(),  'pit', log, '불펜');
+      state.pitchPlan[state.myTeam] = {starters:starters, bullpen:bullpen, closers:bullpen.slice(0,Math.min(2,bullpen.length))};
+      try{ save(); }catch(_){ }
+      try{ if(typeof renderLineup==='function') renderLineup(); }catch(_){ }
+      var NL = String.fromCharCode(10);
+      showAlert(log.length
+        ? '⚡ 자동 변경 (' + log.length + '건)' + NL + NL + log.join(NL)
+          + (skipped.length ? NL + NL + '그대로 둔 선수' + NL + skipped.join(NL) : '')
+        : '⚡ 자동 변경' + NL + NL + '바꿀 선수가 없습니다.' + NL + '피로 ' + TIRED + ' 이상이거나 부상인 선수가 없거나,'
+          + NL + '있어도 대체 선수가 그만큼 약합니다.'
+          + (skipped.length ? NL + NL + skipped.join(NL) : ''));
+    }catch(e){
+      console.error('v1.1.5 자동 변경:', e);
+      try{ showAlert('자동 변경 중 문제가 생겼습니다.'); }catch(_){ }
+    }
+  }
+  window.autoRestSwapV115 = run;
+
+  function inject(){
+    var wrap = document.getElementById('lineupWrap');
+    if(!wrap || document.getElementById('autoRestBoxV115')) return;
+    var box = document.createElement('div');
+    box.id = 'autoRestBoxV115';
+    box.innerHTML = '<button type="button" id="autoRestBtnV115">⚡ 자동 변경 — 지친 선수 빼기</button>'
+      + '<div class="hint">🥵 매우 피곤(' + TIRED + ' 이상)하거나 부상인 선수를 뺍니다. 대체 선수가 크게 약하면 그대로 둡니다. 지친 투수는 등판 순서를 뒤로 미룹니다. 누를 때만 바뀝니다.</div>';
+    wrap.insertBefore(box, wrap.firstChild);
+    document.getElementById('autoRestBtnV115').onclick = run;
+  }
+  var old = window.renderLineup;
+  if(typeof old === 'function'){
+    window.renderLineup = function(){ var r = old.apply(this, arguments); try{ inject(); }catch(_){ } return r; };
+    try{ renderLineup = window.renderLineup; }catch(_){ }
+  }
+  var oldShow = window.show;
+  if(typeof oldShow === 'function'){
+    window.show = function(n){ var r = oldShow.apply(this, arguments); if(n === 'lineup'){ try{ inject(); }catch(_){ } } return r; };
+    try{ show = window.show; }catch(_){ }
+  }
+  try{ inject(); }catch(_){ }
+})();
+</script>
+<!-- v1.1.5 · 자동 변경 버튼 END -->
+
 </body>
 </html>
