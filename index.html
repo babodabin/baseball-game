@@ -1,6 +1,51 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<script id="err-banner-v117">
+/* v1.1.7 · 오류 표시 — 반드시 문서 맨 앞에 둔다.
+   폰에는 개발자 도구가 없어 오류가 나도 볼 수 없다. 뒤에 오는 어떤 블록에서든 처음 잡힌
+   오류 하나(위치 포함)를 화면 위에 띄운다. 정상일 땐 아무것도 안 보인다. */
+(function(){
+  'use strict';
+  var first = null, NL = String.fromCharCode(10);
+  function esc(t){ return String(t).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; }); }
+  function render(){
+    if(!first || !document.body) return;
+    var el = document.getElementById('errBannerV117');
+    if(!el){
+      el = document.createElement('div'); el.id = 'errBannerV117';
+      el.setAttribute('style','position:fixed;left:8px;right:8px;top:calc(8px + env(safe-area-inset-top));z-index:2147483000;background:#3a0d0d;color:#ffd7d7;border:1px solid #ff6b6b;border-radius:10px;padding:10px 12px;font:12px/1.45 -apple-system,system-ui,sans-serif;word-break:break-all');
+      document.body.appendChild(el);
+    }
+    el.innerHTML = '<button type="button" style="float:right;margin-left:8px;background:#ff6b6b;color:#200;border:0;border-radius:6px;padding:3px 8px;font-weight:800">닫기</button>'
+      + '<b style="color:#fff">⚠ 오류가 났습니다</b><br>' + esc(first)
+      + '<br><span style="opacity:.75">이 문구를 그대로 알려주세요 · ' + esc(window.APP_VERSION || '') + '</span>';
+    el.querySelector('button').onclick = function(){ el.style.display = 'none'; };
+  }
+  function note(msg){
+    if(first) return;
+    first = msg;
+    if(document.body) render();
+    else document.addEventListener('DOMContentLoaded', render, {once:true});
+  }
+  window.addEventListener('error', function(e){
+    var m = (e && e.message) || '알 수 없는 오류';
+    if(e && e.lineno) m += ' [' + e.lineno + '행' + (e.colno ? ':' + e.colno : '') + ']';
+    try{
+      if(e && e.error && e.error.stack){
+        var lines = String(e.error.stack).split(NL).slice(0,3);
+        var ln = lines.join(' <- ').replace(/https?:[^ )]*[/]/g, '');
+        m += ' | ' + ln;
+      }
+    }catch(_){ }
+    note(m);
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    var r = e && e.reason; note('약속 실패: ' + (r && (r.message || r) || '알 수 없음'));
+  });
+  window.__firstErrorV117 = function(){ return first; };
+})();
+</script>
 <script>
 /* ──────────────────────────────────────────────────────────────
    [001/239] SCRIPT · 0.6KB · 4행
@@ -26642,42 +26687,6 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.1.6 · 보너스·시상 END -->
 
-<!-- v1.1.7 · 오류 표시 (폰에서 원인을 볼 수 있게) -->
-<style id="err-banner-style-v117">
-#errBannerV117{position:fixed;left:8px;right:8px;top:calc(8px + env(safe-area-inset-top));z-index:2147483000;
-  background:#3a0d0d;color:#ffd7d7;border:1px solid #ff6b6b;border-radius:10px;padding:10px 12px;
-  font:12px/1.45 -apple-system,system-ui,sans-serif;word-break:break-all;display:none}
-#errBannerV117 b{color:#fff}
-#errBannerV117 button{float:right;margin-left:8px;background:#ff6b6b;color:#200;border:0;border-radius:6px;padding:3px 8px;font-weight:800}
-</style>
-<script id="err-banner-v117">
-(function(){
-  'use strict';
-  /* 폰에는 개발자 도구가 없어 오류가 나도 볼 수 없다. 처음 잡힌 오류 하나를 화면 위에
-     띄운다. 사용자가 그대로 읽어 알려주면 원인을 바로 좁힐 수 있다. 정상일 땐 아무것도 안 보인다. */
-  var shown = false;
-  function show(msg){
-    if(shown) return; shown = true;
-    try{
-      var el = document.getElementById('errBannerV117');
-      if(!el){ el = document.createElement('div'); el.id = 'errBannerV117'; document.body.appendChild(el); }
-      el.innerHTML = '<button type="button">닫기</button><b>⚠ 오류가 났습니다</b><br>' + String(msg).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; })
-        + '<br><span style="opacity:.75">이 문구를 그대로 알려주세요. 버전 ' + (window.APP_VERSION||'') + '</span>';
-      el.querySelector('button').onclick = function(){ el.style.display = 'none'; };
-      el.style.display = 'block';
-    }catch(_){ }
-  }
-  window.addEventListener('error', function(e){
-    var m = (e && e.message) || '알 수 없는 오류';
-    if(e && e.lineno) m += ' (' + e.lineno + '행)';
-    show(m);
-  });
-  window.addEventListener('unhandledrejection', function(e){
-    var r = e && e.reason; show('약속 실패: ' + (r && (r.message || r) || '알 수 없음'));
-  });
-})();
-</script>
-<!-- v1.1.7 · 오류 표시 END -->
 
 </body>
 </html>
