@@ -54,7 +54,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.1.7';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.1.8';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -3534,7 +3534,11 @@ function genSchedule(){
     return ids[h];
   }
 
-  const seasonYear=(typeof state!=='undefined'&&state&&Number.isFinite(+state.year))?+state.year:1;
+  /* v1.1.7 · 'typeof state' 는 let 이 초기화되기 전이면 그 자체로 ReferenceError 다.
+     저장을 읽는 도중(let state 가 만들어지기 전) 일정 검증이 실패하면 여기로 들어와
+     앱 전체가 죽었다. try 로 감싸 그 경우 1년차로 본다. */
+  let seasonYear=1;
+  try{ if(state&&Number.isFinite(+state.year)) seasonYear=+state.year; }catch(_){ }
   const sched = [];
   for(let c=0;c<cycles;c++){
     rounds.forEach(rd=>{
@@ -26071,9 +26075,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   window.validScheduleV286 = function(sched){
     if(!Array.isArray(sched)) return base(sched);
     var hit = seen.get(sched);
-    if(hit && hit.len === sched.length) return hit.ok;
+    if(hit && hit.len === sched.length) return true;   /* 통과한 결과만 기억한다 */
     var ok = base(sched);
-    seen.set(sched, {len: sched.length, ok: ok});
+    if(ok) seen.set(sched, {len: sched.length});       /* 실패는 매번 다시 확인 — 팀 목록이 바뀌는 중일 수 있다 */
     return ok;
   };
   try{ validScheduleV286 = window.validScheduleV286; }catch(_){ }
