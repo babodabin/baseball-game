@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<style id="ts-wait-style-v118">
+/* v1.1.8 · 타이틀이 덮기 전에 게임 화면이 먼저 그려져 잠깐 보이던 것을 막는다.
+   문서가 1.6MB 라 타이틀 스크립트(문서 끝)까지 읽는 동안 앞부분이 먼저 칠해진다. */
+html.ts-wait body > *:not(#titleScreenV1032):not(#errBannerV117){visibility:hidden}
+html.ts-wait{background:#07130F}
+</style>
+<script id="ts-wait-v118">
+document.documentElement.classList.add('ts-wait');
+/* 타이틀이 어떤 이유로든 안 뜨면 2.5초 뒤 그냥 보여 준다 */
+setTimeout(function(){ document.documentElement.classList.remove('ts-wait'); }, 2500);
+</script>
 <script id="err-banner-v117">
 /* v1.1.7 · 오류 표시 — 반드시 문서 맨 앞에 둔다.
    폰에는 개발자 도구가 없어 오류가 나도 볼 수 없다. 뒤에 오는 어떤 블록에서든 처음 잡힌
@@ -54,7 +65,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.1.8';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.1.9';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -25634,6 +25645,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
    [232/239] STYLE · 1.9KB · 25542행 · id="title-screen-style-v1032"
    ────────────────────────────────────────────────────────────── */
 #titleScreenV1032{position:fixed;inset:0;z-index:9998;overflow:hidden;
+  background:#07130F;                 /* v1.1.8 · 배경 사진이 오기 전에도 뒤가 비치지 않게 */
   opacity:1;transition:opacity .32s ease}
 #titleScreenV1032.ts-out{opacity:0;pointer-events:none}
 #titleScreenV1032 .ts-bg{position:absolute;inset:0;background-size:cover;background-position:center;
@@ -25712,6 +25724,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         '</div>';
       el.querySelector('.ts-bg').style.backgroundImage='url("'+pick+'")';
       document.body.appendChild(el);
+      document.documentElement.classList.remove('ts-wait');   /* v1.1.8 · 타이틀이 덮었으니 뒤를 보여도 된다 */
 
       var closed=false;
       function close(){
@@ -25724,6 +25737,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       try{console.error('title-screen-v1032:',e);}catch(_){}
       var z=document.getElementById('titleScreenV1032');
       if(z&&z.parentNode)z.parentNode.removeChild(z);
+      document.documentElement.classList.remove('ts-wait');
     }
   });
 })();
