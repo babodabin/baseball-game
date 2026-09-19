@@ -1,17 +1,35 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<style id="ts-wait-style-v118">
-/* v1.1.8 · 타이틀이 덮기 전에 게임 화면이 먼저 그려져 잠깐 보이던 것을 막는다.
-   문서가 1.6MB 라 타이틀 스크립트(문서 끝)까지 읽는 동안 앞부분이 먼저 칠해진다. */
-html.ts-wait body > *:not(#titleScreenV1032):not(#errBannerV117){visibility:hidden}
-html.ts-wait{background:#07130F}
+<style id="title-screen-style-v1032">
+#titleScreenV1032{position:fixed;inset:0;z-index:9998;overflow:hidden;
+  background:#07130F;                 /* v1.1.8 · 배경 사진이 오기 전에도 뒤가 비치지 않게 */
+  opacity:1;transition:opacity .32s ease}
+#titleScreenV1032.ts-out{opacity:0;pointer-events:none}
+#titleScreenV1032 .ts-bg{position:absolute;inset:0;background-size:cover;background-position:center;
+  transform:scale(1.04)}
+#titleScreenV1032 .ts-veil{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(4,12,9,.86) 0%,rgba(4,12,9,.52) 34%,rgba(4,12,9,.62) 62%,rgba(4,12,9,.93) 100%)}
+#titleScreenV1032 .ts-body{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:space-between;text-align:center;
+  padding:calc(64px + env(safe-area-inset-top)) 24px calc(52px + env(safe-area-inset-bottom))}
+#titleScreenV1032 .ts-top{display:flex;flex-direction:column;align-items:center;gap:10px}
+#titleScreenV1032 .ts-eyebrow{font:700 11px/1 'IBM Plex Mono',monospace;letter-spacing:.34em;
+  color:#F6BE4A;text-transform:uppercase;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+#titleScreenV1032 .ts-title{font-family:'Black Han Sans','IBM Plex Sans KR',sans-serif;
+  font-size:clamp(34px,10.5vw,50px);line-height:1.16;color:#F7F4EC;letter-spacing:-.5px;
+  text-shadow:0 4px 22px rgba(0,0,0,.85)}
+#titleScreenV1032 .ts-sub{font:500 13px/1.6 'IBM Plex Sans KR',sans-serif;color:#CFE0D5;
+  text-shadow:0 2px 10px rgba(0,0,0,.8)}
+#titleScreenV1032 .ts-bottom{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+#titleScreenV1032 .ts-start{width:100%;max-width:320px;min-height:60px;border:none;border-radius:17px;
+  background:linear-gradient(180deg,#F6BE4A,#D99623);color:#20180A;
+  font:800 19px/1 'IBM Plex Sans KR',sans-serif;letter-spacing:1px;
+  box-shadow:0 10px 26px rgba(0,0,0,.45);cursor:pointer;-webkit-tap-highlight-color:transparent}
+#titleScreenV1032 .ts-start:disabled{opacity:.72;cursor:default}
+#titleScreenV1032 .ts-start:active{transform:translateY(1px);filter:brightness(.96)}
+#titleScreenV1032 .ts-ver{font:600 11px/1 'IBM Plex Mono',monospace;color:rgba(230,240,233,.55)}
 </style>
-<script id="ts-wait-v118">
-document.documentElement.classList.add('ts-wait');
-/* 타이틀이 어떤 이유로든 안 뜨면 2.5초 뒤 그냥 보여 준다 */
-setTimeout(function(){ document.documentElement.classList.remove('ts-wait'); }, 2500);
-</script>
 <script id="err-banner-v117">
 /* v1.1.7 · 오류 표시 — 반드시 문서 맨 앞에 둔다.
    폰에는 개발자 도구가 없어 오류가 나도 볼 수 없다. 뒤에 오는 어떤 블록에서든 처음 잡힌
@@ -65,7 +83,7 @@ setTimeout(function(){ document.documentElement.classList.remove('ts-wait'); }, 
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.1.9';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.2.0';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1178,6 +1196,34 @@ nav button.lock{opacity:.32}
 </style>
 </head>
 <body>
+
+<!-- v1.1.9 · 타이틀을 정적으로 맨 앞에 둔다.
+     문서가 1.6MB 라 끝의 스크립트가 만들던 타이틀은 다 읽은 뒤에야 떴다. 여기 두면
+     파일을 읽기 시작하자마자 뜨고, 배경 사진도 그 즉시 받기 시작한다.
+     시작 버튼은 앱이 다 준비됐을 때 끝의 스크립트가 켠다. -->
+<div id="titleScreenV1032">
+  <div class="ts-bg"></div>
+  <div class="ts-veil"></div>
+  <div class="ts-body">
+    <div class="ts-top">
+      <div class="ts-eyebrow">Ball Club Management</div>
+      <div class="ts-title">우리팀을<br>만들자!</div>
+      <div class="ts-sub">KBO 구단 경영 시뮬레이션</div>
+    </div>
+    <div class="ts-bottom">
+      <button type="button" class="ts-start" id="tsStartV1032" disabled>불러오는 중…</button>
+      <div class="ts-ver"></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var BGS=['assets/bg/stadium-01.webp','assets/bg/stadium-02.webp','assets/bg/stadium-03.webp','assets/bg/stadium-04.webp','assets/bg/stadium-05.webp','assets/bg/stadium-06.webp','assets/bg/stadium-07.webp','assets/bg/stadium-08.webp','assets/bg/stadium-09.webp','assets/bg/stadium-10.webp','assets/bg/stadium-11.webp','assets/bg/stadium-12.webp','assets/bg/stadium-13.webp','assets/bg/stadium-14.webp','assets/bg/stadium-15.webp','assets/bg/stadium-16.webp'];
+  var pick=BGS[Math.floor(Math.random()*BGS.length)];
+  var bg=document.querySelector('#titleScreenV1032 .ts-bg'); if(bg) bg.style.backgroundImage='url("'+pick+'")';
+  var v=document.querySelector('#titleScreenV1032 .ts-ver'); if(v) v.textContent=window.APP_VERSION||'';
+})();
+</script>
 
 <header>
   <div class="board">
@@ -25640,37 +25686,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 <!-- v1.0.28 · 가명↔실명 사진 동기화 END -->
 
 <!-- v1.0.32 · 시작(타이틀) 화면 -->
-<style id="title-screen-style-v1032">
-/* ──────────────────────────────────────────────────────────────
-   [232/239] STYLE · 1.9KB · 25542행 · id="title-screen-style-v1032"
-   ────────────────────────────────────────────────────────────── */
-#titleScreenV1032{position:fixed;inset:0;z-index:9998;overflow:hidden;
-  background:#07130F;                 /* v1.1.8 · 배경 사진이 오기 전에도 뒤가 비치지 않게 */
-  opacity:1;transition:opacity .32s ease}
-#titleScreenV1032.ts-out{opacity:0;pointer-events:none}
-#titleScreenV1032 .ts-bg{position:absolute;inset:0;background-size:cover;background-position:center;
-  transform:scale(1.04)}
-#titleScreenV1032 .ts-veil{position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(4,12,9,.86) 0%,rgba(4,12,9,.52) 34%,rgba(4,12,9,.62) 62%,rgba(4,12,9,.93) 100%)}
-#titleScreenV1032 .ts-body{position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:space-between;text-align:center;
-  padding:calc(64px + env(safe-area-inset-top)) 24px calc(52px + env(safe-area-inset-bottom))}
-#titleScreenV1032 .ts-top{display:flex;flex-direction:column;align-items:center;gap:10px}
-#titleScreenV1032 .ts-eyebrow{font:700 11px/1 'IBM Plex Mono',monospace;letter-spacing:.34em;
-  color:#F6BE4A;text-transform:uppercase;text-shadow:0 2px 10px rgba(0,0,0,.7)}
-#titleScreenV1032 .ts-title{font-family:'Black Han Sans','IBM Plex Sans KR',sans-serif;
-  font-size:clamp(34px,10.5vw,50px);line-height:1.16;color:#F7F4EC;letter-spacing:-.5px;
-  text-shadow:0 4px 22px rgba(0,0,0,.85)}
-#titleScreenV1032 .ts-sub{font:500 13px/1.6 'IBM Plex Sans KR',sans-serif;color:#CFE0D5;
-  text-shadow:0 2px 10px rgba(0,0,0,.8)}
-#titleScreenV1032 .ts-bottom{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
-#titleScreenV1032 .ts-start{width:100%;max-width:320px;min-height:60px;border:none;border-radius:17px;
-  background:linear-gradient(180deg,#F6BE4A,#D99623);color:#20180A;
-  font:800 19px/1 'IBM Plex Sans KR',sans-serif;letter-spacing:1px;
-  box-shadow:0 10px 26px rgba(0,0,0,.45);cursor:pointer;-webkit-tap-highlight-color:transparent}
-#titleScreenV1032 .ts-start:active{transform:translateY(1px);filter:brightness(.96)}
-#titleScreenV1032 .ts-ver{font:600 11px/1 'IBM Plex Mono',monospace;color:rgba(230,240,233,.55)}
-</style>
+
 <script id="title-screen-v1032">
 /* ──────────────────────────────────────────────────────────────
    [233/239] SCRIPT · 2.3KB · 25572행 · id="title-screen-v1032"
@@ -25704,7 +25720,21 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   }
   ready(function(){
     try{
-      if(document.getElementById('titleScreenV1032'))return;
+      var existing=document.getElementById('titleScreenV1032');
+      if(existing){
+        /* v1.1.9 · 정적 타이틀이 이미 떠 있다. 앱이 준비됐으니 시작 버튼만 켠다. */
+        var sb=existing.querySelector('#tsStartV1032');
+        if(sb){
+          sb.disabled=false; sb.textContent='시 작';
+          var done=false;
+          sb.addEventListener('click',function(){
+            if(done)return; done=true;
+            existing.classList.add('ts-out');
+            setTimeout(function(){ if(existing.parentNode)existing.parentNode.removeChild(existing); },360);
+          });
+        }
+        return;
+      }
       var pick=BGS[Math.floor(Math.random()*BGS.length)];
       var el=document.createElement('div');
       el.id='titleScreenV1032';
@@ -25724,7 +25754,6 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         '</div>';
       el.querySelector('.ts-bg').style.backgroundImage='url("'+pick+'")';
       document.body.appendChild(el);
-      document.documentElement.classList.remove('ts-wait');   /* v1.1.8 · 타이틀이 덮었으니 뒤를 보여도 된다 */
 
       var closed=false;
       function close(){
@@ -25737,7 +25766,6 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       try{console.error('title-screen-v1032:',e);}catch(_){}
       var z=document.getElementById('titleScreenV1032');
       if(z&&z.parentNode)z.parentNode.removeChild(z);
-      document.documentElement.classList.remove('ts-wait');
     }
   });
 })();
