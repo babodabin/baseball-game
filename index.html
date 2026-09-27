@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.2.0';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.2.1';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1302,16 +1302,18 @@ nav button.lock{opacity:.32}
       </div>
     </div>
     <div class="speedbar">
-      <button data-spd="pitch">투구별 · 공 하나까지</button>
-      <button data-spd="pa" class="on">타석별 · 타석 결과</button>
-      <button data-spd="inn">이닝별 · 핵심만</button>
-      <button data-spd="fast">결과만 · 승패만</button>
+      <button data-spd="pitch">투구별 · 공 하나까지<small>홈 수입 +50% · 감독 지시 O</small></button>
+      <button data-spd="pa" class="on">타석별 · 타석 결과<small>홈 수입 +25% · 감독 지시 O</small></button>
+      <button data-spd="inn">이닝별 · 핵심만<small>홈 수입 +10% · 감독 지시 O</small></button>
+      <button data-spd="fast">결과만 · 승패만<small>보너스 없음 · 지시 불가</small></button>
     </div>
     <div class="ratebar-v116" id="rateBarV116">
       <button data-rate="1">1배속</button>
       <button data-rate="2" class="on">2배속</button>
       <button data-rate="3">3배속</button>
     </div>
+    <div class="watch-help-v12">👀 <b>직접 보면 홈 경기 수입이 늘어납니다.</b> 많이 볼수록 많이 받고, 결과만으로 넘기면 없습니다.<br>
+      보면서 <b>감독 지시</b>(경기당 1번, 3이닝)를 쓸 수 있고, 아래 <b>배속</b>으로 빠르게 넘길 수 있습니다.</div>
     <button class="btn" id="playBtn">경기 시작</button>
     <button class="btn ghost" id="skip5Btn">다음 5경기 자동 진행 (승패만)</button>
   </div>
@@ -26449,6 +26451,22 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 <!-- v1.1.5 · 자동 변경 버튼 END -->
 
 <!-- v1.1.6 · 경기 재생 4단 + 배속 -->
+<style id="watch-help-style-v12">
+.speedbar button{display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.3}
+.speedbar button small{font-size:10px;font-weight:700;opacity:.8;letter-spacing:-.2px}
+.speedbar button.on small{opacity:.95}
+.watch-help-v12{margin:10px 0 8px;padding:9px 11px;border:1px solid rgba(244,196,94,.26);
+  border-radius:11px;background:rgba(244,196,94,.08);color:var(--chalk,#DFE9E3);
+  font-size:11.5px;line-height:1.55}
+.watch-help-v12 b{color:var(--amber,#F4C45E)}
+/* 컨디션 게이지 — 배터리처럼 남은 기력을 보여 준다 */
+.cbar-v12{display:inline-block;width:24px;height:9px;margin-right:4px;vertical-align:-1px;
+  border:1px solid rgba(255,255,255,.38);border-radius:3px;background:rgba(0,0,0,.32);
+  position:relative;overflow:visible}
+.cbar-v12 i{display:block;height:100%;border-radius:2px}
+.cbar-v12::after{content:'';position:absolute;right:-3px;top:2px;width:2px;height:3px;
+  background:rgba(255,255,255,.38);border-radius:0 1px 1px 0}
+</style>
 <style id="rate-bar-style-v116">
 .ratebar-v116{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
 .ratebar-v116 button{min-height:var(--tap-min,44px);border-radius:11px;padding:8px 4px;
@@ -26733,6 +26751,102 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.1.6 · 보너스·시상 END -->
 
+
+<!-- v1.2.1 · 컨디션 게이지 + 우리 팀 FA -->
+<script id="condition-and-fa-v12">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov12')>=0) return;
+
+  /* ── 컨디션을 배터리 모양 게이지로 ─────────────────────────────
+     conditionInfo 의 label 은 아홉 군데에서 전부 innerHTML 로 들어간다.
+     라벨 앞에 남은 기력 게이지를 붙이면 전부 한 번에 바뀐다. */
+  var baseCond = window.conditionInfo;
+  if(typeof baseCond === 'function'){
+    window.conditionInfo = function(teamId, kind, p){
+      var r = baseCond.apply(this, arguments);
+      try{
+        var h = playerHealth(teamId, kind, p);
+        var inj = +h.injury || 0;
+        var left = inj > 0 ? 0 : Math.max(0, Math.min(100, 100 - (+h.fatigue || 0)));
+        var bar = '<span class="cbar-v12" title="기력 ' + Math.round(left) + '%">'
+                + '<i style="width:' + left + '%;background:' + r.color + '"></i></span>';
+        return { label: bar + r.label, color: r.color, mod: r.mod };
+      }catch(_){ return r; }
+    };
+    try{ conditionInfo = window.conditionInfo; }catch(_){ }
+  }
+
+  /* ── 우리 팀에서 FA 자격을 얻은 선수도 FA 시장에 ──────────────
+     원래는 시장을 만들 때 내 팀을 통째로 건너뛰어(if(teamId===state.myTeam) return)
+     우리 선수는 FA 명단에 아예 없었다. 이제 같이 올린다.
+     다만 전원이 나가지는 않는다. 일부는 FA 를 포기하고 잔류한다.
+     포기 여부는 이름과 연차로 한 번 정해 두고 그 시즌 내내 바뀌지 않는다. */
+  var DECLINE_PCT = 40;      /* FA 자격자 중 포기하는 비율 */
+  var MIN_OVR = 58;
+  window.MY_FA_V12 = {DECLINE_PCT:DECLINE_PCT, MIN_OVR:MIN_OVR};
+
+  function hash12(str){
+    var h = 2166136261;
+    str = String(str);
+    for(var i=0;i<str.length;i++){ h = (h ^ str.charCodeAt(i)) >>> 0; h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+  }
+  function faLeft(kind, pl){
+    try{
+      if(typeof aiFaRemaining === 'function') return aiFaRemaining(state.myTeam, kind, pl);
+    }catch(_){ }
+    try{ return faRemaining(kind, pl); }catch(_){ return 1; }
+  }
+  function addMyTeamFa(){
+    if(!state || state.mode !== 'sim') return;
+    var m = state.season && state.season.market; if(!m) return;
+    if(!Array.isArray(m.fa)) m.fa = [];
+    var mine = state.myTeam, t = null;
+    try{ t = getTeam(mine); }catch(_){ }
+    if(!t) return;
+    var have = {};
+    m.fa.forEach(function(x){ if(x && x.data) have[x.kind + ':' + x.data[0]] = 1; });
+    var declined = m.faDeclinedV12 || (m.faDeclinedV12 = {});
+    var added = 0;
+    ['bat','pit'].forEach(function(kind){
+      (t[kind] || []).forEach(function(pl, i){
+        if(!pl) return;
+        if(faLeft(kind, pl) > 0) return;                 /* 아직 FA 자격 없음 */
+        var key = kind + ':' + pl[0];
+        if(have[key]) return;
+        if(declined[key] === undefined){
+          declined[key] = (hash12(key + '|' + (state.year || 1)) % 100) < DECLINE_PCT;
+        }
+        if(declined[key]) return;                            /* FA 포기하고 잔류 */
+        var ovr = 0;
+        try{ ovr = kind === 'bat' ? batOvr(pl, mine) : pitOvr(pl, mine); }catch(_){ }
+        if(ovr < MIN_OVR) return;
+        var age = 28;
+        try{ age = (t.age && t.age[kind] && t.age[kind][i]) || 28; }catch(_){ }
+        m.fa.push({from: mine, kind: kind, data: pl.slice(), age: age, ovr: ovr, mineV12: true});
+        added++;
+      });
+    });
+    if(added){
+      m.fa.sort(function(a,b){ return (b.ovr||0) - (a.ovr||0); });
+      try{ save(); }catch(_){ }
+    }
+  }
+  window.addMyTeamFaV12 = addMyTeamFa;
+
+  var baseBuild = window.buildOffseasonMarket;
+  if(typeof baseBuild === 'function'){
+    window.buildOffseasonMarket = function(){
+      var r = baseBuild.apply(this, arguments);
+      try{ addMyTeamFa(); }catch(e){ console.error('v1.2.1 우리 팀 FA:', e); }
+      return r;
+    };
+    try{ buildOffseasonMarket = window.buildOffseasonMarket; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.2.1 · END -->
 
 </body>
 </html>
