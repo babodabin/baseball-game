@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.2.1';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.2.2';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -15698,15 +15698,27 @@ input,select,textarea{font-size:16px;max-width:100%;}
     });
 
     // 야수 최소 9명, 가능하면 16명까지 1군 배치.
+    // v1.2.2 · 훈련을 위해 직접 2군으로 내린 선수는 9명이 찬 뒤에는 그대로 둔다.
+    const lockedV122=(kind,p)=>{ try{ return !!(window.farmLockedV122&&window.farmLockedV122(teamId,kind,p)); }catch(_){ return false; } };
     t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId)})).sort((a,b)=>b.o-a.o).forEach(function(x){
-      if(firstBat().length<Math.min(16,t.bat.length))levels[key('bat',x.p)]='first';
+      const n=firstBat().length;
+      if(n>=Math.min(16,t.bat.length))return;
+      if(n>=9&&lockedV122('bat',x.p))return;
+      levels[key('bat',x.p)]='first';
     });
 
     // 선발과 불펜을 모두 확보한다. 남는 선수는 2군이어도 삭제하지 않는다.
     const starters=t.pit.map((p,i)=>({p,i,o:pitOvr(p,teamId)})).filter(x=>x.p&&x.p[2]==='선발').sort((a,b)=>b.o-a.o);
     const bullpen=t.pit.map((p,i)=>({p,i,o:pitOvr(p,teamId)})).filter(x=>x.p&&x.p[2]!=='선발').sort((a,b)=>b.o-a.o);
-    starters.slice(0,Math.min(7,starters.length)).forEach(x=>levels[key('pit',x.p)]='first');
-    bullpen.slice(0,Math.min(9,bullpen.length)).forEach(x=>levels[key('pit',x.p)]='first');
+    const promotePitV122=function(list,cap,min){
+      const free=list.filter(x=>!lockedV122('pit',x.p));
+      let sel=free.slice(0,Math.min(cap,free.length));
+      const need=Math.min(min,list.length)-sel.length;
+      if(need>0)sel=sel.concat(list.filter(x=>sel.indexOf(x)<0).slice(0,need));
+      sel.forEach(x=>levels[key('pit',x.p)]='first');
+    };
+    promotePitV122(starters,7,5);
+    promotePitV122(bullpen,9,5);
 
     // 30명 초과 시 전문 포지션과 투수 핵심 인원은 보존하고 여분 야수부터 2군으로 이동.
     while(firstBat().length+firstPit().length>FIRST_TEAM_LIMIT){
@@ -26847,6 +26859,376 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.2.1 · END -->
+
+<!-- v1.2.2 · 2군 훈련 (경기마다 한 명) -->
+<script id="farm-training-v122">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov122')>=0) return;
+  /* 훈련은 오프시즌에만 있었다(renderOffseason 안). 2군을 훈련장으로 쓰면 시즌 중에도
+     선수를 키울 수 있고, 1군/2군 관리와 자연스럽게 이어진다.
+
+       · 2군에 있는 선수만 훈련 대상
+       · 경기 하루에 한 명을 지정하면 그 선수에게만 훈련치가 쌓인다
+       · 1.0 이 차면 능력치 하나가 +1 오르고 다시 0부터
+       · 어릴수록 빨리 쌓인다 — 한 시즌(36경기) 내내 한 명만 밀면
+         22세 이하 +5, 23~26세 +3~4, 27~29세 +2, 30세 이상 +1 정도 */
+  var RATE = {young:0.14, prime:0.10, late:0.06, old:0.03};
+  window.FARM_TRAIN_V122 = RATE;
+
+  function rateFor(age){
+    age = +age || 28;
+    if(age <= 22) return RATE.young;
+    if(age <= 26) return RATE.prime;
+    if(age <= 29) return RATE.late;
+    return RATE.old;
+  }
+  /* v1.2.2 · squadKey 는 선수에게 식별자가 붙는 순간 값이 바뀐다(이름 기반 → gen-… 기반).
+     지정해 둔 훈련 대상을 도중에 잃어버리므로, 배열 안에서 변하지 않는 p[0] 으로 붙잡는다. */
+  function keyOf(kind, p){ return kind + ':' + (p && p[0]); }
+  function ptsMap(){
+    if(!state.trainPtsV122 || typeof state.trainPtsV122 !== 'object') state.trainPtsV122 = {};
+    return state.trainPtsV122;
+  }
+  function isFarm(kind, p){
+    try{ return squadLevelOf(state.myTeam, kind, p) === 'second'; }catch(_){ return false; }
+  }
+  function focus(){ return state.trainFocusV122 || null; }
+
+  /* 지정 — 2군 선수만 */
+  window.setFarmFocusV122 = function(kind, idx){
+    try{
+      var t = getTeam(state.myTeam), p = (t[kind]||[])[idx];
+      if(!p) return;
+      if(!isFarm(kind, p)){ showAlert('2군 선수만 훈련할 수 있습니다.' + String.fromCharCode(10) + '먼저 2군으로 내려 주세요.'); return; }
+      var k = keyOf(kind, p);
+      if(focus() && focus().key === k) state.trainFocusV122 = null;      /* 다시 누르면 해제 */
+      else state.trainFocusV122 = {key: k, kind: kind, alias: p[0], name: playerDisplayName(p)};
+      save();
+      if(typeof renderLineup === 'function') renderLineup();
+      if(typeof renderFront === 'function') renderFront();
+    }catch(e){ console.error('v1.2.2 훈련 지정:', e); }
+  };
+  window.farmFocusV122 = focus;
+  window.farmProgressV122 = function(kind, p){
+    try{ return Math.max(0, Math.min(1, +ptsMap()[keyOf(kind,p)] || 0)); }catch(_){ return 0; }
+  };
+
+  /* 경기가 하루 지날 때마다 훈련치를 쌓는다 */
+  function tick(){
+    try{
+      if(!state || state.mode !== 'sim') return;
+      var f = focus(); if(!f) return;
+      var t = getTeam(state.myTeam); if(!t) return;
+      var kind = f.kind, arr = t[kind] || [], idx = -1;
+      for(var i=0;i<arr.length;i++){
+        if(!arr[i]) continue;
+        if(keyOf(kind, arr[i]) === f.key || (f.alias && arr[i][0] === f.alias)){ idx = i; break; }
+      }
+      if(idx < 0){ state.trainFocusV122 = null; return; }            /* 방출·트레이드됨 */
+      var p = arr[idx];
+      if(!isFarm(kind, p)) return;                                    /* 1군으로 올라가면 훈련 중단 */
+      var age = 28;
+      try{ age = (t.age && t.age[kind] && t.age[kind][idx]) || 28; }catch(_){ }
+      var m = ptsMap(), k = f.key;
+      m[k] = (+m[k] || 0) + rateFor(age);
+      while(m[k] >= 1){
+        m[k] -= 1;
+        var isBat = kind === 'bat';
+        var pool = isBat ? [4,5,6,7,8] : [4,5,6,7];
+        var at = pool[Math.floor(Math.random() * pool.length)];
+        try{ raiseGrowthStat(p, isBat, at); }catch(_){ }
+        try{
+          if(state.season){
+            state.season.healthNews = (state.season.healthNews || [])
+              .concat(['🏋️ ' + playerDisplayName(p) + ' 훈련 성과 — 능력치가 올랐습니다']);
+          }
+        }catch(_){ }
+      }
+    }catch(e){ console.error('v1.2.2 훈련 누적:', e); }
+  }
+  var baseHealth = window.updateDailyHealth;
+  if(typeof baseHealth === 'function'){
+    window.updateDailyHealth = function(){
+      var r = baseHealth.apply(this, arguments);
+      tick();
+      return r;
+    };
+    try{ updateDailyHealth = window.updateDailyHealth; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.2.2 · 2군 훈련 END -->
+
+<!-- v1.2.2 · 운영 화면 정리 -->
+<style id="front-simplify-style-v122">
+.front-subtabs{grid-template-columns:repeat(2,1fr)}
+.farm-row-v122{display:flex;align-items:center;gap:8px;margin:6px 0 2px}
+.farm-row-v122 .lbl{font-size:11.5px;color:var(--dim)}
+.tbar-v122{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}
+.tbar-v122 i{display:block;height:100%;background:linear-gradient(90deg,#77D69B,#F4C45E)}
+.farm-btn-v122{border:1px solid rgba(244,196,94,.42);background:rgba(244,196,94,.12);
+  color:var(--amber,#F4C45E);border-radius:9px;padding:5px 9px;font:800 11.5px/1 inherit;
+  font-family:inherit;white-space:nowrap}
+.farm-btn-v122.on{background:var(--amber,#F4C45E);color:#20180A}
+.farm-note-v122{margin:8px 0 10px;padding:9px 11px;border:1px solid rgba(119,214,155,.26);
+  border-radius:11px;background:rgba(119,214,155,.08);font-size:11.5px;line-height:1.55;color:var(--chalk,#DFE9E3)}
+.farm-note-v122 b{color:#8FE3AE}
+</style>
+<script id="front-simplify-v122">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov122')>=0) return;
+  /* 운영 화면이 서브탭 3개 + 타일 7개라 너무 복잡했다.
+       · 서브탭 3개(선수단/프런트/트레이드) → 2개(훈련/프런트)
+       · 타일에서 '진단 리포트'와 '팀 교체'를 뺀다 — 둘 다 설정에 이미 있다 */
+
+  function simplify(){
+    var body = document.getElementById('frontBody'); if(!body) return;
+
+    /* 1) 서브탭 이름과 개수 정리 */
+    var subs = body.querySelectorAll('.front-subtabs button');
+    Array.prototype.forEach.call(subs, function(b){
+      var tab = b.dataset.ftab;
+      if(tab === 'squad'){ b.textContent = '🏋️ 훈련'; }
+      else if(tab === 'front'){ b.textContent = '🏢 프런트'; }
+      else if(tab === 'market-v107'){ b.style.display = 'none'; }   /* 트레이드는 프런트 안으로 */
+    });
+
+    /* 2) 트레이드 버튼을 프런트 칸 맨 위로 옮긴다 */
+    var tradePane = body.querySelector('[data-fpane="market-v107"]');
+    var frontPane = body.querySelector('[data-fpane="front"]');
+    if(tradePane && frontPane && !frontPane.querySelector('[data-moved-trade-v122]')){
+      var btn = tradePane.querySelector('button');
+      if(btn){
+        var wrap = document.createElement('div');
+        wrap.setAttribute('data-moved-trade-v122','1');
+        wrap.style.cssText = 'margin-bottom:10px';
+        wrap.appendChild(btn.cloneNode(true));
+        frontPane.insertBefore(wrap, frontPane.firstChild);
+      }
+    }
+
+    /* 3) 중복 타일 제거 */
+    Array.prototype.forEach.call(body.querySelectorAll('.front-tile-v999'), function(btn){
+      var t = btn.querySelector('.t'), txt = t ? t.textContent.trim() : '';
+      if(txt === '진단 리포트' || txt === '팀 교체') btn.remove();
+    });
+  }
+  window.simplifyFrontV122 = simplify;
+
+  var baseFront = window.renderFront;
+  if(typeof baseFront === 'function'){
+    window.renderFront = function(){
+      var r = baseFront.apply(this, arguments);
+      try{ simplify(); }catch(e){ console.error('v1.2.2 운영 정리:', e); }
+      return r;
+    };
+    try{ renderFront = window.renderFront; }catch(_){ }
+  }
+  var baseSub = window.setFrontSubTab;
+  if(typeof baseSub === 'function'){
+    window.setFrontSubTab = function(tab){
+      var r = baseSub.apply(this, arguments);
+      try{ simplify(); }catch(_){ }
+      return r;
+    };
+    try{ setFrontSubTab = window.setFrontSubTab; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.2.2 · 운영 화면 정리 END -->
+
+<!-- v1.2.2 · 훈련 지정 UI -->
+<script id="farm-training-ui-v122">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov122')>=0) return;
+  /* 1군·2군 관리 목록의 2군 선수 줄에 훈련 지정 버튼과 진행 막대를 붙인다.
+     rosterManagementHtml 이 문자열을 돌려주므로, 2군 선수의 '1군' 버튼을 찾아 그 앞에 끼운다. */
+
+  var base = window.rosterManagementHtml;
+  if(typeof base !== 'function') return;
+
+  function esc(t){ return String(t).replace(/[<>&"]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]; }); }
+
+  window.rosterManagementHtml = function(){
+    var html = base.apply(this, arguments);
+    try{
+      var t = getTeam(state.myTeam);
+      var f = (typeof farmFocusV122 === 'function') ? farmFocusV122() : null;
+
+      /* 2군 선수 줄에만 붙인다 — 버튼이 '1군'으로 올리는 것이면 지금 2군이다 */
+      var RE = new RegExp(
+        ['<button class="signbtn" onclick="setSquadLevel',
+         "[(]", "[']", "(bat|pit)", "[']", ",", "([0-9]+)", ",", "[']", "first", "[']", "[)]",
+         '">1군</button>'].join(""), "g");
+      html = html.replace(RE,
+        function(whole, kind, idxStr){
+          var idx = +idxStr, p = (t[kind] || [])[idx];
+          if(!p) return whole;
+          var on = false, prog = 0;
+          try{
+            var k = kind + ':' + p[0];
+            on = !!(f && (f.key === k || f.alias === p[0]));
+            prog = (typeof farmProgressV122 === 'function') ? farmProgressV122(kind, p) : 0;
+          }catch(_){ }
+          var bar = '<div class="farm-row-v122"><span class="lbl">훈련</span>'
+                  + '<span class="tbar-v122"><i style="width:' + Math.round(prog * 100) + '%"></i></span>'
+                  + '<button class="farm-btn-v122' + (on ? ' on' : '') + '" type="button" '
+                  + 'onclick="setFarmFocusV122(&quot;' + kind + '&quot;,' + idx + ')">'
+                  + (on ? '훈련 중' : '지정') + '</button></div>';
+          return bar + whole;
+        });
+
+      var f2 = f ? esc(f.name) : null;
+      var note = '<div class="farm-note-v122">🏋️ <b>2군이 훈련장입니다.</b> 2군 선수 한 명을 <b>훈련</b>으로 지정하면 '
+        + '경기를 치를 때마다 조금씩 성장하고, 막대가 다 차면 능력치가 하나 오릅니다.<br>'
+        + '어릴수록 빨리 자랍니다. 1군으로 올리면 훈련은 멈춥니다.'
+        + (f2 ? '<br>지금 훈련 중 — <b>' + f2 + '</b>' : '<br>지금 훈련 중인 선수가 없습니다.')
+        + '</div>';
+      html = html.replace('<div class="hint">전체 선수단은', note + '<div class="hint">전체 선수단은');
+    }catch(e){ console.error('v1.2.2 훈련 UI:', e); }
+    return html;
+  };
+  try{ rosterManagementHtml = window.rosterManagementHtml; }catch(_){ }
+})();
+</script>
+<!-- v1.2.2 · 훈련 지정 UI END -->
+
+<!-- v1.2.2 · 식별자가 붙는 순간 기록 이전 -->
+<script id="identity-migrate-v122">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov122')>=0) return;
+  /* 선수 기록은 squadKey = kind + ':' + (식별자 || 이름) 로 저장된다.
+     생성 선수는 처음엔 식별자가 없어 이름으로 저장되다가, 나중에 tagGeneratedPlayerV463 가
+     식별자를 붙이는 순간 키가 바뀌어 그 전 기록이 통째로 고아가 된다.
+     → 2군으로 내려둔 선수가 다음 경기에 1군으로 되돌아오고, 피로·계약도 초기화됐다.
+
+     v0.46.3 에 이미 옮기는 코드(migrateExisting)가 있지만 문서를 읽을 때 한 번만 돈다.
+     여기서는 식별자가 붙는 그 순간에 같이 옮긴다. */
+  var baseTag = window.tagGeneratedPlayerV463;
+  if(typeof baseTag !== 'function') return;
+
+  function copy(obj, oldKey, newKey){
+    if(!obj || typeof obj !== 'object') return;
+    if(oldKey === newKey) return;
+    if(obj[newKey] !== undefined) return;
+    if(obj[oldKey] === undefined) return;
+    try{ obj[newKey] = JSON.parse(JSON.stringify(obj[oldKey])); }
+    catch(_){ obj[newKey] = obj[oldKey]; }
+  }
+  function teamOf(p, kind){
+    try{
+      var ids = Object.keys(state.players || {});
+      for(var i=0;i<ids.length;i++){
+        var t = state.players[ids[i]];
+        if(t && Array.isArray(t[kind]) && t[kind].indexOf(p) >= 0) return ids[i];
+      }
+    }catch(_){ }
+    return null;
+  }
+  var moved = 0;
+  window.identityMigrationsV122 = function(){ return moved; };
+
+  window.tagGeneratedPlayerV463 = function(p, kind, origin, id){
+    var had = null;
+    try{ had = (typeof playerMetaV463 === 'function') ? playerMetaV463(p) : null; }catch(_){ }
+    var oldKey = kind + ':' + (p && p[0]);
+    var m = baseTag.apply(this, arguments);
+    try{
+      if(!had && m && m.id){
+        var newKey = kind + ':' + m.id;
+        if(newKey !== oldKey){
+          copy(state.faGames, oldKey, newKey);
+          copy(state.faSeasonGames, oldKey, newKey);
+          copy(state.contracts, oldKey, newKey);
+          copy(state.morale, oldKey, newKey);
+          copy(state.salaryAdjustments, oldKey, newKey);
+          copy(state.trainPtsV122, oldKey, newKey);
+          var tid = teamOf(p, kind);
+          if(tid){
+            if(state.squadLevel && state.squadLevel[tid]) copy(state.squadLevel[tid], oldKey, newKey);
+            if(state.health && state.health[tid]) copy(state.health[tid], oldKey, newKey);
+          }
+          moved++;
+        }
+      }
+    }catch(e){ console.error('v1.2.2 식별자 이전:', e); }
+    return m;
+  };
+  try{ tagGeneratedPlayerV463 = window.tagGeneratedPlayerV463; }catch(_){ }
+})();
+</script>
+<!-- v1.2.2 · 식별자 이전 END -->
+
+<!-- v1.2.2 · 2군 고정(훈련 유지) -->
+<script id="farm-lock-v122">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov122')>=0) return;
+  /* repairFirstTeamV3419 은 경기마다 OVR 상위 16명을 1군으로 끌어올린다. 타자가 16명이면
+     전원이 해당돼 2군에 아무도 남지 못했고, 그래서 2군 훈련이 하루도 쌓이지 않았다.
+     여기서 "사용자가 직접 내린 선수" 목록을 들고 있고, 승격 루프는 최소 인원(타자 9명,
+     선발·불펜 각 5명)을 채운 뒤에는 이 선수들을 건드리지 않는다.
+     식별자가 붙어도 변하지 않는 p[0] 으로 붙잡는다 — 훈련 지정과 같은 방식. */
+  function lockMap(){
+    if(!state.farmLockV122 || typeof state.farmLockV122 !== 'object') state.farmLockV122 = {};
+    return state.farmLockV122;
+  }
+  function keyOf(kind, p){ return kind + ':' + (p && p[0]); }
+
+  /* 승격 루프가 물어보는 창구 */
+  window.farmLockedV122 = function(teamId, kind, p){
+    try{
+      if(!state || teamId !== state.myTeam || !p) return false;
+      var k = keyOf(kind, p);
+      if(lockMap()[k]) return true;
+      var f = state.trainFocusV122;
+      return !!(f && (f.key === k || f.alias === p[0]));
+    }catch(_){ return false; }
+  };
+
+  /* 1군/2군 버튼을 누르면 의사를 기록한다 */
+  var baseSet = window.setSquadLevel;
+  if(typeof baseSet === 'function'){
+    window.setSquadLevel = function(kind, idx, level){
+      var before = null, p = null;
+      try{
+        p = (getTeam(state.myTeam)[kind] || [])[idx];
+        if(p) before = squadLevelOf(state.myTeam, kind, p);
+      }catch(_){ }
+      var r = baseSet.apply(this, arguments);
+      try{
+        if(p){
+          var after = squadLevelOf(state.myTeam, kind, p);
+          if(after !== before){                                   /* 실제로 바뀐 경우만 */
+            var m = lockMap(), k = keyOf(kind, p);
+            if(after === 'second') m[k] = 1; else delete m[k];
+            save();
+          }
+        }
+      }catch(e){ console.error('v1.2.2 2군 고정:', e); }
+      return r;
+    };
+    try{ setSquadLevel = window.setSquadLevel; }catch(_){ }
+  }
+
+  /* 방출·트레이드로 사라진 선수는 목록에서 지운다 */
+  window.pruneFarmLockV122 = function(){
+    try{
+      var m = state.farmLockV122; if(!m) return;
+      var t = getTeam(state.myTeam), live = {};
+      ['bat','pit'].forEach(function(kind){
+        (t[kind] || []).forEach(function(p){ if(p) live[keyOf(kind, p)] = 1; });
+      });
+      Object.keys(m).forEach(function(k){ if(!live[k]) delete m[k]; });
+    }catch(_){ }
+  };
+})();
+</script>
+<!-- v1.2.2 · 2군 고정 END -->
 
 </body>
 </html>
