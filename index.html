@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.2.2';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.3.0';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -27280,6 +27280,590 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.3.0 · 저장 묶기 END -->
+
+<!-- v1.3.0 · FA 봉인 입찰 · AI 구단 자동 운영 · 운영 화면 재배치 -->
+<style id="offseason-v13-style">
+/* AI 구단의 계약·외국인·트레이드·FA 는 이제 알아서 진행된다 — 누를 버튼을 숨긴다 */
+/* ?nov13 으로 끄면 이 규칙도 꺼지도록 스크립트가 붙이는 클래스 아래에만 건다 */
+.v13-on [onclick^="runAiContractMarketV3413"],.v13-on [onclick^="runAiForeignMarketV3413"],
+.v13-on [onclick^="runAiTradeMarketV3413"],.v13-on [onclick^="runAiFaMarketV3413"]{display:none!important}
+.v13-on .ai-fa-v3413{display:none!important}
+
+.fab-panel-v13{margin:10px 0 12px;padding:13px;border:1px solid rgba(244,196,94,.32);border-radius:14px;background:#0A1A12}
+.fab-panel-v13 .t{display:flex;justify-content:space-between;align-items:baseline;color:#F4C45E;font-weight:900;font-size:14px}
+.fab-panel-v13 .t small{color:#98AAA0;font-size:11px;font-weight:700}
+.fab-panel-v13 .s{margin-top:6px;color:#98AAA0;font-size:11px;line-height:1.6}
+.fab-panel-v13 .s b{color:#E4E9E5}
+.fab-panel-v13 .m{margin-top:8px;color:#D7DFDA;font-size:11.5px}
+.fab-panel-v13 .btn{margin-top:10px;min-height:44px}
+.fab-res-v13{margin-top:8px}
+.fab-res-v13 .r{padding:8px 0;border-bottom:1px solid rgba(181,209,191,.08);font-size:11.5px;line-height:1.55;color:#98AAA0}
+.fab-res-v13 .r:last-child{border-bottom:0}
+.fab-res-v13 .r b{color:#E4E9E5}
+.fab-res-v13 .r .win{color:#7BD69B;font-weight:800}
+.fab-res-v13 .r .lose{color:#E88B7B;font-weight:800}
+.fab-res-v13 .r .bids{display:block;margin-top:2px;font-size:10.5px}
+.fab-res-v13 .r .bids .me{color:#F4C45E;font-weight:800}
+#scr-front .signbtn.fab-on-v13,.signbtn.fab-on-v13{background:#F4C45E;color:#211706}
+
+.fab-sheet-v13{margin-top:10px;padding:12px;border:1px solid rgba(244,196,94,.28);border-radius:13px;background:rgba(0,0,0,.18)}
+.fab-sheet-v13 .row{display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#98AAA0}
+.fab-sheet-v13 .row b{color:#E4E9E5}
+.fab-sheet-v13 .picks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.fab-sheet-v13 .picks .btn{margin-top:0;min-height:44px;font-size:12px}
+.fab-sheet-v13 .custom{display:flex;gap:7px;margin-top:8px}
+.fab-sheet-v13 .custom input{flex:1;min-width:0;min-height:44px;padding:0 10px;border-radius:10px;border:1px solid rgba(181,209,191,.2);background:#081710;color:#E4E9E5;font-size:14px}
+.fab-sheet-v13 .custom .btn{margin-top:0;min-height:44px;width:auto;padding:0 14px}
+.fab-sheet-v13 .hint{margin-top:8px}
+
+.ai-news-v13{margin:0 0 12px;padding:12px;border:1px solid rgba(112,170,255,.26);border-radius:14px;background:rgba(22,34,58,.30)}
+.ai-news-v13 .t{font-weight:900;margin-bottom:4px}
+.ai-news-v13 .sub{font-size:11px;color:var(--dim);line-height:1.5;margin-bottom:6px}
+.ai-news-v13 .n{padding:8px 0;border-top:1px solid rgba(255,255,255,.06);font-size:12px;line-height:1.5}
+.ai-news-v13 .n .when{color:#8fc0ff;font-size:10.5px;font-weight:800;margin-right:5px}
+.ai-news-v13 .n details{margin-top:3px}
+.ai-news-v13 .n summary{cursor:pointer;color:var(--dim);font-size:11px}
+.ai-news-v13 .n .ln{color:#A9B9B0;font-size:11px;line-height:1.6;margin-top:3px}
+.ai-news-v13 .empty{color:var(--dim);font-size:11.5px;padding:6px 0}
+</style>
+<script id="offseason-v13">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov13')>=0) return;
+  try{ document.documentElement.classList.add('v13-on'); }catch(_){ }
+  var V = 'v1.3.0';
+  var NL = String.fromCharCode(10);
+  function R1(n){ return Math.round(n*10)/10; }
+  function nm(id){ try{ return getTeam(id).name; }catch(_){ return id; } }
+  function esc(t){ return String(t==null?'':t).replace(/[<>&"]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]; }); }
+  function hashV(str){ var h=0; str=String(str); for(var i=0;i<str.length;i++) h=(h*31+str.charCodeAt(i))>>>0; return h; }
+  function eco(){ try{ return !!ecoOn(); }catch(_){ return true; } }
+  function money(){ return Number(state && state.money) || 0; }
+  function sim(){ return !!(state && state.mode === 'sim' && state.season); }
+  function isOff(){ try{ return !!isOffseason(); }catch(_){ return false; } }
+  function mkt(){ return (state && state.season && state.season.market) || null; }
+  function yk(){ return String(state.year); }
+  function rule(){ try{ return diffRuleV43(); }catch(_){ return {faCeil:1.55, faRivals:4, faHeadroom:.42}; } }
+
+  /* 다른 겹의 알림창과 화면 다시 그리기를 잠시 막고 실행한다. 알림 내용은 돌려받아 소식으로 쓴다. */
+  function quiet(fn){
+    var oa = window.showAlert, orf = window.renderFront, msgs = [];
+    window.showAlert = function(m){ msgs.push(String(m == null ? '' : m)); };
+    window.renderFront = function(){};
+    try{ fn(); }catch(e){ console.error(V, e); }
+    finally{ window.showAlert = oa; window.renderFront = orf; }
+    return msgs;
+  }
+
+  /* ───────────── AI 구단 소식 ───────────── */
+  function newsList(){ if(!Array.isArray(state.aiNewsV13)) state.aiNewsV13 = []; return state.aiNewsV13; }
+  function whenLabel(){
+    var off = isOff(), d = (state.season && state.season.day) || 0;
+    return state.year + '년차 ' + (off ? '오프시즌' : (d + '경기째'));
+  }
+  function countTypes(lines, words){
+    var out = [];
+    words.forEach(function(w){
+      var n = lines.filter(function(l){ return l.indexOf(w) >= 0; }).length;
+      if(n) out.push(w + ' ' + n);
+    });
+    return out.join(' · ');
+  }
+  function pushNews(title, lines){
+    newsList().unshift({when: whenLabel(), title: title, lines: (lines || []).slice(0, 30)});
+    state.aiNewsV13 = newsList().slice(0, 40);
+  }
+  function record(kind, msgs){
+    var text = msgs.join(NL + NL), parts = text.split(NL + NL);
+    var lines = parts.slice(1).join(NL).split(NL).map(function(s){ return s.trim(); }).filter(Boolean);
+    var title;
+    if(kind === '계약'){
+      lines = lines.filter(function(l){ return l.indexOf('FA 잔류') < 0; });
+      title = '📝 계약 · ' + (countTypes(lines, ['재계약','방출']) || '변동 없음');
+    }
+    else if(kind === '외국인') title = '🌍 외국인 · ' + (countTypes(lines, ['재계약','교체','영입','방출']) || '변동 없음');
+    else if(kind === '트레이드'){
+      lines = lines.filter(function(l){ return l.indexOf('↔') >= 0; });
+      title = '🔁 트레이드 · ' + (lines.length ? lines.length + '건' : '성사 없음');
+    }
+    else title = kind;
+    if(lines.length === 1 && /없습니다|찾지 못/.test(lines[0])) lines = [];
+    pushNews(title, lines);
+  }
+
+  function contractDone(){ var r = state.aiContractsV3413; return !!(r && r.processedYears && r.processedYears[yk()]); }
+  function foreignDone(){ var r = state.aiForeignV3413; return !!(r && r.processedYears && r.processedYears[yk()]); }
+  function tradeRounds(){ var r = state.aiTradeV3413; return (r && Array.isArray(r.rounds)) ? r.rounds.length : 0; }
+  function tradeDoneOff(){ var r = state.aiTradeV3413; return !!(r && Array.isArray(r.rounds) && r.rounds.indexOf(state.year + ':offseason') >= 0); }
+
+  function autoContracts(){
+    if(!sim() || !isOff() || contractDone() || typeof window.runAiContractMarketV3413 !== 'function') return;
+    /* AI 계약은 FA 선수를 먼저 '잔류'시키고 FA 명단에서 뺀다. 잔류도 입찰에서 정하도록 명단은 되돌린다.
+       (원소속팀은 입찰에서 금액 한도 ×1.14, 선수 선호 +8%를 이미 받는다) */
+    var m = mkt(), keep = m && Array.isArray(m.fa) ? m.fa.slice() : null;
+    var msgs = quiet(function(){ window.runAiContractMarketV3413(); });
+    if(m && keep) m.fa = keep;
+    if(contractDone()) record('계약', msgs);
+  }
+  function autoForeign(){
+    if(!sim() || !isOff() || foreignDone() || typeof window.runAiForeignMarketV3413 !== 'function') return;
+    var msgs = quiet(function(){ window.runAiForeignMarketV3413(); });
+    if(foreignDone()) record('외국인', msgs);
+  }
+  function autoTrade(){
+    if(!sim() || typeof window.runAiTradeMarketV3413 !== 'function') return;
+    var before = tradeRounds();
+    var msgs = quiet(function(){ window.runAiTradeMarketV3413(); });
+    if(tradeRounds() > before) record('트레이드', msgs);
+  }
+
+  /* 정규시즌: 하루가 끝날 때 AI 트레이드 창이 열려 있으면 알아서 진행 (시즌 초·중·마감 직전 한 번씩) */
+  var baseFinish = window.finishDay;
+  if(typeof baseFinish === 'function'){
+    window.finishDay = function(){
+      var r = baseFinish.apply(this, arguments);
+      try{ if(sim() && !isOff()) autoTrade(); }catch(e){ console.error(V + ' AI 트레이드:', e); }
+      return r;
+    };
+    try{ finishDay = window.finishDay; }catch(_){ }
+  }
+
+  /* ───────────── FA 봉인 입찰 ───────────── */
+  function keyOf(fa){ return fa.kind + '|' + fa.from + '|' + (fa.data && fa.data[0]); }
+  function faState(){
+    var m = mkt(); if(!m) return null;
+    var s = m.faBidV13;
+    if(!s || s.year !== state.year){
+      s = m.faBidV13 = {year: state.year, closed: false, bids: {}, interest: {}, results: null};
+      /* 예전 방식으로 이미 AI FA 를 돌린 저장본이면 입찰 없이 마감된 것으로 본다 */
+      if(m.aiFaV3413 && m.aiFaV3413.processed){ s.closed = true; s.legacy = true; }
+    }
+    if(!s.bids) s.bids = {};
+    return s;
+  }
+  function faOpen(){ var s = faState(); return !!(s && !s.closed); }
+
+  /* AI 평가 — v0.34.36 입찰과 같은 기준 */
+  function needScore(teamId, fa){
+    try{
+      var t = getTeam(teamId); if(!t) return .3;
+      var isBat = fa.kind === 'bat', arr = isBat ? t.bat : t.pit;
+      var same = (arr || []).filter(function(p){ return p && p[2] === fa.data[2]; });
+      var best = same.length ? Math.max.apply(null, same.map(function(p){ return isBat ? batOvr(p, teamId) : pitOvr(p, teamId); })) : 48;
+      return Math.max(0, Math.min(1, ((Number(fa.ovr) || 60) - best + 6) / 18));
+    }catch(_){ return .3; }
+  }
+  function lastRank(teamId){
+    try{ if(typeof RANK2025 !== 'undefined' && RANK2025[teamId]) return Number(RANK2025[teamId]); }catch(_){ }
+    return 5;
+  }
+  function appealOf(teamId, fa){
+    var a = 1;
+    if(teamId === fa.from) a += .08;
+    a += (11 - lastRank(teamId)) * .008;
+    return a;
+  }
+  function maxBidOf(teamId, fa){
+    var base = faCost(Number(fa.ovr) || 60), need = needScore(teamId, fa);
+    var home = teamId === fa.from ? 1.14 : 1;
+    var noise = .88 + (hashV(teamId + '|' + fa.data[0] + '|' + (state.year || 1)) % 30) / 100;
+    return R1(Math.min(base * rule().faCeil, base * (.78 + need * .52) * home * noise));
+  }
+  function rivalsOf(fa){
+    var base = faCost(Number(fa.ovr) || 60), list = [];
+    (typeof TEAMS !== 'undefined' ? TEAMS : []).forEach(function(t){
+      if(t.id === state.myTeam) return;
+      var max = maxBidOf(t.id, fa);
+      if(max < base) return;
+      list.push({teamId: t.id, max: max, appeal: appealOf(t.id, fa)});
+    });
+    list.sort(function(a, b){ return b.max - a.max; });
+    return list.slice(0, rule().faRivals);
+  }
+  function interestOf(fa){
+    var s = faState(), k = keyOf(fa);
+    if(!s.interest) s.interest = {};
+    if(!Number.isFinite(s.interest[k])) s.interest[k] = rivalsOf(fa).length;
+    return s.interest[k];
+  }
+  function budgetOf(tid){
+    try{ var b = Number(window.aiFinanceBudgetV3413(tid)); if(Number.isFinite(b) && b > 0) return b; }catch(_){ }
+    return 100;
+  }
+  function myBidTotal(exceptKey){
+    var s = faState(), sum = 0;
+    Object.keys(s.bids || {}).forEach(function(k){ if(k !== exceptKey) sum += Number(s.bids[k]) || 0; });
+    return R1(sum);
+  }
+
+  window.faBidSetV13 = function(idx, amount){
+    try{
+      var m = mkt(), s = faState(), fa = m && m.fa && m.fa[idx];
+      if(!fa || !s || s.closed){ closeSheet(); return; }
+      var k = keyOf(fa), base = R1(faCost(fa.ovr));
+      amount = R1(Number(amount) || 0);
+      if(amount <= 0){ delete s.bids[k]; save(); closeSheet(); renderFront(); return; }
+      if(amount < base){ showAlert('시작가 ' + base.toFixed(1) + '억 이상으로 적어 주세요.'); return; }
+      if(eco()){
+        var other = myBidTotal(k);
+        if(other + amount > money()){
+          showAlert('잔고가 부족합니다.' + NL + '잔고 ' + fmtMoney() + ' · 다른 선수에 적어 둔 금액 ' + other.toFixed(1) + '억');
+          return;
+        }
+      }
+      s.bids[k] = amount;
+      save(); closeSheet(); renderFront();
+    }catch(e){ console.error(V + ' 입찰:', e); }
+  };
+
+  /* 내가 낙찰 — 기존 계약 경로(signFA)를 그대로 타고, 시작가를 넘는 차액만 더 낸다 */
+  function signMine(fa, price){
+    var m = mkt(), idx = m.fa.indexOf(fa);
+    if(idx < 0) return false;
+    if(eco() && money() < price) return false;
+    var base = faCost(Number(fa.ovr) || 60), before = m.fa.length;
+    quiet(function(){ window.signFA(idx); });
+    if(m.fa.length >= before) return false;
+    if(eco()){ var extra = R1(price - base); if(extra > 0) state.money = R1(money() - extra); }
+    return true;
+  }
+  /* AI 낙찰 — v0.34.36 moveToAi 와 같은 처리 */
+  function moveToAi(fa, teamId, price){
+    var m = mkt(), idx = m.fa.indexOf(fa); if(idx < 0) return false;
+    var src = state.players && state.players[fa.from], dst = state.players && state.players[teamId];
+    if(!src || !dst) return false;
+    var isBat = fa.kind === 'bat';
+    var sArr = isBat ? src.bat : src.pit, sAge = isBat ? (src.age && src.age.bat) : (src.age && src.age.pit);
+    var dArr = isBat ? dst.bat : dst.pit, dAge = isBat ? (dst.age && dst.age.bat) : (dst.age && dst.age.pit);
+    var si = sArr.findIndex(function(p){ return p && p[0] === fa.data[0]; });
+    var player = si >= 0 ? sArr[si] : fa.data, age = (si >= 0 && sAge) ? sAge[si] : fa.age;
+    if(si >= 0){ sArr.splice(si, 1); if(sAge) sAge.splice(si, 1); }
+    dArr.push(Array.isArray(player) ? player.slice() : player);
+    if(dAge) dAge.push(age);
+    m.fa.splice(idx, 1);
+    if(state.lineups){ state.lineups[teamId] = null; state.lineups[fa.from] = null; }
+    if(state.rotOrder){ state.rotOrder[teamId] = null; state.rotOrder[fa.from] = null; }
+    var rec = {teamId: teamId, name: fa.data[0], displayName: playerDisplayName(fa.data), offer: price, pos: fa.data[2], ovr: fa.ovr, viaBidV3436: true};
+    m.bidResultsV3436 = Array.isArray(m.bidResultsV3436) ? m.bidResultsV3436 : [];
+    m.bidResultsV3436.push(rec);
+    if(!m.aiFaV3413) m.aiFaV3413 = {processed: false, clubs: {}, interest: {}, results: []};
+    m.aiFaV3413.results = Array.isArray(m.aiFaV3413.results) ? m.aiFaV3413.results : [];
+    m.aiFaV3413.results.push(rec);
+    try{ var fin = window.aiFinanceStateV3413 && window.aiFinanceStateV3413(teamId); if(fin) fin.cash = Math.max(0, R1((Number(fin.cash) || 0) - price * .18)); }catch(_){ }
+    return true;
+  }
+
+  function closeFa(){
+    var m = mkt(), s = faState(); if(!m || !s || s.closed) return;
+    var lots = (m.fa || []).slice().sort(function(a, b){ return (Number(b.ovr) || 0) - (Number(a.ovr) || 0); });
+    var clubs = {};
+    function club(tid){ if(!clubs[tid]) clubs[tid] = {budget: budgetOf(tid), spent: 0, wins: 0}; return clubs[tid]; }
+    var results = [];
+    lots.forEach(function(fa){
+      var k = keyOf(fa), base = R1(faCost(Number(fa.ovr) || 60)), offers = [];
+      rivalsOf(fa).forEach(function(r){
+        var c = club(r.teamId); if(c.wins >= 2) return;
+        var shade = rule().faHeadroom + ((hashV(r.teamId + '|' + k + '|' + state.year) % 31) - 15) / 100;
+        shade = Math.max(.12, Math.min(.9, shade));
+        var offer = R1(Math.max(base, base + (r.max - base) * shade));
+        if(offer > c.budget - c.spent) return;
+        offers.push({teamId: r.teamId, amount: offer, appeal: r.appeal, home: r.teamId === fa.from});
+      });
+      var my = Number(s.bids[k]) || 0;
+      if(my > 0) offers.push({teamId: state.myTeam, amount: my, appeal: appealOf(state.myTeam, fa), home: state.myTeam === fa.from, mine: true});
+      offers.sort(function(a, b){ return (b.amount * b.appeal - a.amount * a.appeal) || ((b.home ? 1 : 0) - (a.home ? 1 : 0)); });
+      var rec = {name: playerDisplayName(fa.data), pos: fa.data[2], ovr: fa.ovr, from: fa.from, base: base, myBid: my,
+                 offers: offers.map(function(o){ return {teamId: o.teamId, amount: o.amount, mine: !!o.mine}; }),
+                 winner: null, price: 0, mineFailed: false};
+      for(var i = 0; i < offers.length; i++){
+        var o = offers[i];
+        if(o.mine){
+          if(signMine(fa, o.amount)){ rec.winner = o.teamId; rec.price = o.amount; break; }
+          rec.mineFailed = true; continue;
+        }
+        if(moveToAi(fa, o.teamId, o.amount)){
+          var c = club(o.teamId); c.spent += o.amount; c.wins++;
+          rec.winner = o.teamId; rec.price = o.amount; break;
+        }
+      }
+      results.push(rec);
+    });
+    s.closed = true; s.results = results; s.bids = {};
+    if(!m.aiFaV3413) m.aiFaV3413 = {processed: false, clubs: {}, interest: {}, results: []};
+    m.aiFaV3413.processed = true;
+    try{ if(typeof repairDraftState === 'function') repairDraftState(m); }catch(e){ console.error(V + ' 지명 순번:', e); }
+
+    var ai = results.filter(function(r){ return r.winner && r.winner !== state.myTeam; });
+    var moved = ai.filter(function(r){ return r.winner !== r.from; }).length;
+    pushNews('🔨 FA · 이적 ' + moved + '명 · 잔류 ' + (ai.length - moved) + '명', ai.map(function(r){
+      return nm(r.winner) + ' · ' + r.name + ' (' + r.pos + ', OVR ' + r.ovr + ') ' + (r.winner === r.from ? '잔류 ' : '영입 ') + r.price.toFixed(1) + '억';
+    }));
+    /* FA 가 끝나야 AI 외국인 구성이 확정되고, 오프시즌 트레이드도 이어진다 */
+    autoForeign();
+    autoTrade();
+    try{ save(); }catch(_){ }
+  }
+  window.faCloseV13 = function(){
+    var s = faState(); if(!s || s.closed) return;
+    var n = Object.keys(s.bids || {}).length, total = myBidTotal(null);
+    var msg = 'FA를 마감할까요?' + NL + (n ? '우리 구단 입찰 ' + n + '명 · 합계 ' + total.toFixed(1) + '억' : '우리 구단은 입찰하지 않았습니다.')
+            + NL + '모든 구단의 금액이 공개되고, 되돌릴 수 없습니다.';
+    var go = function(){
+      try{ closeFa(); }catch(e){ console.error(V + ' FA 마감:', e); }
+      try{ renderFront(); }catch(_){ }
+      try{ window.openFaResultV13(); }catch(_){ }
+    };
+    if(typeof showConfirm === 'function') showConfirm(msg, go); else go();
+  };
+
+  function resultRows(results, onlyMine){
+    var list = (results || []).filter(function(r){ return !onlyMine || r.myBid > 0 || r.from === state.myTeam; });
+    return list.map(function(r){
+      var who = r.winner ? (r.winner === state.myTeam ? '<span class="win">우리 구단</span>' : '<b>' + esc(nm(r.winner)) + '</b>' + (r.winner === r.from ? ' 잔류' : ''))
+                         : '<span>유찰</span>';
+      var tag = '';
+      if(r.myBid > 0) tag = r.winner === state.myTeam ? ' <span class="win">영입 성공</span>'
+        : ' <span class="lose">놓침' + (r.winner && r.myBid >= r.price ? ' · 금액은 우리가 높았지만 선수가 ' + (r.winner === r.from ? '원소속팀' : '상위권 구단') + '을 선택' : '') + '</span>';
+      else if(r.from === state.myTeam && r.winner && r.winner !== state.myTeam) tag = ' <span class="lose">우리 선수 이적</span>';
+      var bids = (r.offers || []).map(function(o){
+        return '<span class="' + (o.mine ? 'me' : '') + '">' + esc(o.mine ? '우리' : nm(o.teamId)) + ' ' + o.amount.toFixed(1) + '억</span>';
+      }).join(' · ');
+      return '<div class="r"><b>' + esc(r.name) + '</b> ' + esc(r.pos) + ' · OVR ' + r.ovr + ' → ' + who
+           + (r.winner ? ' ' + r.price.toFixed(1) + '억' : '') + tag
+           + (r.mineFailed ? ' <span class="lose">(잔고·선수단 조건으로 계약 불가)</span>' : '')
+           + (bids ? '<span class="bids">' + bids + '</span>' : '') + '</div>';
+    }).join('');
+  }
+  window.openFaResultV13 = function(){
+    var s = faState(); if(!s || !s.results) return;
+    var sheet = document.getElementById('sheet'); if(!sheet) return;
+    var mine = s.results.filter(function(r){ return r.winner === state.myTeam; }).length;
+    sheet.innerHTML = '<div class="top"><div class="pname">🔨 FA 결과</div><button class="close" onclick="closeSheet()">✕</button></div>'
+      + '<div class="meta">우리 구단 영입 ' + mine + '명 · 전체 ' + s.results.length + '명</div>'
+      + '<div class="fab-res-v13">' + (resultRows(s.results, false) || '<div class="r">올해 FA가 없었습니다.</div>') + '</div>'
+      + '<button class="btn" onclick="closeSheet()">확인</button>';
+    var mask = document.getElementById('mask'); if(mask) mask.classList.add('on');
+  };
+
+  function panelHtml(){
+    var s = faState(), m = mkt();
+    if(s.closed){
+      if(s.legacy) return '';
+      var mine = (s.results || []).filter(function(r){ return r.winner === state.myTeam; }).length;
+      var left = (m.fa || []).length;
+      return '<div class="fab-panel-v13"><div class="t">🔨 FA 결과 <small>마감</small></div>'
+        + '<div class="s">우리 구단 영입 <b>' + mine + '명</b>' + (left ? ' · 남은 FA ' + left + '명은 <b>시작가로 바로 계약</b>할 수 있습니다.' : '') + '</div>'
+        + '<div class="fab-res-v13">' + resultRows(s.results, true) + '</div>'
+        + '<button class="btn ghost" onclick="openFaResultV13()">전체 결과 보기</button></div>';
+    }
+    var n = Object.keys(s.bids || {}).length, total = myBidTotal(null);
+    if(!eco()) return '<div class="fab-panel-v13"><div class="t">🔨 FA <small>마감 전</small></div>'
+      + '<div class="s">자유 모드라 원하는 선수는 <b>눌러서 바로 영입</b>합니다. <b>FA 마감</b>을 누르면 남은 선수를 AI 구단들이 금액을 적어 경쟁하고, 결과가 공개됩니다.</div>'
+      + '<button class="btn" onclick="faCloseV13()">🔨 FA 마감</button></div>';
+    return '<div class="fab-panel-v13"><div class="t">🔨 FA 입찰 <small>마감 전</small></div>'
+      + '<div class="s">원하는 선수를 눌러 <b>금액을 적어 두세요.</b> 다른 구단의 금액은 보이지 않습니다. '
+      + '<b>FA 마감</b>을 누르면 모든 구단의 금액이 한꺼번에 공개되고, 가장 좋은 조건을 낸 구단이 데려갑니다. '
+      + '선수는 <b>원소속팀</b>과 <b>상위권 구단</b>을 조금 더 좋아해서, 그쪽 금액이 10% 가까이 낮아도 그쪽을 고를 수 있습니다.</div>'
+      + (eco() ? '<div class="m">적어 둔 선수 ' + n + '명 · 합계 ' + total.toFixed(1) + '억 · 잔고 ' + fmtMoney() + '</div>'
+               : '<div class="m">자유 모드 — 우리 구단은 바로 영입하고, 남은 선수는 마감 때 AI 구단끼리 경쟁합니다.</div>')
+      + '<button class="btn" onclick="faCloseV13()">🔨 FA 마감</button></div>';
+  }
+
+  var ROW = /<div class="prow" style="cursor:pointer" data-fa="(\d+)">([\s\S]*?)<div class="hand">OVR (\d+) · 터치해 상세<\/div><\/div>\s*<button class="signbtn">([^<]*)<\/button><\/div>/g;
+  function decorate(h){
+    var s = faState(), m = mkt(); if(!s || !m) return h;
+    var head = '<h2 class="sec" style="margin-top:14px">FA 시장';
+    var at = h.indexOf(head);
+    if(at < 0) return h;
+    var end = h.indexOf('</h2>', at);
+    if(end < 0) return h;
+    end += 5;
+    h = h.slice(0, end) + panelHtml() + h.slice(end);
+    h = h.replace('<div class="hint">영입할 선수를 터치하세요. 원 소속팀에서 빠져 내 팀으로 옵니다.</div>', '');
+    h = h.replace(ROW, function(whole, idx, mid, ovr, btn){
+      var fa = m.fa[+idx]; if(!fa) return whole;
+      var base = R1(faCost(fa.ovr)), hand, button;
+      if(s.closed){
+        hand = 'OVR ' + ovr + ' · 남은 FA · 시작가 ' + base.toFixed(0) + '억';
+        button = '<button class="signbtn">' + esc(btn) + '</button>';
+      }else{
+        var bid = Number(s.bids[keyOf(fa)]) || 0, n = interestOf(fa);
+        hand = 'OVR ' + ovr + ' · 시작가 ' + base.toFixed(0) + '억 · ' + (n ? '관심 구단 ' + n + '곳' : '관심 구단 없음');
+        if(!eco()) button = '<button class="signbtn">' + esc(btn) + '</button>';
+        else if(bid > 0) button = '<button class="signbtn fab-on-v13">' + bid.toFixed(1) + '억</button>';
+        else button = '<button class="signbtn">입찰</button>';
+      }
+      return '<div class="prow" style="cursor:pointer" data-fa="' + idx + '">' + mid + '<div class="hand">' + hand + '</div></div>' + NL + button + '</div>';
+    });
+    return h;
+  }
+
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    window.renderOffseason = function(t){
+      try{
+        if(sim() && isOff()){
+          if(typeof buildOffseasonMarket === 'function') buildOffseasonMarket();
+          autoContracts();
+          var s = faState();
+          if(s && s.closed){ autoForeign(); if(!tradeDoneOff()) autoTrade(); }
+        }
+      }catch(e){ console.error(V + ' 오프시즌 자동 운영:', e); }
+      var h = baseOff.apply(this, arguments);
+      try{ if(sim() && isOff()) h = decorate(h); }catch(e){ console.error(V + ' FA 화면:', e); }
+      return h;
+    };
+    try{ renderOffseason = window.renderOffseason; }catch(_){ }
+  }
+
+  /* buildOffseasonMarket 은 부를 때마다 FA 명단을 새로 만들었다(v0.25.0 겹). 그래서 AI 계약·영입으로
+     빠진 선수가 다음 화면에서 되살아났다. 한 번 정한 명단은 그 오프시즌 내내 유지한다. */
+  var baseBuild = window.buildOffseasonMarket;
+  if(typeof baseBuild === 'function'){
+    window.buildOffseasonMarket = function(){
+      var m0 = mkt(), keep = (m0 && m0.faFixedV13 === state.year && Array.isArray(m0.fa)) ? m0.fa : null;
+      var r = baseBuild.apply(this, arguments);
+      try{
+        var m = mkt();
+        if(m && sim()){ if(keep) m.fa = keep; else m.faFixedV13 = state.year; }
+      }catch(e){ console.error(V + ' FA 명단:', e); }
+      return r;
+    };
+    try{ buildOffseasonMarket = window.buildOffseasonMarket; }catch(_){ }
+  }
+
+  /* FA 상세 — 마감 전에는 금액 적기, 마감 뒤에는 시작가로 바로 계약 */
+  var baseSheet = window.openFaSheet;
+  if(typeof baseSheet === 'function'){
+    window.openFaSheet = function(idx){
+      var r = baseSheet.apply(this, arguments);
+      try{
+        if(!sim() || !isOff()) return r;
+        var m = mkt(), s = faState(), fa = m && m.fa && m.fa[idx]; if(!fa || !s) return r;
+        var sheet = document.getElementById('sheet'); if(!sheet) return r;
+        var btns = Array.prototype.filter.call(sheet.querySelectorAll('.btn'), function(b){ return !b.classList.contains('ghost'); });
+        Array.prototype.forEach.call(sheet.querySelectorAll('.hint'), function(hn){ if(/경쟁 예상/.test(hn.textContent || '')) hn.remove(); });
+        var base = R1(faCost(fa.ovr));
+        if(s.closed || !eco()){
+          if(s.closed && eco()) btns.forEach(function(b){ b.textContent = base.toFixed(0) + '억 계약 (남은 FA)'; b.setAttribute('onclick', 'closeSheet();signFA(' + idx + ')'); });
+          return r;
+        }
+        btns.forEach(function(b){ b.remove(); });
+        var k = keyOf(fa), cur = Number(s.bids[k]) || 0, n = interestOf(fa);
+        var picks = [[base, '시작가'], [R1(base * 1.1), '+10%'], [R1(base * 1.2), '+20%'], [R1(base * 1.35), '+35%']];
+        var html = '<div class="fab-sheet-v13">'
+          + '<div class="row"><span>시작가</span><b>' + base.toFixed(1) + '억</b></div>'
+          + '<div class="row"><span>관심 구단</span><b>' + (n ? n + '곳' : '없음') + '</b></div>'
+          + '<div class="row"><span>우리 구단 제시</span><b>' + (cur ? cur.toFixed(1) + '억' : '아직 없음') + '</b></div>'
+          + '<div class="picks">' + picks.map(function(p){
+              return '<button class="btn" onclick="faBidSetV13(' + idx + ',' + p[0] + ')">' + p[1] + ' ' + p[0].toFixed(1) + '억</button>';
+            }).join('') + '</div>'
+          + '<div class="custom"><input id="fabInputV13" type="number" inputmode="decimal" step="0.5" min="' + base + '" value="' + (cur || base) + '">'
+          + '<button class="btn" onclick="faBidSetV13(' + idx + ',document.getElementById(&quot;fabInputV13&quot;).value)">이 금액</button></div>'
+          + (cur ? '<button class="btn ghost" onclick="faBidSetV13(' + idx + ',0)">입찰 취소</button>' : '')
+          + '<div class="hint">다른 구단의 금액은 FA 마감 때 공개됩니다.' + (fa.from !== state.myTeam ? ' 원소속팀 ' + esc(nm(fa.from)) + '은(는) 조금 낮은 금액으로도 잔류시킬 수 있습니다.' : ' 우리 선수라 같은 금액이면 우리가 유리합니다.') + ' 잔고 ' + fmtMoney() + ' · 다른 선수에 적어 둔 금액 ' + myBidTotal(k).toFixed(1) + '억</div>'
+          + '</div>';
+        var cancel = Array.prototype.filter.call(sheet.querySelectorAll('.btn.ghost'), function(b){ return /취소/.test(b.textContent || '') && !b.closest('.fab-sheet-v13'); })[0];
+        if(cancel) cancel.insertAdjacentHTML('beforebegin', html); else sheet.insertAdjacentHTML('beforeend', html);
+      }catch(e){ console.error(V + ' FA 상세:', e); }
+      return r;
+    };
+    try{ openFaSheet = window.openFaSheet; }catch(_){ }
+  }
+  /* 한 명씩 바로 끝나는 예전 입찰은 FA 입찰 기간에는 쓰지 않는다 */
+  var baseBid = window.openFaBidV3436;
+  if(typeof baseBid === 'function'){
+    window.openFaBidV3436 = function(idx){
+      if(sim() && isOff() && faOpen()){ try{ closeSheet(); }catch(_){ } return window.openFaSheet(idx); }
+      return baseBid.apply(this, arguments);
+    };
+  }
+
+  /* 새 시즌 조건: AI 버튼 세 개 대신 FA 마감 하나 */
+  var baseCl = window.offseasonChecklist;
+  if(typeof baseCl === 'function'){
+    window.offseasonChecklist = function(){
+      var cl = baseCl.apply(this, arguments);
+      try{
+        if(sim() && isOff() && mkt()){
+          var s = faState();
+          cl.items = cl.items.filter(function(it){ return ['aicontract','aifa','aiforeign'].indexOf(it.key) < 0; });
+          cl.items.push({key: 'fa', label: 'FA 마감', ok: !!s.closed, note: s.closed ? '완료' : '입찰 후 마감 필요'});
+          cl.allOk = cl.items.every(function(x){ return x.ok; });
+        }
+      }catch(e){ console.error(V + ' 체크리스트:', e); }
+      return cl;
+    };
+    try{ offseasonChecklist = window.offseasonChecklist; }catch(_){ }
+  }
+
+  /* 체크리스트 줄을 누르면 옮겨 간 위치로 */
+  var baseJump = window.jumpOffseasonTaskV66;
+  window.jumpOffseasonTaskV66 = function(key){
+    var map = {fa: ['front', '.fab-panel-v13', ''], nego: ['front', '', '연봉 협상'], cut: ['front', '', '선수 방출']};
+    var t = map[key];
+    if(!t) return typeof baseJump === 'function' ? baseJump.apply(this, arguments) : undefined;
+    try{ setFrontSubTab(t[0]); }catch(_){ }
+    setTimeout(function(){
+      var el = t[1] ? document.querySelector(t[1]) : Array.prototype.find.call(document.querySelectorAll('#frontBody h2.sec'), function(h){ return (h.textContent || '').indexOf(t[2]) >= 0; });
+      if(el) try{ el.scrollIntoView({block: 'start', behavior: 'smooth'}); }catch(_){ }
+    }, 30);
+  };
+
+  /* ───────────── 운영 화면 재배치 · AI 구단 소식 ───────────── */
+  function section(pane, re, stopAny, stopRe){
+    var kids = Array.prototype.slice.call(pane.children), i = -1;
+    for(var a = 0; a < kids.length; a++){ if(kids[a].matches('h2.sec') && re.test(kids[a].textContent || '')){ i = a; break; } }
+    if(i < 0) return [];
+    var out = [kids[i]];
+    for(var j = i + 1; j < kids.length; j++){
+      var c = kids[j];
+      if(c.matches('h2.sec') && (stopAny || (stopRe && stopRe.test(c.textContent || '')))) break;
+      out.push(c);
+    }
+    return out;
+  }
+  function arrange(){
+    var body = document.getElementById('frontBody'); if(!body) return;
+    var squad = body.querySelector('.front-pane[data-fpane="squad"]'), front = body.querySelector('.front-pane[data-fpane="front"]');
+    if(squad && front){
+      /* 프런트: 선수 계약·방출을 맨 아래로 */
+      section(squad, /선수 계약/, false, /선수 방출/).forEach(function(n){ front.appendChild(n); });
+      section(squad, /선수 방출/, false, null).forEach(function(n){ front.appendChild(n); });
+      /* 훈련: 훈련 배정을 맨 위, 우리 팀(1군·2군)은 그 아래 */
+      var train = section(front, /훈련 배정/, true, null);
+      if(train.length){
+        var roster = squad.querySelector('#squadRosterV114') || squad.firstChild;
+        train.forEach(function(n){ squad.insertBefore(n, roster); });
+      }
+    }
+    var ai = body.querySelector('.front-pane[data-fpane="ai"]');
+    if(ai && !ai.querySelector('.ai-news-v13')) ai.insertAdjacentHTML('afterbegin', aiNewsHtml());
+  }
+  function aiNewsHtml(){
+    var list = (state && Array.isArray(state.aiNewsV13)) ? state.aiNewsV13.slice(0, 12) : [];
+    var rows = list.map(function(n){
+      var det = (n.lines && n.lines.length)
+        ? '<details><summary>자세히 (' + n.lines.length + ')</summary>' + n.lines.map(function(l){ return '<div class="ln">' + esc(l) + '</div>'; }).join('') + '</details>' : '';
+      return '<div class="n"><span class="when">' + esc(n.when) + '</span><b>' + esc(n.title) + '</b>' + det + '</div>';
+    }).join('');
+    return '<div class="ai-news-v13"><div class="t">📰 AI 구단 소식</div>'
+      + '<div class="sub">AI 구단의 재계약·외국인 선수·트레이드·FA는 알아서 진행됩니다. 결과만 여기 모아 둡니다.</div>'
+      + (rows || '<div class="empty">아직 소식이 없습니다. 시즌이 진행되면 트레이드와 계약 소식이 쌓입니다.</div>') + '</div>';
+  }
+  window.arrangeFrontV13 = arrange;
+  var baseRF = window.renderFront;
+  if(typeof baseRF === 'function'){
+    window.renderFront = function(){
+      var r = baseRF.apply(this, arguments);
+      try{ arrange(); }catch(e){ console.error(V + ' 운영 화면 배치:', e); }
+      return r;
+    };
+    try{ renderFront = window.renderFront; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.3.0 · END -->
 
 </body>
 </html>
