@@ -6789,8 +6789,11 @@ function ensureAiFaState(){
   });
 }
 function aiFaRemaining(teamId,kind,p){
-  ensureAiFaState();
-  return Math.max(0,FA_TOTAL_GAMES-(state.aiFaGames[aiFaKey(teamId,kind,p)]||0));
+  // v1.3.0 · 조회 한 번마다 전 구단 선수를 다시 훑어(화면 한 번에 aiFaKey 10만 번) 오프시즌 화면이 느렸다.
+  // 값이 이미 있으면 초기화할 것이 없으므로 건너뛴다. 기록을 쓰는 쪽은 모두 스스로 ensureAiFaState 를 부른다.
+  const k=aiFaKey(teamId,kind,p);
+  if(!state.aiFaGames||!Number.isFinite(state.aiFaGames[k])) ensureAiFaState();
+  return Math.max(0,FA_TOTAL_GAMES-(state.aiFaGames[k]||0));
 }
 
 // 기존 일일 등록 누적을 감싸 AI 선수는 팀별 키로 별도 집계한다.
@@ -12346,7 +12349,21 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     else if(obs===2){const drift=(hash(`${m.id}|inj2`)%3)-1;risk=Math.round(clamp(risk+drift,0,3));}
     return INJURY[risk];
   }
+  /* v1.3.0 · 드래프트 패널 한 번 그릴 때 후보마다 풀 전체를 다시 정렬하고, 비교마다 구단 선수단
+     능력치를 다시 계산해 batOvr/pitOvr 가 2만 번 넘게 불렸다(지명 한 번 2초). 결과는 그대로 두고
+     같은 작업 안에서만 재사용한다. 지명이 일어나면(addDraftPlayer) 바로 비운다. */
+  let draftMemoV13=null;
+  function draftMemo(){
+    if(!draftMemoV13){draftMemoV13={need:new Map(),sorted:null,sortedN:-1};setTimeout(()=>{draftMemoV13=null;},0);}
+    return draftMemoV13;
+  }
+  window.resetDraftMemoV13=function(){draftMemoV13=null;};
   function needScore(teamId,d){
+    const mm=draftMemo(),mk=teamId+'|'+d.kind+'|'+(d.data&&d.data[2]);
+    if(mm.need.has(mk))return mm.need.get(mk);
+    const v=needScoreRawV13(teamId,d);mm.need.set(mk,v);return v;
+  }
+  function needScoreRawV13(teamId,d){
     try{
       const t=getTeam(teamId);if(d.kind==='pit'){
         const role=d.data[2],same=t.pit.filter(p=>p[2]===role),avg=same.length?same.reduce((a,p)=>a+pitOvr(p,teamId),0)/same.length:55;
@@ -12364,7 +12381,12 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
   }
   function projectedTeams(d){return TEAMS.map(t=>t.id).filter(id=>id!==state.myTeam).map(id=>({id,s:talentScore(d,id)})).sort((a,b)=>b.s-a.s).slice(0,2).map(x=>getTeam(x.id)?.name||x.id);}
   function projectedRank(d,obs){
-    const pool=currentPool().filter(x=>!x.taken),sorted=pool.slice().sort((a,b)=>talentScore(b,b.draftMetaV3413?.seed%2?state.myTeam:(TEAMS[0]?.id||state.myTeam))-talentScore(a,a.draftMetaV3413?.seed%2?state.myTeam:(TEAMS[0]?.id||state.myTeam)));
+    const pool=currentPool().filter(x=>!x.taken),mm=draftMemo();
+    if(!mm.sorted||mm.sortedN!==pool.length){
+      const sc=new Map();pool.forEach(x=>sc.set(x,talentScore(x,x.draftMetaV3413?.seed%2?state.myTeam:(TEAMS[0]?.id||state.myTeam))));
+      mm.sorted=pool.slice().sort((a,b)=>sc.get(b)-sc.get(a));mm.sortedN=pool.length;
+    }
+    const sorted=mm.sorted;
     const real=Math.max(1,sorted.indexOf(d)+1),spread=Math.max(1,9-obs*2-scoutPower()),noise=((hash(`${d.draftMetaV3413.id}|rank|${obs}`)% (spread*2+1))-spread);
     const center=Math.max(1,real+noise),lo=Math.max(1,center-spread),hi=Math.min(44,center+spread);
     const txt=n=>n<=10?`1R ${n}순위`:n<=20?`2R ${n-10}순위`:n<=30?`3R ${n-20}순위`:`미지명권 ${n}위`;
@@ -12414,7 +12436,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     try{const old=ensurePlayerProfileV314(p,d.kind==='bat');if(old){old.potentialOvr=potential;old.growthVolatility=origin==='high'?1.25:origin==='social'?.78:1.02;old.developmentTag=GROWTH[growth]?.label||'균형성장형';}}catch(_){}
   }
   const oldAddDraftPlayer=window.addDraftPlayer;
-  window.addDraftPlayer=function(teamId,d){const r=oldAddDraftPlayer.apply(this,arguments);try{applyDraftProfile(teamId,d);}catch(e){console.error('v0.34.13 드래프트 성장 프로필:',e);}return r;};
+  window.addDraftPlayer=function(teamId,d){draftMemoV13=null;const r=oldAddDraftPlayer.apply(this,arguments);draftMemoV13=null;try{applyDraftProfile(teamId,d);}catch(e){console.error('v0.34.13 드래프트 성장 프로필:',e);}return r;};
 
   function compensationClaim(m,fa){
     if(!m||!fa||Number(fa.ovr)<74||m.draftStartedV3413)return;
@@ -27229,6 +27251,35 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.2.2 · 2군 고정 END -->
+
+<!-- v1.3.0 · 화면 한 번 그릴 때 저장은 한 번만 -->
+<script id="render-save-batch-v13">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov13')>=0) return;
+  /* 오프시즌 운영 화면을 한 번 그릴 때 FA 시장·AI 재정·감사 겹들이 저마다 save() 를 불러
+     9번 저장했다(한 번에 약 20ms). 그리는 동안의 저장은 표시만 해 두고, 다 그린 뒤 한 번만 한다.
+     그리는 도중이 아닐 때의 저장은 예전과 똑같이 즉시 한다. */
+  var baseRender = window.renderFront, baseSave = window.save;
+  if(typeof baseRender !== 'function' || typeof baseSave !== 'function') return;
+  var depth = 0, dirty = false;
+  window.save = function(){
+    if(depth > 0){ dirty = true; return; }
+    return baseSave.apply(this, arguments);
+  };
+  try{ save = window.save; }catch(_){ }
+  window.renderFront = function(){
+    depth++;
+    try{ return baseRender.apply(this, arguments); }
+    finally{
+      depth--;
+      if(depth === 0 && dirty){ dirty = false; try{ baseSave(); }catch(e){ console.error('v1.3.0 저장:', e); } }
+    }
+  };
+  try{ renderFront = window.renderFront; }catch(_){ }
+})();
+</script>
+<!-- v1.3.0 · 저장 묶기 END -->
 
 </body>
 </html>
