@@ -241,3 +241,31 @@
       0쌍이라 화면 변화 없음. 앞으로의 사고 예방용 (`65f42fe`)
 - [x] 자동 생성 가짜 얼굴 36명 → **0명**, 남의 사진 쓰는 선수 6명 → **0명**
 - [x] `index.html` 5.10MB → 1.61MB (이후 겹이 늘어 현재 1.66MB)
+
+---
+
+## 6. 진행 중 — FA 기간(경매) · v1.3.0 설계 (코드 아직 없음)
+
+사용자 요청: "AI FA는 볼 필요 없고 FA 기간을 만들자 / 나랑 AI랑 모두 경매식으로".
+
+지금 구조(확인함): 오프시즌 체크리스트에 AI 버튼 3개를 순서대로 눌러야 함
+`runAiContractMarketV3413`(13343) → `runAiFaMarketV3413`(12807, 래퍼 13353·13611·16550·17066)
+→ `runAiForeignMarketV3413`(13683). 선수 1명씩 즉시 끝나는 입찰은 v0.34.36 블록(16789~17088)에 있음.
+
+설계 (문서 끝에 `fa-period-v13` 한 겹, 끄는 스위치 `?nov13`, sim 모드만):
+- 상태 `market.faPeriodV13 = {year, day, maxDay:5, closed, lots:{key}, clubs:{}, news}`, 키 = `kind|from|p[0]`
+- 열 때: AI 계약을 조용히 자동 실행(showAlert·renderFront 잠시 막기, 재진입 가드 필수 —
+  process 끝에서 renderFront 를 부름) → FA마다 lot 생성 → AI 개시 입찰
+- AI 평가는 v0.34.36 의 needScore/appealOf/maxBidOf 복사, 구단 예산은 `aiFinanceBudgetV3413`(현재 125),
+  구단당 2명 한도, 다른 lot 에서 선두인 금액은 예산에서 뺌
+- "🌙 다음 날로": 모든 lot 에 AI 응찰 → **밤사이 선두가 안 바뀐 lot 은 낙찰** → 5일째 밤 전부 마감, 입찰 없으면 유찰
+- 내 낙찰: `signFA(idx)`(기본가 차감) 후 차액 추가 차감(v0.34.36 finishToMe 방식). 실패 시 AI 2순위로
+- AI 낙찰: v0.34.36 moveToAi 복사 + `bidResultsV3436`·`aiFaV3413.results` 기록 + AI 현금 18% 차감 + `repairDraftState`
+- 마감: `aiFaV3413.processed=true` → AI 외국인 조용히 자동 실행 → 요약 뉴스 1건
+- 화면: `.ai-fa-v3413` 숨김, FA 시장 제목 앞에 FA 기간 패널(일차·잔고/입찰 중 금액·지난밤 소식·다음 날/끝내기),
+  행 버튼을 입찰/선두/재입찰로, `openFaSheet` 래핑해 입찰 버튼 2개. 마감 후 남은 FA는 시작가로 바로 계약
+- 체크리스트: aicontract/aifa/aiforeign 3개 → `faperiod` 1개, `jumpOffseasonTaskV66` 에 연결
+- 자유 모드(ecoOn false): 나는 기존처럼 바로 영입, AI끼리만 경매
+
+테스트 상태 만드는 법: 브라우저에서 `startWithMode('KIA','sim','normal'); newSeason();` 후
+`playMyGame()` 36번 → `renderSeasonDone()` → `delete state.season.market; buildOffseasonMarket()` — FA 12명 나옴(약 8초)
