@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.3.0';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.3.1';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -26826,10 +26826,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     for(var i=0;i<str.length;i++){ h = (h ^ str.charCodeAt(i)) >>> 0; h = Math.imul(h, 16777619) >>> 0; }
     return h >>> 0;
   }
+  /* v1.3.1 · 우리 선수의 FA 등록 경기는 state.faGames(faRemaining)에 쌓인다. aiFaRemaining 은
+     AI 선수만 세므로 우리 선수는 늘 '168경기 남음'이 되어, v1.2.1 부터 우리 FA 가 한 명도 나오지 않았다. */
   function faLeft(kind, pl){
-    try{
-      if(typeof aiFaRemaining === 'function') return aiFaRemaining(state.myTeam, kind, pl);
-    }catch(_){ }
     try{ return faRemaining(kind, pl); }catch(_){ return 1; }
   }
   function addMyTeamFa(){
@@ -27521,12 +27520,28 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var m = mkt(), idx = m.fa.indexOf(fa);
     if(idx < 0) return false;
     if(eco() && money() < price) return false;
+    if(fa.from === state.myTeam) return keepMine(fa, price);
     var base = faCost(Number(fa.ovr) || 60), before = m.fa.length;
     quiet(function(){ window.signFA(idx); });
     if(m.fa.length >= before) return false;
     if(eco()){ var extra = R1(price - base); if(extra > 0) state.money = R1(money() - extra); }
     return true;
   }
+  /* 우리 선수를 우리가 낙찰 — 이적이 아니므로 signFA(원소속팀 경기 가능 검사·이동)를 타지 않는다.
+     계약금만 내고 남기며, FA 등록 경기는 다시 0부터 센다. */
+  function keepMine(fa, price){
+    var m = mkt(), idx = m.fa.indexOf(fa); if(idx < 0) return false;
+    if(eco()) state.money = R1(money() - price);
+    m.fa.splice(idx, 1);
+    try{
+      var t = getTeam(state.myTeam), arr = t[fa.kind] || [];
+      var p = arr.filter(function(x){ return x && x[0] === fa.data[0]; })[0];
+      if(p && state.faGames) state.faGames[squadKey(fa.kind, p)] = 0;
+    }catch(_){ }
+    try{ pushClubNews('FA 계약', playerDisplayName(fa.data) + ' · ' + fa.data[2] + ' · 잔류 계약 ' + R1(price).toFixed(1) + '억'); }catch(_){ }
+    return true;
+  }
+
   /* AI 낙찰 — v0.34.36 moveToAi 와 같은 처리 */
   function moveToAi(fa, teamId, price){
     var m = mkt(), idx = m.fa.indexOf(fa); if(idx < 0) return false;
@@ -27550,6 +27565,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     m.aiFaV3413.results = Array.isArray(m.aiFaV3413.results) ? m.aiFaV3413.results : [];
     m.aiFaV3413.results.push(rec);
     try{ var fin = window.aiFinanceStateV3413 && window.aiFinanceStateV3413(teamId); if(fin) fin.cash = Math.max(0, R1((Number(fin.cash) || 0) - price * .18)); }catch(_){ }
+    if(fa.from === state.myTeam){ try{ pushClubNews('FA 이적', playerDisplayName(fa.data) + ' · ' + fa.data[2] + ' → ' + nm(teamId) + ' ' + R1(price).toFixed(1) + '억'); }catch(_){ } }
     return true;
   }
 
@@ -27588,6 +27604,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       }
       results.push(rec);
     });
+    /* 아무도 데려가지 않은 우리 선수는 FA 명단에 남기지 않고 그대로 잔류 */
+    results.forEach(function(r){ if(!r.winner && r.from === state.myTeam) r.stayed = true; });
+    m.fa = (m.fa || []).filter(function(f){ return f.from !== state.myTeam; });
     s.closed = true; s.results = results; s.bids = {};
     if(!m.aiFaV3413) m.aiFaV3413 = {processed: false, clubs: {}, interest: {}, results: []};
     m.aiFaV3413.processed = true;
@@ -27620,7 +27639,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var list = (results || []).filter(function(r){ return !onlyMine || r.myBid > 0 || r.from === state.myTeam; });
     return list.map(function(r){
       var who = r.winner ? (r.winner === state.myTeam ? '<span class="win">우리 구단</span>' : '<b>' + esc(nm(r.winner)) + '</b>' + (r.winner === r.from ? ' 잔류' : ''))
-                         : '<span>유찰</span>';
+                         : (r.stayed ? '<span>유찰 · 우리 팀 잔류</span>' : '<span>유찰</span>');
       var tag = '';
       if(r.myBid > 0) tag = r.winner === state.myTeam ? ' <span class="win">영입 성공</span>'
         : ' <span class="lose">놓침' + (r.winner && r.myBid >= r.price ? ' · 금액은 우리가 높았지만 선수가 ' + (r.winner === r.from ? '원소속팀' : '상위권 구단') + '을 선택' : '') + '</span>';
