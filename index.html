@@ -27525,19 +27525,29 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     quiet(function(){ window.signFA(idx); });
     if(m.fa.length >= before) return false;
     if(eco()){ var extra = R1(price - base); if(extra > 0) state.money = R1(money() - extra); }
+    resetMine(fa.kind, fa.data[0]);
     return true;
   }
+  /* v1.3.1 · FA 계약을 하면 FA 등록 경기를 되돌린다. 등록 경기는 선수 기준이라 이적해도 초기화되지 않아,
+     비싸게 데려온 스타가 이듬해 바로 다시 FA 가 되어 떠났다(5시즌 시험: 류현진·페디·딘 모두 1~2년 만에 이탈).
+     실제 KBO 처럼 계약 뒤 4시즌이 지나야 다시 FA — 시즌당 최대 24경기씩 쌓이므로 168-96=72 로 둔다. */
+  function resignGames(){ try{ return FA_TOTAL_GAMES - FA_SEASON_GAMES * 4; }catch(_){ return 72; } }
+  window.FA_RESIGN_GAMES_V131 = resignGames;
+  function resetMine(kind, name){
+    try{
+      var arr = getTeam(state.myTeam)[kind] || [], p = null;
+      for(var i = arr.length - 1; i >= 0; i--){ if(arr[i] && arr[i][0] === name){ p = arr[i]; break; } }
+      if(p){ if(!state.faGames) state.faGames = {}; state.faGames[squadKey(kind, p)] = resignGames(); }
+    }catch(_){ }
+  }
+
   /* 우리 선수를 우리가 낙찰 — 이적이 아니므로 signFA(원소속팀 경기 가능 검사·이동)를 타지 않는다.
      계약금만 내고 남기며, FA 등록 경기는 다시 0부터 센다. */
   function keepMine(fa, price){
     var m = mkt(), idx = m.fa.indexOf(fa); if(idx < 0) return false;
     if(eco()) state.money = R1(money() - price);
     m.fa.splice(idx, 1);
-    try{
-      var t = getTeam(state.myTeam), arr = t[fa.kind] || [];
-      var p = arr.filter(function(x){ return x && x[0] === fa.data[0]; })[0];
-      if(p && state.faGames) state.faGames[squadKey(fa.kind, p)] = 0;
-    }catch(_){ }
+    resetMine(fa.kind, fa.data[0]);
     try{ pushClubNews('FA 계약', playerDisplayName(fa.data) + ' · ' + fa.data[2] + ' · 잔류 계약 ' + R1(price).toFixed(1) + '억'); }catch(_){ }
     return true;
   }
@@ -27553,8 +27563,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var si = sArr.findIndex(function(p){ return p && p[0] === fa.data[0]; });
     var player = si >= 0 ? sArr[si] : fa.data, age = (si >= 0 && sAge) ? sAge[si] : fa.age;
     if(si >= 0){ sArr.splice(si, 1); if(sAge) sAge.splice(si, 1); }
-    dArr.push(Array.isArray(player) ? player.slice() : player);
+    var moved = Array.isArray(player) ? player.slice() : player;
+    dArr.push(moved);
     if(dAge) dAge.push(age);
+    try{ if(!state.aiFaGames) state.aiFaGames = {}; state.aiFaGames[aiFaKey(teamId, fa.kind, moved)] = resignGames(); }catch(_){ }
     m.fa.splice(idx, 1);
     if(state.lineups){ state.lineups[teamId] = null; state.lineups[fa.from] = null; }
     if(state.rotOrder){ state.rotOrder[teamId] = null; state.rotOrder[fa.from] = null; }
