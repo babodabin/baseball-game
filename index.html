@@ -27884,5 +27884,67 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.3.0 · END -->
 
+<!-- v1.3.1 · 중계권·스폰서 수입 -->
+<script id="sponsor-v131">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nospon')>=0) return;
+  /* 연봉은 시즌마다 약 150~190억인데, 버는 돈은 경기 수입 약 36억 + 순위 보너스 4~40억뿐이라
+     해마다 120억 안팎이 모자랐다. 1년차만 시작 잔고 100억 덕에 버티고 2년차부터 계속 깊어졌다
+     (KIA 3시즌: +16.5 → -109.9 → -228.5). 우리 FA 를 지킬 돈도 없었다.
+     매 경기 중계권(고정)과 스폰서(인기도 비례)를 받는다. 이기면 인기가 오르니 성적이 좋을수록 더 번다.
+     목표: 일반 모드 중위권이 해마다 약 +10~20억, 연봉이 비싼 팀은 본전 근처. 하드는 85%. */
+  var RATE = {broadcast: 2.0, sponsorBase: 0.6, sponsorPop: 1.4, hard: 0.85};
+  window.SPONSOR_V131 = RATE;
+
+  function R2(n){ return Math.round(n * 100) / 100; }
+  function amount(){
+    var pop = Number(state.popularity);
+    if(!Number.isFinite(pop)) pop = 50;
+    var v = RATE.broadcast + RATE.sponsorBase + pop / 100 * RATE.sponsorPop;
+    if(state.eco === 'hard') v *= RATE.hard;
+    return R2(v);
+  }
+  window.sponsorPerGameV131 = amount;
+
+  var base = window.settleGame;
+  if(typeof base === 'function'){
+    window.settleGame = function(isHome, won){
+      var a = 0;
+      try{
+        /* 하드 모드 파산 판정(-20억)이 이 수입보다 먼저 돌지 않도록 정산 전에 넣는다 */
+        if(ecoOn() && !state.bankrupt){
+          a = amount();
+          state.money += a;
+          if(state.season) state.season.sponsorV131 = R2((+state.season.sponsorV131 || 0) + a);
+        }
+      }catch(e){ console.error('v1.3.1 스폰서:', e); a = 0; }
+      var r = base.apply(this, arguments);
+      try{ if(r && a){ r.income = (Number(r.income) || 0) + a; r.sponsorV131 = a; } }catch(_){ }
+      return r;
+    };
+    try{ settleGame = window.settleGame; }catch(_){ }
+  }
+
+  var baseDone = window.renderSeasonDone;
+  if(typeof baseDone === 'function'){
+    window.renderSeasonDone = function(){
+      var r = baseDone.apply(this, arguments);
+      try{
+        var box = document.getElementById('seasonDoneText');
+        var s = state.season && +state.season.sponsorV131;
+        if(box && s > 0 && !box.dataset.v131){
+          box.dataset.v131 = '1';
+          box.innerHTML += '<br>📺 중계권·스폰서 <b>+' + s.toFixed(1) + '억</b>';
+        }
+      }catch(e){ console.error('v1.3.1 스폰서 표시:', e); }
+      return r;
+    };
+    try{ renderSeasonDone = window.renderSeasonDone; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.3.1 · 스폰서 END -->
+
 </body>
 </html>
