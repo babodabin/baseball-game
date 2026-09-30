@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.3.0';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.0';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -27864,6 +27864,102 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.3.0 · END -->
+
+<!-- v1.4.0 · 감독 개입·관전 보너스 제거 -->
+<style id="no-manager-watch-v14-style">
+/* 경기 전 공격 작전·투수 교체·지시 카드, 경기 중 지시 버튼, 관전 보너스 안내를 숨긴다.
+   ?nov14 로 끄면 이 규칙도 꺼지도록 스크립트가 붙이는 클래스 아래에만 건다 */
+.v14-on #managerBox,.v14-on #mgrOrderBtnV116,.v14-on .watch-help-v12,
+.v14-on .speedbar button small,.v14-on [data-precard-v60],
+.v14-on .game-glance-meta-v104 span+span{display:none!important}
+</style>
+<script id="no-manager-watch-v14">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov14')>=0) return;
+  var V = 'v1.4.0';
+  /* 이 게임의 재미는 경기 조작이 아니라 단장 역할이다. 경기에 직접 손대는 감독 기능과
+     "보는 만큼 돈을 더 주는" 관전 보너스를 걷어낸다. 중계 4단·배속은 보는 방식으로만 남는다.
+       · 감독 방식(공격 작전·투수 교체)  → 정공·보통으로 고정 (AI 구단과 같은 기본값)
+       · 경기 전 지시 카드 / 경기 중 지시 → 효과 0, 버튼 숨김
+       · 관전 보너스(투구별 +50% · 타석별 +25% · 이닝별 +10%) → 0
+     감독·코치 영입(스태프)은 단장 결정이라 그대로 둔다. */
+  try{ document.documentElement.classList.add('v14-on'); }catch(_){ }
+
+  /* ── 관전 보너스 0 ── v1.1.6 의 수입 훅이 이 표를 매번 읽는다 */
+  var W = window.WATCH_BONUS_V116;
+  if(W){ W.pitch = 0; W.pa = 0; W.inn = 0; W.fast = 0; }
+
+  /* ── 감독 방식 고정 ── */
+  function neutral(){
+    try{
+      if(!state) return;
+      state.managerPlan = {attack:'balanced', bullpen:'normal'};
+      if(state.preCardV60) state.preCardV60.kind = null;
+    }catch(_){ }
+  }
+  neutral();
+
+  /* ── 지시 효과 0 ── 경기 전 카드는 이 함수로 켜져 있는지 묻는다 */
+  window.preCardActiveV60 = function(){ return null; };
+  /* 경기 중 지시는 창을 열어야만 켜진다 — 창을 열지 않는다 */
+  window.mgrOrderOpenV53 = function(){ };
+  window.preCardPickV60 = function(){ };
+  window.mgrApplyRecV58 = function(){ };
+
+  /* 할 일 목록의 "감독 지시를 아직 고르지 않았습니다" 를 뺀다 */
+  var baseTasks = window.extraTasksV62;
+  if(typeof baseTasks === 'function'){
+    window.extraTasksV62 = function(){
+      var r = baseTasks.apply(this, arguments);
+      return Array.isArray(r) ? r.filter(function(x){ return !(x && x.i === '🎽'); }) : r;
+    };
+  }
+
+  /* 화면 문구 정리: 경기 머리말의 "전략을 설정하세요", 구단 현황의 "직접 감독" */
+  function tidyHeader(){
+    var sub = document.querySelector('#scr-game .page-hero-sub-v998');
+    if(sub && sub.textContent.indexOf('전략') >= 0) sub.textContent = '오늘의 경기를 준비하세요.';
+    /* 구단 현황의 "감독" 칸: 직접/자동 구분 대신 영입한 감독을 보여 준다 */
+    var name = '';
+    try{ name = STAFF_INFO.manager[(state.staff && state.staff.manager) || 'balanced'].name; }catch(_){ }
+    if(!name) return;
+    Array.prototype.forEach.call(document.querySelectorAll('.club-kpi-v999'), function(k){
+      var key = k.querySelector('.k'), val = k.querySelector('.v');
+      if(key && val && key.textContent === '감독' && val.textContent !== name) val.textContent = name;
+    });
+  }
+  var baseSetup = window.renderGameSetup;
+  if(typeof baseSetup === 'function'){
+    window.renderGameSetup = function(){
+      neutral();
+      var r = baseSetup.apply(this, arguments);
+      try{ tidyHeader(); }catch(e){ console.error(V + ' 경기 준비:', e); }
+      return r;
+    };
+    try{ renderGameSetup = window.renderGameSetup; }catch(_){ }
+  }
+  var baseHome = window.renderTeamHome;
+  if(typeof baseHome === 'function'){
+    window.renderTeamHome = function(){
+      var r = baseHome.apply(this, arguments);
+      try{ tidyHeader(); }catch(_){ }
+      return r;
+    };
+    try{ renderTeamHome = window.renderTeamHome; }catch(_){ }
+  }
+  var baseShow = window.show;
+  if(typeof baseShow === 'function'){
+    window.show = function(){
+      var r = baseShow.apply(this, arguments);
+      try{ tidyHeader(); }catch(_){ }
+      return r;
+    };
+    try{ show = window.show; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.4.0 · END -->
 
 </body>
 </html>
