@@ -27865,33 +27865,56 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.3.0 · END -->
 
-<!-- v1.4.0 · 감독 개입·관전 보너스 제거 -->
-<style id="no-manager-watch-v14-style">
-/* 경기 전 공격 작전·투수 교체·지시 카드, 경기 중 지시 버튼, 관전 보너스 안내를 숨긴다.
-   ?nov14 로 끄면 이 규칙도 꺼지도록 스크립트가 붙이는 클래스 아래에만 건다 */
-.v14-on #managerBox,.v14-on #mgrOrderBtnV116,.v14-on .watch-help-v12,
-.v14-on .speedbar button small,.v14-on [data-precard-v60],
-.v14-on .game-glance-meta-v104 span+span{display:none!important}
+<!-- v1.4.0 · 감독은 맡기고, 원하면 직접 · 관전 보너스 제거 · 감독 선택·경질 -->
+<style id="manager-v14-style">
+/* ?nov14 로 끄면 이 규칙도 꺼지도록 스크립트가 붙이는 클래스 아래에만 건다.
+   v14-on   : 이 겹이 켜져 있음 → 관전 보너스 안내를 숨긴다
+   v14-auto : 자동 감독(기본) → 경기에 손대는 감독 기능을 숨긴다 */
+.v14-on .watch-help-v12,.v14-on .speedbar button small{display:none!important}
+.v14-auto #managerBox,.v14-auto #mgrOrderBtnV116,.v14-auto [data-precard-v60],
+.v14-auto .game-glance-meta-v104 span+span{display:none!important}
+
+.mgr-mode-v14{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 4px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);
+  font-size:12px;line-height:1.5;color:var(--chalk,#DFE9E3)}
+.mgr-mode-v14 b{color:var(--amber,#F4C45E)}
+.mgr-mode-v14 small{display:block;color:var(--dim);font-size:11px}
+.mgr-mode-v14 button{flex:none;min-height:var(--tap-min,44px);padding:0 12px;border-radius:10px;
+  border:1px solid var(--line);background:transparent;color:var(--chalk,#DFE9E3);font-family:inherit;font-size:12px;font-weight:800}
+.mgr-pick-v14{display:grid;gap:8px;margin-top:10px}
+.mgr-pick-v14 button{text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--chalk,#DFE9E3);font-family:inherit;min-height:var(--tap-min,44px)}
+.mgr-pick-v14 button b{display:block;font-size:14px;color:var(--amber,#F4C45E)}
+.mgr-pick-v14 button span{font-size:12px;color:var(--dim)}
+.mgr-fee-v14{margin-top:6px;font-size:11px;color:var(--dim);line-height:1.5}
 </style>
-<script id="no-manager-watch-v14">
+<script id="manager-v14">
 (function(){
   'use strict';
   if(String(location.search||'').indexOf('nov14')>=0) return;
   var V = 'v1.4.0';
-  /* 이 게임의 재미는 경기 조작이 아니라 단장 역할이다. 경기에 직접 손대는 감독 기능과
-     "보는 만큼 돈을 더 주는" 관전 보너스를 걷어낸다. 중계 4단·배속은 보는 방식으로만 남는다.
-       · 감독 방식(공격 작전·투수 교체)  → 정공·보통으로 고정 (AI 구단과 같은 기본값)
-       · 경기 전 지시 카드 / 경기 중 지시 → 효과 0, 버튼 숨김
-       · 관전 보너스(투구별 +50% · 타석별 +25% · 이닝별 +10%) → 0
-     감독·코치 영입(스태프)은 단장 결정이라 그대로 둔다. */
-  try{ document.documentElement.classList.add('v14-on'); }catch(_){ }
+  /* 이 게임의 재미는 경기 조작이 아니라 단장 역할이다.
+       · 기본은 자동 감독 — 영입한 감독이 경기를 운영한다. 공격 작전·투수 교체는 정공·보통,
+         지시 카드·경기 중 지시는 효과 0이고 화면에서 숨긴다.
+       · 경기 화면에서 "직접 맡기"를 누르면 예전 감독 기능이 전부 돌아온다(state.directMgrV14).
+       · 관전 보너스(투구별 +50% · 타석별 +25% · 이닝별 +10%)는 어느 쪽이든 0.
+       · 새 게임을 시작할 때 감독(균형·공격·수비형)을 고른다.
+       · 시즌 중 감독 교체는 경질 — 일반·하드는 비용, 자유 모드는 시즌당 1회. 오프시즌·개막 전은 무료. */
+  var FIRE_COST = {normal:3, hard:8};   /* 억 */
+  var FREE_FIRE_PER_SEASON = 1;
+  window.MANAGER_FIRE_V14 = {cost:FIRE_COST, freePerSeason:FREE_FIRE_PER_SEASON};
 
-  /* ── 관전 보너스 0 ── v1.1.6 의 수입 훅이 이 표를 매번 읽는다 */
-  var W = window.WATCH_BONUS_V116;
-  if(W){ W.pitch = 0; W.pa = 0; W.inn = 0; W.fast = 0; }
+  var root = document.documentElement;
+  try{ root.classList.add('v14-on'); }catch(_){ }
 
-  /* ── 감독 방식 고정 ── */
+  function isAuto(){ try{ return !(state && state.directMgrV14); }catch(_){ return true; } }
+  function mgrName(key){
+    try{ return STAFF_INFO.manager[key || (state.staff && state.staff.manager) || 'balanced'].name; }catch(_){ return '감독'; }
+  }
+  function syncClass(){ try{ root.classList.toggle('v14-auto', isAuto()); }catch(_){ } }
   function neutral(){
+    syncClass();
+    if(!isAuto()) return;
     try{
       if(!state) return;
       state.managerPlan = {attack:'balanced', bullpen:'normal'};
@@ -27900,63 +27923,197 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   }
   neutral();
 
-  /* ── 지시 효과 0 ── 경기 전 카드는 이 함수로 켜져 있는지 묻는다 */
-  window.preCardActiveV60 = function(){ return null; };
-  /* 경기 중 지시는 창을 열어야만 켜진다 — 창을 열지 않는다 */
-  window.mgrOrderOpenV53 = function(){ };
-  window.preCardPickV60 = function(){ };
-  window.mgrApplyRecV58 = function(){ };
+  /* ── 관전 보너스 0 ── v1.1.6 의 수입 훅이 이 표를 매번 읽는다 */
+  var W = window.WATCH_BONUS_V116;
+  if(W){ W.pitch = 0; W.pa = 0; W.inn = 0; W.fast = 0; }
 
-  /* 할 일 목록의 "감독 지시를 아직 고르지 않았습니다" 를 뺀다 */
+  /* ── 자동 감독일 때 지시 효과 0 ── */
+  function onlyDirect(name, off){
+    var base = window[name];
+    if(typeof base !== 'function') return;
+    window[name] = function(){ return isAuto() ? off : base.apply(this, arguments); };
+  }
+  onlyDirect('preCardActiveV60', null);   /* 경기 전 카드가 켜져 있는지 묻는 곳 */
+  onlyDirect('mgrOrderOpenV53', undefined); /* 경기 중 지시 창 — 열어야만 켜진다 */
+  onlyDirect('preCardPickV60', undefined);
+  onlyDirect('mgrApplyRecV58', undefined);
+
   var baseTasks = window.extraTasksV62;
   if(typeof baseTasks === 'function'){
     window.extraTasksV62 = function(){
       var r = baseTasks.apply(this, arguments);
-      return Array.isArray(r) ? r.filter(function(x){ return !(x && x.i === '🎽'); }) : r;
+      if(!isAuto() || !Array.isArray(r)) return r;
+      return r.filter(function(x){ return !(x && x.i === '🎽'); });
     };
   }
 
-  /* 화면 문구 정리: 경기 머리말의 "전략을 설정하세요", 구단 현황의 "직접 감독" */
-  function tidyHeader(){
+  /* ── 직접 감독 스위치 ── */
+  window.setDirectMgrV14 = function(on){
+    try{
+      state.directMgrV14 = !!on;
+      if(on) state.gameControl = 'direct';
+      save();
+    }catch(e){ console.error(V + ' 감독 전환:', e); }
+    try{ renderGameSetup(); }catch(_){ }
+  };
+  function modeRowHtml(){
+    if(isAuto()){
+      return '<div class="mgr-mode-v14" data-mgrmode-v14="1"><div><b>🎽 ' + mgrName() + '</b>이 경기를 운영합니다'
+        + '<small>감독 교체: 운영 → 전체 선수 시장 → 프런트</small></div>'
+        + '<button type="button" onclick="setDirectMgrV14(true)">직접 맡기</button></div>';
+    }
+    return '<div class="mgr-mode-v14" data-mgrmode-v14="1"><div><b>🎽 직접 감독 중</b>'
+      + '<small>작전·지시를 직접 고릅니다</small></div>'
+      + '<button type="button" onclick="setDirectMgrV14(false)">감독에게 맡기</button></div>';
+  }
+  function paintModeRow(){
+    var info = document.getElementById('seasonInfo');
+    if(!info || !info.parentNode) return;
+    var old = info.parentNode.querySelector('[data-mgrmode-v14]');
+    if(old) old.remove();
+    info.insertAdjacentHTML('afterend', modeRowHtml());
+  }
+
+  /* ── 시즌 중인가 (개막 전·오프시즌은 아님) ── */
+  function inSeason(){
+    try{
+      var s = state.season;
+      if(!s || !(s.day > 0)) return false;
+      return !(typeof seasonOver === 'function' && seasonOver());
+    }catch(_){ return false; }
+  }
+
+  /* ── 감독 교체 = 시즌 중에는 경질 ── */
+  var baseSetStaff = window.setStaff;
+  if(typeof baseSetStaff === 'function'){
+    window.setStaff = function(kind, key){
+      var self = this, args = arguments;
+      try{
+        var cur = state.staff && state.staff.manager;
+        if(kind !== 'manager' || !cur || cur === key || !inSeason()) return baseSetStaff.apply(self, args);
+        var eco = state.eco || 'normal', s = state.season;
+        var msg = '시즌 중 감독 교체는 경질입니다.\n' + mgrName(cur) + ' → ' + mgrName(key) + '\n\n';
+        if(eco === 'free'){
+          var used = +s.mgrFiredV14 || 0;
+          if(used >= FREE_FIRE_PER_SEASON){
+            showAlert('자유 모드는 시즌 중 경질을 ' + FREE_FIRE_PER_SEASON + '번만 할 수 있습니다.\n오프시즌에 새 감독을 영입하세요.');
+            return;
+          }
+          msg += '자유 모드: 이번 시즌 남은 경질 ' + (FREE_FIRE_PER_SEASON - used) + '회';
+        }else{
+          var fee = FIRE_COST[eco] != null ? FIRE_COST[eco] : FIRE_COST.normal;
+          var money = +state.money || 0;
+          if(eco === 'hard' && money - fee < 0){
+            showAlert('잔고가 부족합니다.\n경질 비용 ' + fee + '억 · 현재 잔고 ' + money.toFixed(1) + '억\n\n하드 모드는 잔고가 마이너스가 되면 파산합니다.');
+            return;
+          }
+          msg += '경질 비용 ' + fee + '억 (잔고 ' + money.toFixed(1) + '억 → ' + (money - fee).toFixed(1) + '억)';
+        }
+        showConfirm(msg + '\n\n교체할까요?', function(){
+          try{
+            if(eco === 'free') s.mgrFiredV14 = (+s.mgrFiredV14 || 0) + 1;
+            else state.money = (+state.money || 0) - (FIRE_COST[eco] != null ? FIRE_COST[eco] : FIRE_COST.normal);
+            s.mgrFiredV14Log = (s.mgrFiredV14Log || []).concat([{day:s.day, from:cur, to:key}]);
+          }catch(e){ console.error(V + ' 경질:', e); }
+          baseSetStaff.apply(self, args);
+          try{ refreshHeader(); }catch(_){ }
+          try{ tidy(); }catch(_){ }
+        });
+      }catch(e){
+        console.error(V + ' 감독 교체:', e);
+        return baseSetStaff.apply(self, args);
+      }
+    };
+    try{ setStaff = window.setStaff; }catch(_){ }
+  }
+  function feeNote(){
+    var eco = (state && state.eco) || 'normal';
+    var rule = eco === 'free' ? '시즌 중 경질은 시즌당 ' + FREE_FIRE_PER_SEASON + '회'
+      : '시즌 중 경질 비용 ' + (FIRE_COST[eco] != null ? FIRE_COST[eco] : FIRE_COST.normal) + '억';
+    return '개막 전·오프시즌 교체는 무료 · ' + rule;
+  }
+  function paintFeeNote(){
+    var btn = document.querySelector('#frontBody button[onclick*="setStaff(\'manager\'"],#frontBody button[onclick*="setStaff(&quot;manager"]');
+    if(!btn) return;
+    var cat = btn.closest('.lb-cat') || btn.parentNode;
+    var hint = cat && cat.nextElementSibling;
+    var host = (hint && hint.classList.contains('hint')) ? hint : cat;
+    if(!host || !host.parentNode) return;
+    var old = host.parentNode.querySelector('.mgr-fee-v14');
+    var txt = feeNote();
+    if(old){ if(old.textContent !== txt) old.textContent = txt; return; }
+    host.insertAdjacentHTML('afterend', '<div class="mgr-fee-v14">' + txt + '</div>');
+  }
+
+  /* ── 새 게임: 감독 선택 ── */
+  window.pickStartMgrV14 = function(key){
+    try{
+      if(typeof ensureStaff === 'function') ensureStaff();
+      if(STAFF_INFO.manager[key]) state.staff.manager = key;
+      save();
+    }catch(e){ console.error(V + ' 감독 선택:', e); }
+    try{ closeSheet(); }catch(_){ }
+    try{ tidy(); }catch(_){ }
+  };
+  function openStartPick(){
+    var sheet = document.getElementById('sheet');
+    if(!sheet || typeof STAFF_INFO === 'undefined') return;
+    var cards = Object.keys(STAFF_INFO.manager).map(function(k){
+      var v = STAFF_INFO.manager[k];
+      return '<button type="button" onclick="pickStartMgrV14(\'' + k + '\')"><b>' + v.name + '</b><span>' + v.desc + '</span></button>';
+    }).join('');
+    sheet.innerHTML = '<div class="top"><div class="pname">감독 선택</div>'
+      + '<button class="close" onclick="closeSheet()">✕</button></div>'
+      + '<div class="meta">우리 팀을 맡길 감독을 고르세요. 경기 운영은 감독이 합니다.</div>'
+      + '<div class="mgr-pick-v14">' + cards + '</div>'
+      + '<div class="mgr-fee-v14">' + feeNote() + '<br>경기 화면에서 직접 감독을 맡을 수도 있습니다.</div>';
+    var mask = document.getElementById('mask');
+    if(mask) mask.classList.add('on');
+  }
+  var baseStart = window.startWithMode;
+  if(typeof baseStart === 'function'){
+    window.startWithMode = function(teamId){
+      var r = baseStart.apply(this, arguments);
+      try{
+        if(r !== false && state && state.myTeam === teamId){
+          state.directMgrV14 = false;
+          neutral();
+          setTimeout(function(){ try{ openStartPick(); }catch(e){ console.error(V + ' 감독 선택 창:', e); } }, 0);
+        }
+      }catch(_){ }
+      return r;
+    };
+    try{ startWithMode = window.startWithMode; }catch(_){ }
+  }
+
+  /* ── 화면 문구 정리 ── */
+  function tidy(){
+    syncClass();
     var sub = document.querySelector('#scr-game .page-hero-sub-v998');
     if(sub && sub.textContent.indexOf('전략') >= 0) sub.textContent = '오늘의 경기를 준비하세요.';
-    /* 구단 현황의 "감독" 칸: 직접/자동 구분 대신 영입한 감독을 보여 준다 */
-    var name = '';
-    try{ name = STAFF_INFO.manager[(state.staff && state.staff.manager) || 'balanced'].name; }catch(_){ }
-    if(!name) return;
+    /* 구단 현황 "감독" 칸 — 자동이면 영입한 감독 이름 */
+    var label = isAuto() ? mgrName() : '직접 감독';
     Array.prototype.forEach.call(document.querySelectorAll('.club-kpi-v999'), function(k){
       var key = k.querySelector('.k'), val = k.querySelector('.v');
-      if(key && val && key.textContent === '감독' && val.textContent !== name) val.textContent = name;
+      if(key && val && key.textContent === '감독' && val.textContent !== label) val.textContent = label;
     });
+    paintFeeNote();
   }
-  var baseSetup = window.renderGameSetup;
-  if(typeof baseSetup === 'function'){
-    window.renderGameSetup = function(){
-      neutral();
-      var r = baseSetup.apply(this, arguments);
-      try{ tidyHeader(); }catch(e){ console.error(V + ' 경기 준비:', e); }
+  function wrap(name, before, after){
+    var base = window[name];
+    if(typeof base !== 'function') return;
+    window[name] = function(){
+      if(before) try{ before(); }catch(_){ }
+      var r = base.apply(this, arguments);
+      try{ after(); }catch(e){ console.error(V + ' ' + name + ':', e); }
       return r;
     };
-    try{ renderGameSetup = window.renderGameSetup; }catch(_){ }
+    try{ (0, eval)(name + '=window.' + name); }catch(_){ }
   }
-  var baseHome = window.renderTeamHome;
-  if(typeof baseHome === 'function'){
-    window.renderTeamHome = function(){
-      var r = baseHome.apply(this, arguments);
-      try{ tidyHeader(); }catch(_){ }
-      return r;
-    };
-    try{ renderTeamHome = window.renderTeamHome; }catch(_){ }
-  }
-  var baseShow = window.show;
-  if(typeof baseShow === 'function'){
-    window.show = function(){
-      var r = baseShow.apply(this, arguments);
-      try{ tidyHeader(); }catch(_){ }
-      return r;
-    };
-    try{ show = window.show; }catch(_){ }
-  }
+  wrap('renderGameSetup', neutral, function(){ paintModeRow(); tidy(); });
+  wrap('renderTeamHome', null, tidy);
+  wrap('renderFront', null, tidy);
+  wrap('show', syncClass, tidy);
 })();
 </script>
 <!-- v1.4.0 · END -->
