@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.21';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.22';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -28327,6 +28327,30 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 .biz-v14 .card .btn{margin-top:10px;min-height:var(--tap-min,44px)}
 .biz-v14 .meter{height:7px;margin-top:6px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
 .biz-v14 .meter i{display:block;height:100%;border-radius:4px}
+/* v1.4.22 · 돈 카드 · 운영 메인 정리 */
+.money-v14 .cash-v14{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-size:13px;color:var(--dim)}
+.money-v14 .cash-v14 b{font-size:22px;color:var(--amber,#F4C45E);font-family:'IBM Plex Mono',monospace}
+.money-v14 .neg{color:#E5675B!important}.money-v14 .pos{color:var(--chalk,#DFE9E3)}
+.money-v14 .grp-v14{margin-top:9px;padding:9px 11px;border:1px solid var(--line);border-radius:11px;background:rgba(0,0,0,.12);font-size:12px}
+.money-v14 .grp-v14 .h{display:flex;justify-content:space-between;font-weight:900;margin-bottom:3px}
+.money-v14 .grp-v14.in .h b{color:#4CC38A}.money-v14 .grp-v14.out .h b{color:#E5675B}.money-v14 .grp-v14.so .h b{color:var(--amber,#F4C45E)}
+.money-v14 .r{display:flex;justify-content:space-between;gap:8px;padding:2px 0;color:var(--dim)}
+.money-v14 .r i{font-style:normal;font-size:10.5px;opacity:.8}
+.money-v14 .r b{font-weight:700;white-space:nowrap}
+.money-v14 .end-v14{display:flex;justify-content:space-between;margin-top:9px;padding:10px 12px;border-radius:11px;background:rgba(244,196,94,.12);font-weight:900}
+.money-v14 .end-v14 b{color:var(--amber,#F4C45E)}.money-v14 .end-v14.bad{background:rgba(229,103,91,.14)}.money-v14 .end-v14.bad b{color:#E5675B}
+.money-v14 .warn-v14{margin-top:6px;font-size:11.5px;color:#E5675B;line-height:1.5}
+.money-v14 .dim{font-size:11px;color:var(--dim);line-height:1.5}
+.fin-v14{display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto;column-gap:10px;align-items:center;width:100%;padding:4px 2px;border:0;background:transparent;color:var(--chalk,#DFE9E3);font-family:inherit;text-align:left;cursor:pointer}
+.fin-v14 .k{grid-column:1;grid-row:1/3;font-size:13px;font-weight:800;color:var(--dim)}
+.fin-v14>b{grid-column:2;grid-row:1;font-size:26px;color:var(--amber,#F4C45E);font-family:'IBM Plex Mono',monospace}
+.fin-v14 .e{grid-column:2;grid-row:2;font-size:12px;color:var(--dim)}.fin-v14 .e b{color:var(--chalk,#DFE9E3)}
+.fin-v14 .go{grid-column:3;grid-row:1/3;font-size:12px;color:var(--amber,#F4C45E);font-weight:800}
+.fin-v14 .neg{color:#E5675B!important}
+.ops-foot-v14{display:flex;justify-content:center;margin:6px 0 14px}
+.ops-foot-v14 button{min-height:var(--tap-min,44px);padding:0 18px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--dim);font-family:inherit;font-size:13px}
+/* 탭 줄 대신 타일로 들어온다 — 탭은 숨김 */
+#frontBody .front-legacy-v999 .front-subtabs{display:none!important}
 .pick-v14{display:grid;gap:8px;margin-top:10px}
 .pick-v14 button{text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);
   color:var(--chalk,#DFE9E3);font-family:inherit;min-height:var(--tap-min,44px);line-height:1.5;word-break:keep-all}
@@ -28924,6 +28948,134 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   }
 
   /* ── 구단 경영 화면 (운영 탭 타일) ─────────────────────── */
+  /* ── v1.4.22 · 돈 한눈에 ───────────────────────────────────
+     운영 메인의 "예산(고정 100억)·연봉·잔고" 카드 대신, 구단 경영 맨 위에서 돈을 자세히 보여 준다.
+     시즌 중 들어오는 돈(관중·경기 배당)은 따로 쌓아 두고, 시즌 끝 정산은 지금 기준으로 예상한다. */
+  function cashBook(){
+    var s = state.season; if(!s) return {gate:0, gateN:0, game:0, gameN:0};
+    if(!s.cashV14) s.cashV14 = {gate:0, gateN:0, game:0, gameN:0};
+    return s.cashV14;
+  }
+  var baseGate = window.stadiumDailyIncome;
+  if(typeof baseGate === 'function' && !baseGate.__cashV14){
+    var gate = function(){
+      var b = +state.money || 0, r = baseGate.apply(this, arguments);
+      try{ var d = (+state.money || 0) - b; if(d){ var c = cashBook(); c.gate += d; c.gateN++; } }catch(_){ }
+      return r;
+    };
+    gate.__cashV14 = true; window.stadiumDailyIncome = gate; try{ stadiumDailyIncome = gate; }catch(_){ }
+  }
+  var baseGame = window.settleGame;
+  if(typeof baseGame === 'function' && !baseGame.__cashV14){
+    var game = function(){
+      var b = +state.money || 0, r = baseGame.apply(this, arguments);
+      try{ var d = (+state.money || 0) - b; if(r){ var c = cashBook(); c.game += d; c.gameN++; } }catch(_){ }
+      return r;
+    };
+    game.__cashV14 = true; window.settleGame = game; try{ settleGame = game; }catch(_){ }
+  }
+  /* 남은 경기 수 — 일정표에서 오늘 이후 우리 경기 */
+  function gamesLeft(){
+    var s = state.season, home = 0, all = 0;
+    try{
+      (s.sched || []).forEach(function(day, i){
+        if(i < (+s.day || 0) || !Array.isArray(day)) return;
+        day.forEach(function(g){ if(g.home === state.myTeam){ home++; all++; } else if(g.away === state.myTeam) all++; });
+      });
+    }catch(_){ }
+    return {home:home, all:all};
+  }
+  function payroll(){ try{ return R1(+teamSalary() || 0); }catch(_){ return 0; } }
+  function faDue(){
+    var t = 0;
+    try{ (state.faInstallV131 || []).forEach(function(x){ if(x.left > 0 && x.paidYear !== state.year) t += +x.per || 0; }); }catch(_){ }
+    return R1(t);
+  }
+  function row(label, amt, note){
+    return '<div class="r"><span>' + label + (note ? ' <i>' + note + '</i>' : '') + '</span><b class="' + (amt < 0 ? 'neg' : 'pos') + '">' + money(amt) + '</b></div>';
+  }
+  function sum(a){ return a.reduce(function(t, x){ return t + x[1]; }, 0); }
+  function rows(a){ return a.map(function(x){ return row(x[0], x[1], x[2]); }).join(''); }
+  function moneyHtml(){
+    var cash = R1(+state.money || 0), off = offseason(), s = state.season || {}, m = ensureMgr();
+    var out = '<div class="card money-v14"><div class="t">💰 돈 <small>' + clubYear() + '년차' + (off ? ' 결산' : ' 진행 중') + '</small></div>'
+      + '<div class="cash-v14"><span>지금 잔고</span><b class="' + (cash < 0 ? 'neg' : '') + '">' + cash.toFixed(1) + '억</b></div>';
+    if(off){
+      /* 시즌이 끝났다 — 결산표 그대로 */
+      var inc = [], exp = [], b = s.bonus || {}, e = s.econV14 || {items:[]};
+      if(+b.rankMoney) inc.push(['순위 분배금', +b.rankMoney]);
+      if(+b.psMoney) inc.push(['포스트시즌·우승', +b.psMoney]);
+      var aw = s.awardsV116; if(aw && +aw.total) inc.push(['시상 상금', +aw.total]);
+      var c = cashBook(); if(c.gate) inc.push(['관중·구장 수입', R1(c.gate), '홈 ' + c.gateN + '경기']); if(c.game) inc.push(['경기 배당−운영비', R1(c.game), c.gameN + '경기']);
+      exp.push(['선수 연봉', -(+s.salaryPaid || 0)]);
+      var fi = s.faInstallPaidV131; if(fi && +fi.total) exp.push(['FA 계약금 분할', -fi.total]);
+      (e.items || []).forEach(function(x){ (x.amt >= 0 ? inc : exp).push([x.label, x.amt]); });
+      out += '<div class="grp-v14 in"><div class="h">들어온 돈 <b>' + money(sum(inc)) + '</b></div>' + rows(inc) + '</div>'
+        + '<div class="grp-v14 out"><div class="h">나간 돈 <b>' + money(sum(exp)) + '</b></div>' + rows(exp) + '</div>'
+        + '<div class="dim" style="margin-top:8px">다음 시즌 선수 연봉(지금 명단) ' + payroll().toFixed(1) + '억 · 시즌이 끝날 때 냅니다.</div>';
+      return out + '</div>';
+    }
+    var c2 = cashBook(), left = gamesLeft(), rk = myRank(), br = balanceRuleV287(), n = (TEAMS && TEAMS.length) || 10;
+    var sofar = [];
+    sofar.push(['관중·구장 수입', R1(c2.gate), '홈 ' + c2.gateN + '경기']);
+    sofar.push(['경기 배당−운영비', R1(c2.game), c2.gameN + '경기']);
+    var sp = state.sponsorV14; if(sp && sp.year === clubYear() && +sp.up) sofar.push(['스폰서 계약금', +sp.up, '받음']);
+    /* 남은 경기도 지금까지 평균으로 */
+    var gateAvg = c2.gateN ? c2.gate / c2.gateN : 0, gameAvg = c2.gameN ? c2.game / c2.gameN : 0;
+    var rest = R1(gateAvg * left.home + gameAvg * left.all);
+    var inc2 = [];
+    if(left.all > 0 && (c2.gateN || c2.gameN)) inc2.push(['남은 ' + left.all + '경기 수입', rest, '지금까지 평균']);
+    inc2.push(['순위 분배금', Math.max(0, n + 1 - rk) * br.rankUnit, '지금 ' + rk + '위']);
+    if(rk <= 5) inc2.push(['가을야구 진출금', br.playoff, '5위 안']);
+    if(sp && sp.year === clubYear()){
+      var rec = (s.rec && s.rec[state.myTeam]) || {w:0};
+      var bonus = sp.type === 'win' ? R1((+rec.w || 0) * sp.perWin) : sp.type === 'pop' ? R1((+state.popularity || 0) * sp.perPop) : 0;
+      if(bonus > 0) inc2.push(['스폰서 성과금', bonus, '지금 기준']);
+    }
+    var md = merchIncome(), tv = tvIncome();
+    inc2.push(['굿즈 판매', md.amt, '인기·스타']); inc2.push(['중계권', tv.amt, rk + '위 기준']);
+    var supp = supportFor(clubYear() + 1); inc2.push(['모기업 지원금', supp, '다음 시즌분']);
+    var exp2 = [['선수 연봉', -payroll(), '1·2군 전원']];
+    if(m.years > 0) exp2.push(['감독 연봉', -m.salary]);
+    if(state.mode === 'sim') exp2.push(['스카우트 연봉', -scoutSalary()]);
+    var fd = faDue(); if(fd) exp2.push(['FA 계약금 분할', -fd]);
+    var end = R1(cash + sum(inc2) + sum(exp2));
+    out += '<div class="grp-v14 so"><div class="h">이번 시즌 지금까지 <b>' + money(sum(sofar)) + '</b></div>' + rows(sofar) + '</div>'
+      + '<div class="grp-v14 in"><div class="h">앞으로 들어올 돈 <b>' + money(sum(inc2)) + '</b></div>' + rows(inc2) + '</div>'
+      + '<div class="grp-v14 out"><div class="h">시즌 끝에 나갈 돈 <b>' + money(sum(exp2)) + '</b></div>' + rows(exp2) + '</div>'
+      + '<div class="end-v14 ' + (end < 0 ? 'bad' : '') + '"><span>시즌 끝 예상 잔고</span><b>' + end.toFixed(1) + '억</b></div>'
+      + (end < 0 ? '<div class="warn-v14">' + (state.eco === 'hard' ? '⚠ 하드 모드는 정산 때 잔고가 마이너스면 파산 위험이 있습니다. 연봉을 줄이거나 수입을 늘리세요.' : '⚠ 이대로면 시즌 끝에 잔고가 마이너스입니다.') + '</div>' : '')
+      + '<div class="dim" style="margin-top:6px">예상은 지금 순위·인기·명단 기준이라 시즌이 진행되면 바뀝니다.</div>';
+    /* 연봉 상위 5명 */
+    try{
+      var t = getTeam(state.myTeam), list = [];
+      ['bat', 'pit'].forEach(function(k){ (t[k] || []).forEach(function(pl){
+        var cc = state.contracts && state.contracts[longKey(k, pl)];
+        list.push({n:playerDisplayName(pl), v:+(cc && cc.salary || salaryOf(pl, k === 'bat')) || 0});
+      }); });
+      list.sort(function(a, b){ return b.v - a.v; });
+      out += '<div class="grp-v14 tops"><div class="h">연봉 많이 받는 선수</div>'
+        + list.slice(0, 5).map(function(x){ return '<div class="r"><span>' + esc(x.n) + '</span><b>' + R1(x.v).toFixed(1) + '억</b></div>'; }).join('')
+        + '</div><button class="btn ghost" onclick="closeSheet();openMarketSectionV108(\'front\')">연봉 협상·방출 보기</button>';
+    }catch(_){ }
+    return out + '</div>';
+  }
+  /* 구단 현황(구단주 목표·분위기)과 시설은 요약만 — 자세히는 원래 창 */
+  function statusHtml(){
+    var out = '<div class="card"><div class="t">🏢 구단주·분위기</div><div class="b">';
+    try{
+      var g = state.owner && state.owner.goal, pr = ownerGoalProgress();
+      out += '구단주 신뢰도 <b>' + Math.round(state.owner.trust) + '</b>/100 · 선수단 분위기 <b>' + teamMood() + '</b>/100 (' + moodLabel(teamMood()) + ')'
+        + (g ? '<br><span class="dim">구단주 목표: ' + esc(g.label) + ' · 지금 ' + esc(pr.text) + (pr.done ? ' ✅' : '') + '</span>' : '');
+    }catch(_){ out += '<span class="dim">정보를 불러오지 못했습니다.</span>'; }
+    out += '</div><button class="btn ghost" onclick="openClubStatusV104()">구단 현황 자세히 (기록실·뉴스)</button></div>';
+    var fac = '';
+    try{ ensureFacilities(); fac = Object.keys(FACILITY_INFO).map(function(k){ return FACILITY_INFO[k].name + ' Lv.' + facilityLevel(k); }).join(' · '); }catch(_){ }
+    var seat = ''; try{ seat = ' · 좌석 ' + (+state.stadiumBiz.seats || 12000).toLocaleString() + '석 · 입장료 ' + (+state.stadiumBiz.ticket || 1.5).toFixed(1) + '만원'; }catch(_){ }
+    out += '<div class="card"><div class="t">🏟️ 시설·구장</div><div class="b"><span class="dim">' + fac + seat + '</span></div>'
+      + '<button class="btn ghost" onclick="openFacilityV104()">시설 투자·구장 경영</button></div>';
+    return out;
+  }
   function bizHtml(){
     var m = ensureMgr(), out = '<div class="biz-v14">';
     if(postingPending()){
@@ -28935,6 +29087,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         + '<button class="btn" onclick="postingDecideV14(true)">보내기</button>'
         + '<button class="btn ghost" onclick="postingDecideV14(false)">붙잡기</button></div>';
     }
+    if(eco()){ try{ out += moneyHtml(); }catch(e){ console.error(V + ' 돈 카드:', e); } }
     if(eco()){
       /* 오프시즌이면 다음 시즌 지원금은 이미 받았다 — 그 다음 것을 예상으로 보여 준다 */
       var P = ensureParent(), y = clubYear(), r = rule(), off = offseason();
@@ -28958,9 +29111,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       + (m.years > 0 && eco() ? '<br><span class="dim">지금 교체하면 위약금 ' + fireCost(m).toFixed(1) + '억</span>' : '') + '</div>'
       + (m.years > 0 ? '' : '<button class="btn" onclick="renewMgrV14()">재계약 (2년)</button>')
       + '<button class="btn ghost" onclick="openMgrMarketV14()">감독 시장 보기</button></div>';
+    out += statusHtml();
     return out + '</div>';
   }
-  function openBiz(){ sheet('🤝 구단 경영', '모기업 지원 · 스폰서 · 감독 계약', bizHtml()); }
+  function openBiz(){ sheet('🤝 구단 경영', '돈 · 모기업 · 스폰서 · 감독 · 시설', bizHtml()); }
   window.openClubBizV14 = function(){ try{ openBiz(); }catch(e){ console.error(V + ' 구단 경영:', e); } };
 
   /* 운영 메인 배치 — 자주 쓰는 단장 업무를 위에, 둘러보는 정보는 아래에.
@@ -28974,26 +29128,50 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   function layoutFront(body){
     var grids = body.querySelectorAll('.front-menu-grid-v999'); if(!grids.length) return;
     var main = grids[0], tools = grids.length > 1 ? grids[1] : null;
-    if(main.dataset.layoutV14 === '1' && main.querySelector('[data-tile-v14]')) return;
-    main.innerHTML = ''; main.dataset.layoutV14 = '1';
-    main.appendChild(tile('🤝', '구단 경영', '모기업·스폰서·감독 계약', 'openClubBizV14()'));
+    var phase = (offseason() ? 'off' : 'on') + (eco() ? 'e' : 'f');
+    if(main.dataset.layoutV14 === phase && main.querySelector('[data-tile-v14]')) return;
+    main.innerHTML = ''; main.dataset.layoutV14 = phase;
+    /* v1.4.22 · 타일 정리 — 구단 현황·시설은 구단 경영 안으로, 설정은 맨 아래 작은 버튼, AI 구단은 내용이 있을 때만 */
+    main.appendChild(tile('💰', '구단 경영', eco() ? '돈·모기업·스폰서·감독·시설' : '감독·구단주·시설', 'openClubBizV14()'));
     main.appendChild(tile('👥', '선수단', '1군·2군·훈련', "openMarketSectionV108('squad')"));
+    /* 오프시즌엔 FA·외국인·레전드 시장이 이 화면에 열린다 */
+    if(offseason()) main.appendChild(tile('📝', 'FA·계약', 'FA·외국인·레전드·연봉·코치', "openMarketSectionV108('front')"));
+    else main.appendChild(tile('📝', '계약·코치', '연봉 협상·방출·코치진', "openMarketSectionV108('front')"));
     main.appendChild(tile('↔️', '트레이드', '선수 영입·맞교환', 'openTradeSheet()'));
-    main.appendChild(tile('📝', '계약·코치', '연봉 협상·방출·코치진', "openMarketSectionV108('front')"));
     if(state.mode === 'sim') main.appendChild(tile('🔭', '스카우트', '신인 드래프트 정보', 'openScoutV102()'));   /* 실황은 드래프트가 없다 */
+    var ai = body.querySelector('.front-pane[data-fpane="ai"]');
+    if(ai && ai.children.length && !ai.querySelector('.ai-pane-empty-v3432')) main.appendChild(tile('🤖', 'AI 구단', '상대 구단 운영·소식', "openMarketSectionV108('ai')"));
+    var title0 = main.parentElement && main.parentElement.querySelector('.front-menu-title-v999');
+    if(title0) title0.textContent = '🏢　구단 운영';
     if(tools){
-      tools.innerHTML = '';
-      tools.appendChild(tile('🏢', '구단 현황', '구단주·1군·2군 현황', 'openClubStatusV104()'));
-      tools.appendChild(tile('🏟️', '시설 투자', '훈련·분석·구장 경영', 'openFacilityV104()'));
-      tools.appendChild(tile('🤖', 'AI 구단', '상대 구단 운영·소식', "openMarketSectionV108('ai')"));
-      tools.appendChild(tile('⚙️', '설정', '게임 및 구단 설정', 'openGameSettingsV462()'));
-      var title = tools.parentElement && tools.parentElement.querySelector('.front-menu-title-v999');
-      if(title) title.textContent = '📋　구단 정보 · 설정';
+      var panel = tools.closest('.concept-panel-v999') || tools.parentElement;
+      if(panel) panel.style.display = 'none';
     }
+    if(!body.querySelector('.ops-foot-v14')){
+      var foot = document.createElement('div'); foot.className = 'ops-foot-v14';
+      foot.innerHTML = '<button type="button" onclick="openGameSettingsV462()">⚙️ 설정</button>';
+      var after = main.closest('.concept-panel-v999');
+      if(after && after.parentElement) after.parentElement.insertBefore(foot, after.nextSibling);
+    }
+  }
+  /* 맨 위 재정 카드 — 고정 "예산 100억" 은 계산에 쓰이지 않아 뺀다. 잔고와 시즌 끝 예상만 */
+  function paintFin(body){
+    var fin = body.querySelector('.front-fin-v999'); if(!fin) return;
+    if(!eco()){ fin.style.display = 'none'; return; }
+    var cash = R1(+state.money || 0), endTxt = '';
+    try{
+      var tmp = document.createElement('div'); tmp.innerHTML = moneyHtml();
+      var e = tmp.querySelector('.end-v14 b'); if(e) endTxt = e.textContent;
+    }catch(_){ }
+    fin.innerHTML = '<button type="button" class="fin-v14" onclick="openClubBizV14()">'
+      + '<span class="k">💰 잔고</span><b class="' + (cash < 0 ? 'neg' : '') + '">' + cash.toFixed(1) + '억</b>'
+      + (endTxt ? '<span class="e">시즌 끝 예상 <b class="' + (/^-/.test(endTxt) ? 'neg' : '') + '">' + endTxt + '</b></span>' : '<span class="e">시즌 결산 보기</span>')
+      + '<span class="go">자세히 ›</span></button>';
   }
   function paintFront(){
     var body = document.getElementById('frontBody'); if(!body) return;
     try{ layoutFront(body); }catch(e){ console.error(V + ' 운영 배치:', e); }
+    try{ paintFin(body); }catch(e){ console.error(V + ' 재정 카드:', e); }
     /* 옛 프런트 화면의 "감독 성향" 버튼은 계약 없이 바뀌므로 숨긴다 */
     var btn = body.querySelector('button[onclick*="setStaff(\'manager\'"]');
     var cat = btn && btn.closest('.lb-cat');
@@ -29056,6 +29234,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 .trn-v14 .sub{margin-top:4px;font-size:11.5px;line-height:1.55;color:var(--dim)}
 .trn-v14 .seg{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:8px}
 .trn-v14 .seg.three{grid-template-columns:repeat(3,1fr)}
+.trn-fold-v14>summary{list-style:none;cursor:pointer;min-height:28px;align-items:center}
+.trn-fold-v14>summary::-webkit-details-marker{display:none}
+.trn-fold-v14:not([open]){padding-top:9px;padding-bottom:9px}
+.trn-slots-v14{padding-top:4px}
 .trn-v14 .seg button{min-height:var(--tap-min,44px);border-radius:10px;border:1px solid var(--line);background:var(--panel2);
   color:var(--chalk,#DFE9E3);font:800 11.5px/1.3 inherit;font-family:inherit;padding:4px 2px;word-break:keep-all}
 .trn-v14 .seg button.on{border-color:#8FE3AE;background:rgba(119,214,155,.18);color:#8FE3AE}
@@ -29261,27 +29443,34 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   try{ state.trainFocusV122 = null; }catch(_){ }
 
   /* ── 화면: 선수단(훈련) 칸 맨 위 패널 + 선수 줄마다 [훈련] 버튼 ── */
+  /* v1.4.22 · 한 칸으로 접는다 — 요약 한 줄, 누르면 방침·강도 버튼이 펼쳐진다. 개인 훈련 중인 선수는 늘 보인다 */
+  var openTrn = false;
+  window.toggleTrnV14 = function(el){ openTrn = !!(el && el.open); };
   function panelHtml(){
     var s = S(), t = team() || {bat:[], pit:[]}, lv = s.level || 'normal';
-    var out = '<div class="trn-v14" data-trn-v14="1"><div class="h">🏋️ 팀 훈련 방침 <small>' + (s.area ? AREAS[s.area].label + ' · ' + LEVEL_LABEL[lv] : '없음') + '</small></div>'
-      + '<div class="sub">시즌 내내 한 분야에 집중합니다. 팀 전체가 그 분야로 조금씩 큽니다(어릴수록 빨리).</div>'
+    var out = '<details class="trn-v14 trn-fold-v14" data-trn-v14="1"' + (openTrn ? ' open' : '') + ' ontoggle="toggleTrnV14(this)">'
+      + '<summary class="h">🏋️ 훈련 <small>팀 ' + (s.area ? AREAS[s.area].label + '·' + LEVEL_LABEL[lv] : '방침 없음') + ' · 개인 ' + s.slots.length + '/' + slotMax() + '명 ▾</small></summary>'
+      + '<div class="sub">팀 훈련 방침 — 시즌 내내 팀 전체가 이 분야로 조금씩 큽니다.</div>'
       + '<div class="seg" style="grid-template-columns:repeat(4,1fr)">' + Object.keys(AREAS).map(function(k){
           return '<button class="' + (s.area === k ? 'on' : '') + '" onclick="setTeamTrainingV14(\'' + k + '\')">' + AREAS[k].label + '</button>';
         }).join('') + '</div>'
       + '<div class="seg three">' + Object.keys(T.level).map(function(k){
           return '<button class="' + (lv === k ? 'on' : '') + '" onclick="setTrainingLevelV14(\'' + k + '\')">' + LEVEL_LABEL[k] + '</button>';
         }).join('') + '</div>'
-      + '<div class="sub">' + (lv === 'hard' ? '⚠ 강하게: 효과 1.5배 · 피로가 쌓이고 가끔 부상이 납니다.' : lv === 'light' ? '가볍게: 효과 0.6배 · 피로가 조금 풀립니다.' : '보통: 기본 효과.') + '</div></div>';
-    out += '<div class="trn-v14"><div class="h">🎯 개인 훈련 <small>' + s.slots.length + '/' + slotMax() + '명</small></div>'
-      + '<div class="sub">아래 선수 목록에서 <b>훈련</b>을 눌러 키울 능력치를 고르세요. 2군 선수는 훈련장이라 1.5배 빠릅니다. 잠재력까지만 오릅니다.</div>';
-    s.slots.forEach(function(sl){
-      var i = findIdx(sl.kind, sl.alias); if(i < 0) return;
-      var p = t[sl.kind][i], prog = Math.max(0, Math.min(1, +s.soloPts[sl.kind + ':' + sl.alias] || 0));
-      out += '<div class="slot"><span class="nm"><b>' + esc(nameOf(p)) + '</b> <span>' + (sl.kind === 'bat' ? BAT_STAT : PIT_STAT)[sl.stat] + ' ' + p[sl.stat] + '</span></span>'
-        + '<span class="tbar-v14"><i style="width:' + Math.round(prog * 100) + '%"></i></span>'
-        + '<button class="x" onclick="dropSoloV14(\'' + sl.kind + '\',\'' + esc(sl.alias) + '\')">✕</button></div>';
-    });
-    return out + '</div>';
+      + '<div class="sub">' + (lv === 'hard' ? '⚠ 강하게: 효과 1.5배 · 피로가 쌓이고 가끔 부상.' : lv === 'light' ? '가볍게: 효과 0.6배 · 피로가 조금 풀림.' : '보통: 기본 효과.')
+      + '<br>개인 훈련 — 선수 줄의 <b>훈련</b>을 눌러 키울 능력치를 고릅니다. 2군은 1.5배, 잠재력까지만.</div></details>';
+    if(s.slots.length){
+      out += '<div class="trn-v14 trn-slots-v14">';
+      s.slots.forEach(function(sl){
+        var i = findIdx(sl.kind, sl.alias); if(i < 0) return;
+        var p = t[sl.kind][i], prog = Math.max(0, Math.min(1, +s.soloPts[sl.kind + ':' + sl.alias] || 0));
+        out += '<div class="slot"><span class="nm"><b>' + esc(nameOf(p)) + '</b> <span>' + (sl.kind === 'bat' ? BAT_STAT : PIT_STAT)[sl.stat] + ' ' + p[sl.stat] + '</span></span>'
+          + '<span class="tbar-v14"><i style="width:' + Math.round(prog * 100) + '%"></i></span>'
+          + '<button class="x" onclick="dropSoloV14(\'' + sl.kind + '\',\'' + esc(sl.alias) + '\')">✕</button></div>';
+      });
+      out += '</div>';
+    }
+    return out;
   }
   var baseRoster = window.rosterManagementHtml;
   if(typeof baseRoster === 'function'){
@@ -29297,6 +29486,8 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
           return '<button class="trn-btn-v14' + (on ? ' on' : '') + '" type="button" onclick="openSoloPickV14(\'' + kind + '\',' + idxStr + ')">' + (on ? '훈련 중' : '훈련') + '</button>' + btn;
         });
         html = html.replace('<div class="hint">전체 선수단은', panelHtml() + '<div class="hint">전체 선수단은');
+        /* 긴 규칙 문장은 한 줄로 */
+        html = html.replace(/<div class="hint">전체 선수단은[^<]*<\/div>/, '<div class="hint">1군 최대 30명 · 1군만 경기에 나가고 FA 경기 수가 쌓입니다.</div>');
       }catch(e){ console.error(V + ' 훈련 화면:', e); }
       return html;
     };
