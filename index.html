@@ -25867,8 +25867,18 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     SSG:{bat:{'에레디아':['김재환','김재환','LF','좌',68,82,45,55,70,'transfer26']}}
   };
   /* 교체 없이 더하는 이적 선수 — 이미 있으면 다시 넣지 않는다 */
+  /* v1.4.2 · LG 2026 엔트리(사용자 제공). 새 선수 능력치는 백업급 추정치 — 실제 기록이 오면 바꿀 것 */
   const rosterAdditions={
-    LG:{bat:[['천성오','천성호','2B','좌',72,48,72,74,68,'transfer26']]}
+    LG:{bat:[
+      ['천성오','천성호','3B','좌',72,48,72,74,68,'transfer26'],
+      ['이영빈','이영빈','3B','좌',66,52,72,76,64,'current'],
+      ['김민수','김민수','C','우',60,56,40,70,58,'current'],
+      ['강민균','강민균','2B','우',62,48,66,70,58,'current'],
+      ['김현종','김현종','CF','우',62,52,72,74,56,'current'],
+      ['최원영','최원영','CF','우',62,46,80,74,58,'current'],
+      ['문정빈','문정빈','DH','우',66,74,44,56,60,'current'],
+      ['손용준','손용준','3B','우',66,56,62,72,60,'current']
+    ]}
   };
   function displayName(p){return String((p&&p[1])||'').replace(/\s*\([^)]*\)\s*$/,'').trim();}
   function applyRatings(rows,map,start){
@@ -29094,6 +29104,53 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.4.0 · 훈련 END -->
+
+<!-- v1.4.2 · 실황 개막 엔트리·기본 라인업 -->
+<script id="live-entry-v142">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov14')>=0) return;
+  /* 실황 새 게임을 시작할 때 구단의 실제 1군 엔트리와 선발 라인업을 그대로 깐다(사용자 제공 자료).
+       lineup: 타순 1~9 [실명, 수비 위치] · bench: 1군 후보 야수 실명
+       엔트리 밖 야수는 2군. 투수는 1군이 30명을 넘지 않도록 OVR 낮은 순으로 2군.
+     내 팀이 아니어도(AI 구단) 같은 엔트리로 시작한다. 이후 운영은 기존 규칙 그대로. */
+  var ENTRY = {
+    LG:{
+      lineup:[['신민재','2B'],['박해민','CF'],['오스틴 딘','1B'],['송찬의','LF'],['문정빈','DH'],
+              ['손용준','3B'],['구본혁','SS'],['이주헌','C'],['홍창기','RF']],
+      bench:['김민수','박동원','강민균','문보경','이영빈','천성호','오지환','김현종','최원영']
+    }
+  };
+  window.LIVE_ENTRY_V142 = ENTRY;
+  var FIRST_MAX = 30;
+  function real(p){ return String((p && p[1]) || '').replace(/\s*\([^)]*\)\s*$/, '').trim(); }
+  function apply(tid){
+    var e = ENTRY[tid], t = state.players && state.players[tid]; if(!e || !t) return;
+    var idx = {}; t.bat.forEach(function(p, i){ idx[real(p)] = i; });
+    var order = [], pos = [];
+    e.lineup.forEach(function(x){ if(idx[x[0]] != null){ order.push(idx[x[0]]); pos.push(x[1]); } });
+    if(!state.squadLevel) state.squadLevel = {};
+    var lv = state.squadLevel[tid] = state.squadLevel[tid] || {};
+    var keep = {}; e.lineup.forEach(function(x){ keep[x[0]] = 1; }); e.bench.forEach(function(n){ keep[n] = 1; });
+    var nBat = 0;
+    t.bat.forEach(function(p){ var on = !!keep[real(p)]; lv[squadKey('bat', p)] = on ? 'first' : 'second'; if(on) nBat++; });
+    var pits = t.pit.map(function(p){ var o = 0; try{ o = pitOvr(p, tid); }catch(_){ } return {p:p, o:o}; }).sort(function(a, b){ return b.o - a.o; });
+    pits.forEach(function(x, k){ lv[squadKey('pit', x.p)] = k < FIRST_MAX - nBat ? 'first' : 'second'; });
+    if(order.length === 9){ state.lineups = state.lineups || {}; state.lineups[tid] = {order:order, pos:pos}; }
+  }
+  var baseStart = window.startWithMode;
+  if(typeof baseStart === 'function'){
+    window.startWithMode = function(teamId, mode){
+      var r = baseStart.apply(this, arguments);
+      try{ if(r !== false && mode === 'live'){ Object.keys(ENTRY).forEach(apply); save(); } }catch(e){ console.error('v1.4.2 개막 엔트리:', e); }
+      return r;
+    };
+    try{ startWithMode = window.startWithMode; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.4.2 · 실황 개막 엔트리 END -->
+
 
 </body>
 </html>
