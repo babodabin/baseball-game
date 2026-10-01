@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.3';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.4';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -29121,7 +29121,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   if(String(location.search||'').indexOf('nov14')>=0) return;
   /* 실황 새 게임을 시작할 때 구단의 실제 1군 엔트리와 선발 라인업을 그대로 깐다(사용자 제공 자료).
        lineup: 타순 1~9 [실명, 수비 위치] · bench: 1군 후보 야수 실명
-       엔트리 밖 야수는 2군. 투수는 1군이 30명을 넘지 않도록 OVR 낮은 순으로 2군.
+       투수는 전원 1군. 야수는 타순 9명 + 후보를 적힌 순서대로 1군 30명이 찰 때까지, 나머지는 2군.
      내 팀이 아니어도(AI 구단) 같은 엔트리로 시작한다. 이후 운영은 기존 규칙 그대로. */
   var ENTRY = {
     LG:{
@@ -29140,13 +29140,35 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     e.lineup.forEach(function(x){ if(idx[x[0]] != null){ order.push(idx[x[0]]); pos.push(x[1]); } });
     if(!state.squadLevel) state.squadLevel = {};
     var lv = state.squadLevel[tid] = state.squadLevel[tid] || {};
-    var keep = {}; e.lineup.forEach(function(x){ keep[x[0]] = 1; }); e.bench.forEach(function(n){ keep[n] = 1; });
-    var nBat = 0;
-    t.bat.forEach(function(p){ var on = !!keep[real(p)]; lv[squadKey('bat', p)] = on ? 'first' : 'second'; if(on) nBat++; });
-    var pits = t.pit.map(function(p){ var o = 0; try{ o = pitOvr(p, tid); }catch(_){ } return {p:p, o:o}; }).sort(function(a, b){ return b.o - a.o; });
-    pits.forEach(function(x, k){ lv[squadKey('pit', x.p)] = k < FIRST_MAX - nBat ? 'first' : 'second'; });
+    /* 투수는 전원 1군, 야수는 남은 자리만큼 타순 → 후보 순서로 */
+    t.pit.forEach(function(p){ lv[squadKey('pit', p)] = 'first'; });
+    var room = Math.max(9, FIRST_MAX - t.pit.length), keep = {}, n = 0;
+    e.lineup.map(function(x){ return x[0]; }).concat(e.bench).forEach(function(nm){ if(n < room && idx[nm] != null && !keep[nm]){ keep[nm] = 1; n++; } });
+    t.bat.forEach(function(p){ lv[squadKey('bat', p)] = keep[real(p)] ? 'first' : 'second'; });
     if(order.length === 9){ state.lineups = state.lineups || {}; state.lineups[tid] = {order:order, pos:pos}; }
   }
+  /* 내 팀 경기 준비 때 ensureUserRosterMinimumV266 이 OVR 상위 타자 12명을 무조건 1군으로 올려
+     1군이 30명을 넘는다. 넘으면 라인업에 없는 야수 중 OVR 낮은 순으로 2군에 내린다(투수는 건드리지 않음). */
+  function capFirst(tid){
+    var t = state.players && state.players[tid], lv = state.squadLevel && state.squadLevel[tid]; if(!t || !lv) return;
+    var first = function(kind, p){ return lv[squadKey(kind, p)] === 'first'; };
+    var count = t.bat.filter(function(p){ return first('bat', p); }).length + t.pit.filter(function(p){ return first('pit', p); }).length;
+    if(count <= FIRST_MAX) return;
+    var inLineup = {}; try{ (state.lineups[tid] && state.lineups[tid].order || []).forEach(function(i){ inLineup[i] = 1; }); }catch(_){ }
+    var cand = t.bat.map(function(p, i){ var o = 0; try{ o = batOvr(p, tid); }catch(_){ } return {p:p, i:i, o:o}; })
+      .filter(function(x){ return first('bat', x.p) && !inLineup[x.i]; }).sort(function(a, b){ return a.o - b.o; });
+    while(count > FIRST_MAX && cand.length){ lv[squadKey('bat', cand.shift().p)] = 'second'; count--; }
+  }
+  var baseMin = window.ensureUserRosterMinimumV266;
+  if(typeof baseMin === 'function'){
+    window.ensureUserRosterMinimumV266 = function(){
+      var r = baseMin.apply(this, arguments);
+      try{ if(state && state.myTeam) capFirst(state.myTeam); }catch(_){ }
+      return r;
+    };
+    try{ ensureUserRosterMinimumV266 = window.ensureUserRosterMinimumV266; }catch(_){ }
+  }
+
   var baseStart = window.startWithMode;
   if(typeof baseStart === 'function'){
     window.startWithMode = function(teamId, mode){
