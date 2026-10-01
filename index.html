@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.23';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.24';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -29625,6 +29625,16 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 #scr-game .speedbar button b{font-size:15px;font-weight:900}
 #scr-game .speedbar button span{font-size:11px;font-weight:700;opacity:.75;white-space:nowrap}
 #scr-game .speedbar button small{display:none}
+/* 숫자 값은 조금 크게 — 한글과 같은 크기면 작아 보인다 */
+.club-kpi-v999 .v.num-v14{font-size:20px!important;white-space:nowrap}
+.club-kpi-v999 .v.num-v14.long{font-size:17px!important;letter-spacing:-.4px}
+/* 트레이드 상대 구단 — 로고 + 짧은 이름, 작게 */
+#sheet .opp-grid.logo-v14{display:grid!important;grid-template-columns:repeat(5,1fr)!important;gap:6px!important}
+#sheet .opp-grid.logo-v14 button{min-height:0!important;padding:7px 2px 6px!important;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px!important;font-weight:800;border-radius:11px!important}
+#sheet .opp-grid.logo-v14 button img,#sheet .opp-grid.logo-v14 button .opp-logo-v14{width:32px;height:28px;object-fit:contain;display:block}
+#sheet .opp-grid.logo-v14 button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* 다른 화면과 겹치는 항목 숨김 */
+[data-dup-v14]{display:none!important}
 /* 시트로 열리던 운영 화면도 선수단처럼: 머리말·아래 메뉴는 보이고 그 사이를 채운다 */
 #mask.page-v14{top:var(--pg-top,0px);bottom:var(--pg-bot,0px);height:auto;background:var(--bg,#08150F)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;align-items:stretch;z-index:25}
 #mask.page-v14 #sheet{width:100%;max-width:none;height:100%;max-height:none!important;border-radius:0!important;border:0!important;margin:0;padding-top:10px;box-shadow:none}
@@ -29633,9 +29643,6 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 .pg-back-v14{display:block;width:100%;min-height:44px;margin:0 0 8px;padding:9px 12px;border:1px solid rgba(244,196,94,.34);border-radius:12px;background:#102219;color:#F4C45E;text-align:left;font-size:12px;font-weight:900;font-family:inherit}
 @keyframes pgInR{from{transform:translateX(100%)}to{transform:none}}
 @keyframes pgInL{from{transform:translateX(-30%);opacity:.4}to{transform:none;opacity:1}}
-#mask.page-v14.pg-anim #sheet{animation:pgInR .26s ease-out}
-#frontBody .front-legacy-v999.pg-anim{animation:pgInR .26s ease-out}
-#frontBody .front-concept-v999.pg-back-anim{animation:pgInL .22s ease-out}
 </style>
 <script id="ops-page-v1423">
 (function(){
@@ -29661,7 +29668,16 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     if(!b){ b = document.createElement('button'); b.type = 'button'; b.className = 'pg-back-v14'; b.onclick = function(){ window.opsPageBackV14(); }; sh.insertBefore(b, sh.firstChild); }
     if(b.textContent !== label) b.textContent = label;
   }
-  function anim(el, cls){ if(!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(function(){ el.classList.remove(cls); }, 320); }
+  /* 강제 레이아웃(offsetWidth) 없이 — 긴 선수 목록 화면에서 끊기던 원인. Web Animations 로 transform 만 움직인다 */
+  var FRAMES = {
+    'pg-anim':[{transform:'translateX(100%)'}, {transform:'none'}],
+    'pg-anim-soft':[{transform:'translateX(48px)', opacity:.35}, {transform:'none', opacity:1}],
+    'pg-back-anim':[{transform:'translateX(-48px)', opacity:.35}, {transform:'none', opacity:1}]
+  };
+  function anim(el, cls){
+    if(!el) return;
+    try{ if(el.animate){ el.animate(FRAMES[cls] || FRAMES['pg-anim'], {duration:cls === 'pg-anim' ? 240 : 200, easing:'cubic-bezier(.2,.8,.2,1)'}); return; } }catch(_){ }
+  }
   /* 타일에서 여는 시트 화면 */
   window.openOpsPageV14 = function(fn){
     try{
@@ -29671,7 +29687,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       if(m) m.classList.add('page-v14');
       f();
       rootTitle = title();
-      ensureBack(); anim(m, 'pg-anim');
+      ensureBack(); anim(sheetEl(), 'pg-anim');
       var sh = sheetEl(); if(sh) sh.scrollTop = 0;
     }catch(e){ console.error(V + ' 운영 화면:', e); }
   };
@@ -29692,10 +29708,63 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     };
     close.__pgV14 = true; window.closeSheet = close; try{ closeSheet = close; }catch(_){ }
   }
+  /* 트레이드 상대 구단 버튼 — 로고 + 짧은 이름 */
+  function decorateOpp(){
+    var sh = sheetEl(); if(!sh) return;
+    sh.querySelectorAll('.opp-grid').forEach(function(g){
+      g.classList.add('logo-v14');
+      g.querySelectorAll('button[onclick*="selTradeOpp"]').forEach(function(b){
+        if(b.dataset.logoV14) return;
+        var m = /selTradeOpp\('([^']+)'\)/.exec(b.getAttribute('onclick') || ''); if(!m) return;
+        var id = m[1], full = b.textContent.trim(), short = full.split(/\s+/)[0] || full, logo = '';
+        try{ logo = typeof teamLogoHtml === 'function' ? teamLogoHtml(id, 'opp-logo-v14', full) : ''; }catch(_){ }
+        b.dataset.logoV14 = '1'; b.title = full;
+        b.innerHTML = logo + '<span>' + short.replace(/[<>&]/g, '') + '</span>';
+      });
+    });
+  }
+  /* 계약·코치 화면에서 다른 곳과 겹치는 것 숨김:
+     트레이드 열기(트레이드 타일) · 감독 성향/감독 안내(구단 경영) · 신인 스카우트 등급(스카우트 타일) · "정규시즌 프런트" 안내 */
+  function dedupe(){
+    var pane = document.querySelector('#frontBody .front-pane[data-fpane="front"]'); if(!pane) return;
+    function hide(el){ if(el && !el.hasAttribute('data-dup-v14')) el.setAttribute('data-dup-v14', '1'); }
+    Array.prototype.forEach.call(pane.querySelectorAll('button.btn'), function(b){
+      if(/트레이드 열기/.test(b.textContent)){ var w = b.parentElement; hide(w && w !== pane && w.children.length === 1 ? w : b); }
+    });
+    Array.prototype.forEach.call(pane.querySelectorAll('.hint'), function(h){ if(/감독 계약·교체는/.test(h.textContent)) hide(h); });
+    Array.prototype.forEach.call(pane.querySelectorAll('h2.sec'), function(h){
+      if(/^\s*감독 성향/.test(h.textContent)){ hide(h); var n = h.nextElementSibling; if(n && n.classList.contains('lb-cat')) hide(n); }
+    });
+    Array.prototype.forEach.call(pane.querySelectorAll('.notice'), function(n){
+      var t = n.textContent;
+      if(/정규시즌 프런트/.test(t)) hide(n);
+      if(/신인 스카우트/.test(t)){
+        hide(n);
+        var x = n.nextElementSibling;
+        if(x && x.classList.contains('lb-cat')){ hide(x); x = x.nextElementSibling; }
+        if(x && x.classList.contains('hint') && /연봉|관찰/.test(x.textContent)) hide(x);
+      }
+    });
+  }
+  var baseFrontR = window.renderFront;
+  if(typeof baseFrontR === 'function' && !baseFrontR.__dupV14){
+    var rf = function(){ var r = baseFrontR.apply(this, arguments); try{ dedupe(); }catch(e){ console.error(V + ' 중복 정리:', e); } return r; };
+    rf.__dupV14 = true; window.renderFront = rf; try{ renderFront = rf; }catch(_){ }
+  }
+  /* 구단 홈 숫자 칸: 숫자만 있는 값은 조금 크게 */
+  var baseTeam = window.renderTeamHome;
+  if(typeof baseTeam === 'function' && !baseTeam.__numV14){
+    var th = function(){
+      var r = baseTeam.apply(this, arguments);
+      try{ document.querySelectorAll('.club-kpi-v999 .v').forEach(function(v){ var t = v.textContent.trim(), n = /^[\d.,+\-]+(억|%)?$/.test(t); v.classList.toggle('num-v14', n); v.classList.toggle('long', n && t.length > 4); }); }catch(_){ }
+      return r;
+    };
+    th.__numV14 = true; window.renderTeamHome = th; try{ renderTeamHome = th; }catch(_){ }
+  }
   /* 시트 내용이 다시 그려져도(트레이드 상대 고르기 등) 뒤로 버튼 유지 */
   try{
     var sh0 = sheetEl();
-    if(sh0) new MutationObserver(function(){ try{ ensureBack(); }catch(_){ } }).observe(sh0, {childList:true});
+    if(sh0) new MutationObserver(function(){ try{ ensureBack(); }catch(_){ } try{ decorateOpp(); }catch(_){ } }).observe(sh0, {childList:true, subtree:true});
   }catch(_){ }
   /* 아래 메뉴로 다른 탭에 가면 운영 화면은 닫는다 */
   document.addEventListener('click', function(e){
@@ -29711,7 +29780,8 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var sec = function(){
       var was = document.querySelector('#frontBody.v108-market-focus');
       var r = baseSec.apply(this, arguments);
-      try{ if(!was) anim(document.querySelector('#frontBody .front-legacy-v999'), 'pg-anim'); var mn = document.querySelector('main'); if(mn && !was) mn.scrollTop = 0; }catch(_){ }
+      try{ dedupe(); }catch(_){ }
+      try{ if(!was) anim(document.querySelector('#frontBody .front-legacy-v999'), 'pg-anim-soft'); var mn = document.querySelector('main'); if(mn && !was) requestAnimationFrame(function(){ mn.scrollTop = 0; }); }catch(_){ }
       return r;
     };
     sec.__pgV14 = true; window.openMarketSectionV108 = sec;
