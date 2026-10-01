@@ -28037,16 +28037,26 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
          계약 중 교체는 위약금(남은 연봉: 일반 50% · 하드 100%), 자유 모드는 시즌당 1회. 계약이 끝났으면 무료.
      금액 단위는 억. 값은 전부 아래 표에 모아 둔다. */
   var CFG = {
-    normal:{support:50, guaranteeYears:3, rich:120, sponsorMul:1},
-    hard:  {support:35, guaranteeYears:3, rich:100, sponsorMul:.8},
+    /* support: 해마다 모기업 광고비 — 아무것도 안 해도 일반은 손익분기점 근처, 하드는 조금 적자가 되게 맞춘 값
+       (실제 KBO 2025: 모기업 광고가 매출의 26~31%). founding: 창단 보너스 — FA 한 명 몫 */
+    normal:{support:60, founding:40, guaranteeYears:3, rich:120, sponsorMul:1},
+    hard:  {support:50, founding:30, guaranteeYears:3, rich:100, sponsorMul:.8},
     fireShare:{normal:.5, hard:1},
     freeFirePerSeason:1,
     healthStart:75, healthDrift:-2, healthSwing:8,
     emergency:{richChance:.35, baseChance:.12, baseFromYear:4},
     mgrSalary:[0, 1.0, 1.8, 2.8, 4.0, 5.5],      /* ★별 연봉 */
-    mgrAbility:[0, .5, .75, 1, 1.25, 1.5]          /* ★별 성향 효과 배율 */
+    mgrAbility:[0, .5, .75, 1, 1.25, 1.5],         /* ★별 성향 효과 배율 */
+    /* 굿즈 — 인기 선수(OVR 80+ / 85+)·수상자·팀 인기 */
+    merch:{base:6, perPop:.3, star80:2.5, star85:4, award:4, min:2, hardMul:.85},
+    /* 중계권 — 순위가 높고 인기 있는 팀일수록 많이(노출) */
+    tv:{base:8, perRank:1.2, perPop:.1, hardMul:.85},
+    /* 해외 진출 — OVR 85+ · 33세 이하 · 국내 선수, 시즌마다 이 확률로 한 명 */
+    posting:{minOvr:85, maxAge:33, chance:.4, perOvr:6, over:80, hardMul:.9, minBat:10, minPit:11},
+    champion:{normal:70, hard:50}                  /* 우승 상금 (원래 35 / 25) */
   };
   window.CLUB_ECONOMY_V14 = CFG;
+  try{ BALANCE_V287.normal.champion = CFG.champion.normal; BALANCE_V287.hard.champion = CFG.champion.hard; }catch(_){ }
 
   function eco(){ try{ return typeof ecoOn === 'function' ? ecoOn() : state.eco !== 'free'; }catch(_){ return true; } }
   function rule(){ return CFG[(state && state.eco) === 'hard' ? 'hard' : 'normal']; }
@@ -28242,12 +28252,97 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   function startSummary(){
     var sp = state.sponsorV14, m = ensureMgr();
     sheet('창단 준비 완료', '',
-      '<div class="biz-v14"><div class="card"><div class="b">🏢 모기업 창단 지원금 <b>+' + (+state.parentV14.paid0 || 0).toFixed(1) + '억</b><br>'
+      '<div class="biz-v14"><div class="card"><div class="b">🏢 모기업 지원금 <b>+' + (+state.parentV14.paid0 || 0).toFixed(1) + '억</b><br>'
+      + '🎁 창단 보너스(FA 한 명 몫) <b>+' + (+state.parentV14.founding || 0).toFixed(1) + '억</b><br>'
       + (sp ? '🤝 스폰서 ' + esc(sp.brand) + ' 계약금 <b>+' + sp.up.toFixed(1) + '억</b><br>' : '')
       + '🎽 ' + mgrLine(m) + '<br><br><span class="dim">처음 ' + rule().guaranteeYears + '년은 모기업이 해마다 ' + rule().support
       + '억을 지원합니다. 그 뒤로는 모기업 사정에 따라 줄어들 수 있습니다.</span></div></div></div>'
       + '<button class="btn" onclick="closeSheet()">시작하기</button>');
   }
+
+  /* ── 굿즈 · 중계권 · 해외 진출 ─────────────────────────── */
+  function myPlayers(){
+    var t = state.players && state.players[state.myTeam], out = [];
+    if(!t) return out;
+    ['bat', 'pit'].forEach(function(kind){
+      (t[kind] || []).forEach(function(p, i){
+        if(!p) return;
+        var isBat = kind === 'bat', ovr = 0;
+        try{ ovr = isBat ? batOvr(p, state.myTeam) : pitOvr(p, state.myTeam); }catch(_){ }
+        var foreign = false; try{ foreign = typeof foreignFlag === 'function' && !!foreignFlag(p, isBat); }catch(_){ }
+        /* 실황 2026 외국인은 표시(flag)가 없다 — 실명으로 가린다: 띄어쓰기·"아시아쿼터"·4글자 이상(치리노스 등) */
+        if(!foreign){
+          var real = String(p[1] || ''), plain = real.replace(/\s*\(.*\)\s*/g, '');
+          if(/\s|쿼터/.test(real) || plain.length >= 4) foreign = true;
+        }
+        out.push({kind:kind, i:i, p:p, ovr:ovr, age:+((t.age && t.age[kind] || [])[i]) || 0, foreign:foreign});
+      });
+    });
+    return out;
+  }
+  function starCount(){
+    var all = myPlayers();
+    return {s80:all.filter(function(x){ return x.ovr >= 80; }).length, s85:all.filter(function(x){ return x.ovr >= 85; }).length};
+  }
+  function myAwards(){
+    try{ var a = state.season && state.season.awardsV116; return a && Array.isArray(a.list) ? a.list.filter(function(x){ return /MVP|신인왕/.test(x.label); }).length : 0; }catch(_){ return 0; }
+  }
+  function merchIncome(){
+    var c = CFG.merch, st = starCount(), pop = +state.popularity || 50;
+    var v = c.base + c.perPop * (pop - 50) + c.star80 * Math.max(0, st.s80 - st.s85) + c.star85 * st.s85 + c.award * myAwards();
+    if(state.eco === 'hard') v *= c.hardMul;
+    return {amt:R1(Math.max(c.min, v)), stars:st.s80};
+  }
+  function myRank(){ try{ return Math.max(1, rankOrder().indexOf(state.myTeam) + 1); }catch(_){ return 6; } }
+  function tvIncome(){
+    var c = CFG.tv, n = (TEAMS && TEAMS.length) || 10, rank = myRank(), pop = +state.popularity || 50;
+    var v = c.base + c.perRank * (n + 1 - rank) + c.perPop * (pop - 50);
+    if(state.eco === 'hard') v *= c.hardMul;
+    return {amt:R1(Math.max(c.base * .5, v)), rank:rank};
+  }
+  function postingFee(ovr){
+    var c = CFG.posting, v = (ovr - c.over) * c.perOvr;
+    if(state.eco === 'hard') v *= c.hardMul;
+    return R1(v);
+  }
+  function rollPosting(){
+    var c = CFG.posting, t = state.players[state.myTeam];
+    if(!t || (t.bat || []).length <= c.minBat || (t.pit || []).length <= c.minPit) return null;
+    var pool = myPlayers().filter(function(x){ return !x.foreign && x.ovr >= c.minOvr && x.age && x.age <= c.maxAge; })
+      .filter(function(x){ return (state.postingRefusedV14 || {})[x.p[0]] !== clubYear(); });   /* 붙잡은 그 해만 건너뜀 */
+    if(!pool.length || Math.random() >= c.chance) return null;
+    pool.sort(function(a, b){ return b.ovr - a.ovr; });
+    var x = pool[0];
+    var name = x.p[0]; try{ name = playerDisplayName(x.p); }catch(_){ }
+    return {key:x.p[0], kind:x.kind, name:name, ovr:x.ovr, age:x.age, fee:postingFee(x.ovr),
+      dest:pick(['메이저리그', '메이저리그', '일본 프로야구']), year:clubYear()};
+  }
+  /* 보내기: doCut 과 같은 방식으로 빼고 라인업·로테이션을 다시 짜게 한다 */
+  window.postingDecideV14 = function(go){
+    try{
+      var o = state.postingV14; if(!o || o.done) return;
+      if(!go){
+        o.done = 'stay';
+        state.postingRefusedV14 = state.postingRefusedV14 || {};
+        state.postingRefusedV14[o.key] = clubYear();   /* 같은 선수는 그 해엔 다시 묻지 않는다 */
+        news('해외 진출 불허', o.name + ' 잔류');
+        save(); refresh(); openBiz(); return;
+      }
+      var t = state.players[state.myTeam], arr = t[o.kind], idx = -1;
+      for(var i = 0; i < arr.length; i++) if(arr[i] && arr[i][0] === o.key){ idx = i; break; }
+      if(idx < 0){ o.done = 'gone'; save(); openBiz(); return; }
+      var p = arr[idx], isBat = o.kind === 'bat';
+      try{ if(typeof clearSalaryRaise === 'function') clearSalaryRaise(p, isBat); }catch(_){ }
+      arr.splice(idx, 1);
+      if(t.age && t.age[o.kind]) t.age[o.kind].splice(idx, 1);
+      try{ state.lineups[state.myTeam] = null; state.rotOrder[state.myTeam] = null; }catch(_){ }
+      if(eco()) state.money = (+state.money || 0) + o.fee;
+      o.done = 'go';
+      news('해외 진출', o.name + ' → ' + o.dest + (eco() ? ' · 이적료 +' + o.fee.toFixed(1) + '억' : ''));
+      save(); refresh(); openBiz();
+    }catch(e){ console.error(V + ' 해외 진출:', e); }
+  };
+  function postingPending(){ var o = state.postingV14; return !!(o && !o.done && o.year === clubYear() && offseason()); }
 
   /* ── 모기업 ───────────────────────────────────────────── */
   function ensureParent(){
@@ -28278,7 +28373,17 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         if(bonus > 0){ state.money += bonus; out.lines.push('🤝 스폰서 ' + esc(sp.brand) + ' 성과금 ' + money(bonus)); }
       }
       if(m.years > 0){ state.money -= m.salary; out.lines.push('🎽 감독 연봉 ' + money(-m.salary)); }
+      var md = merchIncome(), tv = tvIncome();
+      state.money += md.amt + tv.amt;
+      out.merch = md.amt; out.tv = tv.amt;
+      out.lines.push('👕 굿즈 판매 ' + money(md.amt) + ' (인기 ' + Math.round(+state.popularity || 0) + ' · 스타 ' + md.stars + '명)');
+      out.lines.push('📺 중계권 ' + money(tv.amt) + ' (' + tv.rank + '위)');
     }
+    try{
+      var po = rollPosting();
+      if(po){ state.postingV14 = po; out.lines.push('✈️ ' + esc(po.name) + '(OVR ' + po.ovr + ') ' + po.dest + ' 진출 요청'
+        + (eco() ? ' · 이적료 ' + po.fee.toFixed(1) + '억' : '') + ' — 운영 → 구단 경영에서 결정'); }
+    }catch(e){ console.error(V + ' 해외 진출 제안:', e); }
     if(m.years > 0) m.years--;
     if(!(m.years > 0)) out.lines.push('📄 ' + esc(m.name) + ' 감독 계약 만료 — 오프시즌에 재계약하거나 새 감독을 고르세요');
     if(eco()){
@@ -28347,6 +28452,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       try{ if(eco() && offseason() && !hasSponsor()) autoSp = ensureOffers()[0]; }catch(_){ }
       var r = baseNew.apply(this, arguments);
       try{
+        if(state.postingV14 && !state.postingV14.done){ state.postingV14.done = 'stay'; news('해외 진출 무산', state.postingV14.name + ' 잔류'); }
         state.clubYearV14 = clubYear() + 1;
         var m = ensureMgr();
         if(!(m.years > 0)){ m.years = 1; news('감독 자동 재계약', m.name + ' 감독 1년 · 연 ' + m.salary.toFixed(1) + '억'); }
@@ -28374,6 +28480,8 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
           state.parentV14 = null;
           var P = ensureParent();
           P.paid0 = eco() ? rule().support : 0;
+          P.founding = eco() ? rule().founding : 0;
+          if(eco()) state.money = (+state.money || 0) + P.founding;
           if(eco()) state.money = (+state.money || 0) + P.paid0;
           ensureMgr(); save(); refreshHeader();
           setTimeout(function(){ try{ openMgrPick(true); }catch(e){ console.error(V + ' 감독 선택 창:', e); } }, 0);
@@ -28387,6 +28495,15 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   /* ── 구단 경영 화면 (운영 탭 타일) ─────────────────────── */
   function bizHtml(){
     var m = ensureMgr(), out = '<div class="biz-v14">';
+    if(postingPending()){
+      var o = state.postingV14;
+      out += '<div class="card" style="border-color:rgba(244,196,94,.5)"><div class="t">✈️ 해외 진출 요청 <small>' + o.dest + '</small></div>'
+        + '<div class="b"><b>' + esc(o.name) + '</b> · ' + o.age + '세 · OVR ' + o.ovr
+        + (eco() ? '<br>이적료 <b>' + o.fee.toFixed(1) + '억</b>' : '')
+        + '<br><span class="dim">보내면 이적료를 받고 선수는 떠납니다. 붙잡으면 올해는 남습니다. 새 시즌까지 정하지 않으면 잔류.</span></div>'
+        + '<button class="btn" onclick="postingDecideV14(true)">보내기</button>'
+        + '<button class="btn ghost" onclick="postingDecideV14(false)">붙잡기</button></div>';
+    }
     if(eco()){
       /* 오프시즌이면 다음 시즌 지원금은 이미 받았다 — 그 다음 것을 예상으로 보여 준다 */
       var P = ensureParent(), y = clubYear(), r = rule(), off = offseason();
@@ -28464,6 +28581,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         if(!Array.isArray(r)) r = [];
         if(offseason()){
           if(eco() && !hasSponsor()) r.push({c:'warn', i:'🤝', t:'다음 시즌 스폰서를 아직 고르지 않았습니다. 운영 → 구단 경영'});
+          if(postingPending()) r.push({c:'warn', i:'✈️', t:state.postingV14.name + ' 해외 진출 요청 — 보낼지 정하세요. 운영 → 구단 경영'});
           var m = ensureMgr();
           if(!(m.years > 0)) r.push({c:'warn', i:'🎽', t:m.name + ' 감독 계약이 끝났습니다. 재계약하거나 새 감독을 고르세요.'});
         }
