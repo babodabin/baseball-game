@@ -28532,15 +28532,37 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   function openBiz(){ sheet('🤝 구단 경영', '모기업 지원 · 스폰서 · 감독 계약', bizHtml()); }
   window.openClubBizV14 = function(){ try{ openBiz(); }catch(e){ console.error(V + ' 구단 경영:', e); } };
 
+  /* 운영 메인 배치 — 자주 쓰는 단장 업무를 위에, 둘러보는 정보는 아래에.
+     "전체 선수 시장" 묶음 시트는 한 단계 더 들어가야 해서 그 안의 항목을 바로 꺼내 놓는다. */
+  function tile(icon, title, sub, action){
+    var b = document.createElement('button');
+    b.className = 'front-tile-v999'; b.dataset.tileV14 = '1'; b.setAttribute('onclick', action);
+    b.innerHTML = '<span class="ico">' + icon + '</span><span class="t">' + title + '</span><span class="s">' + sub + '</span>';
+    return b;
+  }
+  function layoutFront(body){
+    var grids = body.querySelectorAll('.front-menu-grid-v999'); if(!grids.length) return;
+    var main = grids[0], tools = grids.length > 1 ? grids[1] : null;
+    if(main.dataset.layoutV14 === '1' && main.querySelector('[data-tile-v14]')) return;
+    main.innerHTML = ''; main.dataset.layoutV14 = '1';
+    main.appendChild(tile('🤝', '구단 경영', '모기업·스폰서·감독 계약', 'openClubBizV14()'));
+    main.appendChild(tile('👥', '선수단', '1군·2군·훈련', "openMarketSectionV108('squad')"));
+    main.appendChild(tile('↔️', '트레이드', '선수 영입·맞교환', 'openTradeSheet()'));
+    main.appendChild(tile('📝', '계약·코치', '연봉 협상·방출·코치진', "openMarketSectionV108('front')"));
+    main.appendChild(tile('🔭', '스카우트', '신인 드래프트 정보', 'openScoutV102()'));
+    if(tools){
+      tools.innerHTML = '';
+      tools.appendChild(tile('🏢', '구단 현황', '구단주·1군·2군 현황', 'openClubStatusV104()'));
+      tools.appendChild(tile('🏟️', '시설 투자', '훈련·분석·구장 경영', 'openFacilityV104()'));
+      tools.appendChild(tile('🤖', 'AI 구단', '상대 구단 운영·소식', "openMarketSectionV108('ai')"));
+      tools.appendChild(tile('⚙️', '설정', '게임 및 구단 설정', 'openGameSettingsV462()'));
+      var title = tools.parentElement && tools.parentElement.querySelector('.front-menu-title-v999');
+      if(title) title.textContent = '📋　구단 정보 · 설정';
+    }
+  }
   function paintFront(){
     var body = document.getElementById('frontBody'); if(!body) return;
-    var grid = body.querySelector('.front-menu-grid-v999');
-    if(grid && !grid.querySelector('[data-biz-v14]')){
-      var b = document.createElement('button');
-      b.className = 'front-tile-v999'; b.dataset.bizV14 = '1'; b.setAttribute('onclick', 'openClubBizV14()');
-      b.innerHTML = '<span class="ico">🤝</span><span class="t">구단 경영</span><span class="s">모기업·스폰서·감독 계약</span>';
-      grid.insertBefore(b, grid.children[1] || null);
-    }
+    try{ layoutFront(body); }catch(e){ console.error(V + ' 운영 배치:', e); }
     /* 옛 프런트 화면의 "감독 성향" 버튼은 계약 없이 바뀌므로 숨긴다 */
     var btn = body.querySelector('button[onclick*="setStaff(\'manager\'"]');
     var cat = btn && btn.closest('.lb-cat');
