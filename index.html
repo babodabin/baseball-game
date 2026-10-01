@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.6';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.7';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -25879,12 +25879,24 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     /* 삼성 2026 라인업(사용자 제공). 김태훈은 같은 이름의 투수와 다른 외야수 — 능력치는 추정치 */
     SS:{bat:[
       ['김태훈','김태훈','RF','좌',70,60,70,72,64,'current']
+    ]},
+    /* KT 2026 라인업(사용자 제공) — 새 선수 능력치는 추정치 */
+    KT:{bat:[
+      ['김민혁','김민혁','LF','좌',74,48,72,68,70,'current'],
+      ['한승택','한승택','C','우',58,50,40,74,56,'current'],
+      ['권동진','권동진','SS','좌',62,46,70,72,58,'current'],
+      ['장준원','장준원','SS','우',60,48,62,74,56,'current']
     ]}
   };
   /* v1.4.2 · 엔트리에 없는 선수는 명단에서 뺀다 — 1군 30명을 넘지 않게(사용자: 선수 수에 맞춰 넣거나 빼기) */
   const rosterRemovals={
     LG:{bat:['김범석','이재원']},
-    SS:{bat:['김헌곤']}
+    SS:{bat:['김헌곤']},
+    KT:{bat:['오윤석','조용호','김건휘','신본기']}
+  };
+  /* 포지션·타석 고치기 — 사용자 제공 라인업 기준 */
+  const rosterFixes={
+    KT:{bat:{'최원준':{pos:'RF'},'김현수':{pos:'1B'},'샘 힐리어드':{pos:'CF'},'김상수':{pos:'2B'},'류현인':{hand:'좌'}}}
   };
   function displayName(p){return String((p&&p[1])||'').replace(/\s*\([^)]*\)\s*$/,'').trim();}
   function applyRatings(rows,map,start){
@@ -25919,6 +25931,14 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       });
     }
     if(replaceRoster!==false){
+      const fix=rosterFixes[team.id];
+      ['bat','pit'].forEach(function(kind){
+        const map=fix&&fix[kind]; if(!map)return;
+        (team[kind]||[]).forEach(function(p){
+          const f=map[displayName(p)]; if(!f)return;
+          if(f.pos)p[2]=f.pos; if(f.hand)p[3]=f.hand;
+        });
+      });
       const drop=rosterRemovals[team.id];
       ['bat','pit'].forEach(function(kind){
         const names=new Set((drop&&drop[kind])||[]);
@@ -29146,6 +29166,11 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       lineup:[['김지찬','CF'],['구자욱','LF'],['최형우','DH'],['디아즈','1B'],['류지혁','2B'],
               ['전병우','3B'],['김태훈','RF'],['강민호','C'],['이재현','SS']]
       /* bench 를 주지 않으면 나머지 야수가 OVR 순으로 남는 1군 자리를 채운다 */
+    },
+    KT:{
+      /* 사용자가 준 두 라인업 중 두 번째. 첫 번째에만 있는 허경민·배정대·권동진은 후보 */
+      lineup:[['최원준','RF'],['김민혁','LF'],['안현민','DH'],['샘 힐리어드','CF'],['김현수','1B'],
+              ['김상수','2B'],['류현인','3B'],['한승택','C'],['장준원','SS']]
     }
   };
   window.LIVE_ENTRY_V142 = ENTRY;
