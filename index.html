@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.22';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.23';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1302,10 +1302,10 @@ nav button.lock{opacity:.32}
       </div>
     </div>
     <div class="speedbar">
-      <button data-spd="pitch">투구별 · 공 하나까지<small>홈 수입 +50% · 감독 지시 O</small></button>
-      <button data-spd="pa" class="on">타석별 · 타석 결과<small>홈 수입 +25% · 감독 지시 O</small></button>
-      <button data-spd="inn">이닝별 · 핵심만<small>홈 수입 +10% · 감독 지시 O</small></button>
-      <button data-spd="fast">결과만 · 승패만<small>보너스 없음 · 지시 불가</small></button>
+      <button data-spd="pitch"><b>투구별</b><span>공 하나까지</span></button>
+      <button data-spd="pa" class="on"><b>타석별</b><span>타석 결과</span></button>
+      <button data-spd="inn"><b>이닝별</b><span>핵심만</span></button>
+      <button data-spd="fast"><b>결과만</b><span>승패만</span></button>
     </div>
     <div class="ratebar-v116" id="rateBarV116">
       <button data-rate="1">1배속</button>
@@ -29114,7 +29114,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     out += statusHtml();
     return out + '</div>';
   }
-  function openBiz(){ sheet('🤝 구단 경영', '돈 · 모기업 · 스폰서 · 감독 · 시설', bizHtml()); }
+  function openBiz(){ sheet('🤝 구단 경영', eco() ? '돈 · 모기업 · 스폰서 · 감독 · 시설' : '감독 · 구단주 · 시설', bizHtml()); }
   window.openClubBizV14 = function(){ try{ openBiz(); }catch(e){ console.error(V + ' 구단 경영:', e); } };
 
   /* 운영 메인 배치 — 자주 쓰는 단장 업무를 위에, 둘러보는 정보는 아래에.
@@ -29132,26 +29132,20 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     if(main.dataset.layoutV14 === phase && main.querySelector('[data-tile-v14]')) return;
     main.innerHTML = ''; main.dataset.layoutV14 = phase;
     /* v1.4.22 · 타일 정리 — 구단 현황·시설은 구단 경영 안으로, 설정은 맨 아래 작은 버튼, AI 구단은 내용이 있을 때만 */
-    main.appendChild(tile('💰', '구단 경영', eco() ? '돈·모기업·스폰서·감독·시설' : '감독·구단주·시설', 'openClubBizV14()'));
+    main.appendChild(tile('💰', '구단 경영', eco() ? '돈·모기업·스폰서·감독·시설' : '감독·구단주·시설', "openOpsPageV14('openClubBizV14')"));
     main.appendChild(tile('👥', '선수단', '1군·2군·훈련', "openMarketSectionV108('squad')"));
     /* 오프시즌엔 FA·외국인·레전드 시장이 이 화면에 열린다 */
     if(offseason()) main.appendChild(tile('📝', 'FA·계약', 'FA·외국인·레전드·연봉·코치', "openMarketSectionV108('front')"));
     else main.appendChild(tile('📝', '계약·코치', '연봉 협상·방출·코치진', "openMarketSectionV108('front')"));
-    main.appendChild(tile('↔️', '트레이드', '선수 영입·맞교환', 'openTradeSheet()'));
-    if(state.mode === 'sim') main.appendChild(tile('🔭', '스카우트', '신인 드래프트 정보', 'openScoutV102()'));   /* 실황은 드래프트가 없다 */
+    main.appendChild(tile('↔️', '트레이드', '선수 영입·맞교환', "openOpsPageV14('openTradeSheet')"));
+    if(state.mode === 'sim') main.appendChild(tile('🔭', '스카우트', '신인 드래프트 정보', "openOpsPageV14('openScoutV102')"));   /* 실황은 드래프트가 없다 */
     var ai = body.querySelector('.front-pane[data-fpane="ai"]');
     if(ai && ai.children.length && !ai.querySelector('.ai-pane-empty-v3432')) main.appendChild(tile('🤖', 'AI 구단', '상대 구단 운영·소식', "openMarketSectionV108('ai')"));
     var title0 = main.parentElement && main.parentElement.querySelector('.front-menu-title-v999');
-    if(title0) title0.textContent = '🏢　구단 운영';
+    if(title0) title0.innerHTML = '<span>🏢　구단 운영</span><button type="button" class="ops-gear-v14" onclick="openGameSettingsV462()">⚙️ 설정</button>';
     if(tools){
       var panel = tools.closest('.concept-panel-v999') || tools.parentElement;
       if(panel) panel.style.display = 'none';
-    }
-    if(!body.querySelector('.ops-foot-v14')){
-      var foot = document.createElement('div'); foot.className = 'ops-foot-v14';
-      foot.innerHTML = '<button type="button" onclick="openGameSettingsV462()">⚙️ 설정</button>';
-      var after = main.closest('.concept-panel-v999');
-      if(after && after.parentElement) after.parentElement.insertBefore(foot, after.nextSibling);
     }
   }
   /* 맨 위 재정 카드 — 고정 "예산 100억" 은 계산에 쓰이지 않아 뺀다. 잔고와 시즌 끝 예상만 */
@@ -29163,7 +29157,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       var tmp = document.createElement('div'); tmp.innerHTML = moneyHtml();
       var e = tmp.querySelector('.end-v14 b'); if(e) endTxt = e.textContent;
     }catch(_){ }
-    fin.innerHTML = '<button type="button" class="fin-v14" onclick="openClubBizV14()">'
+    fin.innerHTML = '<button type="button" class="fin-v14" onclick="openOpsPageV14(\'openClubBizV14\')">'
       + '<span class="k">💰 잔고</span><b class="' + (cash < 0 ? 'neg' : '') + '">' + cash.toFixed(1) + '억</b>'
       + (endTxt ? '<span class="e">시즌 끝 예상 <b class="' + (/^-/.test(endTxt) ? 'neg' : '') + '">' + endTxt + '</b></span>' : '<span class="e">시즌 결산 보기</span>')
       + '<span class="go">자세히 ›</span></button>';
@@ -29612,6 +29606,149 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.4.2 · 실황 개막 엔트리 END -->
+
+<!-- v1.4.23 · 운영 화면: 같은 방식으로 열기 · 옆으로 밀려 나오기 · 밀어서 뒤로 -->
+<style id="ops-page-v1423-style">
+/* 운영 타일 2열 — 화면을 채운다 */
+#frontBody .front-concept-v999 .front-menu-grid-v999{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
+#frontBody .front-concept-v999 .front-tile-v999{min-height:108px!important;padding:14px 8px!important}
+#frontBody .front-concept-v999 .front-tile-v999 .ico{font-size:30px}
+#frontBody .front-concept-v999 .front-tile-v999 .t{font-size:15px}
+#frontBody .front-concept-v999 .front-tile-v999 .s{font-size:11px}
+#frontBody .front-menu-title-v999{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ops-gear-v14{min-height:36px;padding:0 13px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--dim);font-family:inherit;font-size:12px;font-weight:800}
+/* 구단 현황 숫자 칸 — 글씨 크기 통일 */
+.club-kpi-v999 .v,.club-kpi-v999 .v.small{font-size:15px!important;line-height:1.25!important;min-height:38px;display:flex;align-items:center;justify-content:center;word-break:keep-all}
+/* 경기 진행 방식 — 한 줄 4칸, 정사각형에 가깝게 */
+#scr-game .speedbar{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:7px!important;padding:8px!important}
+#scr-game .speedbar button{aspect-ratio:1/0.9;min-height:0!important;padding:6px 4px!important;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:13px!important}
+#scr-game .speedbar button b{font-size:15px;font-weight:900}
+#scr-game .speedbar button span{font-size:11px;font-weight:700;opacity:.75;white-space:nowrap}
+#scr-game .speedbar button small{display:none}
+/* 시트로 열리던 운영 화면도 선수단처럼: 머리말·아래 메뉴는 보이고 그 사이를 채운다 */
+#mask.page-v14{top:var(--pg-top,0px);bottom:var(--pg-bot,0px);height:auto;background:var(--bg,#08150F)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;align-items:stretch;z-index:25}
+#mask.page-v14 #sheet{width:100%;max-width:none;height:100%;max-height:none!important;border-radius:0!important;border:0!important;margin:0;padding-top:10px;box-shadow:none}
+#mask.page-v14 #sheet .top .close{display:none}
+#mask.page-v14 #sheet::before{display:none}
+.pg-back-v14{display:block;width:100%;min-height:44px;margin:0 0 8px;padding:9px 12px;border:1px solid rgba(244,196,94,.34);border-radius:12px;background:#102219;color:#F4C45E;text-align:left;font-size:12px;font-weight:900;font-family:inherit}
+@keyframes pgInR{from{transform:translateX(100%)}to{transform:none}}
+@keyframes pgInL{from{transform:translateX(-30%);opacity:.4}to{transform:none;opacity:1}}
+#mask.page-v14.pg-anim #sheet{animation:pgInR .26s ease-out}
+#frontBody .front-legacy-v999.pg-anim{animation:pgInR .26s ease-out}
+#frontBody .front-concept-v999.pg-back-anim{animation:pgInL .22s ease-out}
+</style>
+<script id="ops-page-v1423">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov14')>=0) return;
+  var V = window.APP_VERSION;
+  var root = null, rootTitle = '';
+  function mask(){ return document.getElementById('mask'); }
+  function sheetEl(){ return document.getElementById('sheet'); }
+  function title(){ var t = sheetEl() && sheetEl().querySelector('.top .pname'); return t ? t.textContent.trim() : ''; }
+  function measure(){
+    var h = document.querySelector('header'), n = document.querySelector('nav');
+    var top = h ? Math.max(0, h.getBoundingClientRect().bottom) : 0;
+    var bot = n ? Math.max(0, window.innerHeight - n.getBoundingClientRect().top) : 0;
+    var m = mask(); if(m){ m.style.setProperty('--pg-top', top + 'px'); m.style.setProperty('--pg-bot', bot + 'px'); }
+  }
+  function ensureBack(){
+    var m = mask(), sh = sheetEl(); if(!m || !sh || !m.classList.contains('page-v14')) return;
+    var b = sh.querySelector(':scope > .pg-back-v14');
+    var sub = rootTitle && title() && title() !== rootTitle;
+    var nm = rootTitle.replace(/^\S+\s/, ''), last = nm.charCodeAt(nm.length - 1), jong = last >= 0xAC00 && last <= 0xD7A3 ? (last - 0xAC00) % 28 : 0;
+    var label = sub ? '← ' + nm + (jong && jong !== 8 ? '으로' : '로') : '← 운영 메인으로';
+    if(!b){ b = document.createElement('button'); b.type = 'button'; b.className = 'pg-back-v14'; b.onclick = function(){ window.opsPageBackV14(); }; sh.insertBefore(b, sh.firstChild); }
+    if(b.textContent !== label) b.textContent = label;
+  }
+  function anim(el, cls){ if(!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(function(){ el.classList.remove(cls); }, 320); }
+  /* 타일에서 여는 시트 화면 */
+  window.openOpsPageV14 = function(fn){
+    try{
+      var f = window[fn]; if(typeof f !== 'function') return;
+      root = fn; rootTitle = '';
+      var m = mask(); measure();
+      if(m) m.classList.add('page-v14');
+      f();
+      rootTitle = title();
+      ensureBack(); anim(m, 'pg-anim');
+      var sh = sheetEl(); if(sh) sh.scrollTop = 0;
+    }catch(e){ console.error(V + ' 운영 화면:', e); }
+  };
+  window.opsPageBackV14 = function(){
+    var m = mask();
+    if(m && m.classList.contains('page-v14') && root && rootTitle && title() !== rootTitle){
+      try{ window[root](); ensureBack(); var sh = sheetEl(); if(sh) sh.scrollTop = 0; return; }catch(_){ }
+    }
+    try{ closeSheet(); }catch(_){ }
+    anim(document.querySelector('#frontBody .front-concept-v999'), 'pg-back-anim');
+  };
+  var baseClose = window.closeSheet;
+  if(typeof baseClose === 'function' && !baseClose.__pgV14){
+    var close = function(){
+      var r = baseClose.apply(this, arguments);
+      try{ var m = mask(); if(m){ m.classList.remove('page-v14', 'pg-anim'); } root = null; rootTitle = ''; }catch(_){ }
+      return r;
+    };
+    close.__pgV14 = true; window.closeSheet = close; try{ closeSheet = close; }catch(_){ }
+  }
+  /* 시트 내용이 다시 그려져도(트레이드 상대 고르기 등) 뒤로 버튼 유지 */
+  try{
+    var sh0 = sheetEl();
+    if(sh0) new MutationObserver(function(){ try{ ensureBack(); }catch(_){ } }).observe(sh0, {childList:true});
+  }catch(_){ }
+  /* 아래 메뉴로 다른 탭에 가면 운영 화면은 닫는다 */
+  document.addEventListener('click', function(e){
+    var nb = e.target && e.target.closest && e.target.closest('nav [data-nav]');
+    if(!nb) return;
+    var m = mask(); if(m && m.classList.contains('page-v14')){ try{ closeSheet(); }catch(_){ } }
+  }, true);
+  window.addEventListener('resize', function(){ var m = mask(); if(m && m.classList.contains('page-v14')) measure(); });
+
+  /* 선수단·계약 화면(같은 페이지 안)도 옆에서 밀려 나오게 */
+  var baseSec = window.openMarketSectionV108;
+  if(typeof baseSec === 'function' && !baseSec.__pgV14){
+    var sec = function(){
+      var was = document.querySelector('#frontBody.v108-market-focus');
+      var r = baseSec.apply(this, arguments);
+      try{ if(!was) anim(document.querySelector('#frontBody .front-legacy-v999'), 'pg-anim'); var mn = document.querySelector('main'); if(mn && !was) mn.scrollTop = 0; }catch(_){ }
+      return r;
+    };
+    sec.__pgV14 = true; window.openMarketSectionV108 = sec;
+  }
+  var baseRet = window.returnOpsMainV108;
+  if(typeof baseRet === 'function' && !baseRet.__pgV14){
+    var ret = function(){
+      var r = baseRet.apply(this, arguments);
+      try{ anim(document.querySelector('#frontBody .front-concept-v999'), 'pg-back-anim'); }catch(_){ }
+      return r;
+    };
+    ret.__pgV14 = true; window.returnOpsMainV108 = ret;
+  }
+
+  /* 오른쪽으로 밀면 뒤로 */
+  var sx = 0, sy = 0, st = 0, on = false;
+  document.addEventListener('touchstart', function(e){
+    var t = e.touches && e.touches[0]; if(!t || e.touches.length > 1){ on = false; return; }
+    var m = mask(), page = m && m.classList.contains('page-v14'), legacy = document.querySelector('#frontBody.v108-market-focus');
+    var front = document.getElementById('scr-front'); legacy = legacy && front && front.classList.contains('on');
+    on = !!(page || legacy); sx = t.clientX; sy = t.clientY; st = Date.now();
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if(!on) return; on = false;
+    var t = e.changedTouches && e.changedTouches[0]; if(!t) return;
+    var dx = t.clientX - sx, dy = Math.abs(t.clientY - sy);
+    if(dx < 80 || dy > 60 || dx < dy * 2 || Date.now() - st > 700) return;
+    var tgt = e.target;
+    if(tgt && tgt.closest && tgt.closest('input,select,textarea,[data-noswipe]')) return;
+    var m = mask();
+    if(m && m.classList.contains('page-v14')) window.opsPageBackV14();
+    else if(typeof window.returnOpsMainV108 === 'function') window.returnOpsMainV108();
+  }, {passive:true});
+})();
+</script>
+<!-- v1.4.23 · 운영 화면 END -->
+
 
 
 </body>
