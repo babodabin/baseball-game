@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.18';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.19';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -26243,7 +26243,13 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     '김영우':'assets/players/김영우.webp', '김영후':'assets/players/김영우.webp',
     '이재원':'assets/players/이재원.webp', '이재완':'assets/players/이재원.webp',
     '김민규':'assets/players/김민규.webp',
-    '정훈':'assets/players/정훈.webp'
+    '정훈':'assets/players/정훈.webp',
+    /* v1.4.19 대표 선수 사진(사용자 제공) */
+    '김민석':'assets/players/김민석.webp',
+    '김재환':'assets/players/김재환.webp',
+    '나균안':'assets/players/나균안.webp',
+    '신민혁':'assets/players/신민혁.webp',
+    '라울 알칸타라':'assets/players/라울-알칸타라.webp', '알칸타라':'assets/players/라울-알칸타라.webp'
   };
   Object.keys(photos).forEach(function(n){ bank[n]=photos[n]; bank['name:'+n]=photos[n]; });
 })();
