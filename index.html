@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.5';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.6';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1518,7 +1518,7 @@ const TEAMS = [
  pit:[['네일러','네일','선발','우',148,76,86,80],['양현존','양현종','선발','좌',144,84,80,76],['올레르','애덤 올러','선발','우',148,74,76,76],['윤영섭','윤영철','선발','좌',141,76,72,70],['정해엽','정해영','마무리','우',148,72,74,58]]},
 
 {id:'SS', name:'삼성 라이온즈', real:'삼성 라이온즈', c:'#074CA1',
- bat:[['구자옥','구자욱','LF','좌',84,80,70,74,78],['김영옹','김영웅','3B','좌',70,84,64,76,64],['이재헌','이재현','SS','우',72,70,66,82,72],['강민오','강민호','C','우',74,74,35,76,70],['디아스','디아즈','1B','우',76,88,50,64,62],['김지천','김지찬','CF','좌',80,42,94,82,76],['류지현','류지혁','2B','우',72,50,64,76,68],['이성귀','이성규','RF','우',62,78,70,68,56],['최형운','최형우','DH','좌',80,78,40,50,84,'fa']],
+ bat:[['구자옥','구자욱','LF','좌',84,80,70,74,78],['김영옹','김영웅','3B','좌',70,84,64,76,64],['이재헌','이재현','SS','우',72,70,66,82,72],['강민오','강민호','C','우',74,74,35,76,70],['디아스','디아즈','1B','좌',76,88,50,64,62],['김지천','김지찬','CF','좌',80,42,94,82,76],['류지현','류지혁','2B','좌',72,50,64,76,68],['이성귀','이성규','RF','우',62,78,70,68,56],['최형운','최형우','DH','좌',80,78,40,50,84,'fa']],
  pit:[['원태윤','원태인','선발','우',146,82,82,78],['후라두','후라도','선발','우',147,84,80,84],['마닝','맷 매닝','선발','우',151,70,78,72,'new'],['미야치','미야지 유라 (아시아쿼터)','선발','우',143,74,72,68,'new'],['김재운','김재윤','마무리','우',147,76,74,60]]},
 
 {id:'DS', name:'두산 베어스', real:'두산 베어스', c:'#131230',
@@ -25875,11 +25875,16 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       ['김민수','김민수','C','우',60,56,40,70,58,'current'],
       ['문정빈','문정빈','DH','우',66,74,44,56,60,'current'],
       ['손용준','손용준','3B','우',66,56,62,72,60,'current']
+    ]},
+    /* 삼성 2026 라인업(사용자 제공). 김태훈은 같은 이름의 투수와 다른 외야수 — 능력치는 추정치 */
+    SS:{bat:[
+      ['김태훈','김태훈','RF','좌',70,60,70,72,64,'current']
     ]}
   };
   /* v1.4.2 · 엔트리에 없는 선수는 명단에서 뺀다 — 1군 30명을 넘지 않게(사용자: 선수 수에 맞춰 넣거나 빼기) */
   const rosterRemovals={
-    LG:{bat:['김범석','이재원']}
+    LG:{bat:['김범석','이재원']},
+    SS:{bat:['김헌곤']}
   };
   function displayName(p){return String((p&&p[1])||'').replace(/\s*\([^)]*\)\s*$/,'').trim();}
   function applyRatings(rows,map,start){
@@ -25930,6 +25935,17 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     applyRatings(team.bat,hitterRatings,4);
     applyRatings(team.pit,pitcherRatings,4);
   }
+  /* 뺀 선수는 과거 선수 목록(HISTORICAL_ROSTER_V300)에서도 지운다 — 새 게임은 타자가 16명이 안 되면
+     그 목록에서 채워 넣어서, 지운 선수가 그대로 되살아났다(삼성 김헌곤). */
+  try{
+    Object.keys(rosterRemovals).forEach(function(id){
+      const pool=HISTORICAL_ROSTER_V300[id]; if(!pool)return;
+      ['bat','pit'].forEach(function(kind){
+        const names=new Set((rosterRemovals[id][kind])||[]);
+        if(names.size&&Array.isArray(pool[kind]))pool[kind]=pool[kind].filter(function(x){return !names.has(String(x[0]).replace(/ \(.*\)$/,''));});
+      });
+    });
+  }catch(_){}
   (window.TEAMS||TEAMS||[]).forEach(function(team){applyTeam(team,true);});
   /* 기존 저장은 선수 식별자를 보존한다. 실황 저장은 명단 교체 없이 능력치만 최신 기준으로 보정한다. */
   if(typeof state!=='undefined'&&state&&state.players&&state.mode==='live'){
@@ -29125,6 +29141,11 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       lineup:[['신민재','2B'],['박해민','CF'],['오스틴 딘','1B'],['송찬의','LF'],['문정빈','DH'],
               ['손용준','3B'],['오지환','SS'],['이주헌','C'],['홍창기','RF']],
       bench:['김민수','박동원','문보경','이영빈','천성호','구본혁','문성주']
+    },
+    SS:{
+      lineup:[['김지찬','CF'],['구자욱','LF'],['최형우','DH'],['디아즈','1B'],['류지혁','2B'],
+              ['전병우','3B'],['김태훈','RF'],['강민호','C'],['이재현','SS']]
+      /* bench 를 주지 않으면 나머지 야수가 OVR 순으로 남는 1군 자리를 채운다 */
     }
   };
   window.LIVE_ENTRY_V142 = ENTRY;
@@ -29140,7 +29161,8 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     /* 투수는 전원 1군, 야수는 남은 자리만큼 타순 → 후보 순서로 */
     t.pit.forEach(function(p){ lv[squadKey('pit', p)] = 'first'; });
     var room = Math.max(9, FIRST_MAX - t.pit.length), keep = {}, n = 0;
-    e.lineup.map(function(x){ return x[0]; }).concat(e.bench).forEach(function(nm){ if(n < room && idx[nm] != null && !keep[nm]){ keep[nm] = 1; n++; } });
+    var bench = e.bench || t.bat.slice().sort(function(a, b){ var x = 0, y = 0; try{ x = batOvr(a, tid); y = batOvr(b, tid); }catch(_){ } return y - x; }).map(real);
+    e.lineup.map(function(x){ return x[0]; }).concat(bench).forEach(function(nm){ if(n < room && idx[nm] != null && !keep[nm]){ keep[nm] = 1; n++; } });
     t.bat.forEach(function(p){ lv[squadKey('bat', p)] = keep[real(p)] ? 'first' : 'second'; });
     if(order.length === 9){ state.lineups = state.lineups || {}; state.lineups[tid] = {order:order, pos:pos}; }
   }
