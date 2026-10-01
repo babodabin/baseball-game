@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.2';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.3';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -25880,6 +25880,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       ['손용준','손용준','3B','우',66,56,62,72,60,'current']
     ]}
   };
+  /* v1.4.2 · 엔트리에 없는 선수는 명단에서 뺀다 — 1군 30명을 넘지 않게(사용자: 선수 수에 맞춰 넣거나 빼기) */
+  const rosterRemovals={
+    LG:{bat:['김범석','이재원']}
+  };
   function displayName(p){return String((p&&p[1])||'').replace(/\s*\([^)]*\)\s*$/,'').trim();}
   function applyRatings(rows,map,start){
     (rows||[]).forEach(function(p){
@@ -25913,6 +25917,11 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       });
     }
     if(replaceRoster!==false){
+      const drop=rosterRemovals[team.id];
+      ['bat','pit'].forEach(function(kind){
+        const names=new Set((drop&&drop[kind])||[]);
+        if(names.size&&team[kind])team[kind]=team[kind].filter(function(p){return !names.has(displayName(p));});
+      });
       const add=rosterAdditions[team.id];
       ['bat','pit'].forEach(function(kind){
         ((add&&add[kind])||[]).forEach(function(row){
@@ -29118,7 +29127,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     LG:{
       lineup:[['신민재','2B'],['박해민','CF'],['오스틴 딘','1B'],['송찬의','LF'],['문정빈','DH'],
               ['손용준','3B'],['구본혁','SS'],['이주헌','C'],['홍창기','RF']],
-      bench:['김민수','박동원','강민균','문보경','이영빈','천성호','오지환','김현종','최원영']
+      bench:['김민수','박동원','강민균','문보경','이영빈','천성호','오지환','김현종','최원영','문성주']
     }
   };
   window.LIVE_ENTRY_V142 = ENTRY;
