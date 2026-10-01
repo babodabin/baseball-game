@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.8';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.9';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -25900,6 +25900,13 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       ['안치홍','안치홍','2B','우',74,58,56,70,68,'current'],
       ['박채울','박채울','CF','우',60,44,74,72,56,'current'],
       ['권혁빈','권혁빈','SS','우',60,48,66,72,56,'current']
+    ]},
+    /* 한화 2026 라인업(사용자 제공) — 정은원은 과거 목록 능력치, 나머지는 추정치 */
+    HH:{bat:[
+      ['최인호','최인호','RF','좌',68,56,66,66,62,'current'],
+      ['정은원','정은원','2B','좌',72,52,70,74,76,'current'],
+      ['한지윤','한지윤','LF','우',62,64,60,64,56,'current'],
+      ['박정현','박정현','SS','우',60,48,66,72,56,'current']
     ]}
   };
   /* v1.4.2 · 엔트리에 없는 선수는 명단에서 뺀다 — 1군 30명을 넘지 않게(사용자: 선수 수에 맞춰 넣거나 빼기) */
@@ -25909,12 +25916,14 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     KT:{bat:['오윤석','조용호','신본기','황재균','김민혁(KT)']},   /* 김건휘·문상철은 남김 — 사용자. 김민혁(KT)는 과거 목록의 같은 선수 */
     /* 키움은 2026 라인업 16명으로 타자를 통째로 바꿈 — 사용자 */
     KW:{bat:['송성문','이주형','트렌튼 브룩스','임지열','박수종','김태진','어준서','여동욱','박한결','김혜성','로니 도슨']},
-    NC:{bat:['맷 데이비슨']}   /* 키움으로 이적 */
+    NC:{bat:['맷 데이비슨']},   /* 키움으로 이적 */
+    HH:{bat:['이진영','장진혁','김인환','하주석']}   /* 하주석은 KIA 이적인데 한화에도 남아 있었음 */
   };
   /* 포지션·타석 고치기 — 사용자 제공 라인업 기준 */
   const rosterFixes={
     KT:{bat:{'최원준':{pos:'RF'},'김현수':{pos:'1B'},'샘 힐리어드':{pos:'CF'},'김상수':{pos:'2B'},'류현인':{hand:'좌'}}},
-    KW:{bat:{'서건창':{pos:'DH'},'김웅빈':{pos:'3B',hand:'좌'},'최주환':{pos:'1B'}}}
+    KW:{bat:{'서건창':{pos:'DH'},'김웅빈':{pos:'3B',hand:'좌'},'최주환':{pos:'1B'}}},
+    HH:{bat:{'문현빈':{pos:'CF'},'김태연':{pos:'1B'},'이원석':{pos:'CF'},'요나단 페라자':{pos:'RF'},'이도윤':{pos:'2B'}}}
   };
   function displayName(p){return String((p&&p[1])||'').replace(/\s*\([^)]*\)\s*$/,'').trim();}
   function applyRatings(rows,map,start){
@@ -25973,6 +25982,25 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     applyRatings(team.bat,hitterRatings,4);
     applyRatings(team.pit,pitcherRatings,4);
   }
+  /* 포지션·타석 고치기는 과거 선수 목록과 2026 보충 명단에도 적용한다 — 새 게임 때 거기서 들어오는 선수(한화 이도윤)가
+     있어서. 과거 목록 행은 [이름, 포지션, 타석, …] 형식이다. */
+  try{
+    Object.keys(rosterFixes).forEach(function(id){
+      ['bat','pit'].forEach(function(kind){
+        const map=rosterFixes[id][kind]; if(!map)return;
+        const pool=HISTORICAL_ROSTER_V300[id];
+        ((pool&&pool[kind])||[]).forEach(function(x){
+          const f=map[String(x[0]).replace(/ \(.*\)$/,'')]; if(!f)return;
+          if(f.pos)x[1]=f.pos; if(f.hand)x[2]=f.hand;
+        });
+        const sup=REAL_2026_SUPPLEMENTS[id];
+        ((sup&&sup[kind])||[]).forEach(function(x){
+          const f=map[displayName(x)]; if(!f)return;
+          if(f.pos)x[2]=f.pos; if(f.hand)x[3]=f.hand;
+        });
+      });
+    });
+  }catch(_){}
   /* 뺀 선수는 2026 보충·신인 명단(REAL_2026_SUPPLEMENTS)에서도 지운다 — 새 게임 때 따로 덧붙여져
      지운 선수가 되살아났다(KT 김건휘, 키움 박한결) */
   try{
@@ -29205,6 +29233,11 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       /* 사용자가 준 두 라인업 중 두 번째 */
       lineup:[['서건창','DH'],['안치홍','2B'],['히우라','LF'],['김웅빈','3B'],['최주환','1B'],
               ['이형종','RF'],['김건희','C'],['박채울','CF'],['권혁빈','SS']]
+    },
+    HH:{
+      /* 사용자가 준 두 라인업 중 첫 번째 — 사용자 지정 */
+      lineup:[['최인호','RF'],['정은원','2B'],['문현빈','CF'],['강백호','DH'],['노시환','3B'],
+              ['허인서','C'],['김태연','1B'],['한지윤','LF'],['박정현','SS']]
     }
   };
   window.LIVE_ENTRY_V142 = ENTRY;
