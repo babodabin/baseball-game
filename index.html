@@ -27898,18 +27898,15 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
          지시 카드·경기 중 지시는 효과 0이고 화면에서 숨긴다.
        · 경기 화면에서 "직접 맡기"를 누르면 예전 감독 기능이 전부 돌아온다(state.directMgrV14).
        · 관전 보너스(투구별 +50% · 타석별 +25% · 이닝별 +10%)는 어느 쪽이든 0.
-       · 새 게임을 시작할 때 감독(균형·공격·수비형)을 고른다.
-       · 시즌 중 감독 교체는 경질 — 일반·하드는 비용, 자유 모드는 시즌당 1회. 오프시즌·개막 전은 무료. */
-  var FIRE_COST = {normal:3, hard:8};   /* 억 */
-  var FREE_FIRE_PER_SEASON = 1;
-  window.MANAGER_FIRE_V14 = {cost:FIRE_COST, freePerSeason:FREE_FIRE_PER_SEASON};
+     감독 인물·계약·경질과 모기업·스폰서는 아래 club-economy-v14 겹이 맡는다. */
 
   var root = document.documentElement;
   try{ root.classList.add('v14-on'); }catch(_){ }
 
   function isAuto(){ try{ return !(state && state.directMgrV14); }catch(_){ return true; } }
-  function mgrName(key){
-    try{ return STAFF_INFO.manager[key || (state.staff && state.staff.manager) || 'balanced'].name; }catch(_){ return '감독'; }
+  function mgrName(){
+    try{ if(typeof window.clubMgrLabelV14 === 'function') return window.clubMgrLabelV14(); }catch(_){ }
+    try{ return STAFF_INFO.manager[(state.staff && state.staff.manager) || 'balanced'].name; }catch(_){ return '감독'; }
   }
   function syncClass(){ try{ root.classList.toggle('v14-auto', isAuto()); }catch(_){ } }
   function neutral(){
@@ -27959,7 +27956,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   function modeRowHtml(){
     if(isAuto()){
       return '<div class="mgr-mode-v14" data-mgrmode-v14="1"><div><b>🎽 ' + mgrName() + '</b>이 경기를 운영합니다'
-        + '<small>감독 교체: 운영 → 전체 선수 시장 → 프런트</small></div>'
+        + '<small>감독 계약·교체: 운영 → 🤝 구단 경영</small></div>'
         + '<button type="button" onclick="setDirectMgrV14(true)">직접 맡기</button></div>';
     }
     return '<div class="mgr-mode-v14" data-mgrmode-v14="1"><div><b>🎽 직접 감독 중</b>'
@@ -27974,118 +27971,6 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     info.insertAdjacentHTML('afterend', modeRowHtml());
   }
 
-  /* ── 시즌 중인가 (개막 전·오프시즌은 아님) ── */
-  function inSeason(){
-    try{
-      var s = state.season;
-      if(!s || !(s.day > 0)) return false;
-      return !(typeof seasonOver === 'function' && seasonOver());
-    }catch(_){ return false; }
-  }
-
-  /* ── 감독 교체 = 시즌 중에는 경질 ── */
-  var baseSetStaff = window.setStaff;
-  if(typeof baseSetStaff === 'function'){
-    window.setStaff = function(kind, key){
-      var self = this, args = arguments;
-      try{
-        var cur = state.staff && state.staff.manager;
-        if(kind !== 'manager' || !cur || cur === key || !inSeason()) return baseSetStaff.apply(self, args);
-        var eco = state.eco || 'normal', s = state.season;
-        var msg = '시즌 중 감독 교체는 경질입니다.\n' + mgrName(cur) + ' → ' + mgrName(key) + '\n\n';
-        if(eco === 'free'){
-          var used = +s.mgrFiredV14 || 0;
-          if(used >= FREE_FIRE_PER_SEASON){
-            showAlert('자유 모드는 시즌 중 경질을 ' + FREE_FIRE_PER_SEASON + '번만 할 수 있습니다.\n오프시즌에 새 감독을 영입하세요.');
-            return;
-          }
-          msg += '자유 모드: 이번 시즌 남은 경질 ' + (FREE_FIRE_PER_SEASON - used) + '회';
-        }else{
-          var fee = FIRE_COST[eco] != null ? FIRE_COST[eco] : FIRE_COST.normal;
-          var money = +state.money || 0;
-          if(eco === 'hard' && money - fee < 0){
-            showAlert('잔고가 부족합니다.\n경질 비용 ' + fee + '억 · 현재 잔고 ' + money.toFixed(1) + '억\n\n하드 모드는 잔고가 마이너스가 되면 파산합니다.');
-            return;
-          }
-          msg += '경질 비용 ' + fee + '억 (잔고 ' + money.toFixed(1) + '억 → ' + (money - fee).toFixed(1) + '억)';
-        }
-        showConfirm(msg + '\n\n교체할까요?', function(){
-          try{
-            if(eco === 'free') s.mgrFiredV14 = (+s.mgrFiredV14 || 0) + 1;
-            else state.money = (+state.money || 0) - (FIRE_COST[eco] != null ? FIRE_COST[eco] : FIRE_COST.normal);
-            s.mgrFiredV14Log = (s.mgrFiredV14Log || []).concat([{day:s.day, from:cur, to:key}]);
-          }catch(e){ console.error(V + ' 경질:', e); }
-          baseSetStaff.apply(self, args);
-          try{ refreshHeader(); }catch(_){ }
-          try{ tidy(); }catch(_){ }
-        });
-      }catch(e){
-        console.error(V + ' 감독 교체:', e);
-        return baseSetStaff.apply(self, args);
-      }
-    };
-    try{ setStaff = window.setStaff; }catch(_){ }
-  }
-  function feeNote(){
-    var eco = (state && state.eco) || 'normal';
-    var rule = eco === 'free' ? '시즌 중 경질은 시즌당 ' + FREE_FIRE_PER_SEASON + '회'
-      : '시즌 중 경질 비용 ' + (FIRE_COST[eco] != null ? FIRE_COST[eco] : FIRE_COST.normal) + '억';
-    return '개막 전·오프시즌 교체는 무료 · ' + rule;
-  }
-  function paintFeeNote(){
-    var btn = document.querySelector('#frontBody button[onclick*="setStaff(\'manager\'"],#frontBody button[onclick*="setStaff(&quot;manager"]');
-    if(!btn) return;
-    var cat = btn.closest('.lb-cat') || btn.parentNode;
-    var hint = cat && cat.nextElementSibling;
-    var host = (hint && hint.classList.contains('hint')) ? hint : cat;
-    if(!host || !host.parentNode) return;
-    var old = host.parentNode.querySelector('.mgr-fee-v14');
-    var txt = feeNote();
-    if(old){ if(old.textContent !== txt) old.textContent = txt; return; }
-    host.insertAdjacentHTML('afterend', '<div class="mgr-fee-v14">' + txt + '</div>');
-  }
-
-  /* ── 새 게임: 감독 선택 ── */
-  window.pickStartMgrV14 = function(key){
-    try{
-      if(typeof ensureStaff === 'function') ensureStaff();
-      if(STAFF_INFO.manager[key]) state.staff.manager = key;
-      save();
-    }catch(e){ console.error(V + ' 감독 선택:', e); }
-    try{ closeSheet(); }catch(_){ }
-    try{ tidy(); }catch(_){ }
-  };
-  function openStartPick(){
-    var sheet = document.getElementById('sheet');
-    if(!sheet || typeof STAFF_INFO === 'undefined') return;
-    var cards = Object.keys(STAFF_INFO.manager).map(function(k){
-      var v = STAFF_INFO.manager[k];
-      return '<button type="button" onclick="pickStartMgrV14(\'' + k + '\')"><b>' + v.name + '</b><span>' + v.desc + '</span></button>';
-    }).join('');
-    sheet.innerHTML = '<div class="top"><div class="pname">감독 선택</div>'
-      + '<button class="close" onclick="closeSheet()">✕</button></div>'
-      + '<div class="meta">우리 팀을 맡길 감독을 고르세요. 경기 운영은 감독이 합니다.</div>'
-      + '<div class="mgr-pick-v14">' + cards + '</div>'
-      + '<div class="mgr-fee-v14">' + feeNote() + '<br>경기 화면에서 직접 감독을 맡을 수도 있습니다.</div>';
-    var mask = document.getElementById('mask');
-    if(mask) mask.classList.add('on');
-  }
-  var baseStart = window.startWithMode;
-  if(typeof baseStart === 'function'){
-    window.startWithMode = function(teamId){
-      var r = baseStart.apply(this, arguments);
-      try{
-        if(r !== false && state && state.myTeam === teamId){
-          state.directMgrV14 = false;
-          neutral();
-          setTimeout(function(){ try{ openStartPick(); }catch(e){ console.error(V + ' 감독 선택 창:', e); } }, 0);
-        }
-      }catch(_){ }
-      return r;
-    };
-    try{ startWithMode = window.startWithMode; }catch(_){ }
-  }
-
   /* ── 화면 문구 정리 ── */
   function tidy(){
     syncClass();
@@ -28097,7 +27982,6 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       var key = k.querySelector('.k'), val = k.querySelector('.v');
       if(key && val && key.textContent === '감독' && val.textContent !== label) val.textContent = label;
     });
-    paintFeeNote();
   }
   function wrap(name, before, after){
     var base = window[name];
@@ -28117,6 +28001,481 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 })();
 </script>
 <!-- v1.4.0 · END -->
+
+<!-- v1.4.0 · 구단 경영: 모기업 지원 · 스폰서 · 감독 계약 · 비상사태 -->
+<style id="club-economy-v14-style">
+.biz-v14{margin-top:6px}
+.biz-v14 .card{margin:10px 0;padding:12px 13px;border:1px solid var(--line);border-radius:13px;background:var(--panel2)}
+.biz-v14 .card .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:900;font-size:14px;color:var(--amber,#F4C45E)}
+.biz-v14 .card .t small{font-size:11px;font-weight:700;color:var(--dim)}
+.biz-v14 .card .b{margin-top:6px;font-size:12px;line-height:1.65;color:var(--chalk,#DFE9E3);word-break:keep-all}
+.biz-v14 .card .b .dim{color:var(--dim)}
+.biz-v14 .card .btn{margin-top:10px;min-height:var(--tap-min,44px)}
+.biz-v14 .meter{height:7px;margin-top:6px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.biz-v14 .meter i{display:block;height:100%;border-radius:4px}
+.pick-v14{display:grid;gap:8px;margin-top:10px}
+.pick-v14 button{text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--chalk,#DFE9E3);font-family:inherit;min-height:var(--tap-min,44px);line-height:1.5;word-break:keep-all}
+.pick-v14 button.on{border-color:var(--amber,#F4C45E);background:rgba(244,196,94,.12)}
+.pick-v14 button b{font-size:14px;color:var(--amber,#F4C45E)}
+.pick-v14 button .r{float:right;font-size:12px;font-weight:800;color:var(--chalk,#DFE9E3)}
+.pick-v14 button span{display:block;font-size:12px;color:var(--dim)}
+.note-v14{margin-top:8px;font-size:11px;line-height:1.6;color:var(--dim)}
+.v14-on .lb-cat[data-mgrstaff-v14],.v14-on [data-mgrstaff-v14-hide]{display:none!important}
+</style>
+<script id="club-economy-v14">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov14')>=0) return;
+  var V = 'v1.4.0';
+  /* 한국 프로야구처럼 모기업이 구단을 받쳐 준다.
+       · 모기업 지원금 — 창단 때 한 번 + 시즌이 끝날 때마다(다음 시즌용). 1~3년차는 전액 보장,
+         4년차부터는 모기업 경영 상태(health)에 따라 줄어든다. 경영 상태는 해마다 조금씩 나빠지는 쪽으로 흔들린다.
+       · 비상사태 — 잔고가 넉넉하면(너무 쉬우면) 잘 생긴다. 실적 악화 · 지원 중단 · 구장 긴급 보수.
+       · 스폰서 — 시즌마다 제안 3개 중 하나. 안정형 / 성과형(승리 수) / 인기형(인기).
+       · 감독 — 이름·성향·능력(★)·연봉·계약 기간이 있는 인물. 후보 4명 중에서 고른다.
+         계약 중 교체는 위약금(남은 연봉: 일반 50% · 하드 100%), 자유 모드는 시즌당 1회. 계약이 끝났으면 무료.
+     금액 단위는 억. 값은 전부 아래 표에 모아 둔다. */
+  var CFG = {
+    normal:{support:50, guaranteeYears:3, rich:120, sponsorMul:1},
+    hard:  {support:35, guaranteeYears:3, rich:100, sponsorMul:.8},
+    fireShare:{normal:.5, hard:1},
+    freeFirePerSeason:1,
+    healthStart:75, healthDrift:-2, healthSwing:8,
+    emergency:{richChance:.35, baseChance:.12, baseFromYear:4},
+    mgrSalary:[0, 1.0, 1.8, 2.8, 4.0, 5.5],      /* ★별 연봉 */
+    mgrAbility:[0, .5, .75, 1, 1.25, 1.5]          /* ★별 성향 효과 배율 */
+  };
+  window.CLUB_ECONOMY_V14 = CFG;
+
+  function eco(){ try{ return typeof ecoOn === 'function' ? ecoOn() : state.eco !== 'free'; }catch(_){ return true; } }
+  function rule(){ return CFG[(state && state.eco) === 'hard' ? 'hard' : 'normal']; }
+  function R1(v){ return Math.round(v * 10) / 10; }
+  function money(v){ return (v >= 0 ? '+' : '') + R1(v).toFixed(1) + '억'; }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function rnd(a, b){ return a + Math.random() * (b - a); }
+  function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+  function news(title, body){ try{ if(typeof pushClubNews === 'function') pushClubNews(title, body); }catch(_){ } }
+  function debt(){ try{ if(typeof updateDebtStatus === 'function') updateDebtStatus(false); }catch(_){ } }
+  function refresh(){
+    try{ refreshHeader(); }catch(_){ }
+    try{ if(document.getElementById('frontBody')) renderFront(); }catch(_){ }
+  }
+  function clubYear(){ return Math.max(1, +state.clubYearV14 || 1); }
+  function offseason(){
+    try{ return !!(state.season && state.season.post); }catch(_){ return false; }
+  }
+  function preOpening(){ try{ return !!(state.season && !(state.season.day > 0) && !state.season.post); }catch(_){ return false; } }
+
+  /* ── 감독 ─────────────────────────────────────────────── */
+  var SUR = ['김','이','박','최','정','강','조','윤','장','임','한','오','서','신','권','황','안','송','류','홍','전','고','문','양','손','배','백','허','남','노'];
+  var GIV = ['민','성','준','현','영','재','동','상','기','태','진','우','석','호','철','수','경','광','용','형','승','종','원','훈','택','규','범','찬','혁','환'];
+  var STYLE_LABEL = {balanced:'균형형', offense:'공격형', defense:'수비형'};
+  function makeName(){ return pick(SUR) + pick(GIV) + pick(GIV); }
+  function makeMgr(style, stars){
+    stars = stars || (1 + Math.floor(Math.random() * 5));
+    style = style || pick(['balanced', 'offense', 'defense']);
+    return {name:makeName(), style:style, stars:stars,
+      salary:R1(CFG.mgrSalary[stars] * rnd(.9, 1.1)), years:1 + Math.floor(Math.random() * 3)};
+  }
+  function makePool(){
+    /* 성향은 셋 다 한 명씩 + 한 명 더, 능력은 골고루 */
+    var styles = ['balanced', 'offense', 'defense', pick(['balanced', 'offense', 'defense'])];
+    var stars = [pick([1,2]), pick([2,3]), pick([3,4]), pick([4,5])].sort(function(){ return Math.random() - .5; });
+    return styles.map(function(s, i){ return makeMgr(s, stars[i]); });
+  }
+  function ensureMgr(){
+    if(!state) return null;
+    if(!state.mgrV14){
+      var style = (state.staff && state.staff.manager) || 'balanced';
+      state.mgrV14 = {name:makeName(), style:style, stars:3, salary:CFG.mgrSalary[3], years:1};
+    }
+    try{ if(typeof ensureStaff === 'function') ensureStaff(); state.staff.manager = state.mgrV14.style; }catch(_){ }
+    return state.mgrV14;
+  }
+  function stars(n){ return '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n); }
+  function mgrLine(m){ return esc(m.name) + ' 감독 · ' + STYLE_LABEL[m.style] + ' ' + stars(m.stars); }
+  window.clubMgrLabelV14 = function(){ var m = ensureMgr(); return m ? m.name + ' 감독' : '감독'; };
+
+  /* 능력(★)만큼 성향 효과를 키우거나 줄인다 — 내 팀만, 성향 몫만 */
+  ['managerAttackBonus', 'managerPitchBonus'].forEach(function(fn){
+    var base = window[fn];
+    if(typeof base !== 'function') return;
+    var part = fn === 'managerAttackBonus' ? 'attack' : 'pitch';
+    window[fn] = function(teamId){
+      var v = base.apply(this, arguments);
+      try{
+        if(teamId === state.myTeam && state.mgrV14){
+          var info = STAFF_INFO.manager[state.mgrV14.style];
+          v += (info ? info[part] : 0) * ((CFG.mgrAbility[state.mgrV14.stars] || 1) - 1);
+        }
+      }catch(_){ }
+      return v;
+    };
+    try{ (0, eval)(fn + '=window.' + fn); }catch(_){ }
+  });
+
+  function fireCost(m){
+    if(!m || !(m.years > 0)) return 0;
+    return R1(m.salary * m.years * (CFG.fireShare[state.eco] != null ? CFG.fireShare[state.eco] : CFG.fireShare.normal));
+  }
+  function ensurePool(){
+    var key = clubYear() + (offseason() ? 'o' : 's');
+    if(!state.mgrPoolV14 || state.mgrPoolV14.key !== key) state.mgrPoolV14 = {key:key, list:makePool()};
+    return state.mgrPoolV14.list;
+  }
+  function hire(i, startFlow){
+    var list = ensurePool(), c = list[i]; if(!c) return;
+    var cur = ensureMgr(), free = startFlow || !(cur.years > 0);
+    function done(){
+      state.mgrV14 = {name:c.name, style:c.style, stars:c.stars, salary:c.salary, years:c.years};
+      list.splice(i, 1);
+      if(cur && !startFlow) list.push({name:cur.name, style:cur.style, stars:cur.stars, salary:cur.salary, years:1 + Math.floor(Math.random() * 2)});
+      ensureMgr();
+      if(!startFlow) news('감독 교체', cur.name + ' 감독 → ' + c.name + ' 감독 (' + STYLE_LABEL[c.style] + ' ' + stars(c.stars) + ')');
+      try{ save(); }catch(_){ }
+      if(startFlow){ openSponsorPick(true); return; }
+      try{ closeSheet(); }catch(_){ }
+      refresh();
+      openBiz();
+    }
+    if(free) return done();
+    if(!eco()){
+      var used = +(state.season && state.season.mgrFiredV14) || 0;
+      if(used >= CFG.freePerSeason){ showAlert('자유 모드는 계약 중인 감독 교체를 시즌당 ' + CFG.freePerSeason + '번만 할 수 있습니다.'); return; }
+      showConfirm(cur.name + ' 감독은 계약이 ' + cur.years + '시즌 남았습니다.\n\n자유 모드: 이번 시즌 남은 교체 ' + (CFG.freePerSeason - used) + '회\n교체할까요?', function(){
+        if(state.season) state.season.mgrFiredV14 = used + 1; done();
+      });
+      return;
+    }
+    var fee = fireCost(cur), bal = +state.money || 0;
+    if(state.eco === 'hard' && bal - fee < 0){
+      showAlert('잔고가 부족합니다.\n위약금 ' + fee.toFixed(1) + '억 · 잔고 ' + bal.toFixed(1) + '억\n\n하드 모드는 잔고가 마이너스가 되면 파산합니다.'); return;
+    }
+    showConfirm(cur.name + ' 감독은 계약이 ' + cur.years + '시즌 남았습니다.\n경질하면 위약금 ' + fee.toFixed(1) + '억을 냅니다.\n(잔고 ' + bal.toFixed(1) + '억 → ' + (bal - fee).toFixed(1) + '억)\n\n' + c.name + ' 감독으로 교체할까요?', function(){
+      state.money = bal - fee; debt(); done();
+    });
+  }
+  window.hireMgrV14 = function(i, startFlow){ try{ hire(i, !!startFlow); }catch(e){ console.error(V + ' 감독 계약:', e); } };
+  /* 계약이 끝난 감독과 다시 계약 — 성적이 좋았으면 연봉을 조금 올려 달라고 한다 */
+  window.renewMgrV14 = function(){
+    var m = ensureMgr(); if(m.years > 0) return;
+    var up = 1 + (m.lastRankV14 && m.lastRankV14 <= 3 ? .15 : .05);
+    m.salary = R1(m.salary * up); m.years = 2;
+    news('감독 재계약', m.name + ' 감독 2년 · 연 ' + m.salary.toFixed(1) + '억');
+    try{ save(); }catch(_){ }
+    refresh(); openBiz();
+  };
+
+  /* ── 스폰서 ───────────────────────────────────────────── */
+  var BRANDS = ['한빛전자','대륙물산','새솔통신','푸른제약','동방건설','하늘항공','나래식품','금강화학','보람카드','온누리마트','바른자동차','새벽유업'];
+  function makeOffers(){
+    var mul = rule().sponsorMul, names = BRANDS.slice().sort(function(){ return Math.random() - .5; });
+    return [
+      {type:'stable', brand:names[0], up:R1(15 * mul * rnd(.92, 1.08)), perWin:0, perPop:0},
+      {type:'win',    brand:names[1], up:R1(6 * mul),  perWin:R1(.6 * mul * rnd(.9, 1.1) * 100) / 100, perPop:0},
+      {type:'pop',    brand:names[2], up:R1(4 * mul),  perWin:0, perPop:R1(.25 * mul * rnd(.9, 1.1) * 100) / 100}
+    ];
+  }
+  var SP_LABEL = {stable:'안정형', win:'성과형', pop:'인기형'};
+  function offerText(o){
+    if(o.type === 'stable') return '계약 즉시 ' + o.up.toFixed(1) + '억 · 성적과 무관';
+    if(o.type === 'win') return '계약 즉시 ' + o.up.toFixed(1) + '억 + 시즌 끝에 1승당 ' + o.perWin.toFixed(2) + '억';
+    return '계약 즉시 ' + o.up.toFixed(1) + '억 + 시즌 끝에 인기 1당 ' + o.perPop.toFixed(2) + '억';
+  }
+  function ensureOffers(){
+    var key = clubYear() + (offseason() ? 'o' : 's');
+    if(!state.sponsorOffersV14 || state.sponsorOffersV14.key !== key) state.sponsorOffersV14 = {key:key, list:makeOffers()};
+    return state.sponsorOffersV14.list;
+  }
+  function sponsorFor(){ return clubYear() + (offseason() ? 1 : 0); }   /* 오프시즌 계약은 다음 시즌용 */
+  function hasSponsor(){ return !!(state.sponsorV14 && state.sponsorV14.year === sponsorFor()); }
+  window.signSponsorV14 = function(i, startFlow){
+    try{
+      if(!eco()) return;
+      if(hasSponsor()){ showAlert('이번 시즌 스폰서는 이미 계약했습니다.'); return; }
+      var o = ensureOffers()[i]; if(!o) return;
+      state.sponsorV14 = {type:o.type, brand:o.brand, up:o.up, perWin:o.perWin, perPop:o.perPop, year:sponsorFor()};
+      state.money = (+state.money || 0) + o.up;
+      news('스폰서 계약', o.brand + ' (' + SP_LABEL[o.type] + ') · 계약금 +' + o.up.toFixed(1) + '억');
+      try{ save(); }catch(_){ }
+      if(startFlow){ startSummary(); return; }
+      try{ closeSheet(); }catch(_){ }
+      refresh(); openBiz();
+    }catch(e){ console.error(V + ' 스폰서:', e); }
+  };
+
+  /* ── 시트 ─────────────────────────────────────────────── */
+  function sheet(title, meta, body){
+    var sh = document.getElementById('sheet'); if(!sh) return;
+    sh.innerHTML = '<div class="top"><div class="pname">' + title + '</div><button class="close" onclick="closeSheet()">✕</button></div>'
+      + (meta ? '<div class="meta">' + meta + '</div>' : '') + body;
+    var mask = document.getElementById('mask'); if(mask) mask.classList.add('on');
+  }
+  function mgrPickHtml(startFlow){
+    return '<div class="pick-v14">' + ensurePool().map(function(c, i){
+      return '<button type="button" onclick="hireMgrV14(' + i + ',' + (startFlow ? 1 : 0) + ')"><b>' + esc(c.name) + ' 감독</b>'
+        + (eco() ? '<span class="r">연 ' + c.salary.toFixed(1) + '억 · ' + c.years + '년</span>' : '<span class="r">' + c.years + '년</span>')
+        + '<span>' + STYLE_LABEL[c.style] + ' ' + stars(c.stars) + ' — ' + esc(STAFF_INFO.manager[c.style].desc) + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function openMgrPick(startFlow){
+    ensureMgr();
+    sheet(startFlow ? '감독 선택' : '감독 시장',
+      startFlow ? '우리 팀을 맡길 감독을 고르세요. 경기 운영은 감독이 합니다.' : '★이 높을수록 성향 효과가 큽니다(★3 기준 ×1).',
+      mgrPickHtml(startFlow)
+      + '<div class="note-v14">' + (eco() ? '감독 연봉은 시즌이 끝날 때 정산합니다. 계약 중 교체는 남은 연봉의 '
+        + Math.round((CFG.fireShare[state.eco] || .5) * 100) + '%를 위약금으로 냅니다.' : '자유 모드는 계약 중 교체를 시즌당 1번 할 수 있습니다.')
+      + (startFlow ? '<br>경기 화면에서 직접 감독을 맡을 수도 있습니다.' : '') + '</div>');
+  }
+  window.openMgrMarketV14 = function(){ try{ openMgrPick(false); }catch(e){ console.error(V + ' 감독 시장:', e); } };
+  function openSponsorPick(startFlow){
+    if(!eco()){ if(startFlow){ try{ closeSheet(); }catch(_){ } refresh(); } return; }
+    sheet('스폰서 계약', (startFlow ? '첫 시즌' : (offseason() ? '다음 시즌' : '이번 시즌')) + ' 스폰서를 고르세요. 한 시즌 계약입니다.',
+      '<div class="pick-v14">' + ensureOffers().map(function(o, i){
+        return '<button type="button" onclick="signSponsorV14(' + i + ',' + (startFlow ? 1 : 0) + ')"><b>' + esc(o.brand) + '</b><span class="r">' + SP_LABEL[o.type] + '</span>'
+          + '<span>' + offerText(o) + '</span></button>';
+      }).join('') + '</div>'
+      + '<div class="note-v14">예상(36경기·일반): 안정형 약 15억 · 성과형 18승이면 약 17억 · 인기형 인기 50이면 약 16.5억</div>');
+  }
+  window.openSponsorV14 = function(){ try{ openSponsorPick(false); }catch(e){ console.error(V + ' 스폰서 창:', e); } };
+  function startSummary(){
+    var sp = state.sponsorV14, m = ensureMgr();
+    sheet('창단 준비 완료', '',
+      '<div class="biz-v14"><div class="card"><div class="b">🏢 모기업 창단 지원금 <b>+' + (+state.parentV14.paid0 || 0).toFixed(1) + '억</b><br>'
+      + (sp ? '🤝 스폰서 ' + esc(sp.brand) + ' 계약금 <b>+' + sp.up.toFixed(1) + '억</b><br>' : '')
+      + '🎽 ' + mgrLine(m) + '<br><br><span class="dim">처음 ' + rule().guaranteeYears + '년은 모기업이 해마다 ' + rule().support
+      + '억을 지원합니다. 그 뒤로는 모기업 사정에 따라 줄어들 수 있습니다.</span></div></div></div>'
+      + '<button class="btn" onclick="closeSheet()">시작하기</button>');
+  }
+
+  /* ── 모기업 ───────────────────────────────────────────── */
+  function ensureParent(){
+    if(!state.parentV14) state.parentV14 = {health:CFG.healthStart, cut:0, log:[]};
+    return state.parentV14;
+  }
+  function supportFor(year){
+    var P = ensureParent(), r = rule();
+    if(P.cut > 0) return 0;
+    if(year <= r.guaranteeYears) return r.support;
+    return R1(r.support * Math.max(0, Math.min(1, P.health / 80)));   /* 경영 상태 80 이상이면 전액 */
+  }
+  function healthWord(h){ return h >= 80 ? '탄탄함' : h >= 60 ? '안정' : h >= 40 ? '주춤' : h >= 20 ? '어려움' : '위기'; }
+  function healthColor(h){ return h >= 60 ? '#4CC38A' : h >= 40 ? '#F4C45E' : '#E5675B'; }
+
+  /* 시즌 결산: 스폰서 성과금 · 감독 연봉 · 비상사태 · 다음 시즌 모기업 지원금 */
+  function settle(){
+    var s = state.season; if(!s || s.econV14) return s && s.econV14;
+    var out = {lines:[]};
+    s.econV14 = out;
+    var my = state.myTeam, rec = (s.rec && s.rec[my]) || {w:0};
+    var m = ensureMgr();
+    try{ m.lastRankV14 = (typeof rankOrder === 'function') ? rankOrder().indexOf(my) + 1 : 0; }catch(_){ }
+    if(eco()){
+      var sp = state.sponsorV14;
+      if(sp && sp.year === clubYear()){
+        var bonus = sp.type === 'win' ? R1((+rec.w || 0) * sp.perWin) : sp.type === 'pop' ? R1((+state.popularity || 0) * sp.perPop) : 0;
+        if(bonus > 0){ state.money += bonus; out.lines.push('🤝 스폰서 ' + esc(sp.brand) + ' 성과금 ' + money(bonus)); }
+      }
+      if(m.years > 0){ state.money -= m.salary; out.lines.push('🎽 감독 연봉 ' + money(-m.salary)); }
+    }
+    if(m.years > 0) m.years--;
+    if(!(m.years > 0)) out.lines.push('📄 ' + esc(m.name) + ' 감독 계약 만료 — 오프시즌에 재계약하거나 새 감독을 고르세요');
+    if(eco()){
+      var P = ensureParent(), year = clubYear(), next = year + 1, r = rule();
+      /* 모기업 경영 상태 — 보장 기간이 끝나 갈 때부터 흔들린다 */
+      if(next > r.guaranteeYears) P.health = Math.max(5, Math.min(100, R1(P.health + CFG.healthDrift + rnd(-CFG.healthSwing, CFG.healthSwing))));
+      if(P.cut > 0) P.cut--;
+      /* 비상사태 — 넉넉하면 더 잘 생긴다. 결산은 연봉 정산 직전에 하므로 연봉을 뺀 잔고로 본다 */
+      var pay = 0; try{ pay = typeof teamSalary === 'function' ? +teamSalary() || 0 : 0; }catch(_){ }
+      var rich = (+state.money || 0) - pay > r.rich, ch = 0;
+      if(year >= 2 && rich) ch = CFG.emergency.richChance;
+      else if(year >= CFG.emergency.baseFromYear) ch = CFG.emergency.baseChance;
+      var ev = null;
+      if(Math.random() < ch){
+        ev = pick(['slump', 'freeze', 'repair']);
+        if(ev === 'slump'){ P.health = Math.max(5, P.health - 20); out.lines.push('🚨 모기업 실적 악화 — 경영 상태 ' + healthWord(P.health) + '(' + Math.round(P.health) + '), 지원금이 줄어듭니다'); }
+        if(ev === 'freeze'){ P.cut = 1; out.lines.push('🚨 모기업 구조조정 — 다음 시즌 지원금이 끊겼습니다'); }
+        if(ev === 'repair'){ var c = R1(rnd(8, 15)); state.money -= c; out.lines.push('🚨 구장 긴급 보수 ' + money(-c)); }
+        P.log.unshift({year:year, ev:ev}); P.log = P.log.slice(0, 20);
+        news('비상사태', out.lines[out.lines.length - 1].replace('🚨 ', ''));
+      }
+      var amt = supportFor(next);
+      if(P.cut > 0 && ev !== 'freeze') amt = 0;
+      if(ev === 'freeze') amt = 0;
+      state.money += amt;
+      out.support = amt;
+      out.lines.push('🏢 모기업 지원금(' + next + '년차) ' + money(amt)
+        + (next <= r.guaranteeYears ? '' : ' · 모기업 ' + healthWord(P.health)));
+      debt();
+    }
+    try{ save(); }catch(_){ }
+    return out;
+  }
+  /* 지원금·성과금은 연봉 정산 "전에" 넣는다 — 하드 모드는 정산 순간 마이너스면 파산이라서 */
+  var baseSalary = window.settleSeasonSalary;
+  if(typeof baseSalary === 'function'){
+    window.settleSeasonSalary = function(){
+      try{ settle(); }catch(e){ console.error(V + ' 시즌 결산:', e); }
+      return baseSalary.apply(this, arguments);
+    };
+    try{ settleSeasonSalary = window.settleSeasonSalary; }catch(_){ }
+  }
+  var baseDone = window.renderSeasonDone;
+  if(typeof baseDone === 'function'){
+    window.renderSeasonDone = function(){
+      var r = baseDone.apply(this, arguments);
+      try{
+        var out = settle();
+        var box = document.getElementById('seasonDoneText');
+        if(box && out && out.lines.length && !box.querySelector('[data-econ-v14]')){
+          box.insertAdjacentHTML('beforeend', '<div data-econ-v14="1" style="margin-top:10px">' + out.lines.join('<br>')
+            + (eco() ? '<br>→ 잔고 <b>' + R1(+state.money || 0).toFixed(1) + '억</b>' : '') + '</div>');
+        }
+        refreshHeader();
+      }catch(e){ console.error(V + ' 시즌 결산:', e); }
+      return r;
+    };
+    try{ renderSeasonDone = window.renderSeasonDone; }catch(_){ }
+  }
+
+  /* 새 시즌: 구단 연차 +1, 감독 계약이 끝났으면 1년 자동 재계약, 스폰서가 없으면 안정형 자동 */
+  var baseNew = window.nextSeason;
+  if(typeof baseNew === 'function'){
+    window.nextSeason = function(){
+      var autoSp = null;
+      try{ if(eco() && offseason() && !hasSponsor()) autoSp = ensureOffers()[0]; }catch(_){ }
+      var r = baseNew.apply(this, arguments);
+      try{
+        state.clubYearV14 = clubYear() + 1;
+        var m = ensureMgr();
+        if(!(m.years > 0)){ m.years = 1; news('감독 자동 재계약', m.name + ' 감독 1년 · 연 ' + m.salary.toFixed(1) + '억'); }
+        if(autoSp){
+          state.sponsorV14 = {type:autoSp.type, brand:autoSp.brand, up:autoSp.up, perWin:0, perPop:0, year:clubYear()};
+          state.money = (+state.money || 0) + autoSp.up;
+          news('스폰서 자동 계약', autoSp.brand + ' (안정형) · 계약금 +' + autoSp.up.toFixed(1) + '억');
+        }
+        save(); refreshHeader();
+      }catch(e){ console.error(V + ' 새 시즌:', e); }
+      return r;
+    };
+    try{ nextSeason = window.nextSeason; }catch(_){ }
+  }
+
+  /* 새 게임: 창단 지원금 → 감독 선택 → 스폰서 선택 */
+  var baseStart = window.startWithMode;
+  if(typeof baseStart === 'function'){
+    window.startWithMode = function(teamId){
+      var r = baseStart.apply(this, arguments);
+      try{
+        if(r !== false && state && state.myTeam === teamId){
+          state.clubYearV14 = 1;
+          state.mgrV14 = null; state.mgrPoolV14 = null; state.sponsorV14 = null; state.sponsorOffersV14 = null;
+          state.parentV14 = null;
+          var P = ensureParent();
+          P.paid0 = eco() ? rule().support : 0;
+          if(eco()) state.money = (+state.money || 0) + P.paid0;
+          ensureMgr(); save(); refreshHeader();
+          setTimeout(function(){ try{ openMgrPick(true); }catch(e){ console.error(V + ' 감독 선택 창:', e); } }, 0);
+        }
+      }catch(e){ console.error(V + ' 창단:', e); }
+      return r;
+    };
+    try{ startWithMode = window.startWithMode; }catch(_){ }
+  }
+
+  /* ── 구단 경영 화면 (운영 탭 타일) ─────────────────────── */
+  function bizHtml(){
+    var m = ensureMgr(), out = '<div class="biz-v14">';
+    if(eco()){
+      /* 오프시즌이면 다음 시즌 지원금은 이미 받았다 — 그 다음 것을 예상으로 보여 준다 */
+      var P = ensureParent(), y = clubYear(), r = rule(), off = offseason();
+      var paid = off && state.season.econV14 ? state.season.econV14.support : null;
+      var target = y + (off ? 2 : 1), nextAmt = supportFor(target);
+      out += '<div class="card"><div class="t">🏢 모기업 <small>' + y + '년차' + (off ? ' 종료' : '') + '</small></div>'
+        + '<div class="b">' + (target <= r.guaranteeYears ? '창단 초기 전폭 지원 — ' + r.guaranteeYears + '년차까지 해마다 <b>' + r.support + '억</b>'
+          : '경영 상태 <b>' + healthWord(P.health) + '</b> (' + Math.round(P.health) + ')')
+        + '<div class="meter"><i style="width:' + Math.round(P.health) + '%;background:' + healthColor(P.health) + '"></i></div>'
+        + '<span class="dim">' + (paid != null ? (y + 1) + '년차 지원금 ' + paid.toFixed(1) + '억 받음 · ' : '')
+        + target + '년차 지원금(시즌 종료 때) 예상 ' + nextAmt.toFixed(1) + '억' + (P.cut > 0 ? ' · 구조조정으로 중단' : '') + '</span></div></div>';
+      var sp = state.sponsorV14, has = hasSponsor();
+      out += '<div class="card"><div class="t">🤝 스폰서 <small>' + (offseason() ? '다음 시즌' : '이번 시즌') + '</small></div><div class="b">'
+        + (has ? '<b>' + esc(sp.brand) + '</b> · ' + SP_LABEL[sp.type] + '<br><span class="dim">' + offerText(sp) + '</span>'
+          : '아직 계약하지 않았습니다.' + (offseason() ? '<br><span class="dim">고르지 않으면 새 시즌에 안정형으로 자동 계약됩니다.</span>' : ''))
+        + '</div>' + (has ? '' : '<button class="btn" onclick="openSponsorV14()">스폰서 고르기</button>') + '</div>';
+    }
+    out += '<div class="card"><div class="t">🎽 감독 <small>' + (m.years > 0 ? '계약 ' + m.years + '시즌 남음' : '계약 만료') + '</small></div>'
+      + '<div class="b"><b>' + mgrLine(m) + '</b><br><span class="dim">' + esc(STAFF_INFO.manager[m.style].desc)
+      + (eco() ? ' · 연봉 ' + m.salary.toFixed(1) + '억' : '') + '</span>'
+      + (m.years > 0 && eco() ? '<br><span class="dim">지금 교체하면 위약금 ' + fireCost(m).toFixed(1) + '억</span>' : '') + '</div>'
+      + (m.years > 0 ? '' : '<button class="btn" onclick="renewMgrV14()">재계약 (2년)</button>')
+      + '<button class="btn ghost" onclick="openMgrMarketV14()">감독 시장 보기</button></div>';
+    return out + '</div>';
+  }
+  function openBiz(){ sheet('🤝 구단 경영', '모기업 지원 · 스폰서 · 감독 계약', bizHtml()); }
+  window.openClubBizV14 = function(){ try{ openBiz(); }catch(e){ console.error(V + ' 구단 경영:', e); } };
+
+  function paintFront(){
+    var body = document.getElementById('frontBody'); if(!body) return;
+    var grid = body.querySelector('.front-menu-grid-v999');
+    if(grid && !grid.querySelector('[data-biz-v14]')){
+      var b = document.createElement('button');
+      b.className = 'front-tile-v999'; b.dataset.bizV14 = '1'; b.setAttribute('onclick', 'openClubBizV14()');
+      b.innerHTML = '<span class="ico">🤝</span><span class="t">구단 경영</span><span class="s">모기업·스폰서·감독 계약</span>';
+      grid.insertBefore(b, grid.children[1] || null);
+    }
+    /* 옛 프런트 화면의 "감독 성향" 버튼은 계약 없이 바뀌므로 숨긴다 */
+    var btn = body.querySelector('button[onclick*="setStaff(\'manager\'"]');
+    var cat = btn && btn.closest('.lb-cat');
+    if(cat && !cat.dataset.mgrstaffV14){
+      cat.dataset.mgrstaffV14 = '1';
+      var h = cat.previousElementSibling, hint = cat.nextElementSibling;
+      if(h && /감독/.test(h.textContent)) h.setAttribute('data-mgrstaff-v14-hide', '1');
+      if(hint && hint.classList.contains('hint')){
+        hint.textContent = '감독 계약·교체는 운영 → 🤝 구단 경영에서 합니다.';
+      }
+    }
+  }
+  var baseFront = window.renderFront;
+  if(typeof baseFront === 'function'){
+    window.renderFront = function(){
+      var r = baseFront.apply(this, arguments);
+      try{ paintFront(); }catch(e){ console.error(V + ' 운영 타일:', e); }
+      return r;
+    };
+    try{ renderFront = window.renderFront; }catch(_){ }
+  }
+  /* setStaff('manager', …) 로 들어오는 옛 경로도 감독 시장으로 보낸다 */
+  var baseStaff = window.setStaff;
+  if(typeof baseStaff === 'function'){
+    window.setStaff = function(kind){
+      if(kind === 'manager'){ window.openMgrMarketV14(); return; }
+      return baseStaff.apply(this, arguments);
+    };
+    try{ setStaff = window.setStaff; }catch(_){ }
+  }
+
+  /* 할 일 목록 */
+  var baseTasks = window.extraTasksV62;
+  if(typeof baseTasks === 'function'){
+    window.extraTasksV62 = function(){
+      var r = baseTasks.apply(this, arguments);
+      try{
+        if(!Array.isArray(r)) r = [];
+        if(offseason()){
+          if(eco() && !hasSponsor()) r.push({c:'warn', i:'🤝', t:'다음 시즌 스폰서를 아직 고르지 않았습니다. 운영 → 구단 경영'});
+          var m = ensureMgr();
+          if(!(m.years > 0)) r.push({c:'warn', i:'🎽', t:m.name + ' 감독 계약이 끝났습니다. 재계약하거나 새 감독을 고르세요.'});
+        }
+      }catch(_){ }
+      return r;
+    };
+  }
+
+  try{ if(state && state.myTeam){ ensureMgr(); if(eco()) ensureParent(); } }catch(_){ }
+})();
+</script>
+<!-- v1.4.0 · 구단 경영 END -->
 
 </body>
 </html>
