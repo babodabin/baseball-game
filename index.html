@@ -28693,5 +28693,263 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 </script>
 <!-- v1.4.0 · 구단 경영 END -->
 
+<!-- v1.4.0 · 훈련: 팀 훈련 방침(강도) + 개인 훈련(초점) -->
+<style id="training-v14-style">
+.trn-v14{margin:8px 0 12px;padding:12px 13px;border:1px solid rgba(119,214,155,.3);border-radius:13px;background:rgba(119,214,155,.07)}
+.trn-v14 .h{display:flex;justify-content:space-between;align-items:baseline;font-weight:900;font-size:14px;color:#8FE3AE}
+.trn-v14 .h small{font-size:11px;font-weight:700;color:var(--dim)}
+.trn-v14 .sub{margin-top:4px;font-size:11.5px;line-height:1.55;color:var(--dim)}
+.trn-v14 .seg{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:8px}
+.trn-v14 .seg.three{grid-template-columns:repeat(3,1fr)}
+.trn-v14 .seg button{min-height:var(--tap-min,44px);border-radius:10px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--chalk,#DFE9E3);font:800 11.5px/1.3 inherit;font-family:inherit;padding:4px 2px;word-break:keep-all}
+.trn-v14 .seg button.on{border-color:#8FE3AE;background:rgba(119,214,155,.18);color:#8FE3AE}
+.trn-v14 .slot{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px}
+.trn-v14 .slot .nm{flex:none;min-width:0;max-width:44%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trn-v14 .slot .nm b{color:var(--chalk,#DFE9E3)}
+.trn-v14 .slot .nm span{color:var(--dim)}
+.trn-v14 .slot .x{flex:none;border:1px solid var(--line);background:transparent;color:var(--dim);border-radius:8px;min-height:32px;padding:0 8px;font-family:inherit}
+.tbar-v14{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}
+.tbar-v14 i{display:block;height:100%;background:linear-gradient(90deg,#77D69B,#F4C45E)}
+.trn-btn-v14{border:1px solid rgba(119,214,155,.45);background:rgba(119,214,155,.12);color:#8FE3AE;border-radius:9px;
+  padding:5px 9px;font:800 11.5px/1 inherit;font-family:inherit;white-space:nowrap;margin-right:6px}
+.trn-btn-v14.on{background:#8FE3AE;color:#0B2016}
+.v14-on .farm-row-v122,.v14-on .farm-note-v122{display:none!important}
+</style>
+<script id="training-v14">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov14')>=0) return;
+  var V = 'v1.4.0';
+  /* OOTP 의 Development Lab 을 단순하게 옮긴다. 경기가 하루 지날 때마다(updateDailyHealth) 쌓인다.
+     A. 팀 훈련 방침 — 시즌 내내 한 분야. 팀 전체가 그 분야로 조금씩 큰다.
+        강도: 가볍게(효과 ×0.6, 피로 회복 +1) · 보통 · 강하게(효과 ×1.5, 피로 +2, 하루 0.4% 부상)
+     B. 개인 훈련 — 몇 명을 골라 초점 능력치를 정한다. 막대가 차면 그 능력치 +1.
+        2군 선수는 훈련장 효과로 1.5배. 인원은 난이도 기본(일반 3·하드 2) + 훈련 시설 Lv-1.
+     실황·시뮬 모두 적용. 실황은 나이를 먹지 않으므로 잠재력(growthProfileV335.potentialOvr)에서 멈춘다.
+     v1.2.2 의 "2군 한 명 훈련"은 B 가 흡수한다(2군 선수는 B 에서 1.5배). */
+  var T = {
+    team:{young:.040, prime:.030, late:.020, old:.010},          /* 경기당 — 한 시즌(36경기) 보통 강도면 어린 선수 +1~2 */
+    solo:{young:.21, prime:.15, late:.09, old:.045},             /* 경기당 — v1.2.2 2군 훈련의 1.5배. 보통 강도·어린 선수면 시즌 +7 */
+    farmMul:1.5,
+    level:{light:{mul:.6, fat:-1, inj:0}, normal:{mul:1, fat:0, inj:0}, hard:{mul:1.5, fat:2, inj:.004}},
+    defaultCap:84
+  };
+  window.TRAINING_V14 = T;
+  var AREAS = {
+    bat:{label:'타격', bat:[4,5,8], pit:[]},
+    pitch:{label:'투구', bat:[], pit:[5,6]},
+    field:{label:'수비·주루', bat:[6,7], pit:[]},
+    power:{label:'구속·체력', bat:[], pit:[4,7]}
+  };
+  var BAT_STAT = {4:'정확', 5:'파워', 6:'주루', 7:'수비', 8:'선구'};
+  var PIT_STAT = {4:'구속', 5:'제구', 6:'변화', 7:'체력'};
+  var LEVEL_LABEL = {light:'가볍게', normal:'보통', hard:'강하게'};
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function team(){ try{ return state.players[state.myTeam]; }catch(_){ return null; } }
+  function ageAt(kind, i){ try{ return +team().age[kind][i] || 28; }catch(_){ return 28; } }
+  function bracket(age, tbl){ return age <= 22 ? tbl.young : age <= 26 ? tbl.prime : age <= 29 ? tbl.late : tbl.old; }
+  function meta(p){ var x = p && p[p.length - 1]; return x && typeof x === 'object' && !Array.isArray(x) ? x : null; }
+  function ovrOf(kind, p){ try{ return kind === 'bat' ? batOvr(p, state.myTeam) : pitOvr(p, state.myTeam); }catch(_){ return 0; } }
+  function capOf(p){ var m = meta(p); var c = m && m.growthProfileV335 && +m.growthProfileV335.potentialOvr; return c > 0 ? c : T.defaultCap; }
+  function nameOf(p){ try{ return playerDisplayName(p); }catch(_){ return p && p[0]; } }
+  function isFarm(kind, p){ try{ return squadLevelOf(state.myTeam, kind, p) === 'second'; }catch(_){ return false; } }
+  /* OVR 은 배열 값(p[4..8])이 아니라 p.skills(세부 능력치)로 계산된다(batterBreakdown·pitcherBreakdown).
+     둘 다 올려야 경기와 OVR 에 반영된다. */
+  var SKILL_MAP = {bat:{4:['contact'], 5:['power'], 6:['running'], 7:['defense', 'arm'], 8:['eye', 'patience']},
+                   pit:{4:['velocity'], 5:['control'], 6:['breaking'], 7:['stamina']}};
+  /* 능력치 하나 +1 — 잠재력에 닿았으면 올리지 않는다 */
+  function raise(kind, p, k){
+    if(ovrOf(kind, p) >= capOf(p)) return false;
+    var isBat = kind === 'bat', max = (!isBat && k === 4) ? 158 : 99;
+    if((+p[k] || 0) >= max) return false;
+    try{ raiseGrowthStat(p, isBat, k); }catch(_){ p[k] = Math.min(max, (+p[k] || 0) + 1); }
+    try{
+      var sk = p.skills && typeof p.skills === 'object' ? p.skills : null;
+      if(sk) (SKILL_MAP[kind][k] || []).forEach(function(name){
+        if(!Number.isFinite(+sk[name])) return;
+        var cap = name === 'velocity' ? 162 : 99;
+        sk[name] = Math.min(cap, +sk[name] + 1);
+      });
+    }catch(_){ }
+    var s = S(); s.log = s.log || {up:0, inj:0, capped:0}; s.log.up++;
+    return true;
+  }
+  function S(){
+    if(!state.trainingV14) state.trainingV14 = {area:null, level:'normal', teamPts:{}, slots:[], soloPts:{}};
+    var s = state.trainingV14;
+    s.teamPts = s.teamPts || {}; s.slots = s.slots || []; s.soloPts = s.soloPts || {};
+    return s;
+  }
+  function slotMax(){
+    var base = 3; try{ base = diffRuleV43().trainSlots || 3; }catch(_){ }
+    var fl = 1; try{ fl = facilityLevel('training'); }catch(_){ }
+    return base + Math.max(0, fl - 1);
+  }
+  function findIdx(kind, alias){
+    var arr = (team() || {})[kind] || [];
+    for(var i = 0; i < arr.length; i++) if(arr[i] && arr[i][0] === alias) return i;
+    return -1;
+  }
+  function note(msg){
+    try{ if(state.season) state.season.healthNews = (state.season.healthNews || []).concat([msg]); }catch(_){ }
+  }
+
+  /* ── 하루 진행 ── */
+  function tick(){
+    try{
+      if(!state || !state.myTeam || !state.season) return;
+      var s = S(), t = team(); if(!t) return;
+      var lv = T.level[s.level] || T.level.normal;
+      /* A. 팀 방침 */
+      var A = s.area && AREAS[s.area];
+      if(A){
+        ['bat', 'pit'].forEach(function(kind){
+          var stats = A[kind]; if(!stats.length) return;
+          (t[kind] || []).forEach(function(p, i){
+            if(!p) return;
+            var key = kind + ':' + p[0];
+            s.teamPts[key] = (+s.teamPts[key] || 0) + bracket(ageAt(kind, i), T.team) * lv.mul;
+            if(s.teamPts[key] >= 1){
+              s.teamPts[key] -= 1;
+              var k = stats[Math.floor(Math.random() * stats.length)];
+              if(raise(kind, p, k)) note('🏋️ 팀 훈련 — ' + nameOf(p) + ' ' + (kind === 'bat' ? BAT_STAT : PIT_STAT)[k] + ' +1');
+            }
+            /* 강도 — 피로와 부상 */
+            if(lv.fat || lv.inj){
+              try{
+                var h = playerHealth(state.myTeam, kind, p);
+                if(h && !(h.injury > 0)){
+                  if(lv.fat) h.fatigue = Math.max(0, Math.min(100, (+h.fatigue || 0) + lv.fat));
+                  if(lv.inj && Math.random() < lv.inj){
+                    h.injury = 1 + Math.floor(Math.random() * 3);
+                    s.log = s.log || {up:0, inj:0, capped:0}; s.log.inj++;
+                    note('🤕 ' + nameOf(p) + ' 훈련 중 부상 (' + h.injury + '경기)');
+                  }
+                }
+              }catch(_){ }
+            }
+          });
+        });
+      }
+      /* B. 개인 훈련 */
+      s.slots = s.slots.filter(function(sl){
+        var i = findIdx(sl.kind, sl.alias);
+        if(i < 0) return false;                                  /* 방출·트레이드·해외 진출 */
+        var p = t[sl.kind][i];
+        var rate = bracket(ageAt(sl.kind, i), T.solo) * (isFarm(sl.kind, p) ? T.farmMul : 1) * lv.mul;
+        var key = sl.kind + ':' + sl.alias;
+        s.soloPts[key] = (+s.soloPts[key] || 0) + rate;
+        while(s.soloPts[key] >= 1){
+          s.soloPts[key] -= 1;
+          if(raise(sl.kind, p, sl.stat)) note('🏋️ 개인 훈련 — ' + nameOf(p) + ' ' + (sl.kind === 'bat' ? BAT_STAT : PIT_STAT)[sl.stat] + ' +1');
+          else { note('🏋️ ' + nameOf(p) + ' — 잠재력 한계에 닿아 더 오르지 않습니다'); s.soloPts[key] = 0; break; }
+        }
+        return true;
+      });
+    }catch(e){ console.error(V + ' 훈련:', e); }
+  }
+  var baseHealth = window.updateDailyHealth;
+  if(typeof baseHealth === 'function'){
+    window.updateDailyHealth = function(){
+      var r = baseHealth.apply(this, arguments);
+      tick();
+      return r;
+    };
+    try{ updateDailyHealth = window.updateDailyHealth; }catch(_){ }
+  }
+
+  /* ── 조작 ── */
+  function rerender(){
+    try{ if(typeof renderFront === 'function') renderFront(); }catch(_){ }
+    try{ if(typeof openMarketSectionV108 === 'function' && document.querySelector('#frontBody .front-legacy-v999.open')) openMarketSectionV108('squad'); }catch(_){ }
+    try{ if(typeof renderLineup === 'function') renderLineup(); }catch(_){ }
+  }
+  window.setTeamTrainingV14 = function(area){ var s = S(); s.area = (s.area === area) ? null : area; save(); rerender(); };
+  window.setTrainingLevelV14 = function(lv){ if(!T.level[lv]) return; S().level = lv; save(); rerender(); };
+  window.dropSoloV14 = function(kind, alias){
+    var s = S(); s.slots = s.slots.filter(function(x){ return !(x.kind === kind && x.alias === alias); }); save(); rerender();
+  };
+  window.setSoloV14 = function(kind, idx, stat){
+    try{
+      var s = S(), p = (team()[kind] || [])[idx]; if(!p) return;
+      var has = s.slots.filter(function(x){ return x.kind === kind && x.alias === p[0]; })[0];
+      if(has){ has.stat = stat; }
+      else{
+        if(s.slots.length >= slotMax()){ showAlert('개인 훈련은 ' + slotMax() + '명까지입니다.\n훈련 시설을 올리면 늘어납니다.'); return; }
+        s.slots.push({kind:kind, alias:p[0], stat:stat});
+      }
+      save(); try{ closeSheet(); }catch(_){ } rerender();
+    }catch(e){ console.error(V + ' 개인 훈련:', e); }
+  };
+  /* 선수 한 명의 초점 고르기 */
+  window.openSoloPickV14 = function(kind, idx){
+    var p = (team()[kind] || [])[idx]; if(!p) return;
+    var s = S(), cur = s.slots.filter(function(x){ return x.kind === kind && x.alias === p[0]; })[0];
+    var labels = kind === 'bat' ? BAT_STAT : PIT_STAT, cap = capOf(p), ovr = ovrOf(kind, p);
+    var sh = document.getElementById('sheet'); if(!sh) return;
+    sh.innerHTML = '<div class="top"><div class="pname">🏋️ ' + esc(nameOf(p)) + ' 개인 훈련</div><button class="close" onclick="closeSheet()">✕</button></div>'
+      + '<div class="meta">' + ageAt(kind, idx) + '세 · OVR ' + ovr + ' · 잠재력 ' + cap + (isFarm(kind, p) ? ' · 2군(훈련장 ×1.5)' : '') + '</div>'
+      + '<div class="trn-v14"><div class="sub">어떤 능력치를 키울까요? 막대가 다 차면 그 능력치가 +1 오릅니다. 어릴수록 빨리 찹니다.'
+      + (ovr >= cap ? '<br><b style="color:#E5675B">이미 잠재력 한계라 더 오르지 않습니다.</b>' : '') + '</div>'
+      + '<div class="seg' + (kind === 'bat' ? '' : ' three') + '" style="grid-template-columns:repeat(' + Object.keys(labels).length + ',1fr)">'
+      + Object.keys(labels).map(function(k){
+          return '<button class="' + (cur && +cur.stat === +k ? 'on' : '') + '" onclick="setSoloV14(\'' + kind + '\',' + idx + ',' + k + ')">' + labels[k] + '<br><small>' + p[k] + '</small></button>';
+        }).join('') + '</div></div>'
+      + (cur ? '<button class="btn ghost" onclick="dropSoloV14(\'' + kind + '\',\'' + esc(p[0]) + '\');closeSheet()">개인 훈련 그만두기</button>' : '')
+      + '<button class="btn ghost" onclick="closeSheet()">닫기</button>';
+    var mask = document.getElementById('mask'); if(mask) mask.classList.add('on');
+  };
+  /* v1.2.2 의 2군 훈련 버튼은 이 창으로 보낸다 */
+  window.setFarmFocusV122 = function(kind, idx){ window.openSoloPickV14(kind, idx); };
+  try{ state.trainFocusV122 = null; }catch(_){ }
+
+  /* ── 화면: 선수단(훈련) 칸 맨 위 패널 + 선수 줄마다 [훈련] 버튼 ── */
+  function panelHtml(){
+    var s = S(), t = team() || {bat:[], pit:[]}, lv = s.level || 'normal';
+    var out = '<div class="trn-v14" data-trn-v14="1"><div class="h">🏋️ 팀 훈련 방침 <small>' + (s.area ? AREAS[s.area].label + ' · ' + LEVEL_LABEL[lv] : '없음') + '</small></div>'
+      + '<div class="sub">시즌 내내 한 분야에 집중합니다. 팀 전체가 그 분야로 조금씩 큽니다(어릴수록 빨리).</div>'
+      + '<div class="seg" style="grid-template-columns:repeat(4,1fr)">' + Object.keys(AREAS).map(function(k){
+          return '<button class="' + (s.area === k ? 'on' : '') + '" onclick="setTeamTrainingV14(\'' + k + '\')">' + AREAS[k].label + '</button>';
+        }).join('') + '</div>'
+      + '<div class="seg three">' + Object.keys(T.level).map(function(k){
+          return '<button class="' + (lv === k ? 'on' : '') + '" onclick="setTrainingLevelV14(\'' + k + '\')">' + LEVEL_LABEL[k] + '</button>';
+        }).join('') + '</div>'
+      + '<div class="sub">' + (lv === 'hard' ? '⚠ 강하게: 효과 1.5배 · 피로가 쌓이고 가끔 부상이 납니다.' : lv === 'light' ? '가볍게: 효과 0.6배 · 피로가 조금 풀립니다.' : '보통: 기본 효과.') + '</div></div>';
+    out += '<div class="trn-v14"><div class="h">🎯 개인 훈련 <small>' + s.slots.length + '/' + slotMax() + '명</small></div>'
+      + '<div class="sub">아래 선수 목록에서 <b>훈련</b>을 눌러 키울 능력치를 고르세요. 2군 선수는 훈련장이라 1.5배 빠릅니다. 잠재력까지만 오릅니다.</div>';
+    s.slots.forEach(function(sl){
+      var i = findIdx(sl.kind, sl.alias); if(i < 0) return;
+      var p = t[sl.kind][i], prog = Math.max(0, Math.min(1, +s.soloPts[sl.kind + ':' + sl.alias] || 0));
+      out += '<div class="slot"><span class="nm"><b>' + esc(nameOf(p)) + '</b> <span>' + (sl.kind === 'bat' ? BAT_STAT : PIT_STAT)[sl.stat] + ' ' + p[sl.stat] + '</span></span>'
+        + '<span class="tbar-v14"><i style="width:' + Math.round(prog * 100) + '%"></i></span>'
+        + '<button class="x" onclick="dropSoloV14(\'' + sl.kind + '\',\'' + esc(sl.alias) + '\')">✕</button></div>';
+    });
+    return out + '</div>';
+  }
+  var baseRoster = window.rosterManagementHtml;
+  if(typeof baseRoster === 'function'){
+    window.rosterManagementHtml = function(){
+      var html = baseRoster.apply(this, arguments);
+      try{
+        var t = team(), s = S();
+        /* 1군 줄은 cutbtn("2군"), 2군 줄은 signbtn("1군") */
+        var RE = /(<button class="(?:signbtn|cutbtn)" onclick="setSquadLevel\('(bat|pit)',(\d+),'(?:first|second)'\)">)/g;
+        html = html.replace(RE, function(whole, btn, kind, idxStr){
+          var p = (t[kind] || [])[+idxStr]; if(!p) return whole;
+          var on = s.slots.some(function(x){ return x.kind === kind && x.alias === p[0]; });
+          return '<button class="trn-btn-v14' + (on ? ' on' : '') + '" type="button" onclick="openSoloPickV14(\'' + kind + '\',' + idxStr + ')">' + (on ? '훈련 중' : '훈련') + '</button>' + btn;
+        });
+        html = html.replace('<div class="hint">전체 선수단은', panelHtml() + '<div class="hint">전체 선수단은');
+      }catch(e){ console.error(V + ' 훈련 화면:', e); }
+      return html;
+    };
+    try{ rosterManagementHtml = window.rosterManagementHtml; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.4.0 · 훈련 END -->
+
 </body>
 </html>
