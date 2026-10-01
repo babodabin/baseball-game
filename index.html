@@ -28053,7 +28053,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     tv:{base:8, perRank:1.2, perPop:.1, hardMul:.85},
     /* 해외 진출 — OVR 85+ · 33세 이하 · 국내 선수, 시즌마다 이 확률로 한 명 */
     posting:{minOvr:85, maxAge:33, chance:.4, perOvr:6, over:80, hardMul:.9, minBat:10, minPit:11},
-    champion:{normal:70, hard:50}                  /* 우승 상금 (원래 35 / 25) */
+    champion:{normal:70, hard:50},                 /* 우승 상금 (원래 35 / 25) */
+    /* 스카우트 — 관찰할 때마다 숨은 특성(숨은 유망주·부상 위험)을 찾아낼 확률, 시즌 연봉 */
+    scout:{reveal:{basic:.25, standard:.45, elite:.7}, perFacility:.05, salary:{basic:1, standard:2, elite:4}}
   };
   window.CLUB_ECONOMY_V14 = CFG;
   try{ BALANCE_V287.normal.champion = CFG.champion.normal; BALANCE_V287.hard.champion = CFG.champion.hard; }catch(_){ }
@@ -28344,6 +28346,76 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   };
   function postingPending(){ var o = state.postingV14; return !!(o && !o.done && o.year === clubYear() && offseason()); }
 
+  /* ── 스카우트 ─────────────────────────────────────────────
+     드래프트는 리그 전체 후보(40여 명)를 두고 하는 v0.34.13 방식이라 "후보 수"는 의미가 없다.
+     등급은 ① 보고서 오차(scoutPower) ② 시즌 관찰 횟수(budgetMax)에 더해
+     ③ 관찰할 때마다 숨은 특성을 찾아낼 확률을 좌우한다. 대신 등급이 높을수록 연봉이 비싸다. */
+  function scoutKey(){ var k = state && state.scout; return CFG.scout.salary[k] != null ? k : 'standard'; }
+  function scoutName(){ try{ return SCOUT_INFO[scoutKey()].name; }catch(_){ return '스카우트'; } }
+  function scoutSalary(){ return CFG.scout.salary[scoutKey()]; }
+  function revealChance(){
+    var fc = 1; try{ fc = facilityLevel('scouting'); }catch(_){ }
+    return Math.min(.95, CFG.scout.reveal[scoutKey()] + Math.max(0, fc - 1) * CFG.scout.perFacility);
+  }
+  try{
+    Object.keys(CFG.scout.salary).forEach(function(k){
+      if(!SCOUT_INFO[k]) return;
+      var budget = k === 'elite' ? 18 : k === 'standard' ? 14 : 10;
+      SCOUT_INFO[k].desc = '연봉 ' + CFG.scout.salary[k] + '억 · 시즌 관찰 ' + budget + '회 · 관찰마다 숨은 특성 발견 ' + Math.round(CFG.scout.reveal[k] * 100) + '%';
+    });
+  }catch(_){ }
+  /* v0.34.13 의 currentPool 과 같은 규칙: 오프시즌 KBO 드래프트가 열리면 market.draft, 아니면 시즌 스카우팅 명단 */
+  function draftPool(){
+    try{ var m = state.season && state.season.market; if(state.mode === 'sim' && m && m.kboDraft && Array.isArray(m.draft)) return m.draft; }catch(_){ }
+    try{ var r = state.draftScoutingV3413; if(r && Array.isArray(r.candidates)) return r.candidates; }catch(_){ }
+    return [];
+  }
+  function revealTag(d){
+    var m = d && d.draftMetaV3413, r = m && m.revealV14; if(!r) return '';
+    var out = [];
+    if(r.gem) out.push('<span style="color:#F4C45E;font-weight:800">💎 숨은 유망주</span>');
+    if(r.injury) out.push('<span style="color:#E5675B;font-weight:800">⚠ 부상 위험</span>');
+    if(r.clean) out.push('<span style="color:var(--dim)">숨은 특성 없음</span>');
+    return out.join(' · ');
+  }
+  var baseObserve = window.observeDraftCandidateV3413;
+  if(typeof baseObserve === 'function'){
+    window.observeDraftCandidateV3413 = function(idx){
+      var d0 = draftPool()[idx], obs0 = d0 && d0.draftMetaV3413 ? +d0.draftMetaV3413.observations || 0 : -1;
+      var r = baseObserve.apply(this, arguments);
+      try{
+        /* 관찰이 실제로 됐는지는 observations 가 늘었는지로 본다 */
+        var d = draftPool()[idx], m = d && d.draftMetaV3413;
+        if(m && (+m.observations || 0) > obs0 && !m.revealV14){
+          if(Math.random() < revealChance()){
+            m.revealV14 = {gem:!!m.outlierGrowth, injury:!!m.outlierInjury, clean:!m.outlierGrowth && !m.outlierInjury};
+            save();
+            if(m.revealV14.gem) showAlert('💎 스카우트가 숨은 유망주를 찾아냈습니다!\n보고서보다 크게 성장할 수 있는 선수입니다.');
+            else if(m.revealV14.injury) showAlert('⚠ 스카우트가 숨겨진 부상 위험을 찾아냈습니다.');
+            try{ window.openScoutCandidateV3413(idx); }catch(_){ }
+          }
+        }
+      }catch(e){ console.error(V + ' 스카우트 발견:', e); }
+      return r;
+    };
+  }
+  var baseCand = window.openScoutCandidateV3413;
+  if(typeof baseCand === 'function'){
+    window.openScoutCandidateV3413 = function(idx){
+      var r = baseCand.apply(this, arguments);
+      try{
+        var d = draftPool()[idx];
+        var rep = document.querySelector('#sheet .scout-report-v3413');
+        if(rep && d && !rep.querySelector('[data-reveal-v14]')){
+          var tag = revealTag(d);
+          rep.insertAdjacentHTML('beforeend', '<div data-reveal-v14="1" style="margin-top:8px;font-size:12px">'
+            + (tag || '<span style="color:var(--dim)">숨은 특성: 아직 모름 · 관찰할 때마다 ' + Math.round(revealChance() * 100) + '% 확률로 확인 (' + scoutName() + ')</span>') + '</div>');
+        }
+      }catch(_){ }
+      return r;
+    };
+  }
+
   /* ── 모기업 ───────────────────────────────────────────── */
   function ensureParent(){
     if(!state.parentV14) state.parentV14 = {health:CFG.healthStart, cut:0, log:[]};
@@ -28373,6 +28445,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         if(bonus > 0){ state.money += bonus; out.lines.push('🤝 스폰서 ' + esc(sp.brand) + ' 성과금 ' + money(bonus)); }
       }
       if(m.years > 0){ state.money -= m.salary; out.lines.push('🎽 감독 연봉 ' + money(-m.salary)); }
+      if(state.mode === 'sim'){
+        var sc = scoutSalary(); state.money -= sc;
+        out.lines.push('🔭 스카우트 연봉 ' + money(-sc) + ' (' + scoutName() + ')');
+      }
       var md = merchIncome(), tv = tvIncome();
       state.money += md.amt + tv.amt;
       out.merch = md.amt; out.tv = tv.amt;
@@ -28549,7 +28625,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     main.appendChild(tile('👥', '선수단', '1군·2군·훈련', "openMarketSectionV108('squad')"));
     main.appendChild(tile('↔️', '트레이드', '선수 영입·맞교환', 'openTradeSheet()'));
     main.appendChild(tile('📝', '계약·코치', '연봉 협상·방출·코치진', "openMarketSectionV108('front')"));
-    main.appendChild(tile('🔭', '스카우트', '신인 드래프트 정보', 'openScoutV102()'));
+    if(state.mode === 'sim') main.appendChild(tile('🔭', '스카우트', '신인 드래프트 정보', 'openScoutV102()'));   /* 실황은 드래프트가 없다 */
     if(tools){
       tools.innerHTML = '';
       tools.appendChild(tile('🏢', '구단 현황', '구단주·1군·2군 현황', 'openClubStatusV104()'));
