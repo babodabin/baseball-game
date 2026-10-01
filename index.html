@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.1';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.2';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1506,7 +1506,7 @@ const EMPTY = ()=>({myTeam:null, mode:null, eco:null, money:0, bankrupt:false, y
 /* ───────────── 데이터 (2026시즌) ───────────── */
 const TEAMS = [
 {id:'LG', name:'LG 트윈스', real:'LG 트윈스', c:'#C30452',
- bat:[['홍창규','홍창기','RF','좌',82,62,70,74,90],['신민제','신민재','2B','좌',74,45,88,78,72],['어스틴','오스틴 딘','1B','우',78,85,60,70,70],['문보겸','문보경','3B','좌',80,76,62,74,76],['오지완','오지환','SS','좌',68,70,72,86,74],['박동언','박동원','C','우',66,80,40,78,64],['박해빈','박해민','CF','좌',72,48,92,88,70],['문성진','문성주','LF','좌',78,58,68,70,78],['김범섭','김범석','DH','우',70,74,40,60,62,'new']],
+ bat:[['홍창규','홍창기','RF','좌',82,62,70,74,90],['신민제','신민재','2B','좌',74,45,88,78,72],['어스틴','오스틴 딘','1B','우',78,85,60,70,70],['문보겸','문보경','3B','좌',80,76,62,74,76],['오지완','오지환','SS','좌',68,70,72,86,74],['박동언','박동원','C','우',66,80,40,78,64],['박해빈','박해민','CF','좌',72,48,92,88,70],['문성진','문성주','RF','좌',78,58,68,70,78],['김범섭','김범석','DH','우',70,74,40,60,62,'new']],
  pit:[['임찬귀','임찬규','선발','우',143,80,82,78],['치리노즈','치리노스','선발','우',150,76,82,78],['톨허트','톨허스트','선발','좌',146,74,76,74],['손주엽','손주영','선발','좌',146,72,76,74],['웰즈','라클란 웰스 (아시아쿼터)','선발','좌',145,78,74,72,'new'],['유영천','유영찬','마무리','우',150,74,78,60]]},
 
 {id:'HH', name:'한화 이글스', real:'한화 이글스', c:'#FC4E00',
@@ -1553,7 +1553,7 @@ const TEAMS = [
 const REAL_2026_SUPPLEMENTS = {
   LG:{
     bat:[
-      ['송찬의','송찬의','1B','우',72,76,58,66,64,'current'],
+      ['송찬의','송찬의','LF','우',72,76,58,66,64,'current'],
       ['구본혁','구본혁','SS','우',70,48,66,82,68,'current']
     ],
     pit:[
@@ -25855,7 +25855,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     '류현진':[143,84,92,82]
   };
   const rosterReplacements={
-    LG:{bat:{'문성주':['천성오','천성호','2B','좌',72,48,72,74,68,'transfer26']}},
+    /* v1.4.2 · 문성주는 LG 잔류(사용자 확인). 천성호는 교체가 아니라 추가 — 아래 rosterAdditions */
     KT:{bat:{'천성호':['배정태','배정대','CF','우',72,62,82,84,68,'transfer26']}},
     HH:{bat:{'플로리얼':['페라자','요나단 페라자','LF','양',78,86,70,70,82,'transfer26']}},
     KIA:{bat:{
@@ -25865,6 +25865,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     NC:{bat:{'오영수':['이우승','이우성','LF','우',82,72,48,64,72,'transfer26']}},
     DS:{bat:{'김재환':['김민석','김민석','LF','좌',78,64,80,76,72,'transfer26']}},
     SSG:{bat:{'에레디아':['김재환','김재환','LF','좌',68,82,45,55,70,'transfer26']}}
+  };
+  /* 교체 없이 더하는 이적 선수 — 이미 있으면 다시 넣지 않는다 */
+  const rosterAdditions={
+    LG:{bat:[['천성오','천성호','2B','좌',72,48,72,74,68,'transfer26']]}
   };
   function displayName(p){return String((p&&p[1])||'').replace(/\s*\([^)]*\)\s*$/,'').trim();}
   function applyRatings(rows,map,start){
@@ -25896,6 +25900,15 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
             seen.add(name);
           }
         }
+      });
+    }
+    if(replaceRoster!==false){
+      const add=rosterAdditions[team.id];
+      ['bat','pit'].forEach(function(kind){
+        ((add&&add[kind])||[]).forEach(function(row){
+          const name=displayName(row);
+          if(!(team[kind]||[]).some(function(p){return displayName(p)===name;}))team[kind].push(row.slice());
+        });
       });
     }
     applyRatings(team.bat,hitterRatings,4);
