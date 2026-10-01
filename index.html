@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.16';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.17';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -25913,7 +25913,6 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     ]},
     /* KIA 2026 라인업(사용자 제공) — 능력치는 추정치 */
     KIA:{bat:[
-      ['아데를린','아데를린','1B','우',70,80,46,60,62,'current'],
       ['박민','박민','3B','우',60,50,62,72,56,'current']
     ]},
     /* NC 2026 라인업(사용자 제공) — 천재환·박시원·김한별은 과거 목록 능력치, 나머지는 추정치. 30명 맞추려 한석현·서호철은 뺌 */
@@ -25932,7 +25931,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       ['김기연','김기연','C','우',64,62,44,76,60,'current'],
       ['이유찬','이유찬','2B','우',66,48,82,78,62,'current'],
       ['박지훈','박지훈','3B','우',64,58,62,70,58,'current'],
-      ['세베리노','세베리노','1B','양',70,78,46,60,64,'current'],
+      ['세베리노','유니오 세베리노','1B','양',70,78,46,60,64,'current'],
       ['오명진','오명진','2B','좌',64,50,66,70,60,'current']
     ]},
     /* SSG 2026 라인업(사용자 제공) — 에레디아는 원래 능력치로 복귀(김재환과 교체가 아니라 둘 다 SSG),
@@ -25952,17 +25951,17 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   };
   /* v1.4.2 · 엔트리에 없는 선수는 명단에서 뺀다 — 1군 30명을 넘지 않게(사용자: 선수 수에 맞춰 넣거나 빼기) */
   const rosterRemovals={
-    LG:{bat:['김범석','김민수']},   /* v1.4.15: 이재원은 다시 LG 주전(우익수), 세 번째 포수 김민수를 대신 뺌 */
+    LG:{bat:['김범석','김민수'],pit:['케이시 켈리','디트릭 엔스']},   /* v1.4.15: 이재원은 다시 LG 주전(우익수), 세 번째 포수 김민수를 대신 뺌 */
     SS:{bat:['박병호','이성규','김재상','박세혁','공민규']},   /* v1.4.16: 사용자가 준 네 라인업의 16명만 — 김헌곤은 복귀 */
-    KT:{bat:['오윤석','조용호','신본기','황재균','김민혁(KT)']},   /* 김건휘·문상철은 남김 — 사용자. 김민혁(KT)는 과거 목록의 같은 선수 */
+    KT:{bat:['오윤석','조용호','신본기','황재균','김민혁(KT)','멜 로하스 주니어'],pit:['윌리엄 쿠에바스','웨스 벤자민']},   /* 김건휘·문상철은 남김 — 사용자. 김민혁(KT)는 과거 목록의 같은 선수 */
     /* 키움은 2026 라인업 16명으로 타자를 통째로 바꿈 — 사용자 */
-    KW:{bat:['송성문','이주형','트렌튼 브룩스','임지열','박수종','김태진','어준서','여동욱','박한결','김혜성','로니 도슨']},
-    NC:{bat:['맷 데이비슨','손아섭','박세혁','도태훈','김성욱','오장한','서호철'],pit:['이용찬']},   /* 이용찬은 두산 — 사용자 */   /* 데이비슨은 키움으로 이적. 박세혁은 삼성과 중복이던 것 */
+    KW:{bat:['송성문','이주형','트렌튼 브룩스','임지열','박수종','김태진','어준서','여동욱','박한결','김혜성','로니 도슨'],pit:['에릭 요키시']},   /* 외국인 타자 2명(데이비슨·히우라)이라 외국인 투수는 1명 */
+    NC:{bat:['맷 데이비슨','손아섭','박세혁','도태훈','김성욱','오장한','서호철'],pit:['이용찬','에릭 페디','카일 하트','다니엘 카스타노']},   /* 이용찬은 두산 — 사용자 */   /* 데이비슨은 키움으로 이적. 박세혁은 삼성과 중복이던 것 */
     HH:{bat:['이진영','장진혁','김인환','하주석']},   /* 하주석은 KIA 이적인데 한화에도 남아 있었음 */
-    KIA:{bat:['소크라테스 브리토','윤도현']},   /* 브리토는 카스트로로 바뀌어야 했는데 남아 있던 중복 */
-    DS:{bat:['케이브','양석환','박계범','김민혁','김민혁(두산)','김주오','신우열']},
-    SSG:{bat:['추신수','김성현','신범수','이원준']},   /* 추신수·김성현은 2026 SSG 에 없음 — 사용자 */
-    LT:{bat:['손호영','정보근','정훈']}
+    KIA:{bat:['소크라테스 브리토','윤도현','아데를린']},   /* 아데를린은 2026 KIA 에 없음 — 사용자 */   /* 브리토는 카스트로로 바뀌어야 했는데 남아 있던 중복 */
+    DS:{bat:['케이브','양석환','박계범','김민혁','김민혁(두산)','김주오','신우열','다즈 카메론'],pit:['라울 알칸타라','브랜든 와델','조던 발라조빅']},   /* 외국인 타자는 세베리노 — 사용자 */
+    SSG:{bat:['추신수','김성현','신범수','이원준'],pit:['로에니스 엘리아스']},   /* 추신수·김성현은 2026 SSG 에 없음 — 사용자 */
+    LT:{bat:['손호영','정보근','정훈'],pit:['찰리 반즈','애런 윌커슨']}
   };
   /* 포지션·타석 고치기 — 사용자 제공 라인업 기준 */
   const rosterFixes={
@@ -26053,6 +26052,20 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       });
     });
   }catch(_){}
+  /* 외국인은 구단마다 3명(투수 2·타자 1 또는 투수 1·타자 2) + 아시아쿼터 1명 — 2026 명단으로만 정한다.
+     과거 선수 목록에서 빈자리를 채울 때 예전 외국인이 들어와 한도를 넘었으므로, 그 목록에서 외국인을 지운다.
+     과거 목록 이름은 띄어쓰기(외국인 이름)나 "쿼터"로 가린다. 괄호 꼬리표 "김민혁(KT)" 는 국내 선수. */
+  try{
+    Object.keys(HISTORICAL_ROSTER_V300).forEach(function(id){
+      const pool=HISTORICAL_ROSTER_V300[id];
+      ['bat','pit'].forEach(function(kind){
+        if(Array.isArray(pool[kind]))pool[kind]=pool[kind].filter(function(x){
+          const raw=String(x[0]||''),plain=raw.replace(/\s*\(.*\)\s*$/,'');
+          return !(/\s|쿼터/.test(plain)||/쿼터/.test(raw));
+        });
+      });
+    });
+  }catch(_){}
   /* 뺀 선수는 2026 보충·신인 명단(REAL_2026_SUPPLEMENTS)에서도 지운다 — 새 게임 때 따로 덧붙여져
      지운 선수가 되살아났다(KT 김건휘, 키움 박한결) */
   try{
@@ -26076,6 +26089,19 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     });
   }catch(_){}
   (window.TEAMS||TEAMS||[]).forEach(function(team){applyTeam(team,true);});
+  /* 과거 선수 목록으로 빈자리를 채울 때, 이미 어느 구단 2026 명단에 있는 선수는 건너뛴다
+     — KT 빈자리에 SSG 김민이 들어가 두 팀에 동시에 있었다 */
+  try{
+    const taken=new Set();
+    (window.TEAMS||TEAMS||[]).forEach(function(team){['bat','pit'].forEach(function(kind){(team[kind]||[]).forEach(function(p){taken.add(kind+':'+displayName(p));});});});
+    Object.keys(REAL_2026_SUPPLEMENTS).forEach(function(id){['bat','pit'].forEach(function(kind){(REAL_2026_SUPPLEMENTS[id][kind]||[]).forEach(function(p){taken.add(kind+':'+displayName(p));});});});
+    Object.keys(HISTORICAL_ROSTER_V300).forEach(function(id){
+      const pool=HISTORICAL_ROSTER_V300[id];
+      ['bat','pit'].forEach(function(kind){
+        if(Array.isArray(pool[kind]))pool[kind]=pool[kind].filter(function(x){return !taken.has(kind+':'+String(x[0]).replace(/\s*\(.*\)\s*$/,''));});
+      });
+    });
+  }catch(_){}
   /* 기존 저장은 선수 식별자를 보존한다. 실황 저장은 명단 교체 없이 능력치만 최신 기준으로 보정한다. */
   if(typeof state!=='undefined'&&state&&state.players&&state.mode==='live'){
     Object.values(state.players).forEach(function(team){applyTeam(team,false);});
@@ -28538,6 +28564,8 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   }
 
   /* ── 굿즈 · 중계권 · 해외 진출 ─────────────────────────── */
+  /* 이름이 3글자 이하라 실명 규칙으로는 못 가리는 외국인 */
+  var FOREIGN_SHORT = {'디아즈':1, '블레인':1, '히우라':1};
   function myPlayers(){
     var t = state.players && state.players[state.myTeam], out = [];
     if(!t) return out;
@@ -28550,7 +28578,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         /* 실황 2026 외국인은 표시(flag)가 없다 — 실명으로 가린다: 띄어쓰기·"아시아쿼터"·4글자 이상(치리노스 등) */
         if(!foreign){
           var real = String(p[1] || ''), plain = real.replace(/\s*\(.*\)\s*/g, '');
-          if(/\s|쿼터/.test(real) || plain.length >= 4) foreign = true;
+          if(/\s|쿼터/.test(real) || plain.length >= 4 || FOREIGN_SHORT[plain]) foreign = true;
         }
         out.push({kind:kind, i:i, p:p, ovr:ovr, age:+((t.age && t.age[kind] || [])[i]) || 0, foreign:foreign});
       });
@@ -29305,7 +29333,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     },
     DS:{
       /* 사용자가 준 세 라인업 중 두 번째 — 사용자 지정 */
-      lineup:[['정수빈','CF'],['안재석','3B'],['김민석','LF'],['양의지','C'],['세베리노','1B'],
+      lineup:[['정수빈','CF'],['안재석','3B'],['김민석','LF'],['양의지','C'],['유니오 세베리노','1B'],
               ['손아섭','DH'],['박찬호','SS'],['오명진','2B'],['조수행','RF']]
     },
     SSG:{
