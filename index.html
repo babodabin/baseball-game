@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.0';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.1';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -26826,10 +26826,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     for(var i=0;i<str.length;i++){ h = (h ^ str.charCodeAt(i)) >>> 0; h = Math.imul(h, 16777619) >>> 0; }
     return h >>> 0;
   }
+  /* v1.3.1 · 우리 선수의 FA 등록 경기는 state.faGames(faRemaining)에 쌓인다. aiFaRemaining 은
+     AI 선수만 세므로 우리 선수는 늘 '168경기 남음'이 되어, v1.2.1 부터 우리 FA 가 한 명도 나오지 않았다. */
   function faLeft(kind, pl){
-    try{
-      if(typeof aiFaRemaining === 'function') return aiFaRemaining(state.myTeam, kind, pl);
-    }catch(_){ }
     try{ return faRemaining(kind, pl); }catch(_){ return 1; }
   }
   function addMyTeamFa(){
@@ -27490,6 +27489,21 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     try{ var b = Number(window.aiFinanceBudgetV3413(tid)); if(Number.isFinite(b) && b > 0) return b; }catch(_){ }
     return 100;
   }
+  /* v1.3.1 · FA 계약금은 4년에 나눠 낸다(실제 KBO 처럼). 계약하는 해에 1/4, 다음 세 시즌의 결산 때 1/4씩.
+     한 번에 70~85억을 내면 매년 스타 한 명은커녕 2~3년에 한 명이었다. 대신 쌓일수록 해마다 나갈 돈이 는다. */
+  var SPLIT = 4;
+  function installs(){ if(!Array.isArray(state.faInstallV131)) state.faInstallV131 = []; return state.faInstallV131; }
+  function upfront(price){ return R1(price / SPLIT); }
+  function addInstall(fa, price){
+    var per = upfront(price);
+    installs().push({name: playerDisplayName(fa.data), kind: fa.kind, alias: fa.data[0], total: R1(price), per: per, left: SPLIT - 1, year: state.year, paidYear: state.year});
+    return per;
+  }
+  /* 앞으로 한 시즌에 나갈 분할금 */
+  function yearlyDue(){ return R1(installs().reduce(function(a, x){ return a + (x.left > 0 ? x.per : 0); }, 0)); }
+  window.faInstallDueV131 = yearlyDue;
+  function onRoster(kind, alias){ try{ return (getTeam(state.myTeam)[kind] || []).some(function(p){ return p && p[0] === alias; }); }catch(_){ return true; } }
+
   function myBidTotal(exceptKey){
     var s = faState(), sum = 0;
     Object.keys(s.bids || {}).forEach(function(k){ if(k !== exceptKey) sum += Number(s.bids[k]) || 0; });
@@ -27506,8 +27520,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       if(amount < base){ showAlert('시작가 ' + base.toFixed(1) + '억 이상으로 적어 주세요.'); return; }
       if(eco()){
         var other = myBidTotal(k);
-        if(other + amount > money()){
-          showAlert('잔고가 부족합니다.' + NL + '잔고 ' + fmtMoney() + ' · 다른 선수에 적어 둔 금액 ' + other.toFixed(1) + '억');
+        if(upfront(other + amount) > money()){
+          showAlert('잔고가 부족합니다.' + NL + '계약금은 4년에 나눠 내지만, 올해 낼 1/4(' + upfront(other + amount).toFixed(1) + '억)이 잔고 ' + fmtMoney() + '보다 많습니다.'
+            + NL + '다른 선수에 적어 둔 금액 ' + other.toFixed(1) + '억');
           return;
         }
       }
@@ -27520,13 +27535,41 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   function signMine(fa, price){
     var m = mkt(), idx = m.fa.indexOf(fa);
     if(idx < 0) return false;
-    if(eco() && money() < price) return false;
+    if(eco() && money() < upfront(price)) return false;
+    if(fa.from === state.myTeam) return keepMine(fa, price);
     var base = faCost(Number(fa.ovr) || 60), before = m.fa.length;
+    /* signFA 는 시작가를 한 번에 뗀다. 잠깐 채워 두었다가, 실제로는 올해 몫(1/4)만 남긴다 */
+    if(eco()) state.money = money() + base;
     quiet(function(){ window.signFA(idx); });
-    if(m.fa.length >= before) return false;
-    if(eco()){ var extra = R1(price - base); if(extra > 0) state.money = R1(money() - extra); }
+    if(m.fa.length >= before){ if(eco()) state.money = R1(money() - base); return false; }
+    if(eco()) state.money = R1(money() - addInstall(fa, price));
+    resetMine(fa.kind, fa.data[0]);
     return true;
   }
+  /* v1.3.1 · FA 계약을 하면 FA 등록 경기를 되돌린다. 등록 경기는 선수 기준이라 이적해도 초기화되지 않아,
+     비싸게 데려온 스타가 이듬해 바로 다시 FA 가 되어 떠났다(5시즌 시험: 류현진·페디·딘 모두 1~2년 만에 이탈).
+     실제 KBO 처럼 계약 뒤 4시즌이 지나야 다시 FA — 시즌당 최대 24경기씩 쌓이므로 168-96=72 로 둔다. */
+  function resignGames(){ try{ return FA_TOTAL_GAMES - FA_SEASON_GAMES * 4; }catch(_){ return 72; } }
+  window.FA_RESIGN_GAMES_V131 = resignGames;
+  function resetMine(kind, name){
+    try{
+      var arr = getTeam(state.myTeam)[kind] || [], p = null;
+      for(var i = arr.length - 1; i >= 0; i--){ if(arr[i] && arr[i][0] === name){ p = arr[i]; break; } }
+      if(p){ if(!state.faGames) state.faGames = {}; state.faGames[squadKey(kind, p)] = resignGames(); }
+    }catch(_){ }
+  }
+
+  /* 우리 선수를 우리가 낙찰 — 이적이 아니므로 signFA(원소속팀 경기 가능 검사·이동)를 타지 않는다.
+     계약금만 내고 남기며, FA 등록 경기는 다시 0부터 센다. */
+  function keepMine(fa, price){
+    var m = mkt(), idx = m.fa.indexOf(fa); if(idx < 0) return false;
+    if(eco()) state.money = R1(money() - addInstall(fa, price));
+    m.fa.splice(idx, 1);
+    resetMine(fa.kind, fa.data[0]);
+    try{ pushClubNews('FA 계약', playerDisplayName(fa.data) + ' · ' + fa.data[2] + ' · 잔류 계약 ' + R1(price).toFixed(1) + '억'); }catch(_){ }
+    return true;
+  }
+
   /* AI 낙찰 — v0.34.36 moveToAi 와 같은 처리 */
   function moveToAi(fa, teamId, price){
     var m = mkt(), idx = m.fa.indexOf(fa); if(idx < 0) return false;
@@ -27538,8 +27581,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var si = sArr.findIndex(function(p){ return p && p[0] === fa.data[0]; });
     var player = si >= 0 ? sArr[si] : fa.data, age = (si >= 0 && sAge) ? sAge[si] : fa.age;
     if(si >= 0){ sArr.splice(si, 1); if(sAge) sAge.splice(si, 1); }
-    dArr.push(Array.isArray(player) ? player.slice() : player);
+    var moved = Array.isArray(player) ? player.slice() : player;
+    dArr.push(moved);
     if(dAge) dAge.push(age);
+    try{ if(!state.aiFaGames) state.aiFaGames = {}; state.aiFaGames[aiFaKey(teamId, fa.kind, moved)] = resignGames(); }catch(_){ }
     m.fa.splice(idx, 1);
     if(state.lineups){ state.lineups[teamId] = null; state.lineups[fa.from] = null; }
     if(state.rotOrder){ state.rotOrder[teamId] = null; state.rotOrder[fa.from] = null; }
@@ -27550,6 +27595,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     m.aiFaV3413.results = Array.isArray(m.aiFaV3413.results) ? m.aiFaV3413.results : [];
     m.aiFaV3413.results.push(rec);
     try{ var fin = window.aiFinanceStateV3413 && window.aiFinanceStateV3413(teamId); if(fin) fin.cash = Math.max(0, R1((Number(fin.cash) || 0) - price * .18)); }catch(_){ }
+    if(fa.from === state.myTeam){ try{ pushClubNews('FA 이적', playerDisplayName(fa.data) + ' · ' + fa.data[2] + ' → ' + nm(teamId) + ' ' + R1(price).toFixed(1) + '억'); }catch(_){ } }
     return true;
   }
 
@@ -27588,6 +27634,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       }
       results.push(rec);
     });
+    /* 아무도 데려가지 않은 우리 선수는 FA 명단에 남기지 않고 그대로 잔류 */
+    results.forEach(function(r){ if(!r.winner && r.from === state.myTeam) r.stayed = true; });
+    m.fa = (m.fa || []).filter(function(f){ return f.from !== state.myTeam; });
     s.closed = true; s.results = results; s.bids = {};
     if(!m.aiFaV3413) m.aiFaV3413 = {processed: false, clubs: {}, interest: {}, results: []};
     m.aiFaV3413.processed = true;
@@ -27620,7 +27669,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var list = (results || []).filter(function(r){ return !onlyMine || r.myBid > 0 || r.from === state.myTeam; });
     return list.map(function(r){
       var who = r.winner ? (r.winner === state.myTeam ? '<span class="win">우리 구단</span>' : '<b>' + esc(nm(r.winner)) + '</b>' + (r.winner === r.from ? ' 잔류' : ''))
-                         : '<span>유찰</span>';
+                         : (r.stayed ? '<span>유찰 · 우리 팀 잔류</span>' : '<span>유찰</span>');
       var tag = '';
       if(r.myBid > 0) tag = r.winner === state.myTeam ? ' <span class="win">영입 성공</span>'
         : ' <span class="lose">놓침' + (r.winner && r.myBid >= r.price ? ' · 금액은 우리가 높았지만 선수가 ' + (r.winner === r.from ? '원소속팀' : '상위권 구단') + '을 선택' : '') + '</span>';
@@ -27629,7 +27678,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         return '<span class="' + (o.mine ? 'me' : '') + '">' + esc(o.mine ? '우리' : nm(o.teamId)) + ' ' + o.amount.toFixed(1) + '억</span>';
       }).join(' · ');
       return '<div class="r"><b>' + esc(r.name) + '</b> ' + esc(r.pos) + ' · OVR ' + r.ovr + ' → ' + who
-           + (r.winner ? ' ' + r.price.toFixed(1) + '억' : '') + tag
+           + (r.winner ? ' ' + r.price.toFixed(1) + '억' + (r.winner === state.myTeam && eco() ? ' (4년 분할 · 해마다 ' + upfront(r.price).toFixed(1) + '억)' : '') : '') + tag
            + (r.mineFailed ? ' <span class="lose">(잔고·선수단 조건으로 계약 불가)</span>' : '')
            + (bids ? '<span class="bids">' + bids + '</span>' : '') + '</div>';
     }).join('');
@@ -27664,7 +27713,8 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       + '<div class="s">원하는 선수를 눌러 <b>금액을 적어 두세요.</b> 다른 구단의 금액은 보이지 않습니다. '
       + '<b>FA 마감</b>을 누르면 모든 구단의 금액이 한꺼번에 공개되고, 가장 좋은 조건을 낸 구단이 데려갑니다. '
       + '선수는 <b>원소속팀</b>과 <b>상위권 구단</b>을 조금 더 좋아해서, 그쪽 금액이 10% 가까이 낮아도 그쪽을 고를 수 있습니다.</div>'
-      + (eco() ? '<div class="m">적어 둔 선수 ' + n + '명 · 합계 ' + total.toFixed(1) + '억 · 잔고 ' + fmtMoney() + '</div>'
+      + (eco() ? '<div class="m">적어 둔 선수 ' + n + '명 · 합계 ' + total.toFixed(1) + '억 (4년 분할 · 올해 ' + upfront(total).toFixed(1) + '억) · 잔고 ' + fmtMoney() + '</div>'
+               + (yearlyDue() > 0 ? '<div class="m">이미 약속한 분할금 — 다음 시즌 결산 때 ' + yearlyDue().toFixed(1) + '억</div>' : '')
                : '<div class="m">자유 모드 — 우리 구단은 바로 영입하고, 남은 선수는 마감 때 AI 구단끼리 경쟁합니다.</div>')
       + '<button class="btn" onclick="faCloseV13()">🔨 FA 마감</button></div>';
   }
@@ -27761,7 +27811,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
           + '<div class="custom"><input id="fabInputV13" type="number" inputmode="decimal" step="0.5" min="' + base + '" value="' + (cur || base) + '">'
           + '<button class="btn" onclick="faBidSetV13(' + idx + ',document.getElementById(&quot;fabInputV13&quot;).value)">이 금액</button></div>'
           + (cur ? '<button class="btn ghost" onclick="faBidSetV13(' + idx + ',0)">입찰 취소</button>' : '')
-          + '<div class="hint">다른 구단의 금액은 FA 마감 때 공개됩니다.' + (fa.from !== state.myTeam ? ' 원소속팀 ' + esc(nm(fa.from)) + '은(는) 조금 낮은 금액으로도 잔류시킬 수 있습니다.' : ' 우리 선수라 같은 금액이면 우리가 유리합니다.') + ' 잔고 ' + fmtMoney() + ' · 다른 선수에 적어 둔 금액 ' + myBidTotal(k).toFixed(1) + '억</div>'
+          + '<div class="hint">계약금은 4년에 나눠 냅니다 — 올해 1/4, 이후 세 시즌 결산 때 1/4씩. 다른 구단의 금액은 FA 마감 때 공개됩니다.' + (fa.from !== state.myTeam ? ' 원소속팀 ' + esc(nm(fa.from)) + '은(는) 조금 낮은 금액으로도 잔류시킬 수 있습니다.' : ' 우리 선수라 같은 금액이면 우리가 유리합니다.') + ' 잔고 ' + fmtMoney() + ' · 다른 선수에 적어 둔 금액 ' + myBidTotal(k).toFixed(1) + '억</div>'
           + '</div>';
         var cancel = Array.prototype.filter.call(sheet.querySelectorAll('.btn.ghost'), function(b){ return /취소/.test(b.textContent || '') && !b.closest('.fab-sheet-v13'); })[0];
         if(cancel) cancel.insertAdjacentHTML('beforebegin', html); else sheet.insertAdjacentHTML('beforeend', html);
@@ -27777,6 +27827,48 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       if(sim() && isOff() && faOpen()){ try{ closeSheet(); }catch(_){ } return window.openFaSheet(idx); }
       return baseBid.apply(this, arguments);
     };
+  }
+
+  /* 시즌 결산(연봉 정산) 때 FA 분할금도 낸다 — 계약한 그해 오프시즌에는 이미 1/4 을 냈으므로 다음 결산부터 */
+  var baseSalary = window.settleSeasonSalary;
+  if(typeof baseSalary === 'function'){
+    window.settleSeasonSalary = function(){
+      var r = baseSalary.apply(this, arguments);
+      try{
+        if(ecoOn() && !state.bankrupt){
+          var paid = 0, names = [];
+          installs().forEach(function(x){
+            if(!(x.left > 0) || x.paidYear === state.year) return;
+            /* 트레이드·방출·FA 로 우리 팀을 떠난 선수의 남은 분할금은 내지 않는다 */
+            if(x.alias && !onRoster(x.kind, x.alias)){ x.left = 0; return; }
+            state.money -= x.per; paid += x.per; x.left--; x.paidYear = state.year; names.push(x.name);
+          });
+          state.faInstallV131 = installs().filter(function(x){ return x.left > 0; });
+          if(paid > 0){
+            state.money = R1(state.money);
+            if(state.season) state.season.faInstallPaidV131 = {total: R1(paid), names: names};
+            try{ updateDebtStatus(false); }catch(_){ }
+          }
+        }
+      }catch(e){ console.error(V + ' FA 분할금:', e); }
+      return r;
+    };
+    try{ settleSeasonSalary = window.settleSeasonSalary; }catch(_){ }
+  }
+  var baseDoneV13 = window.renderSeasonDone;
+  if(typeof baseDoneV13 === 'function'){
+    window.renderSeasonDone = function(){
+      var r = baseDoneV13.apply(this, arguments);
+      try{
+        var box = document.getElementById('seasonDoneText'), p = state.season && state.season.faInstallPaidV131;
+        if(box && p && p.total > 0 && !box.dataset.v131i){
+          box.dataset.v131i = '1';
+          box.innerHTML += '<br>📑 FA 계약금 분할 <b>-' + p.total.toFixed(1) + '억</b> (' + p.names.map(esc).join(', ') + ')';
+        }
+      }catch(_){ }
+      return r;
+    };
+    try{ renderSeasonDone = window.renderSeasonDone; }catch(_){ }
   }
 
   /* 새 시즌 조건: AI 버튼 세 개 대신 FA 마감 하나 */
@@ -28022,6 +28114,15 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 .pick-v14 button span{display:block;font-size:12px;color:var(--dim)}
 .note-v14{margin-top:8px;font-size:11px;line-height:1.6;color:var(--dim)}
 .v14-on .lb-cat[data-mgrstaff-v14],.v14-on [data-mgrstaff-v14-hide]{display:none!important}
+.sum-v14{margin:14px auto 0;max-width:420px;text-align:left;font-size:12.5px}
+.sum-v14 .g{margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.sum-v14 .h{display:flex;justify-content:space-between;font-weight:900;margin-bottom:4px}
+.sum-v14 .in .h b{color:#4CC38A}.sum-v14 .out .h b{color:#E5675B}
+.sum-v14 .r{display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:var(--dim)}
+.sum-v14 .r b{color:var(--chalk,#DFE9E3);font-weight:700;white-space:nowrap}
+.sum-v14 .bal{display:flex;justify-content:space-between;margin-top:8px;padding:10px 12px;border-radius:12px;background:rgba(244,196,94,.12);font-weight:900}
+.sum-v14 .bal b{color:var(--amber,#F4C45E)}
+.todo-v14{margin:10px auto 0;max-width:420px;text-align:left;font-size:12px;line-height:1.7;padding:10px 12px;border:1px solid rgba(244,196,94,.4);border-radius:12px}
 </style>
 <script id="club-economy-v14">
 (function(){
@@ -28433,8 +28534,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   /* 시즌 결산: 스폰서 성과금 · 감독 연봉 · 비상사태 · 다음 시즌 모기업 지원금 */
   function settle(){
     var s = state.season; if(!s || s.econV14) return s && s.econV14;
-    var out = {lines:[]};
+    var out = {lines:[], items:[], alerts:[]};
     s.econV14 = out;
+    /* items: 결산표에 들어갈 돈(label, amt) · alerts: 할 일 알림 */
+    function item(label, amt){ out.items.push({label:label, amt:R1(amt)}); }
     var my = state.myTeam, rec = (s.rec && s.rec[my]) || {w:0};
     var m = ensureMgr();
     try{ m.lastRankV14 = (typeof rankOrder === 'function') ? rankOrder().indexOf(my) + 1 : 0; }catch(_){ }
@@ -28442,26 +28545,27 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       var sp = state.sponsorV14;
       if(sp && sp.year === clubYear()){
         var bonus = sp.type === 'win' ? R1((+rec.w || 0) * sp.perWin) : sp.type === 'pop' ? R1((+state.popularity || 0) * sp.perPop) : 0;
-        if(bonus > 0){ state.money += bonus; out.lines.push('🤝 스폰서 ' + esc(sp.brand) + ' 성과금 ' + money(bonus)); }
+        if(bonus > 0){ state.money += bonus; out.lines.push('🤝 스폰서 ' + esc(sp.brand) + ' 성과금 ' + money(bonus)); item('스폰서 성과금', bonus); }
       }
-      if(m.years > 0){ state.money -= m.salary; out.lines.push('🎽 감독 연봉 ' + money(-m.salary)); }
+      if(m.years > 0){ state.money -= m.salary; out.lines.push('🎽 감독 연봉 ' + money(-m.salary)); item('감독 연봉', -m.salary); }
       if(state.mode === 'sim'){
         var sc = scoutSalary(); state.money -= sc;
-        out.lines.push('🔭 스카우트 연봉 ' + money(-sc) + ' (' + scoutName() + ')');
+        out.lines.push('🔭 스카우트 연봉 ' + money(-sc) + ' (' + scoutName() + ')'); item('스카우트 연봉', -sc);
       }
       var md = merchIncome(), tv = tvIncome();
       state.money += md.amt + tv.amt;
       out.merch = md.amt; out.tv = tv.amt;
       out.lines.push('👕 굿즈 판매 ' + money(md.amt) + ' (인기 ' + Math.round(+state.popularity || 0) + ' · 스타 ' + md.stars + '명)');
       out.lines.push('📺 중계권 ' + money(tv.amt) + ' (' + tv.rank + '위)');
+      item('굿즈 판매', md.amt); item('중계권', tv.amt);
     }
     try{
       var po = rollPosting();
-      if(po){ state.postingV14 = po; out.lines.push('✈️ ' + esc(po.name) + '(OVR ' + po.ovr + ') ' + po.dest + ' 진출 요청'
+      if(po){ state.postingV14 = po; out.alerts.push('✈️ ' + esc(po.name) + ' 해외 진출 요청' + (eco() ? ' (이적료 ' + po.fee.toFixed(1) + '억)' : '') + ' — 구단 경영에서 결정'); out.lines.push('✈️ ' + esc(po.name) + '(OVR ' + po.ovr + ') ' + po.dest + ' 진출 요청'
         + (eco() ? ' · 이적료 ' + po.fee.toFixed(1) + '억' : '') + ' — 운영 → 구단 경영에서 결정'); }
     }catch(e){ console.error(V + ' 해외 진출 제안:', e); }
     if(m.years > 0) m.years--;
-    if(!(m.years > 0)) out.lines.push('📄 ' + esc(m.name) + ' 감독 계약 만료 — 오프시즌에 재계약하거나 새 감독을 고르세요');
+    if(!(m.years > 0)){ out.lines.push('📄 ' + esc(m.name) + ' 감독 계약 만료 — 오프시즌에 재계약하거나 새 감독을 고르세요'); out.alerts.push('📄 ' + esc(m.name) + ' 감독 계약 만료 — 구단 경영에서 재계약'); }
     if(eco()){
       var P = ensureParent(), year = clubYear(), next = year + 1, r = rule();
       /* 모기업 경영 상태 — 보장 기간이 끝나 갈 때부터 흔들린다 */
@@ -28475,9 +28579,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       var ev = null;
       if(Math.random() < ch){
         ev = pick(['slump', 'freeze', 'repair']);
-        if(ev === 'slump'){ P.health = Math.max(5, P.health - 20); out.lines.push('🚨 모기업 실적 악화 — 경영 상태 ' + healthWord(P.health) + '(' + Math.round(P.health) + '), 지원금이 줄어듭니다'); }
-        if(ev === 'freeze'){ P.cut = 1; out.lines.push('🚨 모기업 구조조정 — 다음 시즌 지원금이 끊겼습니다'); }
-        if(ev === 'repair'){ var c = R1(rnd(8, 15)); state.money -= c; out.lines.push('🚨 구장 긴급 보수 ' + money(-c)); }
+        if(ev === 'slump'){ P.health = Math.max(5, P.health - 20); out.lines.push('🚨 모기업 실적 악화 — 경영 상태 ' + healthWord(P.health) + '(' + Math.round(P.health) + '), 지원금이 줄어듭니다'); out.alerts.push(out.lines[out.lines.length - 1]); }
+        if(ev === 'freeze'){ P.cut = 1; out.lines.push('🚨 모기업 구조조정 — 다음 시즌 지원금이 끊겼습니다'); out.alerts.push(out.lines[out.lines.length - 1]); }
+        if(ev === 'repair'){ var c = R1(rnd(8, 15)); state.money -= c; out.lines.push('🚨 구장 긴급 보수 ' + money(-c)); item('🚨 구장 긴급 보수', -c); }
         P.log.unshift({year:year, ev:ev}); P.log = P.log.slice(0, 20);
         news('비상사태', out.lines[out.lines.length - 1].replace('🚨 ', ''));
       }
@@ -28486,6 +28590,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       if(ev === 'freeze') amt = 0;
       state.money += amt;
       out.support = amt;
+      item('모기업 지원(다음 시즌분)', amt);
       out.lines.push('🏢 모기업 지원금(' + next + '년차) ' + money(amt)
         + (next <= r.guaranteeYears ? '' : ' · 모기업 ' + healthWord(P.health)));
       debt();
@@ -28493,6 +28598,35 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     try{ save(); }catch(_){ }
     return out;
   }
+  /* ── 시즌 결산 화면: 돈 이야기를 표 하나로 ──────────────────
+     원래는 기본 정산 줄(순위 분배금·연봉) · FA 분할금 줄 · 시상 상금 줄 · 구단 경영 줄이 따로따로 붙었다.
+     순위·포스트시즌 기록은 그대로 두고, 그 아래를 "들어온 돈 / 나간 돈 / 잔고 / 할 일" 로 바꿔 그린다. */
+  function tidySeasonDone(box){
+    var s = state.season || {}, out = s.econV14 || {items:[], alerts:[]};
+    var html = box.innerHTML, cut = html.indexOf('💰 순위 분배금');
+    if(cut < 0) cut = html.indexOf('<br>📑'); if(cut < 0) cut = html.indexOf('<br>🏅');
+    if(cut >= 0) html = html.slice(0, cut).replace(/(<br>\s*)+$/, '');
+    var rows = '';
+    if(eco()){
+      var inc = [], exp = [];
+      var b = s.bonus || {};
+      if(+b.rankMoney) inc.push(['순위 분배금', +b.rankMoney]);
+      if(+b.psMoney) inc.push(['포스트시즌·우승', +b.psMoney]);
+      var aw = s.awardsV116; if(aw && +aw.total) inc.push(['시상 상금 (' + aw.list.map(function(x){ return x.label; }).join('·') + ')', +aw.total]);
+      exp.push(['선수 연봉', -(+s.salaryPaid || 0)]);
+      var fi = s.faInstallPaidV131; if(fi && +fi.total) exp.push(['FA 계약금 분할 (' + fi.names.length + '명)', -fi.total]);
+      (out.items || []).forEach(function(x){ (x.amt >= 0 ? inc : exp).push([x.label, x.amt]); });
+      function sum(a){ return a.reduce(function(t, x){ return t + x[1]; }, 0); }
+      function list(a){ return a.map(function(x){ return '<div class="r"><span>' + esc(x[0]) + '</span><b>' + money(x[1]) + '</b></div>'; }).join(''); }
+      rows = '<div class="sum-v14"><div class="g in"><div class="h">들어온 돈 <b>' + money(sum(inc)) + '</b></div>' + list(inc) + '</div>'
+        + '<div class="g out"><div class="h">나간 돈 <b>' + money(sum(exp)) + '</b></div>' + list(exp) + '</div>'
+        + '<div class="bal">잔고 <b>' + R1(+state.money || 0).toFixed(1) + '억</b>' + (state.bankrupt ? ' · 파산' : '') + '</div></div>';
+    }
+    var al = (out.alerts || []);
+    if(al.length) rows += '<div class="todo-v14">' + al.map(function(x){ return '<div>' + x + '</div>'; }).join('') + '</div>';
+    box.innerHTML = html + '<div data-econ-v14="1">' + rows + '</div>';
+  }
+
   /* 지원금·성과금은 연봉 정산 "전에" 넣는다 — 하드 모드는 정산 순간 마이너스면 파산이라서 */
   var baseSalary = window.settleSeasonSalary;
   if(typeof baseSalary === 'function'){
@@ -28507,12 +28641,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     window.renderSeasonDone = function(){
       var r = baseDone.apply(this, arguments);
       try{
-        var out = settle();
+        settle();
         var box = document.getElementById('seasonDoneText');
-        if(box && out && out.lines.length && !box.querySelector('[data-econ-v14]')){
-          box.insertAdjacentHTML('beforeend', '<div data-econ-v14="1" style="margin-top:10px">' + out.lines.join('<br>')
-            + (eco() ? '<br>→ 잔고 <b>' + R1(+state.money || 0).toFixed(1) + '억</b>' : '') + '</div>');
-        }
+        if(box && !box.querySelector('[data-econ-v14]')) tidySeasonDone(box);
         refreshHeader();
       }catch(e){ console.error(V + ' 시즌 결산:', e); }
       return r;
