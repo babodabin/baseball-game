@@ -30471,12 +30471,13 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
   if(String(location.search||'').indexOf('nov151')>=0) return;
   /* 같은 이름의 다른 선수는 화면 이름 뒤에 출생 연도(두 자리)를 붙인다(사용자). 타자/투수로 갈린다.
      화면 이름(playerDisplayName)만 바꾼다 — 계약·훈련·피로 키는 고유 번호나 가명(p[0])이라 영향 없음.
-     사진은 화면 이름으로 찾으므로 "이름(연도)" 키도 사진 목록에 넣는다. 박지훈(두산 3루·KT 투수)은 연도 확인 전이라 비워 둠 */
+     사진은 화면 이름으로 찾으므로 "이름(연도)" 키도 사진 목록에 넣는다. */
   var YEAR = {
     '김태훈':{bat:'96', pit:'92'},   /* 삼성 외야수 · 삼성 불펜 */
     '최원준':{bat:'97', pit:'94'},   /* KT 외야수 · 두산 투수(데이터에는 "최원준(투수)") */
     '이병헌':{bat:'99', pit:'03'},   /* 포수(과거 목록) · 두산 투수 */
-    '김동주':{bat:'76', pit:'02'}    /* 두산 레전드 3루수 · 두산 투수 */
+    '김동주':{bat:'76', pit:'02'},   /* 두산 레전드 3루수 · 두산 투수 */
+    '박지훈':{bat:'00', pit:'07'}    /* 두산 3루수 · KT 투수(사용자) */
   };
   var PIT_ROLES = {'선발':1, '불펜':1, '마무리':1};
   function kindOf(p){ return PIT_ROLES[String(p && p[2])] ? 'pit' : 'bat'; }
@@ -30494,6 +30495,9 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
     var bank = window.PLAYER_PORTRAITS_V101 = window.PLAYER_PORTRAITS_V101 || {};
     /* 최원준 사진(KT 모자)은 타자 최원준 것 */
     if(bank['최원준']){ bank['최원준(97)'] = bank['최원준']; bank['name:최원준(97)'] = bank['최원준']; }
+    /* 박지훈 두 명은 사진을 연도 붙은 이름으로만 건다 — 맨 이름에 걸면 서로 섞인다 */
+    bank['박지훈(00)'] = bank['name:박지훈(00)'] = 'assets/players/박지훈-00.webp';
+    bank['박지훈(07)'] = bank['name:박지훈(07)'] = 'assets/players/박지훈-07.webp';
   }catch(_){ }
 })();
 </script>
