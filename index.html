@@ -2696,7 +2696,7 @@ function openEcoSheet(teamId, mode){
       <button class="primary" onclick="startWithMode('${teamId}','${mode}','normal')">💰 경영 일반
         <small>시작 자금 100억 · 관중수입/운영비/연봉 · 잔고 마이너스 시 팀 보정 감소</small></button>
       <button onclick="startWithMode('${teamId}','${mode}','hard')">🔥 경영 하드
-        <small>적자 3경기 유예 · 잔고 -20억 이하이면 즉시 파산</small></button>
+        <small>적자로 끝난 시즌이 3번 이어지면 파산</small></button>
       <button onclick="startWithMode('${teamId}','${mode}','free')">🕊 자유 모드
         <small>자금 개념 없이 순수 선수단 운영만</small></button>
       <button onclick="openModeSheet(getTeam('${teamId}') && TEAMS.find(x=>x.id==='${teamId}'))">← 뒤로</button>
@@ -3967,18 +3967,12 @@ function teamSalary(){
   t.pit.forEach(p=>{ const c=state.contracts?.[longKey('pit',p)]; s+=c?.salary||salaryOf(p,false); });
   return s;
 }
-function updateDebtStatus(countGame=false){
-  if(state.eco!=='hard' || state.bankrupt) return;
-  if(state.money >= 0){ state.debtGames = 0; return; }
-  if(state.money <= -20){ state.bankrupt = true; return; }
-  if(countGame) state.debtGames = (state.debtGames||0) + 1;
-  else if(!state.debtGames) state.debtGames = 1;
-  if((state.debtGames||0) >= 3) state.bankrupt = true;
-}
+/* v1.5.1 · 하드 모드 파산은 "적자로 끝난 시즌이 3번 이어지면"(사용자). 예전엔 적자 3경기 · -20억 즉시 파산.
+   판정은 시즌 결산 때 한 번(balance-v151 의 settleSeasonSalary 감쌈). 여기서는 아무것도 세지 않는다. */
+function updateDebtStatus(countGame=false){ state.debtGames = 0; }
 function debtStatusText(){
   if(state.eco!=='hard' || state.money>=0 || state.bankrupt) return '';
-  const left = Math.max(0, 3-(state.debtGames||0));
-  return ` · ⚠️ 적자 유예 ${left}경기`;
+  return ` · ⚠️ 적자 ${(state.debtSeasonsV151||0)}/3시즌`;
 }
 function ensureFanState(){
   if(!Number.isFinite(state.popularity)) state.popularity = 50;
@@ -4384,9 +4378,9 @@ function renderFront(){
   if(ecoOn()){
     ensureFanState();
     info.innerHTML = `잔고 <b>${fmtMoney()}</b> · 연간 총연봉 <b id="frontSalaryTotal">${salTotal.toFixed(1)}억</b><br>시설 평균 <b>Lv.${(Object.values((ensureFacilities(),state.facilities)).reduce((a,b)=>a+b,0)/4).toFixed(1)}</b> · 구단 인기 <b>${state.popularity.toFixed(1)}</b> · 예상 홈 관중 <b>${estimateAttendance().toLocaleString()}명</b>` +
-      (state.eco==='hard'?' · 하드(적자 3경기 유예 · 전력·AI 강화)':state.eco==='normal'?' · 일반':'') +
+      (state.eco==='hard'?' · 하드(적자 3시즌 유예 · 전력·AI 강화)':state.eco==='normal'?' · 일반':'') +
       (state.money<0 && state.eco==='normal'?'<br>⚠️ 잔고 마이너스 — 내 팀 원래팀 보정 감소 중':'') +
-      (state.eco==='hard' && state.money<0 && !state.bankrupt?`<br>⚠️ 적자 유예 중 — ${Math.max(0,3-(state.debtGames||0))}경기 안에 흑자 전환 필요 · -20억 이하 즉시 파산`:'');
+      (state.eco==='hard' && state.money<0 && !state.bankrupt?`<br>⚠️ 적자 ${(state.debtSeasonsV151||0)}/3시즌 — 이번 시즌을 흑자로 마쳐야 합니다 (적자로 끝난 시즌이 3번 이어지면 파산)`:'');
   }else{
     info.innerHTML = `자유 모드 · 자금 시스템 꺼짐 · 연간 총연봉(참고) <span id="frontSalaryTotal">${salTotal.toFixed(1)}억</span><br><span class="dim">경기 난이도·AI 판단은 일반과 동일합니다</span>`;
   }
@@ -8906,7 +8900,7 @@ openEcoSheet=function(teamId,mode){
   const r=_openEcoSheetV287(teamId,mode),sheet=document.getElementById('sheet');
   if(sheet){sheet.innerHTML=sheet.innerHTML
     .replace('시작 자금 100억 · 관중수입/운영비/연봉 · 잔고 마이너스 시 팀 보정 감소','시작 자금 100억 · 표준 수입/운영비 · 성적과 투자 선택의 균형')
-    .replace('적자 3경기 유예 · 잔고 -20억 이하이면 즉시 파산','시작 자금 85억 · 경기 능력 소폭 불리 · 수입 감소/운영비 증가 · 적자 3경기 유예');}
+    .replace('적자로 끝난 시즌이 3번 이어지면 파산','시작 자금 85억 · 경기 능력 소폭 불리 · 수입 감소/운영비 증가 · 적자 3시즌 유예');}
   return r;
 };
 
@@ -17765,7 +17759,7 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
       <div class="hint" style="margin-top:14px">경영 난이도</div>
       <div class="exp-mode-v39">
         ${[['normal','일반','잔고가 마이너스면 보정이 줄어듭니다'],
-           ['hard','하드','마이너스가 되면 즉시 파산합니다'],
+           ['hard','하드','적자로 끝난 시즌이 3번 이어지면 파산합니다'],
            ['free','자유','자금 관리 없이 경기만 합니다']]
           .map(([k,t,s])=>`<button class="${(cfg.eco||'normal')===k?'on':''}" onclick="expSetEcoV39('${k}')"><b>${t}</b><span>${s}</span></button>`).join('')}
       </div>
@@ -30086,7 +30080,7 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
       });
     }
     var neg = body.querySelector('.fin-v14 .e b.neg');
-    if(neg) out.push({c:'bad', i:'💸', t:'시즌 끝 예상 잔고 ' + neg.textContent + ' — 연봉·지출 줄이기', go:"gmTodoGoV15('biz')"});
+    if(neg) out.push({c:'bad', i:'💸', t:'시즌 끝 예상 잔고 ' + neg.textContent + ' — 연봉·지출 줄이기' + (state.eco === 'hard' ? ' (적자 시즌 ' + (+state.debtSeasonsV151 || 0) + '/3)' : ''), go:"gmTodoGoV15('biz')"});
     var ex = [];
     try{ if(typeof window.extraTasksV62 === 'function') ex = window.extraTasksV62() || []; }catch(_){ }
     ex.forEach(function(x){
@@ -30410,6 +30404,46 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
      2루타 때 3루·2루 주자도 홈에서 아웃)을 v1.5.1 에서 제자리로 고쳤으므로 끈다.
      조정값은 window.PA_TUNE_V151 = {hit, hr, hrPow, adv1, adv2, go3, sac} 로 바로 바꿔 볼 수 있다(기본값은 각 공식 안). */
   try{ if(typeof window.setLeagueBoostV59 === 'function') window.setLeagueBoostV59(0); else window.LEAGUE_BOOST_V59 = 0; }catch(_){ }
+})();
+</script>
+<script id="debt-seasons-v151">
+(function(){
+  'use strict';
+  /* 하드 모드 파산: 적자로 끝난 시즌이 3번 이어지면(사용자). 시즌 결산(연봉 정산) 때 한 번 센다.
+     흑자로 마치면 0으로. 같은 연차에 두 번 세지 않게 state.debtYearV151 로 막는다. */
+  var V = window.APP_VERSION, LIMIT = 3;
+  var base = window.settleSeasonSalary;
+  if(typeof base === 'function' && !base.__debtV151){
+    var f = function(){
+      var r = base.apply(this, arguments);
+      try{
+        if(state.eco === 'hard' && !state.bankrupt && state.debtYearV151 !== state.year){
+          state.debtYearV151 = state.year;
+          state.debtSeasonsV151 = (+state.money < 0) ? (+state.debtSeasonsV151 || 0) + 1 : 0;
+          if(state.debtSeasonsV151 >= LIMIT) state.bankrupt = true;
+        }
+      }catch(e){ console.error(V + ' 파산 판정:', e); }
+      return r;
+    };
+    f.__debtV151 = true; window.settleSeasonSalary = f; try{ settleSeasonSalary = f; }catch(_){ }
+  }
+  /* 시즌 결산 화면에 한 줄 */
+  var baseDone = window.renderSeasonDone;
+  if(typeof baseDone === 'function' && !baseDone.__debtV151){
+    var d = function(){
+      var r = baseDone.apply(this, arguments);
+      try{
+        var box = document.getElementById('seasonDoneText'), n = +state.debtSeasonsV151 || 0;
+        if(box && state.eco === 'hard' && n > 0 && !box.querySelector('[data-debt-v151]')){
+          var msg = state.bankrupt ? '💸 적자로 끝난 시즌이 3번 이어져 구단이 파산했습니다.'
+            : '⚠️ 적자로 끝난 시즌 ' + n + '/3 — 다음 시즌을 흑자로 마치지 못하면 ' + (LIMIT - n === 1 ? '파산합니다.' : '한 번 더 위험해집니다.');
+          box.insertAdjacentHTML('beforeend', '<div data-debt-v151="1" style="margin-top:12px;padding:10px 12px;border-radius:11px;border:1px solid rgba(229,103,91,.4);background:rgba(229,103,91,.1);font-weight:800;text-align:left">' + msg + '</div>');
+        }
+      }catch(_){ }
+      return r;
+    };
+    d.__debtV151 = true; window.renderSeasonDone = d; try{ renderSeasonDone = d; }catch(_){ }
+  }
 })();
 </script>
 <!-- v1.5.1 · 타격 분포 END -->
