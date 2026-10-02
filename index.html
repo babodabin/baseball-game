@@ -29922,6 +29922,31 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
 .gm-todo-v15 button.bad{border-color:rgba(229,103,91,.4);background:rgba(229,103,91,.1)}
 .gm-todo-v15 button.go{border:0;background:#F4C45E;color:#211706;font-weight:900}
 .gm-todo-v15 button.go .go{color:#211706}
+.gm-todo-v15 button.info{border-color:rgba(127,209,160,.35);background:rgba(127,209,160,.08)}
+.rv-tag-v15{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:10.5px;font-weight:800;vertical-align:1px;white-space:nowrap}
+.rv-tag-v15.need{background:rgba(244,196,94,.18);color:#F4C45E}
+.rv-tag-v15.cut{background:rgba(229,103,91,.18);color:#F08A7E}
+.rv-tag-v15.old{background:rgba(255,255,255,.10);color:#C9D3CD}
+.rv-tag-v15.pros{background:rgba(127,209,160,.16);color:#7FD1A0}
+/* 선수 기용표 */
+.usage-v15{margin-top:14px;text-align:left}
+.usage-v15 .sec{margin:4px 0;font-size:14px;font-weight:900;color:var(--amber,#F4C45E)}
+.usage-v15 .sec small{font-size:11px;color:var(--dim,#9FB1A7);font-weight:700;margin-left:4px}
+.usage-v15 .dim{font-size:11.5px;line-height:1.5;color:var(--dim,#9FB1A7);margin-bottom:8px}
+.usage-v15 .tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line,rgba(255,255,255,.12));border-radius:12px}
+.usage-v15 table{width:100%;border-collapse:collapse;font-size:11.5px;color:var(--chalk,#DFE9E3)}
+.usage-v15 th{background:#12261C;padding:7px 5px;font-size:11px;color:var(--dim,#9FB1A7);text-align:left;white-space:nowrap}
+.usage-v15 td{padding:6px 5px;border-top:1px solid rgba(255,255,255,.06);vertical-align:middle;line-height:1.35}
+.usage-v15 td:nth-child(2),.usage-v15 td:nth-child(3),.usage-v15 td:nth-child(4){text-align:center;white-space:nowrap}
+.usage-v15 td b{display:block;font-size:12.5px}
+.usage-v15 td small{display:block;font-size:10.5px;color:var(--dim,#9FB1A7)}
+.usage-v15 tr.grp td{background:rgba(244,196,94,.08);color:var(--amber,#F4C45E);font-weight:900;font-size:11.5px}
+.usage-v15 tr.farm{opacity:.75}
+.usage-v15 tr.up td:last-child,.usage-v15 .up{color:#7FD1A0;font-weight:800}
+.usage-v15 tr.idle td:last-child{color:#F4C45E}
+.usage-v15 tr.bad td:last-child{color:#F08A7E;font-weight:800}
+.usage-wrap-v15{margin-top:12px;text-align:left}
+.usage-wrap-v15 summary{cursor:pointer;padding:10px 12px;border-radius:11px;border:1px solid var(--line,rgba(255,255,255,.12));font-weight:800;font-size:13px}
 .gm-todo-v15 button .t{flex:1;line-height:1.4}
 .gm-todo-v15 button .go{color:var(--amber,#F4C45E);font-weight:900}
 /* 시즌 총평 */
@@ -29989,7 +30014,32 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
       window.showAlert = function(){ }; window.renderLineup = function(){ }; window.save = function(){ };
       window.autoRestSwapV115();
     }finally{ window.showAlert = alert0; window.renderLineup = rl0; window.save = sv0; }
+    try{ restDay(t, id); }catch(e){ console.error(V + ' 휴식일:', e); }
   }
+  /* 주전 9명만 계속 나오지 않게(사용자): 꽤 지친(REST_AT 이상) 주전은 비슷한 실력(OVR 차 REST_DROP 이내)의
+     1군 후보가 있으면 하루 쉰다. 한 경기에 최대 REST_MAX 명. 다음 경기엔 원래 라인업으로 돌아온다 */
+  var REST_AT = 55, REST_DROP = 10, REST_MAX = 2, FRESH_AT = 45;
+  function fatOf(id, kind, p){ try{ return +playerHealth(id, kind, p).fatigue || 0; }catch(_){ return 0; } }
+  function hurtOf(id, kind, p){ try{ return (+playerHealth(id, kind, p).injury || 0) > 0; }catch(_){ return false; } }
+  function restDay(t, id){
+    var lu = getLineup(id); if(!lu || !Array.isArray(lu.order)) return;
+    var used = {}, n = 0; lu.order.forEach(function(i){ used[i] = 1; });
+    var slots = lu.order.map(function(bi, k){ return {k:k, f:fatOf(id, 'bat', t.bat[bi])}; }).sort(function(x, y){ return y.f - x.f; });
+    for(var s = 0; s < slots.length && n < REST_MAX; s++){
+      var k = slots[s].k, cur = t.bat[lu.order[k]]; if(!cur || slots[s].f < REST_AT) break;
+      var slot = lu.pos[k], best = -1, bo = -1;
+      t.bat.forEach(function(p, i){
+        if(!p || used[i] || hurtOf(id, 'bat', p) || fatOf(id, 'bat', p) >= FRESH_AT) return;
+        try{ if(typeof isFirstTeam === 'function' && !isFirstTeam(id, 'bat', p)) return; }catch(_){ }
+        try{ if(typeof canPlay === 'function' && !canPlay(p, slot)) return; }catch(_){ }
+        var o = bOvrQ(p, id); if(o > bo){ bo = o; best = i; }
+      });
+      if(best < 0 || bOvrQ(cur, id) - bo > REST_DROP) continue;
+      delete used[lu.order[k]]; used[best] = 1; lu.order[k] = best; n++;
+    }
+    state.lineups[id] = lu;
+  }
+  function bOvrQ(p, id){ try{ return batOvr(p, id); }catch(_){ return 60; } }
   function autoAfter(){
     try{ var id = my(), t = getTeam(id), lu = getLineup(id), a = state.autoLineupV15; if(a && lu) a.last = batKeys(t, lu.order); }catch(_){ }
   }
@@ -30024,14 +30074,33 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
     rec.__runV15 = true; window.recordPA = rec;
   }
 
+  /* 출장 경기 수(선수 기용표용) — state.season.useV15[선수키] = {g, gs} */
+  function useSnap(){
+    var id = my(), s = state.season && state.season.stats && state.season.stats[id], out = {};
+    if(s && s.pit) Object.keys(s.pit).forEach(function(n){ out[n] = +s.pit[n].out || 0; });
+    return out;
+  }
+  function useCount(pre, sp){
+    var id = my(), t = getTeam(id), lu = getLineup(id), se = state.season; if(!t || !se) return;
+    try{ if(typeof seasonOver === 'function' && seasonOver()) return; }catch(_){ }   /* 포스트시즌은 세지 않는다 — 기용표는 정규시즌 기준 */
+    var u = se.useV15 = se.useV15 || {}, s = se.stats && se.stats[id] && se.stats[id].pit || {};
+    function inc(k, f){ var x = u[k] = u[k] || {g:0, gs:0}; x[f]++; }
+    (lu && lu.order || []).forEach(function(i){ if(t.bat[i]) inc(key('bat', t.bat[i]), 'g'); });
+    t.pit.forEach(function(p, i){
+      var now = s[p[0]] ? +s[p[0]].out || 0 : 0, was = pre && pre[p[0]] || 0;
+      if(now > was || i === sp){ inc(key('pit', p), 'g'); if(i === sp) inc(key('pit', p), 'gs'); }
+    });
+  }
+
   /* simGame: 우리 경기면 자동 교체 → 경기 → 라인업 기억 */
   var baseSim = window.simGame;
   if(typeof baseSim === 'function' && !baseSim.__autoV15){
     var sim = function(a, b){
       var mine = state && (a === state.myTeam || b === state.myTeam);
       if(mine){ try{ autoPrep(); }catch(e){ console.error(V + ' 자동 교체:', e); } }
+      var pre = mine ? useSnap() : null;
       var g = baseSim.apply(this, arguments);
-      if(mine) autoAfter();
+      if(mine){ autoAfter(); try{ useCount(pre, a === state.myTeam ? arguments[2] : arguments[3]); }catch(e){ console.error(V + ' 출장 기록:', e); } }
       return g;
     };
     sim.__autoV15 = true; window.simGame = sim; try{ simGame = sim; }catch(_){ }
@@ -30040,7 +30109,7 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
   /* 라인업 화면 안내 */
   function paintAutoHint(){
     var h = document.querySelector('#autoRestBoxV115 .hint'); if(!h) return;
-    var txt = '⚡ 경기 전에 매우 지쳤거나 다친 선수는 자동으로 쉬고, 회복되면 원래 자리로 돌아옵니다. 라인업을 직접 바꾸면 그게 새 기준이 됩니다.';
+    var txt = '⚡ 경기 전에 다친 선수·매우 지친 선수는 자동으로 쉬고, 꽤 지친 주전은 비슷한 실력의 후보가 있으면 하루 쉽니다. 다음 경기엔 원래 자리로 돌아옵니다. 라인업을 직접 바꾸면 그게 새 기준이 됩니다.';
     if(h.textContent !== txt) h.textContent = txt;
   }
   var baseRL = window.renderLineup;
@@ -30110,6 +30179,14 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
     });
     out = out.slice(0, start ? 3 : 4);
     if(start) out.push(start);   /* 시작은 늘 맨 아래 */
+    /* 오프시즌이면 맨 위에 총평 — 보강 추천을 보고 FA·방출을 고른다(사용자) */
+    try{
+      var kept = cl && state.season && state.season.reviewV15;
+      if(kept && kept.html){
+        var mm = /보강 추천: ([^<]+)/.exec(kept.html), lab = kept.data ? (kept.data.needLabel && kept.data.needLabel.length ? '보강: ' + kept.data.needLabel.join(' · ') : '큰 구멍 없음') : (mm ? '보강: ' + mm[1].trim() : '보강·정리 확인');   /* 예전 총평은 데이터가 없어 문장에서 읽는다 */
+        out.unshift({c:'info', i:'📝', t:'시즌 총평 다시 보기 — ' + lab, go:"openOpsPageV14('openReviewV15')"});
+      }
+    }catch(_){ }
     return out;
   }
   /* 오프시즌 FA·계약 화면에 "새 시즌 시작 조건"이 두 번 나오던 것 — 위쪽(바로가기 있는 것)만 남긴다 */
@@ -30217,7 +30294,7 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
       else if(dS) txt = ' — 수비가 <span class="good">강합니다</span> (리그 ' + dR + '위)';
       if(txt) lines.push('<li>' + who + txt + tail + '</li>'); else mid.push(POS_KO[pos] || pos);
       var score = pos === 'DH' ? oR : oR * .6 + dR * .4;
-      if(score >= weak - .5) need.push({w:score, t:POS_KO[pos] || pos});
+      if(score >= weak - .5) need.push({w:score, t:POS_KO[pos] || pos, code:pos});
       /* 백업: 1군에서 그 자리를 볼 수 있고 크게 약하지 않은 선수 */
       if(pos !== 'DH'){
         var base = bOvr(p, id), has = t.bat.some(function(q, i){
@@ -30254,17 +30331,17 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
     var spEra = eraOf(id, mySp), eraTxt = spEra != null ? ' <span class="dim">· 선발 평균자책 ' + spEra.toFixed(2) + '</span>' : '';
     if(allSp.length < 5){
       pit.push('<li><b>선발</b> — 리그 평균 이상 선발이 ' + allSp.length + '명뿐이라 <span class="bad">' + (5 - allSp.length) + '명 부족합니다</span> (로테이션 리그 ' + spRank + '위)' + eraTxt + '</li>');
-      need.push({w:20 + (5 - allSp.length), t:'선발투수 ' + (5 - allSp.length) + '명'});
+      need.push({w:20 + (5 - allSp.length), t:'선발투수 ' + (5 - allSp.length) + '명', code:'SP'});
     }else pit.push('<li><b>선발</b> — 쓸 만한 선발이 ' + allSp.length + '명으로 <span class="good">충분합니다</span> (로테이션 리그 ' + spRank + '위)' + eraTxt + '</li>');
     if(myPen.length){
       var cl = t.pit[myPen[0]], clO = pOvr(cl, id), clR = rankOf(clO, lgCl);
       var sv = state.season && state.season.stats && state.season.stats[id] && state.season.stats[id].pit && state.season.stats[id].pit[cl[0]];
       var svTxt = sv ? ' <span class="dim">· ' + (+sv.sv || 0) + '세이브</span>' : '';
-      if(clR >= weak){ pit.push('<li><b>마무리</b> ' + esc(nm(cl)) + ' — 리그 ' + clR + '위로 <span class="bad">불안합니다</span>' + svTxt + '</li>'); need.push({w:clR + 1, t:'마무리'}); }
+      if(clR >= weak){ pit.push('<li><b>마무리</b> ' + esc(nm(cl)) + ' — 리그 ' + clR + '위로 <span class="bad">불안합니다</span>' + svTxt + '</li>'); need.push({w:clR + 1, t:'마무리', code:'CL'}); }
       else pit.push('<li><b>마무리</b> ' + esc(nm(cl)) + ' — 리그 ' + clR + '위, <span class="good">' + (clR <= strong ? '충분합니다' : '쓸 만합니다') + '</span>' + svTxt + '</li>');
       var pv = avg(myPen.slice(1, 6).map(function(i){ return pOvr(t.pit[i], id); })), pR = rankOf(pv, lgPen);
       var penEra = eraOf(id, myPen), pe = penEra != null ? ' <span class="dim">· 불펜 평균자책 ' + penEra.toFixed(2) + '</span>' : '';
-      if(pR >= weak){ pit.push('<li><b>중간 계투</b> — 리그 ' + pR + '위로 <span class="bad">약합니다</span>' + pe + '</li>'); need.push({w:pR, t:'불펜'}); }
+      if(pR >= weak){ pit.push('<li><b>중간 계투</b> — 리그 ' + pR + '위로 <span class="bad">약합니다</span>' + pe + '</li>'); need.push({w:pR, t:'불펜', code:'RP'}); }
       else pit.push('<li><b>중간 계투</b> — 리그 ' + pR + '위' + (pR <= strong ? ', <span class="good">강합니다</span>' : '') + pe + '</li>');
     }
 
@@ -30306,15 +30383,15 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
         try{ var ss = state.season.stats[id][kind]; played = kind === 'bat' ? (+(ss[i] && ss[i].ab) || 0) : (+(ss[p[0]] && ss[p[0]].out) || 0); }catch(_){ }
         var prospect = a <= 24 && pot >= o + 8;
         if(benched && !prospect && played < 30 && o <= (kind === 'bat' ? luMin : pitMin) - 3)
-          cut.push({o:o, h:'<li>' + tag + ' — 1군에서 거의 안 뛰었고 더 나은 선수가 있습니다' + (sal(kind, p) >= 1 ? ' · 연봉 ' + sal(kind, p).toFixed(1) + '억' : '') + '</li>'});
+          cut.push({o:o, k:key(kind, p), h:'<li>' + tag + ' — 1군에서 거의 안 뛰었고 더 나은 선수가 있습니다' + (sal(kind, p) >= 1 ? ' · 연봉 ' + sal(kind, p).toFixed(1) + '억' : '') + '</li>'});
         if(a >= 34){
           var d = g && g.prev != null ? o - g.prev : null;
-          old.push({a:a, h:'<li>' + tag + ' — 나이가 많습니다' + (d != null && d < 0 ? ', 작년보다 OVR ' + d : '') + (o >= 80 ? '. 아직 주전급이지만 대신할 선수를 준비하세요' : '. 기량이 떨어질 때입니다') + '</li>'});
+          old.push({a:a, k:key(kind, p), h:'<li>' + tag + ' — 나이가 많습니다' + (d != null && d < 0 ? ', 작년보다 OVR ' + d : '') + (o >= 80 ? '. 아직 주전급이지만 대신할 선수를 준비하세요' : '. 기량이 떨어질 때입니다') + '</li>'});
         }
         if(a <= 26 && g && g.n >= 2 && o - g.first <= 1)
           young.push('<li>' + tag + ' — 어린 선수지만 ' + (g.n + 1) + '시즌 동안 OVR ' + g.first + ' → ' + o + ', <span class="bad">적응을 못 하고 있습니다</span></li>');
         else if(prospect && a <= 23)
-          pros.push({p:pot - o, h:'<li>' + tag + ' — 잠재력 ' + pot + ', <span class="good">키워 볼 만한 유망주</span>입니다 (2군 훈련 추천)</li>'});
+          pros.push({p:pot - o, k:key(kind, p), h:'<li>' + tag + ' — 잠재력 ' + pot + ', <span class="good">키워 볼 만한 유망주</span>입니다 (2군 훈련 추천)</li>'});
       });
     });
     cut.sort(function(a, b){ return a.o - b.o; });
@@ -30326,7 +30403,9 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
     var rows = teams.map(function(tid){ var x = state.season.rec[tid] || {w:0, l:0}; return {tid:tid, p:(x.w || 0) / Math.max(1, (x.w || 0) + (x.l || 0))}; }).sort(function(a, b){ return b.p - a.p; });
     var place = 1 + rows.findIndex(function(x){ return x.tid === id; });
     need.sort(function(a, b){ return b.w - a.w; });
-    var recs = []; need.forEach(function(x){ if(recs.indexOf(x.t) < 0 && recs.length < 3) recs.push(x.t); });
+    var recs = [], codes = []; need.forEach(function(x){ if(recs.indexOf(x.t) < 0 && recs.length < 3){ recs.push(x.t); if(x.code) codes.push(x.code); } });
+    /* 오프시즌 화면 표시용(FA·방출 목록에 붙이는 꼬리표) */
+    lastData = {need:codes, needLabel:recs, cut:cut.slice(0, 3).map(function(x){ return x.k; }), old:old.slice(0, 3).map(function(x){ return x.k; }), pros:pros.slice(0, 2).map(function(x){ return x.k; })};
     var html = '<div class="review-v15" data-review-v15="' + y + '">'
       + '<div class="ttl">📝 ' + y + '년차 시즌 총평</div>'
       + '<div class="sum">' + r.w + '승 ' + r.l + '패' + (r.t ? ' ' + r.t + '무' : '') + ' · ' + place + '위. 타선은 리그 ' + offRank + '위, 선발진은 리그 ' + spRank + '위입니다.</div>'
@@ -30348,6 +30427,7 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
     if(!Object.keys(hist).length || y < 3) html += '<div class="dim" style="margin:10px 0 6px">※ 선수 성장 기록은 시즌마다 쌓입니다. 3시즌이 지나면 "적응 못 하는 선수"도 알려 드립니다.</div>';
     return html + '</div>';
   }
+  var lastData = null;
   window.seasonReviewHtmlV15 = reviewHtml;
 
   /* ── 6. 쌓인 "긴급 대체 선수" 불펜 정리 ──────────────────────
@@ -30396,19 +30476,139 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
         /* 시즌이 끝난 순간 한 번만 만든다 — 오프시즌에 계약 만료·이적이 돌면 다시 계산한 결과가 달라지므로 */
         var s = state.season, kept = s && s.reviewV15;
         if(s && (!kept || kept.y !== y)){
-          kept = s.reviewV15 = {y:y, html:reviewHtml()};   /* 기록 전에 그린다 — "작년 OVR"이 올해 값으로 덮이지 않게 */
+          kept = s.reviewV15 = {y:y, html:reviewHtml(), data:lastData};
+          try{ kept.usage = usageHtml(lastData); }catch(e){ console.error(V + ' 기용표:', e); }   /* 기록 전에 그린다 — "작년 OVR"이 올해 값으로 덮이지 않게 */
           recordOvrHistory();
           try{ save(); }catch(_){ }
         }
         if(box && kept && !box.querySelector('[data-review-v15="' + y + '"]')){
           var oldR = box.querySelector('[data-review-v15]'); if(oldR) oldR.remove();
-          box.insertAdjacentHTML('beforeend', kept.html);
+          box.insertAdjacentHTML('beforeend', kept.html + (kept.usage ? '<details class="usage-wrap-v15"><summary>👥 선수 기용표 보기</summary>' + kept.usage + '</details>' : ''));
         }
       }catch(e){ console.error(V + ' 시즌 총평:', e); }
       return r;
     };
     done.__reviewV15 = true; window.renderSeasonDone = done; try{ renderSeasonDone = done; }catch(_){ }
   }
+
+  /* ── 8. 선수 기용표 — 1군·2군 전원, 얼마나 뛰었고 무엇을 하면 좋을지(사용자) ─────────── */
+  function usageHtml(data){
+    var id = my(), t = getTeam(id); if(!t) return '';
+    var se = state.season || {}, u = se.useV15 || {}, tracked = Object.keys(u).length > 0;
+    var games = (function(){ var r = se.rec && se.rec[id] || {}; return (r.w || 0) + (r.l || 0) + (r.t || 0); })() || 1;
+    var st = se.stats && se.stats[id] || {}, lu = getLineup(id), inLu = {}; (lu && lu.order || []).forEach(function(i){ inLu[i] = 1; });
+    var pref = state.autoLineupV15 && state.autoLineupV15.pref || [];
+    var d = data || {}, cut = {}, old = {}, pros = {};
+    (d.cut || []).forEach(function(k){ cut[k] = 1; }); (d.old || []).forEach(function(k){ old[k] = 1; }); (d.pros || []).forEach(function(k){ pros[k] = 1; });
+    function first(kind, p){ try{ return typeof isFirstTeam !== 'function' || isFirstTeam(id, kind, p); }catch(_){ return true; } }
+    var sp5 = {}; starters5(id).forEach(function(i){ sp5[i] = 1; });
+    var penTop = {}; pen(id).slice(0, 6).forEach(function(i){ penTop[i] = 1; });
+    var minBat1 = 99, minPit1 = 99;
+    t.bat.forEach(function(p){ if(first('bat', p)) minBat1 = Math.min(minBat1, bOvr(p, id)); });
+    t.pit.forEach(function(p){ if(first('pit', p)) minPit1 = Math.min(minPit1, pOvr(p, id)); });
+    function row(cells, cls){ return '<tr class="' + (cls || '') + '">' + cells.map(function(c){ return '<td>' + c + '</td>'; }).join('') + '</tr>'; }
+    var bats = t.bat.map(function(p, i){
+      var k = key('bat', p), f1 = first('bat', p), o = Math.round(bOvr(p, id)), a = ageOfP(t, 'bat', i, p);
+      var x = st.bat && st.bat[i] || {}, ab = +x.ab || 0, g = tracked ? ((u[k] || {}).g || 0) : null;
+      var line = ab ? ((+x.h || 0) / ab).toFixed(3).replace(/^0/, '') + ' · ' + (+x.hr || 0) + '홈런' : '—';
+      var starter = pref.indexOf(k) >= 0 || inLu[i], memo, cls = '';
+      if(cut[k]){ memo = '✂️ 빼도 됨'; cls = 'bad'; }
+      else if(!f1){ memo = o >= minBat1 ? '2군 · 1군 올려 볼 만함' : pros[k] ? '2군 · 🌱 유망주' : '2군'; cls = o >= minBat1 ? 'up' : 'farm'; }
+      else if(starter){ memo = g != null && g < games * .7 ? '주전 · 자주 쉼' : '주전'; }
+      else { var few = g != null ? g < Math.max(3, games * .2) : ab < 20; memo = few ? '백업 · 거의 못 뜀' : '백업 · 자주 나옴'; cls = few ? 'idle' : ''; }
+      if(old[k] && !cut[k]) memo += ' · 👴';
+      return {o:o, f1:f1, html:row(['<b>' + esc(nm(p)) + '</b><small>' + esc(POS_KO[p[2]] || p[2]) + ' · ' + a + '세</small>', f1 ? '1군' : '2군', o, g != null ? g : '—', '<small>' + line + '</small>', memo], cls)};
+    });
+    var pits = t.pit.map(function(p, i){
+      var k = key('pit', p), f1 = first('pit', p), o = Math.round(pOvr(p, id)), a = ageOfP(t, 'pit', i, p);
+      var x = st.pit && st.pit[p[0]] || {}, ip = (+x.out || 0) / 3, er = +x.er || 0, uu = u[k] || {};
+      var g = tracked ? (uu.g || 0) : null;
+      var line = ip ? (er * 9 / ip).toFixed(2) + ' · ' + ip.toFixed(0) + '이닝' : '—';
+      var memo, cls = '';
+      if(cut[k]){ memo = '✂️ 빼도 됨'; cls = 'bad'; }
+      else if(!f1){ memo = o >= minPit1 ? '2군 · 1군 올려 볼 만함' : pros[k] ? '2군 · 🌱 유망주' : '2군'; cls = o >= minPit1 ? 'up' : 'farm'; }
+      else if(sp5[i]) memo = '선발 로테이션' + (tracked ? ' · ' + (uu.gs || 0) + '선발' : '');
+      else if(penTop[i]) memo = '필승조·불펜';
+      else { memo = ip < 5 ? '거의 못 던짐' : '추격조'; cls = ip < 5 ? 'idle' : ''; }
+      if(old[k] && !cut[k]) memo += ' · 👴';
+      return {o:o, f1:f1, html:row(['<b>' + esc(nm(p)) + '</b><small>' + esc(p[2] || '투수') + ' · ' + a + '세</small>', f1 ? '1군' : '2군', o, g != null ? g : '—', '<small>' + line + '</small>', memo], cls)};
+    });
+    function sortRows(a){ return a.sort(function(x, y){ return (y.f1 - x.f1) || (y.o - x.o); }).map(function(x){ return x.html; }).join(''); }
+    var head = '<tr><th>선수</th><th>군</th><th>OVR</th><th>출장</th><th>성적</th><th>한마디</th></tr>';
+    return '<div class="usage-v15">'
+      + '<div class="sec">👥 선수 기용표 <small>' + (+state.year || 1) + '년차 · ' + games + '경기 · 1군·2군 ' + (t.bat.length + t.pit.length) + '명</small></div>'
+      + '<div class="dim">출장은 경기 수' + (tracked ? '' : '(이번 시즌은 기록 전이라 —, 다음 시즌부터 나옵니다)') + '. 성적은 타자 타율·홈런, 투수 평균자책·이닝. '
+      + '<span class="up">2군 · 1군 올려 볼 만함</span>은 1군 최저 OVR 이상인 2군 선수입니다.</div>'
+      + '<div class="tbl"><table><thead>' + head + '</thead><tbody><tr class="grp"><td colspan="6">타자</td></tr>' + sortRows(bats)
+      + '<tr class="grp"><td colspan="6">투수</td></tr>' + sortRows(pits) + '</tbody></table></div></div>';
+  }
+
+  /* ── 7. 오프시즌은 직접 — 총평이 결정을 돕는다(사용자) ─────────────
+     · 오프시즌 동안 총평을 다시 볼 수 있다(운영 → 단장 할 일 맨 위 줄)
+     · FA 목록: 보강 추천 자리에 맞는 선수에 "📌 보강 자리"
+     · 방출 목록: 총평의 ✂️ 빼도 될 선수 · 👴 고령 · 🌱 유망주 */
+  function reviewKept(){ var s = state && state.season; return s && s.reviewV15 && s.reviewV15.html ? s.reviewV15 : null; }
+  window.openReviewV15 = function(){
+    var kept = reviewKept(), sh = document.getElementById('sheet'); if(!sh) return;
+    sh.innerHTML = '<div class="top"><div class="pname">📝 시즌 총평</div><button class="close" onclick="closeSheet()">✕</button></div>'
+      + (kept ? kept.html + (kept.usage || (function(){ try{ return usageHtml(kept.data); }catch(_){ return ''; } })()) : '<div class="hint">아직 총평이 없습니다. 시즌이 끝나면 만들어집니다.</div>');
+    var m = document.getElementById('mask'); if(m) m.classList.add('on');
+  };
+  /* 오프시즌으로 넘어가면 총평 + 기용표부터(사용자: 이걸 보고 오프시즌을 시작) — 해마다 한 번 */
+  try{
+    var nsb = document.getElementById('newSeasonBtn');
+    if(nsb) nsb.addEventListener('click', function(){
+      setTimeout(function(){
+        try{
+          var s = state.season, kept = reviewKept();
+          if(!kept || !(typeof isOffseason === 'function' && isOffseason()) || s.reviewShownV15 === kept.y) return;
+          s.reviewShownV15 = kept.y; try{ save(); }catch(_){ }
+          openOpsPageV14('openReviewV15');
+        }catch(e){ console.error(V + ' 오프시즌 총평:', e); }
+      }, 400);
+    });
+  }catch(_){ }
+  /* 마무리가 FA 로 떠나면 "포지션 구성: 마무리 0/1" 로 새 시즌이 막혔다(예: LG 김진성 → 키움).
+     v0.65 fixClosersV54(불펜 최고 투수를 마무리로)는 설정 화면을 열 때만 돌아서, 시즌 시작 조건을 볼 때도 돌린다 */
+  var baseCl = window.offseasonChecklist;
+  if(typeof baseCl === 'function' && !baseCl.__closerV15){
+    var clf = function(){
+      try{ var t = getTeam(my()); if(t && !t.pit.some(function(p){ return p && p[2] === '마무리'; }) && typeof window.fixClosersV54 === 'function') window.fixClosersV54(); }catch(_){ }
+      return baseCl.apply(this, arguments);
+    };
+    clf.__closerV15 = true; window.offseasonChecklist = clf; try{ offseasonChecklist = clf; }catch(_){ }
+  }
+  var PIT_CODE = {SP:{SP:1}, RP:{RP:1, CL:1}, CL:{CL:1, RP:1}};
+  function tag(cls, text){ return '<span class="rv-tag-v15 ' + cls + '">' + text + '</span>'; }
+  function decorateOffseason(){
+    var kept = reviewKept(), d = kept && kept.data; if(!d) return;
+    var body = document.getElementById('frontBody'); if(!body) return;
+    var need = {}; (d.need || []).forEach(function(c){ var m = PIT_CODE[c]; if(m) Object.keys(m).forEach(function(k){ need[k] = 1; }); else need[c] = 1; });
+    body.querySelectorAll('.prow[data-fa]').forEach(function(r){
+      if(r.dataset.rvV15) return; r.dataset.rvV15 = '1';
+      var pos = (r.querySelector('.pos') || {}).textContent, nmEl = r.querySelector('.nm');
+      if(nmEl && pos && need[pos.trim()]) nmEl.insertAdjacentHTML('beforeend', tag('need', '📌 보강 자리'));
+    });
+    var t = null; try{ t = getTeam(state.myTeam); }catch(_){ }
+    if(!t) return;
+    var cut = {}, old = {}, pros = {};
+    (d.cut || []).forEach(function(k){ cut[k] = 1; }); (d.old || []).forEach(function(k){ old[k] = 1; }); (d.pros || []).forEach(function(k){ pros[k] = 1; });
+    body.querySelectorAll('.prow[data-cutrow][data-cri]').forEach(function(r){
+      if(r.dataset.rvV15) return; r.dataset.rvV15 = '1';
+      var kind = r.dataset.cutrow, p = (t[kind] || [])[+r.dataset.cri], nmEl = r.querySelector('.nm'); if(!p || !nmEl) return;
+      var k = key(kind, p);
+      if(cut[k]) nmEl.insertAdjacentHTML('beforeend', tag('cut', '✂️ 총평: 빼도 됨'));
+      else if(old[k]) nmEl.insertAdjacentHTML('beforeend', tag('old', '👴 고령'));
+      else if(pros[k]) nmEl.insertAdjacentHTML('beforeend', tag('pros', '🌱 유망주'));
+    });
+  }
+  try{
+    var fbody = document.getElementById('frontBody'), dTimer = 0;
+    if(fbody) new MutationObserver(function(){
+      if(dTimer) return;
+      dTimer = setTimeout(function(){ dTimer = 0; try{ if(typeof isOffseason === 'function' && isOffseason()) decorateOffseason(); }catch(e){ console.error(V + ' 총평 꼬리표:', e); } }, 30);
+    }).observe(fbody, {childList:true, subtree:true});
+  }catch(_){ }
 })();
 </script>
 <!-- v1.5.0 · 간단하게 END -->
