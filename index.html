@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.5.0';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.5.1';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -10567,13 +10567,16 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     const specialText=Array.isArray(sx.activeTexts)?sx.activeTexts.filter(Boolean).join(' · '):'';
     const command=ctrl*.64+fast*.16+brk*.20,batToBall=con*.72+eye*.12+pat*.16,swingMiss=fast*.43+brk*.57;
     const cap=(v,a,b)=>Math.max(a,Math.min(b,v));
+    /* v1.5.1 · 구속은 km/h(145 안팎)라 능력치(70 안팎)와 그대로 섞으면 안 된다. 146km/h = 72, 1km/h = 1.4 로 바꿔 쓴다.
+       예전엔 홈런 억제값이 늘 108쯤 나와 홈런 확률이 바닥(0.25%)에 붙었다. 조정값은 PA_TUNE_V151 한곳에 */
+    const T=window.PA_TUNE_V151||{},veloR=72+(velo-146)*1.4;
     const kP=cap(.125+(swingMiss-72)*.0038+(velo-146)*.0052-(batToBall-72)*.0039+kAdj,.045,.40);
     const bbP=cap(.082+(eye-70)*.0025+(pat-70)*.0022-(command-76)*.0039+(myBatCoach==='eye'?.010:0)-(myPitCoach==='control'?.010:0)+bbAdj,.025,.20);
     let r=Math.random();if(r<kP)return {t:'K',specialText};r-=kP;if(r<bbP)return {t:'BB',specialText};
-    const contactQuality=con*.58+pow*.12+eye*.10+pat*.05+spd*.05,pitchQuality=fast*.25+brk*.38+ctrl*.25+velo*.12+(pp.quality||0)*2.2;
-    const hitP=cap(.355+(contactQuality-72)*.0045-(pitchQuality-72)*.0032+hitAdj-(teamDef-70)*.00115-(pdef-70)*.00025,.18,.445);
+    const contactQuality=con*.58+pow*.12+eye*.10+pat*.05+spd*.05,pitchQuality=fast*.25+brk*.38+ctrl*.25+veloR*.12+(pp.quality||0)*2.2;
+    const hitP=cap((T.hit??.36)+(contactQuality-72)*.0045-(pitchQuality-72)*.0032+hitAdj-(teamDef-70)*.00115-(pdef-70)*.00025,.18,.445);
     if(Math.random()<hitP){
-      const hrP=cap(.038+(pow*.72+con*.08+eye*.05-70)*.0044-(fast*.30+brk*.20+velo*.50-72)*.0017+hrAdj,.0025,.19);
+      const hrP=cap((T.hr??.09)+(pow*.80+con*.12+eye*.08-72)*(T.hrPow??.0050)-(fast*.30+brk*.20+veloR*.50-72)*.0017+hrAdj,.0025,.25);
       if(Math.random()<hrP)return {t:'HR',specialText};
       const r2=Math.random(),dbl=cap(.18+(pow-70)*.0027+(spd-70)*.0005-(teamDef*.75-70)*.00035+(Number(sx.dbl)||0)+(pp.double||0)+air*.008,.095,.31);
       const trp=cap(.012+(spd-72)*.00115-(teamDef-70)*.00025+(Number(sx.trp)||0),.003,.075);
@@ -12188,13 +12191,13 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
         switch(res.t){
           case'K':outs++;text=`${playerDisplayName(batter)}, 삼진 아웃 (${outs}아웃)`;break;
           case'BB':if(bases[0]&&bases[1]&&bases[2])scored++;else if(bases[0]&&bases[1])bases[2]=bases[1],bases[1]=bases[0];else if(bases[0])bases[1]=bases[0];bases[0]=batter;text=`${playerDisplayName(batter)}, 볼넷 출루`;break;
-          case'1B':{const of=outfieldArmV337(st[defSide].team,st[defSide].lu,res);let thrownOut=null;for(let i=2;i>=0;i--){const runner=bases[i];if(!runner)continue;let step=1;if(i<2){const speed=runnerSpeedV337(runner,atk.team.id),extraP=cap((tactic==='small'?.33:.19)+(speed-70)*.006-(of.arm-70)*.004,.04,.58);if(Math.random()<extraP)step=2;if(step===2&&Math.random()<cap(.10+(of.arm-speed)*.006,.025,.31)){bases[i]=null;outs++;thrownOut=runner;statBaserunV337(st[defSide].team.id,of.name,'ofAssist');statFieldV336(st[defSide].team.id,of.name,'a');continue;}}bases[i]=null;if(i+step>=3)scored++;else bases[i+step]=runner;}bases[0]=batter;text=`${playerDisplayName(batter)}, 안타!`;if(thrownOut)text+=` ${of.name}의 강한 송구로 ${playerDisplayName(thrownOut)} 추가 진루 저지! (${outs}아웃)`;break;}
-          case'2B':{const of=outfieldArmV337(st[defSide].team,st[defSide].lu,res);let thrownOut=null;for(let i=2;i>=0;i--){const runner=bases[i];if(!runner)continue;const speed=runnerSpeedV337(runner,atk.team.id),target=i+2;bases[i]=null;if(target>=3){const challenge=cap(.76+(speed-70)*.005-(of.arm-70)*.004,.42,.94);if(Math.random()<challenge)scored++;else{outs++;thrownOut=runner;statBaserunV337(st[defSide].team.id,of.name,'ofAssist');statFieldV336(st[defSide].team.id,of.name,'a');}}else bases[target]=runner;}bases[1]=batter;text=`${playerDisplayName(batter)}, 2루타!!`;if(thrownOut)text+=` ${of.name}의 홈 송구로 ${playerDisplayName(thrownOut)} 아웃! (${outs}아웃)`;break;}
+          case'1B':{const of=outfieldArmV337(st[defSide].team,st[defSide].lu,res);let thrownOut=null;for(let i=2;i>=0;i--){const runner=bases[i];if(!runner)continue;let step=1;if(i<2){const speed=runnerSpeedV337(runner,atk.team.id),extraP=cap((i===1?(window.PA_TUNE_V151?.adv2??.55):(window.PA_TUNE_V151?.adv1??.30))+(tactic==='small'?.08:0)+(speed-70)*.006-(of.arm-70)*.004,.04,.85);if(Math.random()<extraP)step=2;if(step===2&&Math.random()<cap((window.PA_TUNE_V151?.out1??.05)+(of.arm-speed)*.004,.015,.20)){bases[i]=null;outs++;thrownOut=runner;statBaserunV337(st[defSide].team.id,of.name,'ofAssist');statFieldV336(st[defSide].team.id,of.name,'a');continue;}}bases[i]=null;if(i+step>=3)scored++;else bases[i+step]=runner;}bases[0]=batter;text=`${playerDisplayName(batter)}, 안타!`;if(thrownOut)text+=` ${of.name}의 강한 송구로 ${playerDisplayName(thrownOut)} 추가 진루 저지! (${outs}아웃)`;break;}
+          case'2B':{const of=outfieldArmV337(st[defSide].team,st[defSide].lu,res);let thrownOut=null;for(let i=2;i>=0;i--){const runner=bases[i];if(!runner)continue;const speed=runnerSpeedV337(runner,atk.team.id),target=i+2;bases[i]=null;if(target>=3&&i>0)scored++;else if(target>=3){const challenge=cap(.50+(speed-70)*.008-(of.arm-70)*.005,.25,.80),rr=Math.random();if(rr<challenge)scored++;else if(rr<challenge+.85*(1-challenge)||outs>=2)bases[2]=runner;else{outs++;thrownOut=runner;statBaserunV337(st[defSide].team.id,of.name,'ofAssist');statFieldV336(st[defSide].team.id,of.name,'a');}}else bases[target]=runner;}bases[1]=batter;text=`${playerDisplayName(batter)}, 2루타!!`;if(thrownOut)text+=` ${of.name}의 홈 송구로 ${playerDisplayName(thrownOut)} 아웃! (${outs}아웃)`;break;}
           case'3B':runnersAdv(3);bases[2]=batter;text=`${playerDisplayName(batter)}, 3루타!!!`;break;
           case'HR':{const cnt=1+bases.filter(Boolean).length;scored+=cnt;bases=[null,null,null];text=`${playerDisplayName(batter)}, ${cnt===1?'솔로':cnt+'점'} 홈런!!! 🎆`;break;}
           case'E':runnersAdv(1);bases[0]=batter;text=`${playerDisplayName(batter)}의 타구, ${res.fieldPos||''} ${res.fielder||'수비수'} 실책!`;statFieldV336(st[defSide].team.id,res.fielder,'e');break;
-          case'GO':if(bases[0]&&outs<2&&Math.random()<(res.dpChance||.35)){outs+=2;bases[0]=null;text=`${res.fielder||'내야수'}의 빠른 처리! ${playerDisplayName(batter)}, 병살타 (${Math.min(outs,3)}아웃)`;statFieldV336(st[defSide].team.id,res.fielder,'dp');}else{outs++;if(outs<3&&bases[2]&&Math.random()<.3){scored++;bases[2]=null;text=`${res.fielder||'내야수'} 처리, ${playerDisplayName(batter)} 땅볼 아웃. 그 사이 3루주자 득점 (${outs}아웃)`;}else text=`${res.greatPlay?'🧤 호수비! ':''}${res.fielder||'내야수'} 처리, ${playerDisplayName(batter)} 땅볼 아웃 (${outs}아웃)`;}statFieldV336(st[defSide].team.id,res.fielder,'a');break;
-          case'FO':outs++;if(outs<3&&bases[2]&&Math.random()<(res.sacChance||.4)){scored++;bases[2]=null;text=`${res.fielder||'외야수'} 포구, ${playerDisplayName(batter)} 희생플라이! 3루주자 득점 (${outs}아웃)`;}else text=`${res.greatPlay?'🧤 호수비! ':''}${res.fielder||'외야수'} 포구, ${playerDisplayName(batter)} 뜬공 아웃 (${outs}아웃)`;statFieldV336(st[defSide].team.id,res.fielder,'po');break;
+          case'GO':if(bases[0]&&outs<2&&Math.random()<(res.dpChance||.35)){outs+=2;bases[0]=null;text=`${res.fielder||'내야수'}의 빠른 처리! ${playerDisplayName(batter)}, 병살타 (${Math.min(outs,3)}아웃)`;statFieldV336(st[defSide].team.id,res.fielder,'dp');}else{outs++;if(outs<3&&bases[2]&&Math.random()<(window.PA_TUNE_V151?.go3??.45)){scored++;bases[2]=null;text=`${res.fielder||'내야수'} 처리, ${playerDisplayName(batter)} 땅볼 아웃. 그 사이 3루주자 득점 (${outs}아웃)`;}else text=`${res.greatPlay?'🧤 호수비! ':''}${res.fielder||'내야수'} 처리, ${playerDisplayName(batter)} 땅볼 아웃 (${outs}아웃)`;}statFieldV336(st[defSide].team.id,res.fielder,'a');break;
+          case'FO':outs++;if(outs<3&&bases[2]&&Math.random()<(res.sacChance||.4)+(window.PA_TUNE_V151?.sac??.18)){scored++;bases[2]=null;text=`${res.fielder||'외야수'} 포구, ${playerDisplayName(batter)} 희생플라이! 3루주자 득점 (${outs}아웃)`;}else text=`${res.greatPlay?'🧤 호수비! ':''}${res.fielder||'외야수'} 포구, ${playerDisplayName(batter)} 뜬공 아웃 (${outs}아웃)`;statFieldV336(st[defSide].team.id,res.fielder,'po');break;
         }
         if(typeof STAT_SINK==='function')STAT_SINK(atk.team.id,bi,res,scored,st[defSide].team.id,pit);
         if(state?.season){const outsAdded=(res.t==='K'||res.t==='GO'||res.t==='FO')?(res.t==='GO'&&text.includes('병살')?2:1):0;if(outsAdded)statPitAdd(st[defSide].team.id,pit[0],'out',outsAdded);if(scored>0&&res.t!=='E')statPitAdd(st[defSide].team.id,pit[0],'er',scored);}
@@ -30397,6 +30400,19 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
 })();
 </script>
 <!-- v1.5.0 · 간단하게 END -->
+<!-- v1.5.1 · 타격 분포 바로잡기 -->
+<script id="balance-v151">
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov151')>=0) return;
+  /* v0.65 리그 보정은 아웃의 8.5%를 안타(대부분 단타, 삼진 포함)로 바꿔 득점을 메우던 땜질이다.
+     득점이 적던 진짜 원인(타석 공식에 구속 km/h 를 능력치처럼 섞음 · 단타 때 2루 주자가 거의 홈에 못 옴 ·
+     2루타 때 3루·2루 주자도 홈에서 아웃)을 v1.5.1 에서 제자리로 고쳤으므로 끈다.
+     조정값은 window.PA_TUNE_V151 = {hit, hr, hrPow, adv1, adv2, go3, sac} 로 바로 바꿔 볼 수 있다(기본값은 각 공식 안). */
+  try{ if(typeof window.setLeagueBoostV59 === 'function') window.setLeagueBoostV59(0); else window.LEAGUE_BOOST_V59 = 0; }catch(_){ }
+})();
+</script>
+<!-- v1.5.1 · 타격 분포 END -->
 
 
 
