@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.26';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.27';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1303,12 +1303,12 @@ nav button.lock{opacity:.32}
     </div>
     <div class="speedbar">
       <button data-spd="pitch"><b>투구별</b><span>공 하나씩</span></button>
-      <button data-spd="pa" class="on"><b>📺 자세히</b><span>타석마다</span></button>
-      <button data-spd="inn"><b>⏩ 빠르게</b><span>이닝 핵심</span></button>
-      <button data-spd="fast"><b>⚡ 결과만</b><span>바로 승패</span></button>
+      <button data-spd="pa"><b>타석별</b><span>타석마다</span></button>
+      <button data-spd="fast" class="on"><b>⚡ 결과만</b><span>바로 승패</span></button>
+      <button data-spd="inn"><b>📺 중계 보기</b><span>이닝 핵심 · 배속</span></button>
     </div>
     <button class="btn" id="playBtn">경기 시작</button>
-    <button class="btn ghost" id="skip5Btn">다음 5경기 자동 진행 (승패만)</button>
+    <button class="btn ghost" id="skip5Btn">다음 5경기 자동 진행</button>
   </div>
   <div id="gameLive" style="display:none">
     <div class="scorebox" id="scorebox"></div>
@@ -7136,7 +7136,7 @@ renderGameSetup=function(){
   ensurePlayableMyTeam();
   const r=_renderGameSetupV266();
   const b=document.getElementById('skip5Btn');
-  if(b){ b.style.display=''; b.disabled=false; b.textContent='다음 5경기 자동 진행 (승패만)'; }
+  if(b){ b.style.display=''; b.disabled=false; b.textContent='다음 5경기 자동 진행'; }
   return r;
 };
 
@@ -9129,7 +9129,7 @@ async function runSkip5V303(){
     if(liveBtn && !seasonOver()){
       liveBtn.disabled=false;
       liveBtn.classList.remove('batch-running','batch-done','tap-feedback');
-      liveBtn.textContent='다음 5경기 자동 진행 (승패만)';
+      liveBtn.textContent='다음 5경기 자동 진행';
     }
     mainEl.scrollTop=fixedScroll;
   }
@@ -15084,7 +15084,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
       if(liveBtn&&!seasonOver()){
         liveBtn.disabled=false;
         liveBtn.classList.remove('batch-running','batch-done','tap-feedback');
-        liveBtn.textContent='다음 5경기 자동 진행 (승패만)';
+        liveBtn.textContent='다음 5경기 자동 진행';
       }
       if(mainEl)mainEl.scrollTop=fixedScroll;
     }
@@ -15226,7 +15226,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
               const b=document.getElementById('skip5Btn');
               if(b&&!seasonOver()){
                 b.classList.remove('batch-done');
-                b.textContent='다음 5경기 자동 진행 (승패만)';
+                b.textContent='다음 5경기 자동 진행';
               }
             },180);
           }
@@ -15339,7 +15339,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
       }catch(err){console.error(VERSION+' 5경기:',err);showAlert('자동 진행 중 오류가 발생했습니다.');}
       finally{
         FORCED_RECORD_MODE=null;setGameRecordModeV348('full');batchRunning=false;
-        const b=document.getElementById('skip5Btn');if(b&&!seasonOver()){b.disabled=false;b.classList.remove('v3416-working');setTimeout(()=>{const x=document.getElementById('skip5Btn');if(x){x.classList.remove('batch-done');x.textContent='다음 5경기 자동 진행 (승패만)';}},350);}
+        const b=document.getElementById('skip5Btn');if(b&&!seasonOver()){b.disabled=false;b.classList.remove('v3416-working');setTimeout(()=>{const x=document.getElementById('skip5Btn');if(x){x.classList.remove('batch-done');x.textContent='다음 5경기 자동 진행';}},350);}
         if(main)main.scrollTop=top;
       }
     });
@@ -15348,7 +15348,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
   function bind(){
     const p=document.getElementById('playBtn'),s=document.getElementById('skip5Btn');
     if(p){p.onclick=startSingle;p.textContent='경기 시작';p.classList.remove('start-done','start-loading');p.disabled=false;}
-    if(s){s.onclick=startBatch;if(!batchRunning){s.disabled=false;s.classList.remove('batch-running','v3416-working');s.textContent='다음 5경기 자동 진행 (승패만)';}}
+    if(s){s.onclick=startBatch;if(!batchRunning){s.disabled=false;s.classList.remove('batch-running','v3416-working');s.textContent='다음 5경기 자동 진행';}}
   }
   const old=window.renderGameSetup;
   if(typeof old==='function')window.renderGameSetup=function(){const r=old.apply(this,arguments);applyVersion();bind();return r;};
@@ -15594,7 +15594,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
     if(skip){
       skip.disabled=false;
       skip.classList.remove('v3416-working','batch-running','batch-done');
-      skip.textContent='다음 5경기 자동 진행 (승패만)';
+      skip.textContent='다음 5경기 자동 진행';
       skip.onclick=function(){
         if(batchBusy||seasonOver())return;
         batchBusy=true;
@@ -15642,7 +15642,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
                   const x=document.getElementById('skip5Btn');
                   if(x&&!batchBusy&&!seasonOver()){
                     x.classList.remove('batch-done');
-                    x.textContent='다음 5경기 자동 진행 (승패만)';
+                    x.textContent='다음 5경기 자동 진행';
                   }
                 },450);
               }
@@ -29643,9 +29643,12 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 #scr-game .speedbar button span{font-size:11px;font-weight:700;opacity:.75;white-space:nowrap}
 #scr-game .speedbar button small{display:none}
 /* v1.4.25 · 자동 감독이면 투구별은 숨기고 3칸 — 공 하나마다 지시할 때만 필요 */
-.v14-auto #scr-game .speedbar{grid-template-columns:repeat(3,1fr)!important}
-.v14-auto #scr-game .speedbar [data-spd="pitch"]{display:none!important}
+/* v1.4.27 · 경기는 굳이 안 봐도 되게 — 결과만(기본)·중계 보기 두 칸. 투구별·타석별은 없앰 */
+#scr-game .speedbar{grid-template-columns:repeat(2,1fr)!important}
+#scr-game .speedbar [data-spd="pitch"],#scr-game .speedbar [data-spd="pa"]{display:none!important}
+#scr-game .speedbar button{aspect-ratio:auto!important;min-height:64px!important}
 #gameLive .ratebar-v116{margin:0 0 8px}
+html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
 #gameLive .ratebar-v116 button{min-height:38px;font-size:12px}
 /* 숫자 값은 조금 크게 — 한글과 같은 크기면 작아 보인다 */
 .club-kpi-v999 .v.num-v14{font-size:20px!important;white-space:nowrap}
@@ -29737,14 +29740,28 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     try{ setGameRecordModeV348 = window.setGameRecordModeV348; }catch(_){ }
     GAME_RECORD_MODE = 'full';
   }catch(e){ console.error(V + ' 기록 모드:', e); }
-  /* 자동 감독인데 투구별이 골라져 있으면 자세히(타석별)로 */
-  function fixPitch(){
-    var root = document.documentElement; if(!root.classList.contains('v14-auto')) return;
-    var on = document.querySelector('#scr-game .speedbar [data-spd="pitch"].on');
-    var pa = document.querySelector('#scr-game .speedbar [data-spd="pa"]');
-    if(on && pa) pa.click();
+  /* 보기 방식: 결과만(기본) · 중계 보기(이닝별). 고른 것은 기억한다. 투구별·타석별이 골라져 있으면 결과만으로 */
+  var VIEW_KEY = 'ourteam_view_v14';
+  function markView(){ try{ document.documentElement.dataset.viewV14 = spdSel; }catch(_){ } }
+  function pickView(v){
+    var b = document.querySelector('#scr-game .speedbar [data-spd="' + v + '"]');
+    var cur = null; try{ cur = spdSel; }catch(_){ }
+    if(b && (!b.classList.contains('on') || cur !== v)) b.click();
   }
-  try{ new MutationObserver(fixPitch).observe(document.documentElement, {attributes:true, attributeFilter:['class']}); fixPitch(); }catch(_){ }
+  function fixView(){
+    var on = document.querySelector('#scr-game .speedbar [data-spd].on');
+    var cur = null; try{ cur = spdSel; }catch(_){ }
+    if(!on || on.dataset.spd === 'pitch' || on.dataset.spd === 'pa' || cur === 'pitch' || cur === 'pa') pickView('fast');
+  }
+  try{
+    var saved = null; try{ saved = localStorage.getItem(VIEW_KEY); }catch(_){ }
+    pickView(saved === 'inn' ? 'inn' : 'fast');
+    document.querySelectorAll('#scr-game .speedbar [data-spd]').forEach(function(b){
+      b.addEventListener('click', function(){ try{ localStorage.setItem(VIEW_KEY, b.dataset.spd); }catch(_){ } markView(); });
+    });
+    new MutationObserver(fixView).observe(document.documentElement, {attributes:true, attributeFilter:['class']});
+    markView();
+  }catch(e){ console.error(V + ' 보기 방식:', e); }
   /* 트레이드 상대 구단 버튼 — 로고 + 짧은 이름 */
   function decorateOpp(){
     var sh = sheetEl(); if(!sh) return;
