@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.24';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.25';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1302,23 +1302,21 @@ nav button.lock{opacity:.32}
       </div>
     </div>
     <div class="speedbar">
-      <button data-spd="pitch"><b>투구별</b><span>공 하나까지</span></button>
-      <button data-spd="pa" class="on"><b>타석별</b><span>타석 결과</span></button>
-      <button data-spd="inn"><b>이닝별</b><span>핵심만</span></button>
-      <button data-spd="fast"><b>결과만</b><span>승패만</span></button>
+      <button data-spd="pitch"><b>투구별</b><span>공 하나씩</span></button>
+      <button data-spd="pa" class="on"><b>📺 자세히</b><span>타석마다</span></button>
+      <button data-spd="inn"><b>⏩ 빠르게</b><span>이닝 핵심</span></button>
+      <button data-spd="fast"><b>⚡ 결과만</b><span>바로 승패</span></button>
     </div>
-    <div class="ratebar-v116" id="rateBarV116">
-      <button data-rate="1">1배속</button>
-      <button data-rate="2" class="on">2배속</button>
-      <button data-rate="3">3배속</button>
-    </div>
-    <div class="watch-help-v12">👀 <b>직접 보면 홈 경기 수입이 늘어납니다.</b> 많이 볼수록 많이 받고, 결과만으로 넘기면 없습니다.<br>
-      보면서 <b>감독 지시</b>(경기당 1번, 3이닝)를 쓸 수 있고, 아래 <b>배속</b>으로 빠르게 넘길 수 있습니다.</div>
     <button class="btn" id="playBtn">경기 시작</button>
     <button class="btn ghost" id="skip5Btn">다음 5경기 자동 진행 (승패만)</button>
   </div>
   <div id="gameLive" style="display:none">
     <div class="scorebox" id="scorebox"></div>
+    <div class="ratebar-v116" id="rateBarV116">
+      <button data-rate="1">1배속</button>
+      <button data-rate="2" class="on">2배속</button>
+      <button data-rate="3">3배속</button>
+    </div>
     <div class="gamelog" id="gamelog"></div>
     <button class="btn" id="mgrOrderBtnV116" style="display:none">🎽 감독 지시 — 지금부터 3이닝 (경기당 1번)</button>
     <button class="btn" id="skipBtn">⏭ 남은 중계 건너뛰기 (기록 유지)</button>
@@ -26763,11 +26761,29 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var m = mode();
     return m==='pitch' ? 3 : m==='inn' ? 8 : 2;
   };
-  window.gameMsV116 = function(){
+  function msNow(){
     var m = mode();
     var base = m==='pitch' ? 300 : m==='inn' ? 700 : 420;
     return Math.max(60, Math.round(base / rate));
+  }
+  /* v1.4.25 · 배속 버튼이 경기 중 화면으로 옮겨졌다 — 재생 중에 바꾸면 바로 빨라지도록
+     재생 코드 네 벌 모두 gameMsV116() 직후 setInterval 로 gTimer 를 만든다. 그 콜백을 잡아 둔다. */
+  var armed = false, replay = null;
+  var baseSI = window.setInterval;
+  window.setInterval = function(fn, ms){
+    var id = baseSI.apply(window, arguments);
+    if(armed){ armed = false; replay = {fn:fn, id:id}; }
+    return id;
   };
+  window.gameMsV116 = function(){ armed = true; setTimeout(function(){ armed = false; }, 0); return msNow(); };
+  function restart(){
+    try{
+      if(!replay || typeof gTimer === 'undefined' || gTimer !== replay.id) return;
+      clearInterval(replay.id);
+      var id = baseSI.call(window, replay.fn, msNow());
+      replay.id = id; gTimer = id;
+    }catch(_){ }
+  }
   window.gameRateV116 = function(){ return rate; };
 
   function bind(){
@@ -26782,6 +26798,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         try{ localStorage.setItem(RATE_KEY, String(rate)); }catch(_){ }
         Array.prototype.forEach.call(btns, function(x){ x.classList.remove('on'); });
         b.classList.add('on');
+        restart();
       };
     });
   }
@@ -29625,6 +29642,11 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
 #scr-game .speedbar button b{font-size:15px;font-weight:900}
 #scr-game .speedbar button span{font-size:11px;font-weight:700;opacity:.75;white-space:nowrap}
 #scr-game .speedbar button small{display:none}
+/* v1.4.25 · 자동 감독이면 투구별은 숨기고 3칸 — 공 하나마다 지시할 때만 필요 */
+.v14-auto #scr-game .speedbar{grid-template-columns:repeat(3,1fr)!important}
+.v14-auto #scr-game .speedbar [data-spd="pitch"]{display:none!important}
+#gameLive .ratebar-v116{margin:0 0 8px}
+#gameLive .ratebar-v116 button{min-height:38px;font-size:12px}
 /* 숫자 값은 조금 크게 — 한글과 같은 크기면 작아 보인다 */
 .club-kpi-v999 .v.num-v14{font-size:20px!important;white-space:nowrap}
 .club-kpi-v999 .v.num-v14.long{font-size:17px!important;letter-spacing:-.4px}
@@ -29708,6 +29730,14 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     };
     close.__pgV14 = true; window.closeSheet = close; try{ closeSheet = close; }catch(_){ }
   }
+  /* 자동 감독인데 투구별이 골라져 있으면 자세히(타석별)로 */
+  function fixPitch(){
+    var root = document.documentElement; if(!root.classList.contains('v14-auto')) return;
+    var on = document.querySelector('#scr-game .speedbar [data-spd="pitch"].on');
+    var pa = document.querySelector('#scr-game .speedbar [data-spd="pa"]');
+    if(on && pa) pa.click();
+  }
+  try{ new MutationObserver(fixPitch).observe(document.documentElement, {attributes:true, attributeFilter:['class']}); fixPitch(); }catch(_){ }
   /* 트레이드 상대 구단 버튼 — 로고 + 짧은 이름 */
   function decorateOpp(){
     var sh = sheetEl(); if(!sh) return;
