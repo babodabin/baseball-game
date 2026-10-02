@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.25';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.26';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -29730,6 +29730,13 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     };
     close.__pgV14 = true; window.closeSheet = close; try{ closeSheet = close; }catch(_){ }
   }
+  /* v1.4.26 · 보기 방식과 상관없이 기록은 전부 남긴다(사용자) — 빠르게(이닝별)·결과만·5경기 자동도
+     한 타석씩 경기를 돌리고 홈런·타점·볼넷·수비·주루까지 기록한다. 예전 'inning'/'result' 모드를 끈다. */
+  try{
+    window.setGameRecordModeV348 = function(){ try{ GAME_RECORD_MODE = 'full'; }catch(_){ } };
+    try{ setGameRecordModeV348 = window.setGameRecordModeV348; }catch(_){ }
+    GAME_RECORD_MODE = 'full';
+  }catch(e){ console.error(V + ' 기록 모드:', e); }
   /* 자동 감독인데 투구별이 골라져 있으면 자세히(타석별)로 */
   function fixPitch(){
     var root = document.documentElement; if(!root.classList.contains('v14-auto')) return;
