@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.4.27';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.4.28';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1319,7 +1319,7 @@ nav button.lock{opacity:.32}
     </div>
     <div class="gamelog" id="gamelog"></div>
     <button class="btn" id="mgrOrderBtnV116" style="display:none">🎽 감독 지시 — 지금부터 3이닝 (경기당 1번)</button>
-    <button class="btn" id="skipBtn">⏭ 남은 중계 건너뛰기 (기록 유지)</button>
+    <button class="btn" id="skipBtn">⚡ 결과만으로 바꾸기 · 바로 끝내기</button>
     <button class="btn ghost" id="newGameBtn" style="display:none">다음 경기 준비</button>
   </div>
   <div id="seasonDone" style="display:none" class="locked-msg">
@@ -29761,6 +29761,12 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
     });
     new MutationObserver(fixView).observe(document.documentElement, {attributes:true, attributeFilter:['class']});
     markView();
+    /* v1.4.28 · 중계 중에 결과만으로 — 남은 중계를 바로 끝내고(원래 skipBtn 동작) 다음 경기부터 결과만 */
+    var sk = document.getElementById('skipBtn');
+    if(sk) sk.addEventListener('click', function(){
+      try{ localStorage.setItem(VIEW_KEY, 'fast'); }catch(_){ }
+      setTimeout(function(){ pickView('fast'); markView(); }, 0);
+    });
   }catch(e){ console.error(V + ' 보기 방식:', e); }
   /* 트레이드 상대 구단 버튼 — 로고 + 짧은 이름 */
   function decorateOpp(){
