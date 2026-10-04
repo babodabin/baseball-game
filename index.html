@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.5';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.6';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -31950,8 +31950,8 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
      기록: state.callV164[키] = {day, why, swap} (올라온 선수) · state.sentV164[키] = {day, why, until} (내려간 선수) ·
            출장 중 2군에서 올라온 선수의 경기는 useV15[키].gf 로 따로 센다(측정용)
    ────────────────────────────────────────────────────────────── */
-  Object.assign(U, {restAt:30, restDrop:22, restMax:3, injDown:3, cycle:6, slumpPa:60, slumpDays:10, slumpGap:.12, catcherEvery:4, callBonus:0,
-    callStart:.6, callGap:12, swapMargin:6, roundTrip:14, target:{reg:.70, bench:.20, farm:.10}});   /* callStart: 올라온 선수가 같은 포지션 주전 대신 선발로 나갈 확률 · callGap: 그 주전과 OVR 차 한도 · swapMargin: 순환 때 2군 쪽이 이만큼 낮아도 올림 */
+  Object.assign(U, {restAt:30, restDrop:22, restMax:3, injDown:3, cycle:8, growGap:5, betterGap:2, needPen:5, slumpPa:60, slumpDays:10, slumpGap:.12, catcherEvery:4, callBonus:0,
+    callStart:.6, callGap:12, swapMargin:6, roundTrip:14, target:{reg:.80, bench:.15, farm:.05}});   /* v1.6.6 · 70·20·10 은 실제보다 너무 많이 돌려서(2군 10명 전원이 오르내림) 80·15·5 */   /* callStart: 올라온 선수가 같은 포지션 주전 대신 선발로 나갈 확률 · callGap: 그 주전과 OVR 차 한도 · swapMargin: 순환 때 2군 쪽이 이만큼 낮아도 올림 */
   function my(){ return state && state.myTeam; }
   function T(){ return getTeam(my()); }
   function key(kind, p){ try{ return squadKey(kind, p); }catch(_){ return kind + ':' + p[0]; } }
@@ -31982,10 +31982,11 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
   function swap(kind, down, up, why){
     setLv(kind, down, 'second'); setLv(kind, up, 'first');
     var d = day();
-    sents()[key(kind, down)] = {day:d, why:why, until:why === '부상' ? null : d + (why === '부진' ? U.slumpDays : U.roundTrip), swap:key(kind, up)};   /* 부상 아닌 경우 기간이 지나면 되돌림(1·2군 왕복) */
+    var back = why === '부상' || why === '부진' || why === '필요';   /* v1.6.6 · 성장·실력 교체는 자동으로 되돌리지 않는다(30일 뒤 다시 후보만) */
+    sents()[key(kind, down)] = {day:d, why:why, until:why === '부상' ? null : d + (why === '부진' ? U.slumpDays : why === '필요' ? U.roundTrip : 30), swap:key(kind, up), back:back};
     calls()[key(kind, up)] = {day:d, why:why, swap:key(kind, down)};
-    news('📞 ' + (why === '부상' ? '부상 대체 콜업' : why === '부진' ? '부진 — 2군 조정' : '1·2군 순환'),
-      nm(up) + ' 1군 ↑ · ' + nm(down) + ' 2군 ↓' + (why === '경험' ? ' (유망주 경험)' : why === '폼' ? ' (2군에서 좋은 흐름)' : ''));
+    news('📞 ' + ({부상:'부상 대체 콜업', 부진:'부진 — 2군 조정', 필요:'1군 보강', 성장:'유망주 1군 콜업', 실력:'1·2군 교체'}[why] || '1·2군 교체'),
+      nm(up) + ' 1군 ↑ · ' + nm(down) + ' 2군 ↓' + ({필요:' (1군 자리가 모자람)', 성장:' (2군에서 다 자라 1군 경험)', 실력:' (2군 쪽이 더 나음)'}[why] || ''));
   }
   function bestUp(kind, grp, exclude){
     var t = T(), best = null, bs = -1e9;
@@ -32011,6 +32012,7 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
     /* 다 나은 선수는 되돌린다 */
     Object.keys(sents()).forEach(function(k){
       var s = sents()[k]; if(s.why !== '부상' && !(s.until && day() >= s.until)) return;
+      if(s.back === false){ delete sents()[k]; return; }   /* 성장·실력 교체로 내려간 선수 — 되돌리지 않고 다시 후보로만 */
       var kind = k.split(':')[0], arr = t[kind] || [], p = arr.find(function(x){ return key(kind, x) === k; });
       if(!p){ delete sents()[k]; return; }
       if(inj(kind, p)) return;
@@ -32035,24 +32037,46 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
       if(gap > U.slumpGap && gap > worst){ worst = gap; slumped = p; }
     });
     if(slumped){ var up0 = bestUp('bat', group('bat', slumped)) || bestUp('bat', null); if(up0) swap('bat', slumped, up0, '부진'); }
-    /* 순환: 2군 최고 점수 선수 ↔ 1군 후보(주전 아님) 최저 점수 — 2군 쪽이 낫거나 유망하면 */
-    ['bat', 'pit'].forEach(function(kind){
-      var up = bestUp(kind, null); if(!up) return;
+    /* v1.6.6 · 순환은 이유가 있을 때만, 한 번에 한 명(사용자: 다 올라올 필요 없음 — 2군에서 다 자라 1군 경험이 필요한 선수, 1군에서 필요한 선수 위주)
+       ㉠ 필요: 1군 포수가 2명 아래 · 내야 5명 아래 · 외야 4명 아래(건강한 선수) · 쉰 불펜 투수가 4명 아래 → 그 자리
+       ㉡ 성장: 26세 이하, 잠재력이 OVR+5 넘게 남았고, 실력이 1군 후보 최저 −growGap(5) 까지 올라온 선수 → 1군에서 키운다(자동으로 내려가지 않음)
+       ㉢ 실력: 2군 선수가 1군 후보 최저보다 OVR betterGap(2) 넘게 높으면 · 쉰 불펜이 needPen(5) 명 아래면 ㉠ · 확인은 cycle(8) 경기마다 */
+    var firstOf = function(kind){ return (t[kind] || []).filter(function(p){ return lv(kind, p) === 'first' && !inj(kind, p); }); };
+    var downFor = function(kind, keepGrp){
       var down = null, ds = 1e9;
       (t[kind] || []).forEach(function(p){
         if(lv(kind, p) !== 'first' || inj(kind, p) || calls()[key(kind, p)]) return;
         if(kind === 'bat' && isStarter(p)) return;
         if(kind === 'pit'){ try{ if(rotOrderOf(my()).indexOf(t.pit.indexOf(p)) >= 0) return; }catch(_){ } }
-        if(group(kind, p) === 'C' && t.bat.filter(function(x){ return lv('bat', x) === 'first' && group('bat', x) === 'C'; }).length <= 2) return;   /* 포수 2명은 지킨다 */
-        var s = upScore(kind, p) - (+forms()[key(kind, p)] || 0) * .5; if(s < ds){ ds = s; down = p; }
+        var g = group(kind, p); if(keepGrp && g === keepGrp) return;
+        if(g === 'C' && firstOf('bat').filter(function(x){ return group('bat', x) === 'C'; }).length <= 2) return;
+        var sc = ovr(kind, p) + (ageOf(kind, p) <= 24 ? 3 : 0); if(sc < ds){ ds = sc; down = p; }
       });
-      if(!down) return;
-      var us = upScore(kind, up), why = (ageOf(kind, up) <= 24 && pot(up) >= ovr(kind, up) + 6) ? '경험' : '폼';
-      if(us >= ds - U.swapMargin) swap(kind, down, up, why);
-    });
-    /* 오래 올라와 있던 순환 선수는 정리(14경기) — 다음 순환에서 다시 겨룬다 */
-    Object.keys(calls()).forEach(function(k){ var c = calls()[k]; if((c.why === '폼' || c.why === '경험') && day() - c.day >= 14) delete calls()[k]; });
+      return down ? {p:down, o:ovr(kind, down)} : null;
+    };
+    var fb = firstOf('bat'), cnt = function(g){ return fb.filter(function(p){ var x = group('bat', p); return x === g || (g === 'IF' && x === 'DH' && false); }).length; };
+    var needBat = cnt('C') < 2 ? 'C' : cnt('IF') < 5 ? 'IF' : cnt('OF') < 4 ? 'OF' : null;
+    var freshPen = 0; try{ freshPen = bullpenOrderOfV310(my()).filter(function(i){ var h = playerHealth(my(), 'pit', t.pit[i]); return (+h.fatigue || 0) < U.rpTired; }).length; }catch(_){ }
+    var moved = false;
+    if(needBat){ var u1 = bestUp('bat', needBat), d1 = downFor('bat', needBat); if(u1 && d1){ swap('bat', d1.p, u1, '필요'); moved = true; } }
+    if(!moved && freshPen < U.needPen){ var u2 = bestUp('pit', 'RP') || bestUp('pit', null), d2 = downFor('pit', null); if(u2 && d2){ swap('pit', d2.p, u2, '필요'); moved = true; } }
+    if(moved) return;
+    var order = (state.season.cycleNV166 = (state.season.cycleNV166 || 0) + 1) % 2 ? ['bat', 'pit'] : ['pit', 'bat'];
+    for(var q = 0; q < order.length && !moved; q++){
+      var kind = order[q], d = downFor(kind, null); if(!d) continue;
+      var best = null, why = null, bsc = -1e9;
+      (t[kind] || []).forEach(function(p){
+        if(lv(kind, p) !== 'second' || inj(kind, p) || sents()[key(kind, p)]) return;
+        var o = ovr(kind, p), a = ageOf(kind, p), po = pot(p);
+        var grow = a <= 26 && po >= o + 5 && o >= d.o - U.growGap, better = o >= d.o + U.betterGap;
+        if(!grow && !better) return;
+        var sc = o + (grow ? 2 : 0); if(sc > bsc){ bsc = sc; best = p; why = grow ? '성장' : '실력'; }
+      });
+      if(best){ swap(kind, d.p, best, why); moved = true; }
+    }
   }
+  /* 올라온 지 roundTrip(14) 경기가 지난 선수는 그냥 1군 선수(후보)로 센다 — 부상 대체는 원래 선수가 돌아올 때까지 */
+  function settle(){ Object.keys(calls()).forEach(function(k){ var c = calls()[k]; if(c.why !== '부상' && day() - c.day >= U.roundTrip) delete calls()[k]; }); }
   /* 출장 비율 맞추기(사용자 목표 주전 70 · 후보 20 · 2군 10) — 올 시즌 실제 출장 누계를 보고 오늘 라인업을 조정한다.
      누가 쉬나: 가장 지친 주전부터(포수는 교대 규칙이 따로) · 누가 나가나: 2군 몫이 모자라면 올라온 선수, 아니면 1군 후보 중 그 포지션 최고.
      너무 많이 쉬었으면(주전 몫이 목표보다 2%p 넘게 낮음) 주전을 되돌린다 */
@@ -32144,7 +32168,7 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
       try{ if(state && state.mode === 'sim' && state.season && !state.season.post){ [a, b].forEach(function(tid){ if(tid !== state.myTeam) aiRest(tid); }); } }catch(_){ }
       var mine = state && state.mode === 'sim' && state.myTeam && (a === state.myTeam || b === state.myTeam) && state.season && !state.season.post;
       if(mine){
-        try{ injuries(); if(day() > 0 && day() % U.cycle === 0) cycle(); }catch(e){ console.error(V + ' 1·2군 운영:', e); }
+        try{ injuries(); settle(); if(day() > 0 && day() % U.cycle === 0) cycle(); }catch(e){ console.error(V + ' 1·2군 운영:', e); }
       }
       var g = baseSim.apply(this, arguments);
       if(mine){
