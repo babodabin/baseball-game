@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.9';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.10';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -31939,6 +31939,22 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
 })();
 </script>
 <script id="usage-callup-v164">
+/* v1.6.10 · 2군에서 키우는 선수(사용자: 다 쓸 필요 없다 — 2군에서 키우는 선수도 있다)
+   24세 이하이고 잠재력이 OVR 보다 6 넘게 남은 선수, 우리 팀이 개인 훈련으로 지정한 2군 선수(훈련 슬롯·v1.2.2 2군 훈련).
+   부상 대체·지친 선발 대신·불펜 보충 같은 급한 콜업에서는 빼고, 다 자라면 "유망주 1군 콜업"(성장 규칙)으로만 올라간다 */
+window.isDevelopingV1610 = function(tid, kind, p){
+  try{
+    if(!p) return false;
+    if(tid === state.myTeam){
+      var s = state.trainingV14; if(s && (s.slots || []).some(function(x){ return x.kind === kind && x.alias === p[0]; })) return true;
+      var f = state.trainFocusV122; if(f && (f.alias === p[0] || f.key === (kind + ":" + p[0]))) return true;
+    }
+    var t = state.players[tid], age = +t.age[kind][t[kind].indexOf(p)] || 28;
+    var m = p[p.length - 1], po = m && m.growthProfileV335 ? +m.growthProfileV335.potentialOvr || 0 : 0;
+    var o = kind === "bat" ? batOvr(p, tid) : pitOvr(p, tid);
+    return age <= 24 && po >= o + 6;
+  }catch(_){ return false; }
+};
 (function(){
   'use strict';
   var V = window.APP_VERSION, U = window.USAGE_V164;
@@ -31954,7 +31970,7 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
      기록: state.callV164[키] = {day, why, swap} (올라온 선수) · state.sentV164[키] = {day, why, until} (내려간 선수) ·
            출장 중 2군에서 올라온 선수의 경기는 useV15[키].gf 로 따로 센다(측정용)
    ────────────────────────────────────────────────────────────── */
-  Object.assign(U, {restAt:30, restDrop:22, restMax:3, injDown:3, cycle:8, growGap:5, betterGap:2, needPen:5, slumpPa:60, slumpDays:10, slumpGap:.12, catcherEvery:4, callBonus:0,
+  Object.assign(U, {restAt:30, restDrop:22, restMax:3, injDown:3, cycle:8, growGap:0, betterGap:2, needPen:5, slumpPa:60, slumpDays:10, slumpGap:.12, catcherEvery:4, callBonus:0,
     callStart:.6, callGap:12, swapMargin:6, roundTrip:14, target:{reg:.80, bench:.15, farm:.05}});   /* v1.6.6 · 70·20·10 은 실제보다 너무 많이 돌려서(2군 10명 전원이 오르내림) 80·15·5 */   /* callStart: 올라온 선수가 같은 포지션 주전 대신 선발로 나갈 확률 · callGap: 그 주전과 OVR 차 한도 · swapMargin: 순환 때 2군 쪽이 이만큼 낮아도 올림 */
   function my(){ return state && state.myTeam; }
   function T(){ return getTeam(my()); }
@@ -31997,6 +32013,7 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
     (t[kind] || []).forEach(function(p){
       if(lv(kind, p) !== 'second' || inj(kind, p) || (exclude && exclude[key(kind, p)])) return;
       if(sents()[key(kind, p)]) return;                                   /* 감독이 내린 선수는 기간 중 안 올림 */
+      if(window.isDevelopingV1610(my(), kind, p)) return;                  /* 2군에서 키우는 선수는 급한 콜업에서 뺌 */
       var g = group(kind, p); if(grp && g !== grp && !(grp === 'DH' || (grp === 'IF' && g === 'DH'))) return;
       var s = upScore(kind, p); if(s > bs){ bs = s; best = p; }
     });
@@ -32043,7 +32060,7 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
     if(slumped){ var up0 = bestUp('bat', group('bat', slumped)) || bestUp('bat', null); if(up0) swap('bat', slumped, up0, '부진'); }
     /* v1.6.6 · 순환은 이유가 있을 때만, 한 번에 한 명(사용자: 다 올라올 필요 없음 — 2군에서 다 자라 1군 경험이 필요한 선수, 1군에서 필요한 선수 위주)
        ㉠ 필요: 1군 포수가 2명 아래 · 내야 5명 아래 · 외야 4명 아래(건강한 선수) · 쉰 불펜 투수가 4명 아래 → 그 자리
-       ㉡ 성장: 26세 이하, 잠재력이 OVR+5 넘게 남았고, 실력이 1군 후보 최저 −growGap(5) 까지 올라온 선수 → 1군에서 키운다(자동으로 내려가지 않음)
+       ㉡ 성장: 26세 이하, 잠재력이 OVR+5 넘게 남았고, 실력이 1군 후보 최저만큼(growGap 0 — v1.6.10, 예전 −5 는 덜 자란 채 올라갔다) 올라온 선수 → 1군에서 키운다(자동으로 내려가지 않음)
        ㉢ 실력: 2군 선수가 1군 후보 최저보다 OVR betterGap(2) 넘게 높으면 · 쉰 불펜이 needPen(5) 명 아래면 ㉠ · 확인은 cycle(8) 경기마다 */
     var firstOf = function(kind){ return (t[kind] || []).filter(function(p){ return lv(kind, p) === 'first' && !inj(kind, p); }); };
     var downFor = function(kind, keepGrp){
@@ -32090,7 +32107,7 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
       first.slice(U.rotation).forEach(function(x){
         if(inj('pit', x.p)) return;                         /* 다친 선발은 부상 규칙이 맡는다 */
         var up = null, bo = -1;
-        t.pit.forEach(function(p){ if(p[2] === '선발' || lv('pit', p) !== 'second' || inj('pit', p) || sents()[key('pit', p)]) return; var o = ovr('pit', p); if(o > bo){ bo = o; up = p; } });
+        t.pit.forEach(function(p){ if(p[2] === '선발' || lv('pit', p) !== 'second' || inj('pit', p) || sents()[key('pit', p)] || window.isDevelopingV1610(my(), 'pit', p)) return; var o = ovr('pit', p); if(o > bo){ bo = o; up = p; } });
         setLv('pit', x.p, 'second');
         if(up){ setLv('pit', up, 'first'); news('📞 선발 정리', nm(up) + ' 1군 ↑(불펜) · ' + nm(x.p) + ' 2군 ↓(6번째 선발 — 2군 대기)'); }
       });
@@ -32240,7 +32257,7 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
   function rotation(tid){ try{ var t = getTeam(tid); return rotOrderOf(tid).map(function(i){ return t.pit[i]; }).filter(Boolean); }catch(_){ return []; } }
   function bestFarmSP(tid, exceptKey){
     var t = getTeam(tid), best = null, bo = -1;
-    (t.pit || []).forEach(function(p){ if(p[2] !== '선발' || lv(tid, p) !== 'second' || inj(tid, p) || key('pit', p) === exceptKey) return; var o = ovr(tid, p); if(o > bo){ bo = o; best = p; } });
+    (t.pit || []).forEach(function(p){ if(p[2] !== '선발' || lv(tid, p) !== 'second' || inj(tid, p) || key('pit', p) === exceptKey) return; if(window.isDevelopingV1610(tid, 'pit', p)) return; var o = ovr(tid, p); if(o > bo){ bo = o; best = p; } });
     return best;
   }
   function swapTemp(tid, down, up, days, why){
