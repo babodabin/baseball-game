@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.10';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.11';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -2880,7 +2880,7 @@ function selectStarterSwapV304(pos){
 /* ═══════════ v0.31.4 투수진 전략: 고정 포지션 유지 · 가능한 교체 위치 표시 ═══════════ */
 function pitchPlanPoolV310(teamId){
   const t=getTeam(teamId);
-  return t.pit.map((p,i)=>i).filter(i=>teamId!==state.myTeam||isFirstTeam(teamId,'pit',t.pit[i]));
+  return t.pit.map((p,i)=>i).filter(i=>isFirstTeam(teamId,'pit',t.pit[i]));   /* v1.6.11 · AI 도 1군만(예전엔 AI 는 2군까지 전원) */
 }
 function pitcherClassV312(p){
   if(!p)return 'bullpen';
@@ -5718,7 +5718,7 @@ autoAssignLineup=function(teamId){
   const dh=pool.find(x=>!used.has(x.i)); if(dh){assign.DH=dh.i;used.add(dh.i);} return assign;
 };
 const _benchBattersV231=benchBatters;
-benchBatters=function(teamId){ return _benchBattersV231(teamId).filter(i=>teamId!==state.myTeam||isFirstTeam(teamId,'bat',getTeam(teamId).bat[i])); };
+benchBatters=function(teamId){ return _benchBattersV231(teamId).filter(i=>isFirstTeam(teamId,'bat',getTeam(teamId).bat[i])); };   /* v1.6.11 · AI 도 1군만 */
 const _rotOrderOfV231=rotOrderOf;
 rotOrderOf=function(teamId){
   const plan=pitchPlanOfV310(teamId);
@@ -12021,7 +12021,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
   };
 
   function isFirstEligible(teamId,p){
-    try{return teamId!==state.myTeam||typeof isFirstTeam!=='function'||isFirstTeam(teamId,'bat',p);}catch(_){return true;}
+    try{return typeof isFirstTeam!=='function'||isFirstTeam(teamId,'bat',p);}catch(_){return true;}   /* v1.6.11 · AI 도 1군만 */
   }
   function lineupPool(teamId){
     const t=getTeam(teamId),all=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId)}));
@@ -13228,9 +13228,11 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     return v;
   }
   function setLevel(id,kind,p,level){ensureSquadState();state.squadLevel[id]=state.squadLevel[id]||{};state.squadLevel[id][squadKey(kind,p)]=level;}
+  /* v1.6.11 · AI 도 2군에서 키우는 선수는 아낀다(사용자) — 키우는 선수(isDevelopingV1610)는 점수를 깎아 다른 선수보다 확실히 나을 때만 1군 */
+  function devPenV1611(id,kind,p){try{return typeof window.isDevelopingV1610==='function'&&window.isDevelopingV1610(id,kind,p)?(window.AI_DEV_PEN_V1611||12):0;}catch(_){return 0;}}
   function activeCount(id,kind){const t=getTeam(id),arr=kind==='bat'?t.bat:t.pit;return arr.filter(p=>isFirstTeam(id,kind,p)).length;}
   function chooseBat(id){
-    const t=getTeam(id),rows=t.bat.map((p,i)=>({p,i,v:value(id,'bat',p,i),inj:health(id,'bat',p).injury||0,pos:p[2]}));
+    const t=getTeam(id),rows=t.bat.map((p,i)=>({p,i,v:value(id,'bat',p,i)-devPenV1611(id,'bat',p),inj:health(id,'bat',p).injury||0,pos:p[2]}));
     const picked=[],used=new Set();
     ['C','1B','2B','3B','SS','LF','CF','RF'].forEach(pos=>{const x=rows.filter(r=>r.pos===pos&&r.inj<=1&&!used.has(r.i)).sort((a,b)=>b.v-a.v)[0]||rows.filter(r=>r.pos===pos&&!used.has(r.i)).sort((a,b)=>b.v-a.v)[0];if(x){picked.push(x);used.add(x.i);}});
     rows.filter(r=>!used.has(r.i)&&r.inj<=1).sort((a,b)=>b.v-a.v).forEach(r=>{if(picked.length<15){picked.push(r);used.add(r.i);}});
@@ -13238,7 +13240,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     return new Set(picked.map(r=>r.i));
   }
   function choosePit(id){
-    const t=getTeam(id),rows=t.pit.map((p,i)=>({p,i,v:value(id,'pit',p,i),inj:health(id,'pit',p).injury||0,role:p[2]}));
+    const t=getTeam(id),rows=t.pit.map((p,i)=>({p,i,v:value(id,'pit',p,i)-devPenV1611(id,'pit',p),inj:health(id,'pit',p).injury||0,role:p[2]}));
     const picked=[],used=new Set();
     rows.filter(r=>r.role==='선발'&&r.inj<=1).sort((a,b)=>b.v-a.v).slice(0,5).forEach(r=>{picked.push(r);used.add(r.i);});
     rows.filter(r=>r.role==='선발'&&!used.has(r.i)).sort((a,b)=>b.v-a.v).forEach(r=>{if(picked.filter(x=>x.role==='선발').length<5){picked.push(r);used.add(r.i);}});
@@ -15438,7 +15440,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
   window.pitchPlanOfV310=pitchPlanOfV310=function(teamId){
     if(!state.pitchPlan||typeof state.pitchPlan!=='object')state.pitchPlan={};
     const t=getTeam(teamId);
-    const pool=t.pit.map((p,i)=>({p,i})).filter(x=>teamId!==state.myTeam||isFirstTeam(teamId,'pit',x.p)).map(x=>x.i);
+    const pool=t.pit.map((p,i)=>({p,i})).filter(x=>isFirstTeam(teamId,'pit',x.p)).map(x=>x.i);   /* v1.6.11 · AI 도 1군만 */
     const old=state.pitchPlan[teamId]||{};
     const starterPool=pool.filter(i=>t.pit[i]?.[2]==='선발');
     const reliefPool=pool.filter(i=>t.pit[i]?.[2]!=='선발');
@@ -15803,7 +15805,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
   function buildSafeLineupV3419(teamId,oldLu){
     const t=getTeam(teamId), n=t.bat.length;
     repairFirstTeamV3419(teamId);
-    let pool=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId),first:teamId!==state.myTeam||isFirstTeam(teamId,'bat',p)}));
+    let pool=t.bat.map((p,i)=>({p,i,o:batOvr(p,teamId),first:isFirstTeam(teamId,'bat',p)}));   /* v1.6.11 · AI 도 1군만 */
     const healthy=pool.filter(x=>x.first&&!isInjured(teamId,'bat',x.p));
     const firstAll=pool.filter(x=>x.first);
     const source=healthy.length>=9?healthy:(firstAll.length>=9?firstAll:pool);
@@ -15838,7 +15840,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
   window.benchBatters=benchBatters=function(teamId){
     const t=getTeam(teamId),lu=getLineup(teamId),used=new Set(lu.order);
     // v0.34.31: filter 콜백 안에서 p는 스코프에 없다. 인덱스로 선수를 다시 꺼내야 한다.
-    return t.bat.map((p,i)=>i).filter(i=>!used.has(i)&&(teamId!==state.myTeam||isFirstTeam(teamId,'bat',t.bat[i])));
+    return t.bat.map((p,i)=>i).filter(i=>!used.has(i)&&isFirstTeam(teamId,'bat',t.bat[i]));   /* v1.6.11 · AI 도 1군만 */
   };
 
   function migrateAllV3419(){
