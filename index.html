@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.13';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.14';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -1922,7 +1922,10 @@ function validScheduleV286(sched){
 function normalizePlayersV286(raw){
   const fresh=snapshotTeams(), src=(raw&&typeof raw==='object'&&!Array.isArray(raw))?raw:{};
   const out={};
+  /* v1.6.14 · 기존 구단을 대체한 리그(창단·옛 구단)면 저장에 없는 기본 구단은 되살리지 않는다 — 새로고침하면 대체된 구단이 기본 명단으로 돌아와 12팀이 되던 것 */
+  const BASE10=['LG','HH','KIA','SS','DS','KT','SSG','LT','NC','KW'],srcIds=Object.keys(src),replaced=srcIds.some(id=>!BASE10.includes(id));
   TEAMS.forEach(tm=>{
+    if(replaced&&BASE10.includes(tm.id)&&!src[tm.id])return;
     const r=(src[tm.id]&&typeof src[tm.id]==='object')?src[tm.id]:{};
     let bat=Array.isArray(r.bat)?r.bat.filter(p=>Array.isArray(p)&&p.length>=9).map(p=>[...p]):[];
     let pit=Array.isArray(r.pit)?r.pit.filter(p=>Array.isArray(p)&&p.length>=8).map(p=>[...p]):[];
@@ -12264,6 +12267,8 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
 
   function normalizeTeam(teamId){
     if(!teamId||!state?.players?.[teamId])throw new Error(teamId+' 선수단 데이터가 없습니다.');const t=getTeam(teamId);t.bat=Array.isArray(t.bat)?t.bat.filter(Array.isArray):[];t.pit=Array.isArray(t.pit)?t.pit.filter(Array.isArray):[];t.age=t.age&&typeof t.age==='object'?t.age:{bat:[],pit:[]};t.age.bat=Array.isArray(t.age.bat)?t.age.bat:[];t.age.pit=Array.isArray(t.age.pit)?t.age.pit:[];
+    /* v1.6.14 · 걸러 낸 새 배열을 원래 선수단에 되돌려 놓는다 — 안 그러면 aiPushPitcher 가 원래 배열에 넣어 선발 5명 아래 팀(창단 구단)에서 무한 반복 */
+    {const S=state.players[teamId];S.bat=t.bat;S.pit=t.pit;S.age=t.age;}
     let seed=341300+(TEAMS.findIndex(x=>x.id===teamId)+1)*100+(+state.year||1);FIELD.forEach(pos=>{if(!t.bat.some(p=>proficiency(p,pos)>0))aiPushBat(teamId,pos,seed++);});while(t.bat.length<9)aiPushBat(teamId,'DH',seed++);while(t.pit.filter(p=>p[2]==='선발').length<5)aiPushPitcher(teamId,'선발',seed++);while(t.pit.length<7)aiPushPitcher(teamId,'불펜',seed++);while(t.age.bat.length<t.bat.length)t.age.bat.push(24);while(t.age.pit.length<t.pit.length)t.age.pit.push(24);
     ensureAll();state.lineups=state.lineups&&typeof state.lineups==='object'?state.lineups:{};
     const oldLu=state.lineups[teamId],oldValid=!!(oldLu&&oldLu.order?.length===9&&oldLu.pos?.length===9&&new Set(oldLu.order).size===9&&oldLu.order.every((i,n)=>t.bat[i]&&proficiency(t.bat[i],oldLu.pos[n])>0));
@@ -32547,6 +32552,123 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 })();
 </script>
 <!-- v1.6.13 · 외국인 1군 고정 END -->
+
+<!-- v1.6.14 · 10팀 리그 유지 -->
+<script id="league10-v1614">
+/* 내 구단을 만들 때 11·12팀으로 늘리지 않고 기존 구단 하나를 대체한다(사용자 2026-10-05: "원래 팀 중 하나를 빼는 식 — 144경기로 쉽게").
+   10팀이면 팀당 16번씩 맞대결로 144경기가 딱 떨어지고, 맞춰 둔 돈·성장·출장 숫자를 그대로 쓴다.
+   옛 구단(팀 팩)은 "함께 바꿀 옛 구단"으로 AI 구단 하나를 대신해 들어온다(없음 · 무작위 · 고르기). 12팀 확장 버튼은 숨김(코드는 남김) */
+(function(){
+  "use strict";
+  var V = window.APP_VERSION;
+  function packs(){ return Array.isArray(window.TEAM_PACK_DATA_V161) ? window.TEAM_PACK_DATA_V161 : []; }
+  function unused(){ try{ return window.teamPacksUnusedV161 ? window.teamPacksUnusedV161() : []; }catch(_){ return []; } }
+  /* 새로고침 뒤에도 옛 구단 로고 */
+  function packLogos(){ try{ if(typeof TEAM_LOGO_DATA !== "object") return; packs().forEach(function(p){ if(p && p.logo && TEAMS.some(function(t){ return t.id === p.id; })) TEAM_LOGO_DATA[p.id] = p.logo; }); }catch(_){ } }
+  window.packLogosV1614 = packLogos;
+
+  var SEL = 'style="width:100%;padding:12px;border-radius:12px;background:var(--panel2);color:var(--chalk);border:1px solid var(--line);font-family:inherit;font-size:14px;min-height:44px"';
+  var baseStart = window.openExpansionStartV39;
+  if(typeof baseStart === "function"){
+    window.openExpansionStartV39 = function(){
+      var cfg = window.expansionConfigV39;
+      if(!cfg){ try{ cfg = window.expansionConfigV39 = {league:"replace", eco:"normal", replace:TEAMS[TEAMS.length - 1].id, oldPack:"none"}; }catch(_){ } }
+      if(cfg && cfg.league !== "replace") cfg.league = "replace";
+      var r = baseStart.apply(this, arguments);
+      try{
+        var sh = document.getElementById("sheet"), grp = sh && sh.querySelector(".exp-mode-v39"); if(!grp) return r;
+        var bt = grp.querySelectorAll("button"); if(bt[0]) bt[0].style.display = "none";   /* 12팀 확장 숨김 */
+        var list = unused(); if(!list.length) return r;
+        var rp = sh.querySelector("#expReplaceV39"); if(!rp) return r;
+        var others = TEAMS.filter(function(t){ return t.id !== cfg.replace; });
+        if(!cfg.oldReplace || cfg.oldReplace === cfg.replace) cfg.oldReplace = others[others.length - 1] && others[others.length - 1].id;
+        var po = '<option value="none"' + (!cfg.oldPack || cfg.oldPack === "none" ? " selected" : "") + '>넣지 않음 (지금 10팀 그대로)</option><option value="random"' + (cfg.oldPack === "random" ? " selected" : "") + '>🎲 무작위</option>'
+          + list.map(function(p){ return '<option value="' + p.id + '"' + (cfg.oldPack === p.id ? " selected" : "") + ">" + p.name + " · " + p.year + "</option>"; }).join("");
+        var to = others.map(function(t){ return '<option value="' + t.id + '"' + (cfg.oldReplace === t.id ? " selected" : "") + ">" + t.name + "</option>"; }).join("");
+        var on = cfg.oldPack && cfg.oldPack !== "none";
+        rp.insertAdjacentHTML("afterend", '<div class="hint" style="margin-top:12px">함께 바꿀 옛 구단 <small>(AI 구단 하나 대신 · 10팀 유지)</small></div>'
+          + '<select id="expOldPackV1614" onchange="expansionConfigV39.oldPack=this.value;openExpansionStartV39()" ' + SEL + ">" + po + "</select>"
+          + (on ? '<div class="hint" style="margin-top:8px">옛 구단이 대신할 구단</div><select id="expOldReplaceV1614" onchange="expansionConfigV39.oldReplace=this.value" ' + SEL + ">" + to + "</select>" : ""));
+        rp.onchange = function(){ cfg.replace = this.value; openExpansionStartV39(); };
+      }catch(e){ console.error(V + " 10팀 창단 화면:", e); }
+      return r;
+    };
+  }
+
+  /* 창단 확정 뒤 옛 구단으로 AI 구단 하나 바꾸기 */
+  function swapOld(cfg){
+    var list = unused(), want = cfg.oldPack;
+    var pack = want === "random" ? list[Math.floor(Math.random() * list.length)] : list.find(function(p){ return p.id === want; });
+    var target = cfg.oldReplace, k = TEAMS.findIndex(function(t){ return t.id === target; });
+    if(!pack || k < 0 || target === state.myTeam) return null;
+    var oldName = TEAMS[k].name, r = window.teamPackRosterV161(pack);
+    TEAMS.splice(k, 1, {id:pack.id, name:pack.name, real:pack.name, c:pack.c, bat:[], pit:[]});
+    delete state.players[target];
+    state.players[pack.id] = r;
+    if(typeof CUSTOM_TEAM_MARKS === "object") CUSTOM_TEAM_MARKS[pack.id] = "⚾";
+    if(!Array.isArray(state.customTeams)) state.customTeams = [];
+    state.customTeams = state.customTeams.filter(function(c){ return c && c.id !== pack.id; });
+    state.customTeams.push({id:pack.id, name:pack.name, real:pack.name, c:pack.c, logo:"⚾"});
+    packLogos();
+    state.lineups = {}; state.rotOrder = {}; state.squadLevel = {};
+    try{ if(typeof invalidateAiRosterCacheV3433 === "function") invalidateAiRosterCacheV3433(); }catch(_){ }
+    try{ if(typeof initializeStartSquadsV300 === "function") initializeStartSquadsV300(); }catch(_){ }
+    try{ if(typeof repairSlotHistoryV300 === "function") repairSlotHistoryV300(state); }catch(_){ }
+    state.season = null; state.rot = {}; state.spLast = {};
+    try{ newSeason(); }catch(_){ }
+    try{ if(window.lockForeignV1613) window.lockForeignV1613(); }catch(_){ }
+    try{ save(); }catch(_){ }
+    try{ pushClubNews("🏟️ 옛 구단 합류", pack.name + "(" + pack.year + ")이 " + oldName + " 자리로 리그에 들어왔습니다."); }catch(_){ }
+    return {pack:pack, oldName:oldName};
+  }
+  window.swapOldPackV1614 = swapOld;
+  var baseFin = window.expFinishV39;
+  if(typeof baseFin === "function"){
+    window.expFinishV39 = function(){
+      var cfg = window.expansionConfigV39 || {}, withOld = cfg.league === "replace" && cfg.oldPack && cfg.oldPack !== "none";
+      var sc = window.showConfirm, patched = function(msg, cb){
+        window.showConfirm = sc;
+        var pk = packs().find(function(p){ return p.id === cfg.oldPack; }), tn = (TEAMS.find(function(t){ return t.id === cfg.oldReplace; }) || {}).name || cfg.oldReplace;
+        return sc.call(this, msg + (withOld ? "\n" + (pk ? pk.name : "옛 구단(무작위)") + "이 " + tn + " 자리로 함께 들어옵니다." : ""), function(){
+          cb.apply(this, arguments);
+          var res = null;
+          try{ if(withOld) res = swapOld(cfg); }catch(e){ console.error(V + " 옛 구단 합류:", e); }
+          /* 창단은 startWithMode 를 거치지 않아 2군 실제 선수(v1.6.5)가 안 들어갔다 — 새로고침하면 그제야 들어오던 것 */
+          try{ if(state.myTeam === "NEW" && !state.farmV165 && window.addFarmPlayersV165){ window.addFarmPlayersV165(true); if(window.lockForeignV1613) window.lockForeignV1613(); state.season = null; state.rot = {}; state.spLast = {}; newSeason(); save(); } }catch(e){ console.error(V + " 창단 2군:", e); }
+          if(res) setTimeout(function(){ try{ showAlert(res.pack.name + " " + res.pack.year + "이 " + res.oldName + " 자리로 들어왔습니다. 10개 구단 리그입니다."); }catch(_){ } }, 400);
+        });
+      };
+      window.showConfirm = patched;
+      try{ return baseFin.apply(this, arguments); }
+      finally{ if(window.showConfirm === patched) window.showConfirm = sc; }
+    };
+  }
+  packLogos();
+  ["switchSlot", "startWithMode"].forEach(function(fn){ var prev = window[fn]; if(typeof prev !== "function") return; window[fn] = function(){ var r = prev.apply(this, arguments); packLogos(); return r; }; });
+
+  /* 새 시즌: 지난 시즌에 내려간·올라온 기록(1·2군 운영 v1.6.4)을 정리한다 — 날짜가 0부터 다시 세어져
+     "140일째 복귀" 같은 기록이 다음 시즌 대부분 그 선수를 2군에 묶어 두었다(외국인 1군 고정도 이 기록 때문에 막힘) */
+  function resetCalls(){
+    try{
+      var id = state.myTeam, t = state.players && state.players[id]; if(!t) return;
+      var sent = state.sentV164 || {}, calls = state.callV164 || {}, L = state.squadLevel && state.squadLevel[id]; if(!L) return;
+      var find = function(k){ var kd = k.split(":")[0]; return (t[kd] || []).find(function(p){ try{ return squadKey(kd, p) === k; }catch(_){ return false; } }); };
+      Object.keys(sent).forEach(function(k){
+        var s = sent[k];
+        if(s && s.back !== false && find(k)){ L[k] = "first"; if(s.swap && calls[s.swap] && find(s.swap)) L[s.swap] = "second"; }
+      });
+      state.sentV164 = {}; state.callV164 = {};
+    }catch(e){ console.error(V + " 새 시즌 1·2군 기록:", e); }
+  }
+  window.resetCallsV1614 = resetCalls;
+  var prevNew = window.newSeason;
+  if(typeof prevNew === "function"){
+    var ns = function(){ resetCalls(); var r = prevNew.apply(this, arguments); try{ if(window.lockForeignV1613) window.lockForeignV1613(); }catch(_){ } return r; };
+    window.newSeason = ns; try{ newSeason = ns; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.6.14 · 10팀 리그 유지 END -->
 
 </body>
 </html>
