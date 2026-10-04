@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.7';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.8';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -32204,6 +32204,103 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
   /* 포수 교대는 v1.5.0 autoPrep(라인업 복원·휴식) 맨 끝에서 부른다 */
   window.usageCatcherV164 = catcher;
   window.usageBalanceV164 = balance;
+})();
+</script>
+<script id="sp-rotation-v168">
+(function(){
+  'use strict';
+  var V = window.APP_VERSION, U = window.USAGE_V164;
+  /* ──────────────────────────────────────────────────────────────
+     2군 선발과 바꾸기(사용자 2026-10-05: 1군 선발 5명, 2군 선발이 시즌에 한 번도 안 나오던 것 — 실제는 선발 7~9명을 쓴다)
+     우리 팀·AI 팀 같은 규칙. 한 번에 한 건만(진행 중인 임시 교체가 있으면 기다림)
+       ① 휴식 차례: spRestFrom(80) 경기 이후 spRestEvery(9) 경기마다, 아직 안 쉰 로테이션 선발 중 가장 많이 던진 선수가 한 번 거른다
+          → 2군 선발이 올라와 던지고 spRestDays(5) 경기 뒤 되돌림
+       ② 부진: 25이닝 넘게 던졌는데 평균자책 ≥ 5.00 이고 실력 기대(4.30 − (OVR−70)×0.08)보다 1.8 넘게 나쁘면 spSlumpDays(10) 경기 2군
+       ③ 유망주: 2군 선발 중 25세 이하 · 잠재력 OVR+5 넘게 남음 · 로테이션 최하위 OVR −3 이내 → 바꿈(되돌리지 않음, 16경기에 한 번까지)
+       ④ 부상: 우리 팀은 1·2군 운영의 부상 규칙(3경기 넘게), AI 팀은 여기서 같은 기준으로
+     기록: state.season.spV168[팀] = {rested:{키:1}, temp:{down, up, until, why} | null, lastProspect}
+   ────────────────────────────────────────────────────────────── */
+  Object.assign(U, {spRestFrom:80, spRestEvery:9, spRestDays:5, spSlumpDays:10, spSlumpEra:5.0, spSlumpGap:1.8, spSlumpIp:25});
+  function day(){ return +(state.season && state.season.day) || 0; }
+  function key(kind, p){ try{ return squadKey(kind, p); }catch(_){ return kind + ':' + p[0]; } }
+  function lv(tid, p){ try{ return squadLevelOf(tid, 'pit', p); }catch(_){ return 'first'; } }
+  function setLv(tid, p, l){ try{ ensureSquadState(); state.squadLevel[tid] = state.squadLevel[tid] || {}; state.squadLevel[tid][key('pit', p)] = l; }catch(_){ } }
+  function inj(tid, p){ try{ return +playerHealth(tid, 'pit', p).injury || 0; }catch(_){ return 0; } }
+  function ovr(tid, p){ try{ return pitOvr(p, tid); }catch(_){ return 65; } }
+  function ageOf(tid, p){ try{ var t = state.players[tid]; return +t.age.pit[t.pit.indexOf(p)] || 28; }catch(_){ return 28; } }
+  function pot(p){ try{ var m = p[p.length - 1]; var g = m && m.growthProfileV335; return g ? +g.potentialOvr || 0 : 0; }catch(_){ return 0; } }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p[0]; } }
+  function line(tid, p){ try{ var x = state.season.stats[tid].pit[p[0]] || {}; var out = +x.out || 0; return {ip:out / 3, era:out ? (+x.er || 0) * 27 / out : 0}; }catch(_){ return {ip:0, era:0}; } }
+  function box(tid){ var s = state.season; if(!s.spV168) s.spV168 = {}; var x = s.spV168[tid] = s.spV168[tid] || {rested:{}, temp:null, lastProspect:-99}; if(!x.slumps) x.slumps = {}; if(!x.promoted) x.promoted = {}; return x; }
+  function news(tid, t, b){ if(tid !== state.myTeam) return; try{ if(typeof pushClubNews === 'function') pushClubNews(t, b); }catch(_){ } }
+  function rotation(tid){ try{ var t = getTeam(tid); return rotOrderOf(tid).map(function(i){ return t.pit[i]; }).filter(Boolean); }catch(_){ return []; } }
+  function bestFarmSP(tid, exceptKey){
+    var t = getTeam(tid), best = null, bo = -1;
+    (t.pit || []).forEach(function(p){ if(p[2] !== '선발' || lv(tid, p) !== 'second' || inj(tid, p) || key('pit', p) === exceptKey) return; var o = ovr(tid, p); if(o > bo){ bo = o; best = p; } });
+    return best;
+  }
+  function swapTemp(tid, down, up, days, why){
+    setLv(tid, down, 'second'); setLv(tid, up, 'first');
+    box(tid).temp = {down:key('pit', down), up:key('pit', up), until:day() + days, why:why};
+    news(tid, '📞 ' + ({휴식:'선발 휴식 차례', 부진:'부진 선발 — 2군 조정', 부상:'부상 선발 대체'}[why] || '선발 교체'),
+      nm(up) + ' 1군 ↑(선발) · ' + nm(down) + ' 2군 ↓' + (why === '휴식' ? ' (한 번 거름, ' + days + '경기 뒤 복귀)' : why === '부진' ? ' (' + days + '경기)' : ''));
+  }
+  function manage(tid){
+    try{
+      if(!state.players || !state.players[tid] || !state.season || state.season.post) return;
+      var t = getTeam(tid), b = box(tid), d = day();
+      /* 끝난 임시 교체 되돌리기 */
+      if(b.temp && d >= b.temp.until){
+        var dn = t.pit.find(function(p){ return key('pit', p) === b.temp.down; }), up = t.pit.find(function(p){ return key('pit', p) === b.temp.up; });
+        if(dn && !inj(tid, dn)){ setLv(tid, dn, 'first'); if(up && lv(tid, up) === 'first') setLv(tid, up, 'second'); news(tid, '↩️ 선발 복귀', nm(dn) + (up ? ' ↑ · ' + nm(up) + ' 2군 ↓' : '')); b.temp = null; }
+        else if(!dn) b.temp = null;
+      }
+      if(b.temp) return;
+      var rot = rotation(tid); if(rot.length < 5) return;
+      /* ④ AI 팀 부상(우리 팀은 1·2군 운영이 맡음) */
+      if(tid !== state.myTeam){
+        var hurt = rot.find(function(p){ return inj(tid, p) > 3; });
+        if(hurt){ var r0 = bestFarmSP(tid); if(r0){ swapTemp(tid, hurt, r0, inj(tid, hurt) + 1, '부상'); return; } }
+      }
+      /* ② 부진 */
+      var slump = null, worst = 0;
+      rot.forEach(function(p){
+        if(inj(tid, p)) return;
+        var sk = key('pit', p), hist = b.slumps[sk] || {n:0, last:-99};   /* 같은 투수는 30경기에 한 번, 시즌에 2번까지 */
+        if(hist.n >= 2 || d - hist.last < 30) return;
+        var l = line(tid, p); if(l.ip < U.spSlumpIp || l.era < U.spSlumpEra) return;
+        var gap = l.era - (4.3 - (ovr(tid, p) - 70) * 0.08);
+        if(gap > U.spSlumpGap && gap > worst){ worst = gap; slump = p; }
+      });
+      if(slump){ var r1 = bestFarmSP(tid); if(r1){ var hk = key('pit', slump), hs = b.slumps[hk] = b.slumps[hk] || {n:0, last:-99}; hs.n++; hs.last = d; swapTemp(tid, slump, r1, U.spSlumpDays, '부진'); return; } }
+      /* ③ 유망주 */
+      if(d - b.lastProspect >= 16){
+        /* 올려 키우는 중인 유망주는 내리지 않는다(둘이 번갈아 오르내리던 것) */
+        var low = rot.filter(function(p){ return !b.promoted[key('pit', p)]; }).sort(function(a, c){ return ovr(tid, a) - ovr(tid, c); })[0], lo = low ? ovr(tid, low) : 999;
+        var pr = null, po = -1;
+        (t.pit || []).forEach(function(p){
+          if(p[2] !== '선발' || lv(tid, p) !== 'second' || inj(tid, p)) return;
+          var o = ovr(tid, p); if(ageOf(tid, p) <= 25 && pot(p) >= o + 5 && o >= lo - 3 && o > po){ po = o; pr = p; }
+        });
+        if(pr && low){ setLv(tid, low, 'second'); setLv(tid, pr, 'first'); b.lastProspect = d; b.promoted[key('pit', pr)] = 1; news(tid, '📞 유망주 선발 콜업', nm(pr) + ' 1군 ↑(선발) · ' + nm(low) + ' 2군 ↓ (2군에서 다 자라 1군 로테이션)'); return; }
+      }
+      /* ① 휴식 차례 */
+      if(d >= U.spRestFrom && (d - U.spRestFrom) % U.spRestEvery === 0){
+        var cand = rot.filter(function(p){ return !b.rested[key('pit', p)] && !inj(tid, p); }).sort(function(a, c){ return line(tid, c).ip - line(tid, a).ip; })[0];
+        var r2 = cand && bestFarmSP(tid);
+        if(cand && r2){ b.rested[key('pit', cand)] = 1; swapTemp(tid, cand, r2, U.spRestDays, '휴식'); }
+      }
+    }catch(e){ console.error(V + ' 선발 교체:', e); }
+  }
+  window.spManageV168 = manage;
+  var baseSim = window.simGame;
+  if(typeof baseSim === 'function'){
+    var sim = function(a, b){
+      try{ if(state && state.mode === 'sim' && state.season && !state.season.post){ manage(a); manage(b); } }catch(_){ }
+      return baseSim.apply(this, arguments);
+    };
+    window.simGame = sim; try{ simGame = sim; }catch(_){ }
+  }
 })();
 </script>
 <!-- v1.6.4 · 선수 사용 END -->
