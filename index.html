@@ -31564,6 +31564,32 @@ window.KBO_ABIL_V163 = {"sim":{"bat:박승규":[6,15,0,0,17],"bat:손아섭":[-7
     var w = function(){ var r = prev.apply(this, arguments); apply(); return r; }; window[nm] = w; try{ if(nm === "newSeason") newSeason = w; }catch(_){ } });
 })();
 </script>
+<script id="kbo-age-v163">
+/* v1.6.3 · 나이 바로잡기(사용자 2026-10-05) — 게임 나이가 KBO 출생 연도와 2살 이상 다른 72명(예 이주헌 30 → 23).
+   값 = 2026년 나이(2026 − 출생 연도). 이미 몇 년 진행한 저장은 지난 햇수만큼 더해서 맞춘다. 슬롯마다 한 번(state.ageFixV163) */
+window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,"bat:손용준":26,"bat:송찬의":27,"pit:치리노즈":33,"pit:톨허트":27,"pit:이정용":30,"bat:강백후":27,"bat:허인석":23,"bat:최인호":26,"bat:한지윤":20,"bat:박정현":25,"pit:왕옌챙":25,"bat:카스트로":33,"bat:김호련":34,"bat:박정욱":28,"bat:박민":25,"pit:네일러":33,"pit:올레르":32,"pit:최지믄":23,"pit:시라카와":25,"pit:이의리":24,"bat:디아스":30,"bat:김태훈":30,"bat:김도환":26,"bat:심재훈":20,"bat:김상준":24,"pit:김재운":36,"pit:이승헌":24,"bat:안재섭":24,"bat:박지훈":26,"bat:오명진":25,"bat:박준순":20,"pit:플렉슨":32,"pit:최승엽":25,"pit:이병훈":23,"pit:김동조":24,"pit:최민석":20,"bat:힐리아드":32,"bat:류현임":26,"bat:권동진":28,"pit:사우얼":27,"pit:보슐리":33,"pit:스기모또":26,"bat:에레디야":35,"bat:홍대인":25,"bat:김정민":22,"bat:전의산":26,"pit:화이터":32,"bat:한태향":23,"bat:장두섬":27,"bat:노진혁":37,"bat:조세진":23,"pit:로드리게즈":28,"pit:정현서":25,"bat:최정운":26,"bat:오태양":24,"bat:안중열":31,"pit:전사밈":27,"bat:추재현":27,"bat:데이빗슨":35,"bat:박찬혁":23,"bat:김동헌":22,"bat:염승원":20,"bat:최재영":19,"bat:안치홍":36,"bat:박채울":22,"bat:권혁빈":21,"pit:가나쿠부":27,"pit:윤석운":23,"pit:조영근":27};
+(function(){
+  "use strict";
+  function apply(){
+    try{
+      if(!state || !state.players || !state.myTeam || state.ageFixV163) return;
+      var passed = Math.max(0, (+state.year || 1) - 1), n = 0;
+      Object.keys(state.players).forEach(function(tid){ var t = state.players[tid]; if(!t.age) return;
+        ["bat","pit"].forEach(function(kd){ (t[kd] || []).forEach(function(p, i){
+          var a = window.KBO_AGE_V163[kd + ":" + p[0]]; if(!a) return;
+          t.age[kd][i] = a + passed; n++;
+        }); });
+      });
+      state.ageFixV163 = 1;
+      if(typeof save === "function") save();
+      console.info(window.APP_VERSION + " 나이 바로잡기 " + n + "명");
+    }catch(e){ console.error("v1.6.3 나이:", e); }
+  }
+  apply();
+  ["switchSlot","startWithMode","newSeason"].forEach(function(nm){ var prev = window[nm]; if(typeof prev !== "function") return;
+    var w = function(){ var r = prev.apply(this, arguments); apply(); return r; }; window[nm] = w; try{ if(nm === "newSeason") newSeason = w; }catch(_){ } });
+})();
+</script>
 <!-- v1.6.3 · KBO 실제 기록 데이터 END -->
 <!-- v1.6.2 · 내구성 -->
 <script id="durability-v162">
