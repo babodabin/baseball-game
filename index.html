@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.3';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.4';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -30094,9 +30094,19 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
     var cur = batKeys(t, lu.order);
     if(!a.pref || !same(cur, a.last)) a.pref = cur;           /* 처음이거나 사용자가 바꿈 */
     var idx = a.pref.map(function(k){ for(var i = 0; i < t.bat.length; i++) if(t.bat[i] && key('bat', t.bat[i]) === k) return i; return -1; });
-    var ok = idx.every(function(i, n){ return i >= 0 && (typeof proficiency !== 'function' || proficiency(t.bat[i], lu.pos[n]) > 0); })
-      && new Set(idx).size === 9;
-    if(ok) lu.order = idx; else a.pref = cur;
+    /* v1.6.4 · 계획에 있는 선수가 2군이거나 다쳤으면 계획은 그대로 두고 그 자리만 1군에서 그 포지션을 할 수 있는 가장 좋은 선수로(예전엔 계획을 지금 라인업으로 덮어썼다) */
+    var canPos = function(p, n){ return !!p && (typeof proficiency !== 'function' || proficiency(p, lu.pos[n]) > 0); };
+    var avail = function(p){ try{ return isFirstTeam(id, 'bat', p) && !(+playerHealth(id, 'bat', p).injury > 0); }catch(_){ return true; } };
+    var usedI = {}, fill = idx.map(function(i, n){ if(i >= 0 && !usedI[i] && canPos(t.bat[i], n) && avail(t.bat[i])){ usedI[i] = 1; return i; } return -1; });
+    fill = fill.map(function(i, n){
+      if(i >= 0) return i;
+      var best = -1, bo = -1;
+      t.bat.forEach(function(p, j){ if(usedI[j] || !canPos(p, n) || !avail(p)) return; var o = 0; try{ o = batOvr(p, id); }catch(_){ } if(o > bo){ bo = o; best = j; } });
+      if(best >= 0) usedI[best] = 1;
+      return best;
+    });
+    var ok = fill.every(function(i){ return i >= 0; }) && new Set(fill).size === 9;
+    if(ok) lu.order = fill; else a.pref = cur;
     state.lineups[id] = lu;
     var alert0 = window.showAlert, rl0 = window.renderLineup, sv0 = window.save;
     try{
@@ -30104,26 +30114,29 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
       window.autoRestSwapV115();
     }finally{ window.showAlert = alert0; window.renderLineup = rl0; window.save = sv0; }
     try{ restDay(t, id); }catch(e){ console.error(V + ' 휴식일:', e); }
+    try{ if(window.usageCatcherV164) window.usageCatcherV164(); }catch(_){ }   /* v1.6.4 · 포수 2명 교대 */
   }
   /* 주전 9명만 계속 나오지 않게(사용자): 꽤 지친(REST_AT 이상) 주전은 비슷한 실력(OVR 차 REST_DROP 이내)의
      1군 후보가 있으면 하루 쉰다. 한 경기에 최대 REST_MAX 명. 다음 경기엔 원래 라인업으로 돌아온다 */
-  var REST_AT = 55, REST_DROP = 10, REST_MAX = 2, FRESH_AT = 45;
+  var REST_AT = 55, REST_DROP = 10, REST_MAX = 2, FRESH_AT = 45;   /* v1.6.4 · window.USAGE_V164 의 restAt·restDrop·restMax·freshAt 가 있으면 그 값 */
+  function RU(k, d){ var u = window.USAGE_V164; return u && Number.isFinite(+u[k]) ? +u[k] : d; }
   function fatOf(id, kind, p){ try{ return +playerHealth(id, kind, p).fatigue || 0; }catch(_){ return 0; } }
   function hurtOf(id, kind, p){ try{ return (+playerHealth(id, kind, p).injury || 0) > 0; }catch(_){ return false; } }
   function restDay(t, id){
     var lu = getLineup(id); if(!lu || !Array.isArray(lu.order)) return;
     var used = {}, n = 0; lu.order.forEach(function(i){ used[i] = 1; });
     var slots = lu.order.map(function(bi, k){ return {k:k, f:fatOf(id, 'bat', t.bat[bi])}; }).sort(function(x, y){ return y.f - x.f; });
-    for(var s = 0; s < slots.length && n < REST_MAX; s++){
-      var k = slots[s].k, cur = t.bat[lu.order[k]]; if(!cur || slots[s].f < REST_AT) break;
+    var restMax = RU('restMax', REST_MAX), restAt = RU('restAt', REST_AT), restDrop = RU('restDrop', REST_DROP), freshAt = RU('freshAt', FRESH_AT);
+    for(var s = 0; s < slots.length && n < restMax; s++){
+      var k = slots[s].k, cur = t.bat[lu.order[k]]; if(!cur || slots[s].f < restAt) break;
       var slot = lu.pos[k], best = -1, bo = -1;
       t.bat.forEach(function(p, i){
-        if(!p || used[i] || hurtOf(id, 'bat', p) || fatOf(id, 'bat', p) >= FRESH_AT) return;
+        if(!p || used[i] || hurtOf(id, 'bat', p) || fatOf(id, 'bat', p) >= freshAt) return;
         try{ if(typeof isFirstTeam === 'function' && !isFirstTeam(id, 'bat', p)) return; }catch(_){ }
         try{ if(typeof canPlay === 'function' && !canPlay(p, slot)) return; }catch(_){ }
-        var o = bOvrQ(p, id); if(o > bo){ bo = o; best = i; }
+        var o = bOvrQ(p, id) + (window.usageCallBonusV164 ? window.usageCallBonusV164(id, p) : 0); if(o > bo){ bo = o; best = i; }
       });
-      if(best < 0 || bOvrQ(cur, id) - bo > REST_DROP) continue;
+      if(best < 0 || bOvrQ(cur, id) - bo > restDrop) continue;
       delete used[lu.order[k]]; used[best] = 1; lu.order[k] = best; n++;
     }
     state.lineups[id] = lu;
@@ -31856,6 +31869,226 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
 .body-tag-v162{font-size:11px;color:#8FE3AE;white-space:nowrap}
 </style>
 <!-- v1.6.2 · 내구성 END -->
+
+<!-- v1.6.4 · 선수 사용(144경기) -->
+<script id="usage-v164">
+(function(){
+  'use strict';
+  var V = window.APP_VERSION;
+  /* ──────────────────────────────────────────────────────────────
+     144경기 동안 선수를 더 많이 쓰게(사용자 2026-10-05). 목표: 타자 출장 1군 주전 70 · 후보 20 · 2군 10,
+     선발 5명 로테이션(6·7번째는 다치거나 지칠 때만), 포수 1군 2명 + 2군 1명.
+     측정 시작점(v1.6.3, LG·NC·KIA 한 시즌): 주전 92 · 후보 8 · 2군 0 / 선발 7명이 20~21번씩 / 불펜 7명만, 상위 3명이 이닝 51%
+   ────────────────────────────────────────────────────────────── */
+  var U = window.USAGE_V164 = {
+    rotation:5,          /* 선발 로테이션 인원 */
+    rpTired:9.5,         /* 불펜: 피로가 이 이상(어제 1이닝 넘게 던짐)이면 오늘 쉰다 */
+    closerTired:18,      /* 마무리는 이틀 연속까지 */
+    activePen:9,         /* 그날 쓸 수 있는 불펜 수 */
+    rotatePen:true       /* 셋업 순서를 날마다 돌림 */
+  };
+  function fat(tid, p){ try{ return +playerHealth(tid, 'pit', p).fatigue || 0; }catch(_){ return 0; } }
+  function hurt(tid, p){ try{ return isInjured(tid, 'pit', p); }catch(_){ return false; } }
+
+  /* 1. 선발 5명 — 예전 겹(v0.34)은 "예비까지 전원 차례대로" 라 선발 역할 7명이 돌아가며 던졌다 */
+  var rot = function(teamId){
+    var plan = pitchPlanOfV310(teamId), sp = plan.starters.slice(0, U.rotation);
+    if(!state.rotOrder) state.rotOrder = {};
+    state.rotOrder[teamId] = sp.slice();
+    return state.rotOrder[teamId];
+  };
+  window.rotOrderOf = rot; try{ rotOrderOf = rot; }catch(_){ }
+  var baseNext = window.nextSpIdx || nextSpIdx;
+  var next = function(teamId){
+    try{
+      var list = rot(teamId); if(!list.length) return baseNext.apply(this, arguments);
+      var base = (state.rot[teamId] || 0) % list.length;
+      for(var k = 0; k < list.length; k++){ var idx = list[(base + k) % list.length]; if(restOk(teamId, idx)) return idx; }
+      /* 5명이 모두 못 나오면(부상·덜 쉼) 6·7번째 선발 → 그래도 없으면 예전 방식 */
+      var extra = pitchPlanOfV310(teamId).starters.slice(U.rotation);
+      for(var j = 0; j < extra.length; j++) if(restOk(teamId, extra[j])) return extra[j];
+    }catch(e){ console.error(V + ' 선발:', e); }
+    return baseNext.apply(this, arguments);
+  };
+  window.nextSpIdx = next; try{ nextSpIdx = next; }catch(_){ }
+
+  /* 2. 불펜 — 어제 많이 던진 투수는 쉬게 해서 여러 명이 나눠 던진다. 6·7번째 선발은 긴 이닝 불펜으로 맨 뒤에 */
+  var pen = function(teamId){
+    try{
+      var plan = pitchPlanOfV310(teamId), t = getTeam(teamId);
+      var all = plan.bullpen.concat(plan.starters.slice(U.rotation)).filter(function(i, n, a){ return t.pit[i] && a.indexOf(i) === n; });
+      var ok = [], tired = [];
+      all.forEach(function(i, n){
+        var p = t.pit[i]; if(hurt(teamId, p)) return;
+        var lim = n === 0 ? U.closerTired : U.rpTired;
+        (fat(teamId, p) < lim ? ok : tired).push(i);
+      });
+      if(ok.length < 4) ok = ok.concat(tired.sort(function(a, b){ return fat(teamId, t.pit[a]) - fat(teamId, t.pit[b]); }).slice(0, 4 - ok.length));
+      /* 경기 코드는 선발이 내려가면 늘 [1]번부터 부른다 — 마무리([0])를 뺀 순서를 날마다 돌려 첫 투입이 바뀌게 */
+      if(ok.length > 2 && U.rotatePen){ var head = ok[0] === all[0] ? [ok.shift()] : [], d = (typeof pitchingDay === 'function' ? pitchingDay() : 0) % ok.length; ok = head.concat(ok.slice(d), ok.slice(0, d)); }
+      return ok.slice(0, U.activePen);
+    }catch(e){ console.error(V + ' 불펜:', e); return pitchPlanOfV310(teamId).bullpen.slice(0, 7); }
+  };
+  window.bullpenOrderOfV310 = pen; try{ bullpenOrderOfV310 = pen; }catch(_){ }
+})();
+</script>
+<script id="usage-callup-v164">
+(function(){
+  'use strict';
+  var V = window.APP_VERSION, U = window.USAGE_V164;
+  /* ──────────────────────────────────────────────────────────────
+     감독의 1군·2군 운영(우리 팀) — 사용자 목표 타자 출장 1군 주전 70 · 후보 20 · 2군 10.
+     2군에서 올라오는 경우(사용자): 부상 · 휴식 · 경험(유망주) · 1군에서 부진한 선수와 교체 · 2군에서 아주 잘하는 선수
+       ① 부상: 1군 선수가 U.injDown 경기 넘게 빠지면 2군으로 내리고 같은 포지션 무리(포수·내야·외야·투수 역할)의 2군 선수를 올린다.
+               나으면 되돌린다(올라온 선수는 다시 2군)
+       ② 순환(U.cycle 경기마다 1번): 2군에서 폼이 좋거나 유망한 선수를 올리고, 1군 후보 중 가장 처지는 선수를 내린다
+       ③ 부진: 주전이 U.slumpPa 타석 넘게 기대보다 한참 못 치면(OPS) U.slumpDays 경기 2군 — 그 자리는 계획에서 가장 가까운 선수가
+     2군 폼: 2군 경기 기록이 없어 숨은 값으로 — 순환 때마다 조금씩 변하고(0.6×지난 폼 + 무작위), 젊고 잠재력 높으면 덤
+     포수: 1군 2명이 번갈아(백업이 U.catcherEvery 경기에 1번), 3번째는 2군 — 1군 포수가 다치면 ①로 올라온다
+     기록: state.callV164[키] = {day, why, swap} (올라온 선수) · state.sentV164[키] = {day, why, until} (내려간 선수) ·
+           출장 중 2군에서 올라온 선수의 경기는 useV15[키].gf 로 따로 센다(측정용)
+   ────────────────────────────────────────────────────────────── */
+  Object.assign(U, {restAt:30, restDrop:22, restMax:3, injDown:3, cycle:6, slumpPa:60, slumpDays:10, catcherEvery:3, callBonus:8});
+  function my(){ return state && state.myTeam; }
+  function T(){ return getTeam(my()); }
+  function key(kind, p){ try{ return squadKey(kind, p); }catch(_){ return kind + ':' + p[0]; } }
+  function lk(kind, p){ try{ return longKey(kind, p); }catch(_){ return kind + ':' + p[0]; } }
+  function lv(kind, p){ try{ return squadLevelOf(my(), kind, p); }catch(_){ return 'first'; } }
+  function setLv(kind, p, level){ try{ ensureSquadState(); state.squadLevel[my()][key(kind, p)] = level; }catch(_){ } }
+  function inj(kind, p){ try{ return +playerHealth(my(), kind, p).injury || 0; }catch(_){ return 0; } }
+  function ovr(kind, p){ try{ return kind === 'bat' ? batOvr(p, my()) : pitOvr(p, my()); }catch(_){ return 60; } }
+  function ageOf(kind, p){ try{ var t = state.players[my()]; return +t.age[kind][t[kind].indexOf(p)] || 28; }catch(_){ return 28; } }
+  function group(kind, p){ if(kind === 'pit') return p[2] === '선발' ? 'SP' : 'RP'; var s = p[2]; return s === 'C' ? 'C' : /^(1B|2B|3B|SS)$/.test(s) ? 'IF' : /^(LF|CF|RF)$/.test(s) ? 'OF' : 'DH'; }
+  function day(){ return +(state.season && state.season.day) || 0; }
+  function calls(){ if(!state.callV164) state.callV164 = {}; return state.callV164; }
+  function sents(){ if(!state.sentV164) state.sentV164 = {}; return state.sentV164; }
+  function forms(){ if(!state.formV164) state.formV164 = {}; return state.formV164; }
+  function news(t, b){ try{ if(typeof pushClubNews === 'function') pushClubNews(t, b); }catch(_){ } }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p[0]; } }
+  function pot(p){ try{ var m = p[p.length - 1]; var g = m && m.growthProfileV335; return g ? +g.potentialOvr || 0 : 0; }catch(_){ return 0; } }
+  /* 2군 선수 점수 = 실력 + 폼 + (젊고 잠재력 높으면 경험 덤) */
+  function upScore(kind, p){
+    var f = +forms()[key(kind, p)] || 0, a = ageOf(kind, p), po = pot(p), o = ovr(kind, p);
+    return o + f + (a <= 24 && po >= o + 6 ? 4 : 0);
+  }
+  window.usageCallBonusV164 = function(id, p){ return id === my() && calls()[key('bat', p)] ? U.callBonus : 0; };
+
+  function pref(){ try{ return (state.autoLineupV15 && state.autoLineupV15.pref) || []; }catch(_){ return []; } }
+  function isStarter(p){ return pref().indexOf(lk('bat', p)) >= 0; }
+
+  function swap(kind, down, up, why){
+    setLv(kind, down, 'second'); setLv(kind, up, 'first');
+    var d = day();
+    sents()[key(kind, down)] = {day:d, why:why, until:why === '부진' ? d + U.slumpDays : null, swap:key(kind, up)};
+    calls()[key(kind, up)] = {day:d, why:why, swap:key(kind, down)};
+    news('📞 ' + (why === '부상' ? '부상 대체 콜업' : why === '부진' ? '부진 — 2군 조정' : '1·2군 순환'),
+      nm(up) + ' 1군 ↑ · ' + nm(down) + ' 2군 ↓' + (why === '경험' ? ' (유망주 경험)' : why === '폼' ? ' (2군에서 좋은 흐름)' : ''));
+  }
+  function bestUp(kind, grp, exclude){
+    var t = T(), best = null, bs = -1e9;
+    (t[kind] || []).forEach(function(p){
+      if(lv(kind, p) !== 'second' || inj(kind, p) || (exclude && exclude[key(kind, p)])) return;
+      if(sents()[key(kind, p)]) return;                                   /* 감독이 내린 선수는 기간 중 안 올림 */
+      var g = group(kind, p); if(grp && g !== grp && !(grp === 'DH' || (grp === 'IF' && g === 'DH'))) return;
+      var s = upScore(kind, p); if(s > bs){ bs = s; best = p; }
+    });
+    return best;
+  }
+
+  /* ① 부상 · 회복 */
+  function injuries(){
+    var t = T();
+    ['bat', 'pit'].forEach(function(kind){
+      (t[kind] || []).forEach(function(p){
+        if(lv(kind, p) !== 'first' || inj(kind, p) <= U.injDown) return;
+        var up = bestUp(kind, group(kind, p)) || bestUp(kind, null);
+        if(up) swap(kind, p, up, '부상');
+      });
+    });
+    /* 다 나은 선수는 되돌린다 */
+    Object.keys(sents()).forEach(function(k){
+      var s = sents()[k]; if(s.why !== '부상' && !(s.until && day() >= s.until)) return;
+      var kind = k.split(':')[0], arr = t[kind] || [], p = arr.find(function(x){ return key(kind, x) === k; });
+      if(!p){ delete sents()[k]; return; }
+      if(inj(kind, p)) return;
+      var r = s.swap && arr.find(function(x){ return key(kind, x) === s.swap; });
+      setLv(kind, p, 'first'); delete sents()[k];
+      if(r && lv(kind, r) === 'first'){ setLv(kind, r, 'second'); delete calls()[s.swap]; }
+      news('↩️ 1군 복귀', nm(p) + (r ? ' ↑ · ' + nm(r) + ' 2군 ↓' : ''));
+    });
+  }
+  /* ② 순환 · ③ 부진 */
+  function cycle(){
+    var t = T(), f = forms();
+    ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(p){ var k = key(kind, p); f[k] = Math.round(((+f[k] || 0) * .6 + (Math.random() * 2 - 1) * 6) * 10) / 10; }); });
+    /* 부진: 주전 타자 OPS 가 실력 기대보다 .120 넘게 낮으면 */
+    var S = state.season && state.season.stats && state.season.stats[my()] && state.season.stats[my()].bat || {};
+    var slumped = null, worst = 0;
+    t.bat.forEach(function(p, i){
+      if(lv('bat', p) !== 'first' || !isStarter(p) || inj('bat', p)) return;
+      var st = S[i]; if(!st) return; var pa = (+st.ab || 0) + (+st.bb || 0); if(pa < U.slumpPa) return;
+      var h = +st.h || 0, ab = Math.max(1, +st.ab || 0), obp = (h + (+st.bb || 0)) / Math.max(1, pa), slg = (h + (+st.b2 || 0) + 2 * (+st.b3 || 0) + 3 * (+st.hr || 0)) / ab;
+      var gap = (0.55 + (ovr('bat', p) - 70) * 0.012) - (obp + slg);
+      if(gap > .12 && gap > worst){ worst = gap; slumped = p; }
+    });
+    if(slumped){ var up0 = bestUp('bat', group('bat', slumped)) || bestUp('bat', null); if(up0) swap('bat', slumped, up0, '부진'); }
+    /* 순환: 2군 최고 점수 선수 ↔ 1군 후보(주전 아님) 최저 점수 — 2군 쪽이 낫거나 유망하면 */
+    ['bat', 'pit'].forEach(function(kind){
+      var up = bestUp(kind, null); if(!up) return;
+      var down = null, ds = 1e9;
+      (t[kind] || []).forEach(function(p){
+        if(lv(kind, p) !== 'first' || inj(kind, p) || calls()[key(kind, p)]) return;
+        if(kind === 'bat' && isStarter(p)) return;
+        if(kind === 'pit'){ try{ if(rotOrderOf(my()).indexOf(t.pit.indexOf(p)) >= 0) return; }catch(_){ } }
+        if(group(kind, p) === 'C' && t.bat.filter(function(x){ return lv('bat', x) === 'first' && group('bat', x) === 'C'; }).length <= 2) return;   /* 포수 2명은 지킨다 */
+        var s = upScore(kind, p) - (+forms()[key(kind, p)] || 0) * .5; if(s < ds){ ds = s; down = p; }
+      });
+      if(!down) return;
+      var us = upScore(kind, up), why = (ageOf(kind, up) <= 24 && pot(up) >= ovr(kind, up) + 6) ? '경험' : '폼';
+      if(us >= ds - 2) swap(kind, down, up, why);
+    });
+    /* 오래 올라와 있던 순환 선수는 정리(14경기) — 다음 순환에서 다시 겨룬다 */
+    Object.keys(calls()).forEach(function(k){ var c = calls()[k]; if((c.why === '폼' || c.why === '경험') && day() - c.day >= 14) delete calls()[k]; });
+  }
+  /* 포수 — 백업이 catcherEvery 경기에 1번 */
+  function catcher(){
+    try{
+      var id = my(), t = T(), lu = getLineup(id); if(!lu || !Array.isArray(lu.order)) return;
+      var ci = lu.pos.indexOf('C'); if(ci < 0) return;
+      if(day() % U.catcherEvery !== U.catcherEvery - 1) return;
+      var cur = t.bat[lu.order[ci]], back = null, bo = -1;
+      t.bat.forEach(function(p, i){
+        if(p === cur || lu.order.indexOf(i) >= 0 || lv('bat', p) !== 'first' || inj('bat', p) || group('bat', p) !== 'C') return;
+        var o = ovr('bat', p); if(o > bo){ bo = o; back = i; }
+      });
+      if(back != null){ lu.order[ci] = back; state.lineups[id] = lu; }
+    }catch(e){ console.error(V + ' 포수 교대:', e); }
+  }
+
+  /* 우리 경기 직전: ①②③ → (v1.5.0 자동 교체·휴식) → 포수 교대. 경기 뒤 2군에서 올라온 선수 출장 따로 세기 */
+  var baseSim = window.simGame;
+  if(typeof baseSim === 'function'){
+    var sim = function(a, b){
+      var mine = state && state.mode === 'sim' && state.myTeam && (a === state.myTeam || b === state.myTeam) && state.season && !state.season.post;
+      if(mine){
+        try{ injuries(); if(day() > 0 && day() % U.cycle === 0) cycle(); }catch(e){ console.error(V + ' 1·2군 운영:', e); }
+      }
+      var g = baseSim.apply(this, arguments);
+      if(mine){
+        try{
+          var lu = getLineup(state.myTeam), t = T(), u = state.season.useV15 = state.season.useV15 || {};
+          (lu && lu.order || []).forEach(function(i){ var p = t.bat[i]; if(p && calls()[key('bat', p)]){ var x = u[lk('bat', p)] = u[lk('bat', p)] || {g:0, gs:0}; x.gf = (x.gf || 0) + 1; } });
+        }catch(_){ }
+      }
+      return g;
+    };
+    window.simGame = sim; try{ simGame = sim; }catch(_){ }
+  }
+  /* 포수 교대는 v1.5.0 autoPrep(라인업 복원·휴식) 맨 끝에서 부른다 */
+  window.usageCatcherV164 = catcher;
+})();
+</script>
+<!-- v1.6.4 · 선수 사용 END -->
 
 </body>
 </html>
