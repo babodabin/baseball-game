@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.12';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.13';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -12981,6 +12981,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
       const arr=t[kind]||[];arr.forEach((p,i)=>{
         if(!Array.isArray(p)||!p[0])return;
         if(typeof isLiveCorePlayer==='function'&&isLiveCorePlayer(tid,p,kind))return;
+        if(window.isForeignV1613&&window.isForeignV1613(p,kind))return;   /* v1.6.13 · AI 끼리 외국인은 트레이드하지 않음(3+1 한도가 깨졌다) */
         const age=ageAt(t,kind,i,p),ovr=kind==='bat'?batOvr(p,tid):pitOvr(p,tid);
         if(ovr<55)return;
         out.push({teamId:tid,kind,index:i,p,age,ovr,pos:pos(kind,p),value:value(tid,kind,p,age)});
@@ -13230,9 +13231,11 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
   function setLevel(id,kind,p,level){ensureSquadState();state.squadLevel[id]=state.squadLevel[id]||{};state.squadLevel[id][squadKey(kind,p)]=level;}
   /* v1.6.11 · AI 도 2군에서 키우는 선수는 아낀다(사용자) — 키우는 선수(isDevelopingV1610)는 점수를 깎아 다른 선수보다 확실히 나을 때만 1군 */
   function devPenV1611(id,kind,p){try{return typeof window.isDevelopingV1610==='function'&&window.isDevelopingV1610(id,kind,p)?(window.AI_DEV_PEN_V1611||12):0;}catch(_){return 0;}}
+  /* v1.6.13 · 외국인(3+1)은 1군 우선 — 4경기마다 다시 고를 때 능력치 순 선발 5명에서 밀려 2군에 갔다 */
+  function forBonusV1613(kind,p){try{return window.isForeignV1613&&window.isForeignV1613(p,kind)?30:0;}catch(_){return 0;}}
   function activeCount(id,kind){const t=getTeam(id),arr=kind==='bat'?t.bat:t.pit;return arr.filter(p=>isFirstTeam(id,kind,p)).length;}
   function chooseBat(id){
-    const t=getTeam(id),rows=t.bat.map((p,i)=>({p,i,v:value(id,'bat',p,i)-devPenV1611(id,'bat',p),inj:health(id,'bat',p).injury||0,pos:p[2]}));
+    const t=getTeam(id),rows=t.bat.map((p,i)=>({p,i,v:value(id,'bat',p,i)-devPenV1611(id,'bat',p)+forBonusV1613('bat',p),inj:health(id,'bat',p).injury||0,pos:p[2]}));
     const picked=[],used=new Set();
     ['C','1B','2B','3B','SS','LF','CF','RF'].forEach(pos=>{const x=rows.filter(r=>r.pos===pos&&r.inj<=1&&!used.has(r.i)).sort((a,b)=>b.v-a.v)[0]||rows.filter(r=>r.pos===pos&&!used.has(r.i)).sort((a,b)=>b.v-a.v)[0];if(x){picked.push(x);used.add(x.i);}});
     rows.filter(r=>!used.has(r.i)&&r.inj<=1).sort((a,b)=>b.v-a.v).forEach(r=>{if(picked.length<15){picked.push(r);used.add(r.i);}});
@@ -13240,7 +13243,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     return new Set(picked.map(r=>r.i));
   }
   function choosePit(id){
-    const t=getTeam(id),rows=t.pit.map((p,i)=>({p,i,v:value(id,'pit',p,i)-devPenV1611(id,'pit',p),inj:health(id,'pit',p).injury||0,role:p[2]}));
+    const t=getTeam(id),rows=t.pit.map((p,i)=>({p,i,v:value(id,'pit',p,i)-devPenV1611(id,'pit',p)+forBonusV1613('pit',p),inj:health(id,'pit',p).injury||0,role:p[2]}));
     const picked=[],used=new Set();
     rows.filter(r=>r.role==='선발'&&r.inj<=1).sort((a,b)=>b.v-a.v).slice(0,5).forEach(r=>{picked.push(r);used.add(r.i);});
     rows.filter(r=>r.role==='선발'&&!used.has(r.i)).sort((a,b)=>b.v-a.v).forEach(r=>{if(picked.filter(x=>x.role==='선발').length<5){picked.push(r);used.add(r.i);}});
@@ -32070,6 +32073,7 @@ window.isDevelopingV1610 = function(tid, kind, p){
       (t[kind] || []).forEach(function(p){
         if(lv(kind, p) !== 'first' || inj(kind, p) || calls()[key(kind, p)]) return;
         if(kind === 'bat' && isStarter(p)) return;
+        if(window.isForeignV1613 && window.isForeignV1613(p, kind)) return;   /* v1.6.13 · 외국인은 1군 고정 */
         if(kind === 'pit'){ try{ if(rotOrderOf(my()).indexOf(t.pit.indexOf(p)) >= 0) return; }catch(_){ } }
         var g = group(kind, p); if(keepGrp && g === keepGrp) return;
         if(g === 'C' && firstOf('bat').filter(function(x){ return group('bat', x) === 'C'; }).length <= 2) return;
@@ -32115,7 +32119,8 @@ window.isDevelopingV1610 = function(tid, kind, p){
       var t = T(), plan = pitchPlanOfV310(my()), order = plan.starters || [];
       var first = t.pit.map(function(p, i){ return {p:p, i:i}; }).filter(function(x){ return x.p[2] === '선발' && lv('pit', x.p) === 'first'; });
       if(first.length <= U.rotation) return;
-      first.sort(function(a, b){ var ia = order.indexOf(a.i), ib = order.indexOf(b.i); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+      var fq = function(x){ return window.isForeignV1613 && window.isForeignV1613(x.p, 'pit') ? 0 : 1; };   /* v1.6.13 · 외국인 선발은 6번째로 밀려나지 않게 맨 앞 */
+      first.sort(function(a, b){ var ia = order.indexOf(a.i), ib = order.indexOf(b.i); return (fq(a) - fq(b)) || ((ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)); });
       first.slice(U.rotation).forEach(function(x){
         if(inj('pit', x.p)) return;                         /* 다친 선발은 부상 규칙이 맡는다 */
         var up = null, bo = -1;
@@ -32336,7 +32341,7 @@ window.isDevelopingV1610 = function(tid, kind, p){
       /* ② 부진 */
       var slump = null, worst = 0;
       rot.forEach(function(p){
-        if(inj(tid, p)) return;
+        if(inj(tid, p) || (window.isForeignV1613 && window.isForeignV1613(p, 'pit'))) return;   /* v1.6.13 · 외국인은 부진으로 내리지 않음 */
         var sk = key('pit', p), hist = b.slumps[sk] || {n:0, last:-99};   /* 같은 투수는 30경기에 한 번, 시즌에 2번까지 */
         if(hist.n >= 2 || d - hist.last < 30) return;
         var l = line(tid, p); if(l.ip < U.spSlumpIp || l.era < U.spSlumpEra) return;
@@ -32347,7 +32352,7 @@ window.isDevelopingV1610 = function(tid, kind, p){
       /* ③ 유망주 */
       if(d - b.lastProspect >= 16){
         /* 올려 키우는 중인 유망주는 내리지 않는다(둘이 번갈아 오르내리던 것) */
-        var low = rot.filter(function(p){ return !b.promoted[key('pit', p)]; }).sort(function(a, c){ return ovr(tid, a) - ovr(tid, c); })[0], lo = low ? ovr(tid, low) : 999;
+        var low = rot.filter(function(p){ return !b.promoted[key('pit', p)] && !(window.isForeignV1613 && window.isForeignV1613(p, 'pit')); }).sort(function(a, c){ return ovr(tid, a) - ovr(tid, c); })[0], lo = low ? ovr(tid, low) : 999;
         var pr = null, po = -1;
         (t.pit || []).forEach(function(p){
           if(p[2] !== '선발' || lv(tid, p) !== 'second' || inj(tid, p)) return;
@@ -32385,7 +32390,7 @@ window.isDevelopingV1610 = function(tid, kind, p){
    줄 형식: 타자 [이름, 포지션, 손, 정확, 파워, 주루, 수비, 선구, 2026 나이, KBO id, 연봉(억)] / 투수 [이름, 역할, 손, 구속, 제구, 변화, 체력, 나이, KBO id, 연봉(억)]
    능력치는 1군 후보보다 조금 낮게(기본 58~60) + 2024~2026 기록 백분위로 ±8~10(기록 적으면 덜). KBO 는 내야수·외야수까지만 알려 줘 세부 포지션은 돌려 가며 — 사용자가 고칠 것
    새 게임: 넣은 뒤 1군 30명을 다시 고름(실력·포지션 균형). 진행 중 저장: 2군으로만 넣고 1군은 그대로. 슬롯마다 한 번(state.farmV165) */
-window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089",0.6],["오윤석","SS","우",64,57,55,64,56,34,"64504",1.4],["이정훈","CF","좌",64,58,56,64,64,32,"67644",0.7],["장진혁","LF","좌",61,64,65,60,61,33,"66706",0.9],["이강민","2B","우",55,51,54,60,53,19,"56006",0.3]],"pit":[["전용주","불펜","좌",144,55,66,52,26,"69047",0.4],["주권","불펜","우",140,65,55,52,31,"65060",1.5],["김민수","불펜","우",142,64,60,52,34,"65048",2],["김정운","불펜","우",144,58,65,52,22,"53029",0.3],["로건","선발","좌",142,64,60,70,29,"55912",1.8]]},"SS":{"bat":[["장승현","C","우",57,55,58,64,60,32,"63202",0.5],["양우현","SS","좌",55,55,61,64,60,26,"69403",0.4],["박계범","2B","우",59,58,61,60,56,30,"64468",0.8],["박세혁","C","좌",55,56,61,64,55,36,"62244",4],["김현준","CF","좌",59,54,59,64,57,24,"51417",1]],"pit":[["이승현(91)","불펜","우",141,61,58,52,35,"60146",1.5],["임기영","불펜","우",140,66,55,52,33,"62754",3],["장찬희","불펜","우",141,63,58,52,19,"56460",0.3],["양창섭","불펜","우",142,64,59,52,27,"68415",0.9],["최원태","선발","우",143,63,62,70,29,"65320",16]]},"KIA":{"bat":[["주효상","C","좌",61,56,58,64,59,29,"66354",0.6],["정현창","SS","좌",54,52,54,64,55,20,"55926",0.6],["박상준","2B","좌",62,62,51,60,65,25,"52634",0.3],["윤도현","3B","우",58,62,65,60,52,23,"52667",0.6],["데일","1B","우",65,55,63,60,61,26,"56632",1]],"pit":[["한재승","불펜","우",142,56,61,52,25,"51994",0.8],["이태양","불펜","우",142,66,59,52,36,"60768",2.7],["황동하","불펜","우",141,62,58,52,24,"52641",0.8],["김태형","불펜","우",140,62,55,52,20,"55610",0.6],["홍민규","불펜","우",141,61,57,52,20,"55267",0.4]]},"LG":{"bat":[["김민수","C","우",60,58,60,64,58,35,"64793",0.5],["최원영","CF","우",62,54,67,64,51,23,"52103",0.7],["김현종","LF","우",59,57,58,60,56,22,"54166",0.3],["강민균","SS","우",59,57,59,64,57,26,"53103",0.3],["김성진","2B","우",59,58,60,60,59,26,"69105",0.3]],"pit":[["우강훈","불펜","우",143,60,63,52,24,"51526",0.4],["김진수","불펜","우",141,63,56,52,28,"51154",0.4],["김윤식","불펜","좌",141,55,58,52,26,"50157",1],["이우찬","불펜","좌",144,56,66,52,34,"61145",0.8],["배재준","불펜","우",143,55,63,52,32,"63145",0.6]]},"DS":{"bat":[["류현준","C","우",60,56,58,64,56,21,"54219",0.3],["카메론","CF","우",66,64,68,64,61,29,"56251",7],["양석환","SS","우",60,65,60,64,57,35,"64153",3],["김인태","LF","좌",56,59,55,60,65,32,"63257",0.9],["류승민","RF","좌",61,53,67,60,62,22,"53404",0.4]],"pit":[["김정우","불펜","우",143,60,64,52,27,"68830",0.4],["박치국","불펜","우",143,65,62,52,28,"67266",1.9],["타카다","불펜","좌",144,62,64,52,24,"56212",0.8],["잭로그","선발","좌",143,67,63,70,30,"55239",9.8],["윤태호","불펜","우",144,60,65,52,23,"52202",0.4]]},"SSG":{"bat":[["신범수","C","좌",57,61,57,64,59,28,"66662",0.4],["안상현","SS","우",60,58,68,64,57,29,"66864",0.7],["채현우","CF","우",56,59,68,64,52,31,"69804",0.4],["김성욱","LF","우",59,62,66,60,59,33,"62934",1],["임근우","RF","우",56,57,52,60,52,27,"52807",0.3]],"pit":[["전영준","불펜","우",144,58,65,52,24,"52809",0.7],["이건욱","불펜","우",143,60,62,52,31,"64861",0.3],["박시후","불펜","좌",141,59,58,52,25,"50812",1],["한두솔","불펜","좌",143,62,62,52,29,"68092",1],["최민준","불펜","우",141,61,58,52,27,"68856",1.3]]},"NC":{"bat":[["김정호","C","우",60,57,59,64,57,28,"51903",0.3],["도태훈","SS","좌",56,54,60,64,62,33,"66965",0.7],["서호철","2B","우",63,57,64,60,54,30,"69995",1.5],["한석현","CF","좌",61,58,63,64,54,32,"64101",0.5],["고준휘","LF","좌",61,61,62,60,55,19,"56949",0.3]],"pit":[["임지민","불펜","우",145,56,67,52,23,"52902",0.3],["손주환","불펜","우",143,59,63,52,24,"54904",0.8],["신영우","불펜","우",145,53,68,52,22,"53919",0.3],["이준혁","불펜","우",143,57,64,52,23,"52992",0.5],["이용준","불펜","우",142,57,59,52,24,"51948",0.5]]},"LT":{"bat":[["박건우","C","우",60,56,57,64,55,23,"55509",0.3],["손호영","CF","우",63,61,66,64,53,32,"50150",1],["김세민","SS","우",57,59,55,64,59,23,"52514",0.3],["이호준","2B","좌",57,61,59,60,63,22,"54598",0.6],["신윤후","LF","우",58,56,60,60,55,30,"69508",0.4]],"pit":[["현도훈","불펜","우",143,58,62,52,33,"68260",0.3],["이이무라","불펜","우",142,67,60,52,28,"56503",0.6],["이진하","불펜","우",141,65,58,52,22,"53562",0.3],["김진욱","선발","좌",142,62,60,70,24,"51516",0.7],["김강현","불펜","우",141,63,56,52,31,"65522",0.9]]},"HH":{"bat":[["장규현","C","좌",63,57,55,64,62,24,"51762",0.3],["황영묵","SS","좌",64,56,61,64,60,27,"54795",1],["이진영","CF","우",61,61,61,64,62,29,"66657",1.1],["유민","LF","우",59,61,63,60,55,23,"52765",0.3],["권광민","RF","좌",58,60,56,60,55,29,"52769",0.4]],"pit":[["조동욱","불펜","좌",142,62,60,52,22,"54768",0.9],["이민우","불펜","우",141,62,57,52,33,"65616",0.6],["이상규","불펜","우",141,62,59,52,30,"65117",0.4],["김종수","불펜","우",142,56,61,52,32,"63765",1.2],["장유호","불펜","우",142,60,60,52,26,"69645",0.3]]},"KW":{"bat":[["김재현","C","우",60,54,59,64,51,33,"62332",1],["여동욱","SS","우",54,62,53,64,65,21,"55393",0.3],["박주홍","CF","좌",57,57,67,64,64,25,"50357",0.6],["오선진","2B","우",58,54,58,60,55,37,"78756",0.8],["박수종","LF","우",59,54,61,60,58,27,"52305",0.4]],"pit":[["원종현","불펜","우",141,64,59,52,39,"76118",5],["박지성","불펜","우",141,58,56,52,19,"56337",0.3],["박정훈","불펜","좌",142,56,60,52,20,"55394",0.3],["박진형","불펜","우",142,61,61,52,32,"63512",0.6],["김성진","불펜","우",141,64,57,52,29,"51301",0.6]]}};
+window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089",0.6],["오윤석","SS","우",64,57,55,64,56,34,"64504",1.4],["이정훈","CF","좌",64,58,56,64,64,32,"67644",0.7],["장진혁","LF","좌",61,64,65,60,61,33,"66706",0.9],["이강민","2B","우",55,51,54,60,53,19,"56006",0.3]],"pit":[["전용주","불펜","좌",144,55,66,52,26,"69047",0.4],["주권","불펜","우",140,65,55,52,31,"65060",1.5],["김민수","불펜","우",142,64,60,52,34,"65048",2],["김정운","불펜","우",144,58,65,52,22,"53029",0.3],["문용익","불펜","우",144,54,64,52,31,"67419",0.7]]},"SS":{"bat":[["장승현","C","우",57,55,58,64,60,32,"63202",0.5],["양우현","SS","좌",55,55,61,64,60,26,"69403",0.4],["박계범","2B","우",59,58,61,60,56,30,"64468",0.8],["박세혁","C","좌",55,56,61,64,55,36,"62244",4],["김현준","CF","좌",59,54,59,64,57,24,"51417",1]],"pit":[["이승현(91)","불펜","우",141,61,58,52,35,"60146",1.5],["임기영","불펜","우",140,66,55,52,33,"62754",3],["장찬희","불펜","우",141,63,58,52,19,"56460",0.3],["양창섭","불펜","우",142,64,59,52,27,"68415",0.9],["최원태","선발","우",143,63,62,70,29,"65320",16]]},"KIA":{"bat":[["주효상","C","좌",61,56,58,64,59,29,"66354",0.6],["정현창","SS","좌",54,52,54,64,55,20,"55926",0.6],["박상준","2B","좌",62,62,51,60,65,25,"52634",0.3],["윤도현","3B","우",58,62,65,60,52,23,"52667",0.6],["이호연","1B","좌",62,59,56,60,59,31,"68504",0.7]],"pit":[["한재승","불펜","우",142,56,61,52,25,"51994",0.8],["이태양","불펜","우",142,66,59,52,36,"60768",2.7],["황동하","불펜","우",141,62,58,52,24,"52641",0.8],["김태형","불펜","우",140,62,55,52,20,"55610",0.6],["홍민규","불펜","우",141,61,57,52,20,"55267",0.4]]},"LG":{"bat":[["김민수","C","우",60,58,60,64,58,35,"64793",0.5],["최원영","CF","우",62,54,67,64,51,23,"52103",0.7],["김현종","LF","우",59,57,58,60,56,22,"54166",0.3],["강민균","SS","우",59,57,59,64,57,26,"53103",0.3],["김성진","2B","우",59,58,60,60,59,26,"69105",0.3]],"pit":[["우강훈","불펜","우",143,60,63,52,24,"51526",0.4],["김진수","불펜","우",141,63,56,52,28,"51154",0.4],["김윤식","불펜","좌",141,55,58,52,26,"50157",1],["이우찬","불펜","좌",144,56,66,52,34,"61145",0.8],["배재준","불펜","우",143,55,63,52,32,"63145",0.6]]},"DS":{"bat":[["류현준","C","우",60,56,58,64,56,21,"54219",0.3],["임종성","2B","우",60,61,60,60,52,21,"54236",0.5],["양석환","SS","우",60,65,60,64,57,35,"64153",3],["김인태","LF","좌",56,59,55,60,65,32,"63257",0.9],["류승민","RF","좌",61,53,67,60,62,22,"53404",0.4]],"pit":[["김정우","불펜","우",143,60,64,52,27,"68830",0.4],["박치국","불펜","우",143,65,62,52,28,"67266",1.9],["양재훈","불펜","우",144,60,65,52,23,"55215",0.5],["박신지","불펜","우",142,60,59,52,27,"68249",0.7],["윤태호","불펜","우",144,60,65,52,23,"52202",0.4]]},"SSG":{"bat":[["신범수","C","좌",57,61,57,64,59,28,"66662",0.4],["안상현","SS","우",60,58,68,64,57,29,"66864",0.7],["채현우","CF","우",56,59,68,64,52,31,"69804",0.4],["김성욱","LF","우",59,62,66,60,59,33,"62934",1],["임근우","RF","우",56,57,52,60,52,27,"52807",0.3]],"pit":[["전영준","불펜","우",144,58,65,52,24,"52809",0.7],["이건욱","불펜","우",143,60,62,52,31,"64861",0.3],["박시후","불펜","좌",141,59,58,52,25,"50812",1],["한두솔","불펜","좌",143,62,62,52,29,"68092",1],["최민준","불펜","우",141,61,58,52,27,"68856",1.3]]},"NC":{"bat":[["김정호","C","우",60,57,59,64,57,28,"51903",0.3],["도태훈","SS","좌",56,54,60,64,62,33,"66965",0.7],["서호철","2B","우",63,57,64,60,54,30,"69995",1.5],["한석현","CF","좌",61,58,63,64,54,32,"64101",0.5],["고준휘","LF","좌",61,61,62,60,55,19,"56949",0.3]],"pit":[["임지민","불펜","우",145,56,67,52,23,"52902",0.3],["손주환","불펜","우",143,59,63,52,24,"54904",0.8],["신영우","불펜","우",145,53,68,52,22,"53919",0.3],["이준혁","불펜","우",143,57,64,52,23,"52992",0.5],["이용준","불펜","우",142,57,59,52,24,"51948",0.5]]},"LT":{"bat":[["박건우","C","우",60,56,57,64,55,23,"55509",0.3],["손호영","CF","우",63,61,66,64,53,32,"50150",1],["김세민","SS","우",57,59,55,64,59,23,"52514",0.3],["이호준","2B","좌",57,61,59,60,63,22,"54598",0.6],["신윤후","LF","우",58,56,60,60,55,30,"69508",0.4]],"pit":[["현도훈","불펜","우",143,58,62,52,33,"68260",0.3],["이민석","불펜","우",141,57,58,52,23,"52530",0.8],["이진하","불펜","우",141,65,58,52,22,"53562",0.3],["김진욱","선발","좌",142,62,60,70,24,"51516",0.7],["김강현","불펜","우",141,63,56,52,31,"65522",0.9]]},"HH":{"bat":[["장규현","C","좌",63,57,55,64,62,24,"51762",0.3],["황영묵","SS","좌",64,56,61,64,60,27,"54795",1],["이진영","CF","우",61,61,61,64,62,29,"66657",1.1],["유민","LF","우",59,61,63,60,55,23,"52765",0.3],["권광민","RF","좌",58,60,56,60,55,29,"52769",0.4]],"pit":[["조동욱","불펜","좌",142,62,60,52,22,"54768",0.9],["이민우","불펜","우",141,62,57,52,33,"65616",0.6],["이상규","불펜","우",141,62,59,52,30,"65117",0.4],["김종수","불펜","우",142,56,61,52,32,"63765",1.2],["장유호","불펜","우",142,60,60,52,26,"69645",0.3]]},"KW":{"bat":[["김재현","C","우",60,54,59,64,51,33,"62332",1],["여동욱","SS","우",54,62,53,64,65,21,"55393",0.3],["박주홍","CF","좌",57,57,67,64,64,25,"50357",0.6],["오선진","2B","우",58,54,58,60,55,37,"78756",0.8],["박수종","LF","우",59,54,61,60,58,27,"52305",0.4]],"pit":[["원종현","불펜","우",141,64,59,52,39,"76118",5],["박지성","불펜","우",141,58,56,52,19,"56337",0.3],["박정훈","불펜","좌",142,56,60,52,20,"55394",0.3],["박진형","불펜","우",142,61,61,52,32,"63512",0.6],["김성진","불펜","우",141,64,57,52,29,"51301",0.6]]}};
 (function(){
   "use strict";
   var V = window.APP_VERSION;
@@ -32426,6 +32431,122 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 })();
 </script>
 <!-- v1.6.5 · 2군 선수 END -->
+
+<!-- v1.6.13 · 외국인 1군 고정 -->
+<script id="foreign-v1613">
+/* 외국인 3명 + 아시아쿼터 1명은 1군에 둔다(사용자 2026-10-05: "다 외국인 선발을 1군에 놔"). 다쳤을 때 · 피로로 한 번 거를 때(5경기)만 2군.
+   기본 명단 외국인은 표시(flag)가 없어 이름으로 안다 — 2024~2026 KBO 세 시즌 기록(연봉 달러·엔, 외국 출신)으로 확인한 40명.
+   v1.6.5 2군 추가에 대체 외국인 6명(로건·데일·카메론·타카다·잭로그(1군 잭 로그와 중복)·이이무라)이 섞여 있던 것도 국내 선수로 바꿈 */
+(function(){
+  "use strict";
+  var V = window.APP_VERSION;
+  var BASE = ["오스틴 딘","치리노스","톨허스트","요나단 페라자","윌켈 에르난데스","오웬 화이트","해럴드 카스트로","네일","애덤 올러","디아즈","후라도","크리스 페덱","맷 매닝",
+    "유니오 세베리노","크리스 플렉센","잭 로그","샘 힐리어드","맷 사우어","케일럽 보쉴리","에레디아","미치 화이트","드류 앤더슨","빅터 레이예스","엘빈 로드리게스","제러미 비슬리",
+    "블레인","라일리 톰슨","커티스 테일러","맷 데이비슨","히우라","라울 알칸타라"];
+  var SET = {}; BASE.forEach(function(n){ SET[n] = 1; });
+  window.FOREIGN_BASE_V1613 = BASE;
+  window.isForeignV1613 = function(p, kind){
+    try{
+      if(!p) return false;
+      if(typeof foreignType === "function" && foreignType(p, kind === "bat")) return true;
+      var a = String(p[0] || ""), b = String(p[1] || "");
+      return /아시아쿼터/.test(a + b) || !!SET[a] || !!SET[b];
+    }catch(_){ return false; }
+  };
+  var isF = window.isForeignV1613;
+  function key(kd, p){ try{ return squadKey(kd, p); }catch(_){ return kd + ":" + p[0]; } }
+  /* squadLevel 을 직접 읽고 쓴다 — ensureSquadState → AI 1군 다시 고르기 → 여기 로 도는 재귀를 피함 */
+  function lv(tid, kd, p){ try{ var L = state.squadLevel && state.squadLevel[tid]; return L && L[key(kd, p)] === "second" ? "second" : "first"; }catch(_){ return "first"; } }
+  function setLv(tid, kd, p, l){ try{ if(!state.squadLevel) state.squadLevel = {}; state.squadLevel[tid] = state.squadLevel[tid] || {}; state.squadLevel[tid][key(kd, p)] = l; }catch(_){ } }
+  function inj(tid, kd, p){ try{ return +playerHealth(tid, kd, p).injury || 0; }catch(_){ return 0; } }
+  function ovr(tid, kd, p){ try{ return kd === "bat" ? batOvr(p, tid) : pitOvr(p, tid); }catch(_){ return 60; } }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p[0]; } }
+
+  /* 진행 중 저장: 2군에 들어간 대체 외국인 6명을 같은 자리에서 국내 선수로 바꿈(한 번) */
+  var FIX = {KT:{"로건":"pit"}, KIA:{"데일":"bat"}, DS:{"카메론":"bat", "타카다":"pit", "잭로그":"pit"}, LT:{"이이무라":"pit"}};
+  var NEW = {KT:{"로건":"문용익"}, KIA:{"데일":"이호연"}, DS:{"카메론":"임종성", "타카다":"양재훈", "잭로그":"박신지"}, LT:{"이이무라":"이민석"}};
+  function migrate(){
+    try{
+      if(!state || !state.players || !state.farmV165 || state.farmFixV1613) return;
+      var passed = Math.max(0, (+state.year || 1) - 1), n = 0;
+      Object.keys(FIX).forEach(function(home){
+        Object.keys(FIX[home]).forEach(function(old){
+          var kd = FIX[home][old], row = (window.FARM_V165[home][kd] || []).find(function(r){ return r[0] === NEW[home][old]; }); if(!row) return;
+          Object.keys(state.players).forEach(function(tid){
+            var t = state.players[tid], i = (t[kd] || []).findIndex(function(p){ return p[0] === old && p[1] === old; }); if(i < 0) return;
+            if(t[kd].some(function(x){ return x[0] === row[0]; })){ t[kd].splice(i, 1); if(t.age && t.age[kd]) t.age[kd].splice(i, 1); n++; return; }   /* 이미 그 국내 선수가 있으면 외국인만 뺀다 */
+            var was = lv(tid, kd, t[kd][i]);
+            var p = kd === "bat" ? [row[0], row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]] : [row[0], row[0], row[1], row[2], row[3], row[4], row[5], row[6]];
+            t[kd][i] = p; if(t.age && t.age[kd]) t.age[kd][i] = (+row[kd === "bat" ? 8 : 7] || 25) + passed;
+            setLv(tid, kd, p, was === "first" ? "first" : "second");
+            try{ if(typeof ensureLongTermState === "function") ensureLongTermState(); var c = contractOf(kd, p); if(c) c.salary = +row[kd === "bat" ? 10 : 9] || c.salary; }catch(_){ }
+            if(state.lineups) state.lineups[tid] = null; if(state.rotOrder) state.rotOrder[tid] = null;
+            n++;
+          });
+        });
+      });
+      try{ if(typeof window.ensurePlayerSkillsV326 === "function") window.ensurePlayerSkillsV326(state.players); }catch(_){ }
+      state.farmFixV1613 = 1;
+      if(n){ console.info(V + " 2군 대체 외국인 " + n + "명 → 국내 선수"); try{ save(); }catch(_){ } }
+    }catch(e){ console.error(V + " 2군 외국인 정리:", e); }
+  }
+
+  /* 2군에 있는 건강한 외국인 → 1군. 자리는 같은 종류 국내 선수 중 가장 약한 선수(선발이면 1군 선발 5명 넘을 때 국내 선발, 아니면 불펜) */
+  function pickDown(tid, kd, fp){
+    var t = state.players[tid], first = function(x){ return lv(tid, kd, x) === "first" && !isF(x, kd); };
+    var pool;
+    if(kd === "pit"){
+      var sps = t.pit.filter(function(x){ return x[2] === "선발" && lv(tid, "pit", x) === "first" && !inj(tid, "pit", x); }).length;
+      pool = t.pit.filter(function(x){ return first(x) && (fp[2] === "선발" && sps >= 5 ? x[2] === "선발" : x[2] !== "선발" && x[2] !== "마무리"); });
+    }else{
+      var cs = t.bat.filter(function(x){ return x[2] === "C" && lv(tid, "bat", x) === "first"; }).length;
+      pool = t.bat.filter(function(x){ return first(x) && !(x[2] === "C" && cs <= 2); });
+    }
+    var best = null, bs = 1e9;
+    pool.forEach(function(x){ var s = ovr(tid, kd, x) + (inj(tid, kd, x) ? -50 : 0); if(s < bs){ bs = s; best = x; } });
+    return best;
+  }
+  function lock(tid){
+    try{
+      var t = state.players && state.players[tid]; if(!t) return;
+      var box = state.season && state.season.spV168 && state.season.spV168[tid], temp = box && box.temp;
+      var sent = tid === state.myTeam ? (state.sentV164 || {}) : {};
+      ["bat", "pit"].forEach(function(kd){
+        (t[kd] || []).slice().forEach(function(p){
+          if(!isF(p, kd) || lv(tid, kd, p) !== "second" || inj(tid, kd, p)) return;
+          var k = key(kd, p);
+          if((temp && temp.down === k) || sent[k]) return;   /* 피로로 한 번 거름 · 부상 회복 복귀는 원래 규칙이 되돌림 */
+          var down = pickDown(tid, kd, p);
+          setLv(tid, kd, p, "first"); if(down) setLv(tid, kd, down, "second");
+          if(state.lineups) state.lineups[tid] = null; if(state.rotOrder) state.rotOrder[tid] = null;
+          if(tid === state.myTeam){ try{ pushClubNews("📞 외국인 1군", nm(p) + " 1군 ↑" + (down ? " · " + nm(down) + " 2군 ↓" : "") + " (외국인은 1군)"); }catch(_){ } }
+        });
+      });
+    }catch(e){ console.error(V + " 외국인 1군:", e); }
+  }
+  var busy = false;
+  /* AI 1군 다시 고르기(능력치 순 선발 5명)가 외국인 선발을 밀어내던 것 — 고른 직후 외국인을 1군으로 */
+  var baseBal = window.setBalancedFirstTeamV300;
+  if(typeof baseBal === "function"){
+    window.setBalancedFirstTeamV300 = function(tid){ var r = baseBal.apply(this, arguments); if(!busy){ busy = true; try{ lock(tid); }finally{ busy = false; } } return r; };
+    try{ setBalancedFirstTeamV300 = window.setBalancedFirstTeamV300; }catch(_){ }
+  }
+  function lockAll(){ try{ migrate(); Object.keys(state.players || {}).forEach(lock); }catch(_){ } }
+  window.lockForeignV1613 = lockAll;
+  lockAll();
+  var baseSim = window.simGame;
+  if(typeof baseSim === "function"){
+    var sim = function(a, b){ try{ if(state && state.season && !state.season.post){ lock(a); lock(b); } }catch(_){ } return baseSim.apply(this, arguments); };
+    window.simGame = sim; try{ simGame = sim; }catch(_){ }
+  }
+  ["startWithMode", "switchSlot", "newSeason"].forEach(function(fn){
+    var prev = window[fn]; if(typeof prev !== "function") return;
+    var w = function(){ var r = prev.apply(this, arguments); lockAll(); return r; };
+    window[fn] = w; try{ if(fn === "newSeason") newSeason = w; }catch(_){ }
+  });
+})();
+</script>
+<!-- v1.6.13 · 외국인 1군 고정 END -->
 
 </body>
 </html>
