@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.8';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.9';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -26568,7 +26568,9 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       var outs = first ? 0 : (outsOf(tid, p[0]) - (beforeOuts[tid+'|'+p[0]] || 0));
       if(outs <= 0 && resultMode && !first) outs = estimatedOuts(tid, i, t);
       if(first) return;                  /* 기준을 잡는 첫 호출은 피로를 건드리지 않는다 */
-      h.fatigue = clamp(outs > 0 ? sv.f + LOAD_BASE + outs*LOAD_PER_OUT : sv.f - REST);
+      /* v1.6.9 · 쉬는 날 회복을 선발·불펜 따로(window.PITCH_REST_V169) — 4일 쉬어도 다 안 풀려 쌓이게(사용자). 내구성 배율은 바깥 겹에서 */
+      var restAmt = (window.PITCH_REST_V169 && +window.PITCH_REST_V169[p && p[2] === '선발' ? 'sp' : 'rp']) || REST;
+      h.fatigue = clamp(outs > 0 ? sv.f + LOAD_BASE + outs*LOAD_PER_OUT : sv.f - restAmt);
       var chance = h.fatigue>=94 ? .025 : h.fatigue>=86 ? .008 : 0;
       if(chance && Math.random() < chance){
         h.injury = 2 + Math.floor(Math.random()*4);
@@ -32213,14 +32215,16 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
   /* ──────────────────────────────────────────────────────────────
      2군 선발과 바꾸기(사용자 2026-10-05: 1군 선발 5명, 2군 선발이 시즌에 한 번도 안 나오던 것 — 실제는 선발 7~9명을 쓴다)
      우리 팀·AI 팀 같은 규칙. 한 번에 한 건만(진행 중인 임시 교체가 있으면 기다림)
-       ① 휴식 차례: spRestFrom(80) 경기 이후 spRestEvery(9) 경기마다, 아직 안 쉰 로테이션 선발 중 가장 많이 던진 선수가 한 번 거른다
-          → 2군 선발이 올라와 던지고 spRestDays(5) 경기 뒤 되돌림
+       ① 피로로 거르기(v1.6.9 — 예전엔 80경기 이후 차례대로 한 번씩): 선발은 4일 쉬어도 피로가 조금씩 남아 쌓인다(PITCH_REST_V169).
+          오늘 차례 선발의 피로가 spSkipAt(30) 이상이면 거르고 2군 선발이 던진 뒤 spRestDays(5) 경기 뒤 되돌림
        ② 부진: 25이닝 넘게 던졌는데 평균자책 ≥ 5.00 이고 실력 기대(4.30 − (OVR−70)×0.08)보다 1.8 넘게 나쁘면 spSlumpDays(10) 경기 2군
        ③ 유망주: 2군 선발 중 25세 이하 · 잠재력 OVR+5 넘게 남음 · 로테이션 최하위 OVR −3 이내 → 바꿈(되돌리지 않음, 16경기에 한 번까지)
        ④ 부상: 우리 팀은 1·2군 운영의 부상 규칙(3경기 넘게), AI 팀은 여기서 같은 기준으로
      기록: state.season.spV168[팀] = {rested:{키:1}, temp:{down, up, until, why} | null, lastProspect}
    ────────────────────────────────────────────────────────────── */
-  Object.assign(U, {spRestFrom:80, spRestEvery:9, spRestDays:5, spSlumpDays:10, spSlumpEra:5.0, spSlumpGap:1.8, spSlumpIp:25});
+  Object.assign(U, {spRestDays:5, spSkipAt:30, spSlumpDays:10, spSlumpEra:5.0, spSlumpGap:1.8, spSlumpIp:25});
+  /* 쉬는 날 회복(예전 9) — 선발 6이닝이면 40 쌓이고 4일 동안 내구성 보통(×1.04)이 31 쯤 회복 → 한 번에 9 쯤 남아 3~4번 던지면 한 번 거른다(튼튼하면 덜). 불펜은 더 느려 연투하면 쉴 수밖에 */
+  window.PITCH_REST_V169 = window.PITCH_REST_V169 || {sp:7.5, rp:7};   /* 측정: 선발 7.5 → 2군 선발 15~23선발 · 2군 불펜 16~84등판(4팀) */
   function day(){ return +(state.season && state.season.day) || 0; }
   function key(kind, p){ try{ return squadKey(kind, p); }catch(_){ return kind + ':' + p[0]; } }
   function lv(tid, p){ try{ return squadLevelOf(tid, 'pit', p); }catch(_){ return 'first'; } }
@@ -32284,12 +32288,14 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
         });
         if(pr && low){ setLv(tid, low, 'second'); setLv(tid, pr, 'first'); b.lastProspect = d; b.promoted[key('pit', pr)] = 1; news(tid, '📞 유망주 선발 콜업', nm(pr) + ' 1군 ↑(선발) · ' + nm(low) + ' 2군 ↓ (2군에서 다 자라 1군 로테이션)'); return; }
       }
-      /* ① 휴식 차례 */
-      if(d >= U.spRestFrom && (d - U.spRestFrom) % U.spRestEvery === 0){
-        var cand = rot.filter(function(p){ return !b.rested[key('pit', p)] && !inj(tid, p); }).sort(function(a, c){ return line(tid, c).ip - line(tid, a).ip; })[0];
-        var r2 = cand && bestFarmSP(tid);
-        if(cand && r2){ b.rested[key('pit', cand)] = 1; swapTemp(tid, cand, r2, U.spRestDays, '휴식'); }
-      }
+      /* ① v1.6.9 · 피로로 거르기 — 4일 쉬어도 다 안 풀려 쌓인다. 오늘 차례 선발의 피로가 spSkipAt 이상이면 거르고 2군 선발이 던진다(5경기 뒤 복귀) */
+      try{
+        var ni = nextSpIdx(tid), np = t.pit[ni];
+        if(np && rot.indexOf(np) >= 0 && !inj(tid, np)){
+          var nf = +playerHealth(tid, 'pit', np).fatigue || 0;
+          if(nf >= U.spSkipAt){ var r2 = bestFarmSP(tid); if(r2) swapTemp(tid, np, r2, U.spRestDays, '휴식'); }
+        }
+      }catch(_){ }
     }catch(e){ console.error(V + ' 선발 교체:', e); }
   }
   window.spManageV168 = manage;
