@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.6';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.7';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -9016,7 +9016,9 @@ function setBalancedFirstTeamV300(teamId){
   bats.sort((a,b)=>b.o-a.o).forEach(x=>{if(batFirst.length<16&&!batFirst.includes(x.i))batFirst.push(x.i);});
   const pits=t.pit.map((p,i)=>({p,i,o:pitOvr(p,teamId)})),pitFirst=[];
   pits.filter(x=>x.p[2]==='선발').sort((a,b)=>b.o-a.o).slice(0,5).forEach(x=>pitFirst.push(x.i));
-  pits.sort((a,b)=>b.o-a.o).forEach(x=>{if(pitFirst.length<14&&!pitFirst.includes(x.i))pitFirst.push(x.i);});
+  /* v1.6.7 · 1군 선발은 5명만(사용자 — 보통 1군 선발은 5명). 남는 선발은 2군 대기, 나머지 1군 투수 자리는 불펜으로 */
+  pits.sort((a,b)=>b.o-a.o).forEach(x=>{if(pitFirst.length<14&&!pitFirst.includes(x.i)&&x.p[2]!=='선발')pitFirst.push(x.i);});
+  pits.forEach(x=>{if(pitFirst.length<14&&!pitFirst.includes(x.i))pitFirst.push(x.i);});
   batFirst.forEach(i=>levels[squadKey('bat',t.bat[i])]='first');pitFirst.forEach(i=>levels[squadKey('pit',t.pit[i])]='first');
   state.lineups[teamId]=null;if(state.rotOrder)state.rotOrder[teamId]=null;
 }
@@ -15492,7 +15494,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
     const starter=pits.filter(x=>x.p?.[2]==='선발').sort((a,b)=>b.o-a.o);
     const relief=pits.filter(x=>x.p?.[2]!=='선발').sort((a,b)=>b.o-a.o);
     const pitFirst=[];
-    starter.slice(0,Math.min(7,starter.length)).forEach(x=>pitFirst.push(x.i));
+    starter.slice(0,Math.min(5,starter.length)).forEach(x=>pitFirst.push(x.i));   /* v1.6.7 · 7 → 5(1군 선발은 5명, 남는 선발은 2군 대기) */
     relief.forEach(x=>{if(pitFirst.length<14&&!pitFirst.includes(x.i))pitFirst.push(x.i);});
     starter.forEach(x=>{if(pitFirst.length<14&&!pitFirst.includes(x.i))pitFirst.push(x.i);});
 
@@ -15782,7 +15784,7 @@ input,select,textarea{font-size:16px;max-width:100%;}
       if(need>0)sel=sel.concat(list.filter(x=>sel.indexOf(x)<0).slice(0,need));
       sel.forEach(x=>levels[key('pit',x.p)]='first');
     };
-    promotePitV122(starters,7,5);
+    promotePitV122(starters,5,5);   /* v1.6.7 · 7 → 5(1군 선발은 5명) — 예전엔 라인업을 만들 때마다 선발 7명을 1군에 올리고 야수를 내렸다 */
     promotePitV122(bullpen,9,5);
 
     // 30명 초과 시 전문 포지션과 투수 핵심 인원은 보존하고 여분 야수부터 2군으로 이동.
@@ -32067,6 +32069,7 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
       var best = null, why = null, bsc = -1e9;
       (t[kind] || []).forEach(function(p){
         if(lv(kind, p) !== 'second' || inj(kind, p) || sents()[key(kind, p)]) return;
+        if(kind === 'pit' && p[2] === '선발') return;   /* v1.6.7 · 2군 선발은 선발이 다쳤을 때만 */
         var o = ovr(kind, p), a = ageOf(kind, p), po = pot(p);
         var grow = a <= 26 && po >= o + 5 && o >= d.o - U.growGap, better = o >= d.o + U.betterGap;
         if(!grow && !better) return;
@@ -32074,6 +32077,22 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
       });
       if(best){ swap(kind, d.p, best, why); moved = true; }
     }
+  }
+  /* v1.6.7 · 1군 선발은 5명 — 넘으면 로테이션(투수 계획 순서) 밖의 선발을 2군으로, 그 자리는 2군 불펜 중 최고 */
+  function sp5(){
+    try{
+      var t = T(), plan = pitchPlanOfV310(my()), order = plan.starters || [];
+      var first = t.pit.map(function(p, i){ return {p:p, i:i}; }).filter(function(x){ return x.p[2] === '선발' && lv('pit', x.p) === 'first'; });
+      if(first.length <= U.rotation) return;
+      first.sort(function(a, b){ var ia = order.indexOf(a.i), ib = order.indexOf(b.i); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+      first.slice(U.rotation).forEach(function(x){
+        if(inj('pit', x.p)) return;                         /* 다친 선발은 부상 규칙이 맡는다 */
+        var up = null, bo = -1;
+        t.pit.forEach(function(p){ if(p[2] === '선발' || lv('pit', p) !== 'second' || inj('pit', p) || sents()[key('pit', p)]) return; var o = ovr('pit', p); if(o > bo){ bo = o; up = p; } });
+        setLv('pit', x.p, 'second');
+        if(up){ setLv('pit', up, 'first'); news('📞 선발 정리', nm(up) + ' 1군 ↑(불펜) · ' + nm(x.p) + ' 2군 ↓(6번째 선발 — 2군 대기)'); }
+      });
+    }catch(e){ console.error(V + ' 선발 5명:', e); }
   }
   /* 올라온 지 roundTrip(14) 경기가 지난 선수는 그냥 1군 선수(후보)로 센다 — 부상 대체는 원래 선수가 돌아올 때까지 */
   function settle(){ Object.keys(calls()).forEach(function(k){ var c = calls()[k]; if(c.why !== '부상' && day() - c.day >= U.roundTrip) delete calls()[k]; }); }
@@ -32168,7 +32187,7 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
       try{ if(state && state.mode === 'sim' && state.season && !state.season.post){ [a, b].forEach(function(tid){ if(tid !== state.myTeam) aiRest(tid); }); } }catch(_){ }
       var mine = state && state.mode === 'sim' && state.myTeam && (a === state.myTeam || b === state.myTeam) && state.season && !state.season.post;
       if(mine){
-        try{ injuries(); settle(); if(day() > 0 && day() % U.cycle === 0) cycle(); }catch(e){ console.error(V + ' 1·2군 운영:', e); }
+        try{ injuries(); sp5(); settle(); if(day() > 0 && day() % U.cycle === 0) cycle(); }catch(e){ console.error(V + ' 1·2군 운영:', e); }
       }
       var g = baseSim.apply(this, arguments);
       if(mine){
