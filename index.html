@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.11';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.12';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -32098,6 +32098,16 @@ window.isDevelopingV1610 = function(tid, kind, p){
       });
       if(best){ swap(kind, d.p, best, why); moved = true; }
     }
+    /* v1.6.12 · ㉣ 백업 보강: 2군 출장 몫이 목표(5%)보다 모자라고 올라와 있는 2군 타자가 없으면, 키우는 선수가 아닌 2군 백업·베테랑 1명을 roundTrip(14) 경기 올린다
+       (v1.6.10 에서 키우는 선수를 빼자 올릴 이유가 거의 없어져 2군 출장이 1%로 떨어졌다) */
+    if(!moved){
+      var c0 = tally(), all0 = c0.reg + c0.bench + c0.farm;
+      var upNow = t.bat.some(function(p){ return lv('bat', p) === 'first' && calls()[key('bat', p)]; });
+      if(all0 > 90 && c0.farm / all0 < U.target.farm && !upNow){
+        var d3 = downFor('bat', null), u3 = d3 && (bestUp('bat', group('bat', d3.p)) || bestUp('bat', null));
+        if(d3 && u3) swap('bat', d3.p, u3, '필요');
+      }
+    }
   }
   /* v1.6.7 · 1군 선발은 5명 — 넘으면 로테이션(투수 계획 순서) 밖의 선발을 2군으로, 그 자리는 2군 불펜 중 최고 */
   function sp5(){
@@ -32115,6 +32125,32 @@ window.isDevelopingV1610 = function(tid, kind, p){
       });
     }catch(e){ console.error(V + ' 선발 5명:', e); }
   }
+  /* v1.6.12 · 1군 건강한 선발이 5명 아래면(선발이 다쳤는데 2군 선발이 모두 키우는 선수였거나, 오프시즌에 선발이 빠짐) 2군 선발을 올린다 —
+     키우는 선수가 아닌 쪽 먼저, 없으면 키우는 선수라도(4인 로테이션보다 낫다). 자리는 1군 불펜 중 가장 약한 투수 */
+  function spFill(){
+    try{
+      var t = T();
+      var healthy = t.pit.filter(function(p){ return p[2] === '선발' && lv('pit', p) === 'first' && !inj('pit', p); }).length;
+      for(var guard = 0; healthy < U.rotation && guard < 2; guard++){
+        var pickSP = function(dev){ var best = null, bo = -1; t.pit.forEach(function(p){ if(p[2] !== '선발' || lv('pit', p) !== 'second' || inj('pit', p)) return; if(!!window.isDevelopingV1610(my(), 'pit', p) !== dev) return; var o = ovr('pit', p); if(o > bo){ bo = o; best = p; } }); return best; };
+        var up = pickSP(false) || pickSP(true); if(!up) return;
+        var down = null, ds = 1e9;
+        t.pit.forEach(function(p){ if(p[2] === '선발' || lv('pit', p) !== 'first' || calls()[key('pit', p)]) return; var o = ovr('pit', p) - (inj('pit', p) ? 50 : 0); if(o < ds){ ds = o; down = p; } });
+        setLv('pit', up, 'first'); if(down) setLv('pit', down, 'second');
+        news('📞 선발 보충', nm(up) + ' 1군 ↑(선발)' + (down ? ' · ' + nm(down) + ' 2군 ↓' : '') + ' (1군 선발이 5명 아래)');
+        healthy++;
+      }
+      /* 불펜도: 1군이 30명 아래이고 건강한 불펜이 8명 아래면 2군 투수를 채운다(키우는 선수가 아닌 불펜 → 키우는 불펜 → 2군 선발을 긴 이닝용으로) */
+      var firstN = function(){ return ['bat', 'pit'].reduce(function(s, k){ return s + t[k].filter(function(p){ return lv(k, p) === 'first'; }).length; }, 0); };
+      var pens = function(){ return t.pit.filter(function(p){ return p[2] !== '선발' && lv('pit', p) === 'first' && !inj('pit', p); }).length; };
+      for(var g2 = 0; g2 < 3 && pens() < 8 && firstN() < 30; g2++){
+        var pickRP = function(rp, dev){ var best = null, bo = -1; t.pit.forEach(function(p){ if((p[2] !== '선발') !== rp || lv('pit', p) !== 'second' || inj('pit', p) || sents()[key('pit', p)]) return; if(dev !== null && !!window.isDevelopingV1610(my(), 'pit', p) !== dev) return; var o = ovr('pit', p); if(o > bo){ bo = o; best = p; } }); return best; };
+        var rp = pickRP(true, false) || pickRP(true, true) || pickRP(false, null); if(!rp) break;
+        setLv('pit', rp, 'first');
+        news('📞 불펜 보충', nm(rp) + ' 1군 ↑ (1군 불펜이 모자람)');
+      }
+    }catch(e){ console.error(V + ' 선발 5명:', e); }
+  }
   /* 올라온 지 roundTrip(14) 경기가 지난 선수는 그냥 1군 선수(후보)로 센다 — 부상 대체는 원래 선수가 돌아올 때까지 */
   function settle(){ Object.keys(calls()).forEach(function(k){ var c = calls()[k]; if(c.why !== '부상' && day() - c.day >= U.roundTrip) delete calls()[k]; }); }
   /* 출장 비율 맞추기(사용자 목표 주전 70 · 후보 20 · 2군 10) — 올 시즌 실제 출장 누계를 보고 오늘 라인업을 조정한다.
@@ -32129,6 +32165,18 @@ window.isDevelopingV1610 = function(tid, kind, p){
       var today = function(){ var o = {reg:0, bench:0, farm:0}; lu.order.forEach(function(i){ var p = t.bat[i]; if(p) o[cat(p)]++; }); return o; };
       var canAt = function(p, n){ try{ return typeof window.positionProficiencyV3413 !== 'function' || window.positionProficiencyV3413(p, lu.pos[n]) > 0; }catch(_){ return true; } };
       var fatOf = function(p){ try{ return +playerHealth(id, 'bat', p).fatigue || 0; }catch(_){ return 0; } };
+      /* v1.6.12 · 2군 몫이 목표보다 모자라면 올라온 2군 선수 1명은 주전 몫과 상관없이 내보낸다(후보 자리 먼저, 없으면 가장 지친 주전) —
+         예전엔 주전 몫이 80% 넘을 때만 바꿔서, 올라온 선수가 벤치에만 앉아 있었다 */
+      var d0 = today();
+      if(all > 0 && (c.farm + d0.farm) / (all + 9) < tg.farm && !d0.farm){
+        var fp = -1, fo = -1;
+        t.bat.forEach(function(p, i){ if(lu.order.indexOf(i) >= 0 || lv('bat', p) !== 'first' || inj('bat', p) || cat(p) !== 'farm') return; var o = ovr('bat', p); if(o > fo){ fo = o; fp = i; } });
+        if(fp >= 0){
+          var slot = -1, sf = -1;
+          lu.order.forEach(function(i, n){ var p = t.bat[i]; if(!p || lu.pos[n] === 'C' || !canAt(t.bat[fp], n)) return; var sc = (cat(p) === 'bench' ? 1000 : 0) + fatOf(p); if(sc > sf){ sf = sc; slot = n; } });
+          if(slot >= 0) lu.order[slot] = fp;
+        }
+      }
       for(var guard = 0; guard < 4; guard++){
         var d = today(), share = (c.reg + d.reg) / (all + 9); if(share <= tg.reg + .005) break;
         /* 지친 주전부터(포수 제외) — 그 자리를 맡을 선수가 없으면 다음 주전 */
@@ -32208,7 +32256,7 @@ window.isDevelopingV1610 = function(tid, kind, p){
       try{ if(state && state.mode === 'sim' && state.season && !state.season.post){ [a, b].forEach(function(tid){ if(tid !== state.myTeam) aiRest(tid); }); } }catch(_){ }
       var mine = state && state.mode === 'sim' && state.myTeam && (a === state.myTeam || b === state.myTeam) && state.season && !state.season.post;
       if(mine){
-        try{ injuries(); sp5(); settle(); if(day() > 0 && day() % U.cycle === 0) cycle(); }catch(e){ console.error(V + ' 1·2군 운영:', e); }
+        try{ injuries(); sp5(); spFill(); settle(); if(day() > 0 && day() % U.cycle === 0) cycle(); }catch(e){ console.error(V + ' 1·2군 운영:', e); }
       }
       var g = baseSim.apply(this, arguments);
       if(mine){
