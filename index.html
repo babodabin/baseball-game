@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.1';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.6.2';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -31502,6 +31502,248 @@ window.TEAM_PACK_DATA_V161 = [
 })();
 </script>
 <!-- v1.6.1 · 이름 규칙 · 레전드 END -->
+
+<!-- v1.6.2 · 내구성 -->
+<script id="durability-v162">
+(function(){
+  'use strict';
+  var V = window.APP_VERSION;
+  /* ──────────────────────────────────────────────────────────────
+     내구성(사용자 2026-10-04) — 몸이 얼마나 튼튼한가. 타자·투수 모두 30~99. (투수 "체력"은 한 경기 이닝 능력이라 별개)
+     예전엔 은퇴가 나이로만 정해져 실력과 상관없이 평균 40세(최고 46세)에 그만뒀다(측정: 12년 오프시즌, 실력대별 39.7·39.9·41.1세).
+
+     효과
+      ① 피로 회복: 쉬는 날 피로가 빠지는 양 ×0.85(내구 45) ~ ×1.2(내구 90). 쌓이는 양은 다른 선수와 같다
+      ② 부상: 확률 ×1.5(45) ~ ×0.5(90)
+      ③ 노화·은퇴: "몸 나이" = 실제 나이 − (내구성−60)/10  → 내구 90 은 3년 젊게, 45 는 1.5년 늙게 계산
+      ④ 실력: 31세(몸 나이)부터 1군 수준 아래(OVR 76 미만)면 은퇴 확률이 더 오른다 — 구단이 계약을 안 해 줘서 그만두는 몫
+     변화: 33세부터 해마다 0~2 줄고, 2군에서 드물게(30세 이하·3%) 몸을 만들어 +6~12
+     처음 값: 선수마다 고정된 무작위(55±12) + 성격(철인형 +16 · 꾸준형 +7 · 부상 잦음 −16) + 드래프트 부상 위험(−5×위험도)
+              + 투수 체력 + 지금 35세 넘어서도 뛰는 선수(살아남은 몸) — 사용자가 나중에 고칠 수 있게 state.durV162[키] 에 저장
+     레전드는 따로(🏅 몸 나이 절반 속도 · names-legend-v161) — 여기서는 건드리지 않는다
+     화면: 선수 카드에 "몸 상태" 줄, 스토브리그(FA·방출 목록) 나이 옆에 내구성·예상 은퇴
+   ────────────────────────────────────────────────────────────── */
+  var T = window.DURABILITY_V162 = {
+    recLo:.85, recHi:1.2,          /* ① 회복 배율(내구 45 / 90) */
+    injLo:1.5, injHi:.5,           /* ② 부상 배율(내구 45 / 90) */
+    shiftPer10:1,                  /* ③ 내구성 10 당 몸 나이 1년 */
+    skillAge:31, skillOvr:76, skillRate:.10,   /* ④ 측정으로 맞춤: 은퇴 평균 실력 65~71 → 35세 · 72~79 → 37.6세 · 80+ → 41세 */
+    farmUp:.03
+  };
+  function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+  function hash(s){ var h = 2166136261 >>> 0; s = String(s); for(var i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
+  function isLegend(p){ return !!p && (p[9] === 'legend' || p[8] === 'legend'); }
+  function key(kind, p){ var id = null; try{ id = window.playerIdentityV463 ? window.playerIdentityV463(p) : null; }catch(_){ } return kind + ':' + (id || p[0]); }
+  function store(){ if(!state.durV162 || typeof state.durV162 !== 'object') state.durV162 = {}; return state.durV162; }
+  function draftRisk(p){ for(var i = p.length - 1; i >= 0; i--){ var x = p[i]; if(x && typeof x === 'object' && !Array.isArray(x)){ var d = x.draftProfileV3413 || x.draftMetaV3413; if(d && Number.isFinite(+d.injuryRisk)) return +d.injuryRisk; } } return 0; }
+  function initial(kind, p, age){
+    var k = key(kind, p), v = 55 + (hash(k + '|dur') % 25) - 12;
+    try{ var ty = window.playerPersonalityV340 && window.playerPersonalityV340(p, kind === 'bat'); ty = ty && ty.type;
+      if(ty === 'ironman') v += 16; else if(ty === 'steady') v += 7; else if(ty === 'injuryProne') v -= 16; }catch(_){ }
+    v -= 5 * draftRisk(p);
+    if(kind === 'pit') v += ((+p[7] || 70) - 70) * .3;
+    if(age > 35) v += (age - 35) * 4;            /* 35세 넘어서도 뛰는 선수는 몸이 좋다 */
+    if(isLegend(p)) v += 10;
+    return Math.round(clamp(v, 30, 99));
+  }
+  function durOf(kind, p, age){
+    if(!state || !p) return 60;
+    var s = store(), k = key(kind, p);
+    if(!Number.isFinite(+s[k])) s[k] = initial(kind, p, +age || 28);
+    return +s[k];
+  }
+  window.playerDurabilityV162 = durOf;
+  function lerp(d, lo, hi){ var t = clamp((d - 45) / 45, 0, 1); return lo + (hi - lo) * t; }   /* 45 → lo, 90 → hi */
+  function shift(d){ return (d - 60) / 10 * T.shiftPer10; }
+  function ovrOf(tid, kind, p){ try{ return kind === 'bat' ? batOvr(p, tid) : pitOvr(p, tid); }catch(_){ return 65; } }
+
+  /* 예상 은퇴 나이(화면용) — 모델과 같은 기준의 대략값 */
+  function estRetire(kind, p, age, tid){
+    var d = durOf(kind, p, age), o = ovrOf(tid, kind, p), base = 38.5 + shift(d);
+    if(o >= 80) base += 1.5; else if(o < 66) base -= 3; else if(o < 74) base -= 1.5;
+    return Math.max(+age || 0, Math.round(base));
+  }
+  window.playerRetireEstV162 = estRetire;
+
+  function each(fn){
+    try{ Object.keys(state.players || {}).forEach(function(tid){
+      var t = state.players[tid]; if(!t || !t.age) return;
+      ['bat', 'pit'].forEach(function(kd){ (t[kd] || []).forEach(function(p, i){ fn(tid, t, kd, p, i); }); });
+    }); }catch(e){ console.error(V + ' 내구성:', e); }
+  }
+
+  /* ① 회복 · ② 부상 — 하루 처리 뒤에 고친다 */
+  var baseHealth = window.updateDailyHealth;
+  if(typeof baseHealth === 'function'){
+    var uh = function(){
+      if(!state || !state.players) return baseHealth.apply(this, arguments);
+      var snap = [];
+      each(function(tid, t, kd, p, i){ var h = playerHealth(tid, kd, p); snap.push({tid:tid, kd:kd, p:p, age:t.age[kd][i], f:+h.fatigue || 0, inj:+h.injury || 0}); });
+      var r = baseHealth.apply(this, arguments);
+      try{
+        snap.forEach(function(x){
+          if(isLegend(x.p)) return;
+          var h = playerHealth(x.tid, x.kd, x.p), d = durOf(x.kd, x.p, x.age), nowF = +h.fatigue || 0;
+          if(x.inj === 0 && nowF < x.f && !(h.injury > 0)) h.fatigue = clamp(x.f - (x.f - nowF) * lerp(d, T.recLo, T.recHi), 0, 100);
+          var m = lerp(d, T.injLo, T.injHi);
+          if(x.inj === 0 && h.injury > 0){
+            if(m < 1 && Math.random() > m){ h.injury = 0; }                                   /* 튼튼해서 버팀 */
+          }else if(x.inj === 0 && !(h.injury > 0) && m > 1){
+            var c = nowF >= 94 ? .025 : nowF >= 86 ? .008 : 0;
+            if(c && Math.random() < c * (m - 1)){
+              h.injury = 2 + Math.floor(Math.random() * 4);
+              if(x.tid === state.myTeam && state.season){ try{ state.season.healthNews = (state.season.healthNews || []).concat(['🤕 ' + playerDisplayName(x.p) + ' ' + h.injury + '경기 부상 (몸이 약함)']); }catch(_){ } }
+            }
+          }
+        });
+      }catch(e){ console.error(V + ' 내구성 하루:', e); }
+      return r;
+    };
+    window.updateDailyHealth = uh; try{ updateDailyHealth = uh; }catch(_){ }
+  }
+
+  /* ③ 노화·은퇴 — 계산하는 동안만 나이를 "몸 나이"로 바꿔 둔다(레전드 제외 — 레전드는 따로) */
+  function swapIn(){
+    var list = [];
+    each(function(tid, t, kd, p, i){
+      if(isLegend(p)) return;
+      var real = +t.age[kd][i] || 28, d = durOf(kd, p, real);
+      list.push({t:t, kd:kd, p:p, real:real, tid:tid});
+      t.age[kd][i] = Math.max(16, Math.round(real - shift(d)));
+    });
+    return list;
+  }
+  function swapOut(list, plus){ list.forEach(function(x){ var i = x.t[x.kd].indexOf(x.p); if(i >= 0) x.t.age[x.kd][i] = x.real + plus; }); }
+  var baseGrow = window.applyGrowthWithTraining;
+  if(typeof baseGrow === 'function'){
+    var grow = function(){
+      var list = state && state.mode === 'sim' ? swapIn() : [];
+      try{ return baseGrow.apply(this, arguments); }
+      finally{
+        swapOut(list, 1);
+        /* 내구성 변화: 33세부터 0~2 감소 · 2군에서 드물게 상승 */
+        try{
+          var s = store();
+          list.forEach(function(x){
+            var k = key(x.kd, x.p), d = durOf(x.kd, x.p, x.real), age = x.real + 1;
+            if(age >= 33) d -= Math.floor(Math.random() * 3);
+            var farm = false; try{ farm = squadLevelOf(x.tid, x.kd, x.p) === 'second'; }catch(_){ }
+            if(farm && age <= 30 && Math.random() < T.farmUp){
+              var up = 6 + Math.floor(Math.random() * 7); d += up;
+              if(x.tid === state.myTeam && typeof pushClubNews === 'function') pushClubNews('💪 2군에서 몸을 만들었다', playerDisplayName(x.p) + ' 내구성 +' + up);
+            }
+            s[k] = clamp(Math.round(d), 30, 99);
+          });
+        }catch(e){ console.error(V + ' 내구성 변화:', e); }
+      }
+    };
+    window.applyGrowthWithTraining = grow; try{ applyGrowthWithTraining = grow; }catch(_){ }
+  }
+  var baseRetire = window.processRetirements;
+  if(typeof baseRetire === 'function'){
+    var retire = function(){
+      if(!state || state.mode !== 'sim') return baseRetire.apply(this, arguments);
+      if(!state.retired) state.retired = [];
+      var list = swapIn(), news, n0 = state.retired.length;
+      try{ news = baseRetire.apply(this, arguments) || []; }
+      finally{ swapOut(list, 0); }
+      /* 기록·소식에는 몸 나이가 아니라 실제 나이 */
+      try{
+        var fixed = false;
+        state.retired.slice(n0).forEach(function(rec){
+          var x = list.find(function(y){ return y.tid === rec.team && y.p[0] === rec.name; });
+          if(x && rec.age !== x.real){ rec.age = x.real; fixed = true; }
+        });
+        if(fixed) news = state.retired.slice(n0).map(function(rec){
+          var nm = rec.real && rec.real !== '신인' && rec.real !== rec.name ? rec.real : rec.name;
+          return getTeam(rec.team).name + ' ' + nm + '(' + rec.age + '세)';
+        });
+      }catch(_){ }
+      /* ④ 실력 — 몸 나이 31세부터 1군 수준 아래면 구단이 안 써 줘서 그만둔다 */
+      try{
+        Object.keys(state.players || {}).forEach(function(tid){
+          var t = state.players[tid];
+          ['bat', 'pit'].forEach(function(kd){
+            var arr = t[kd], ages = t.age[kd];
+            for(var i = arr.length - 1; i >= 0; i--){
+              var p = arr[i]; if(isLegend(p)) continue;
+              var real = +ages[i] || 28, body = real - shift(durOf(kd, p, real)), o = ovrOf(tid, kd, p);
+              if(body < T.skillAge || o >= T.skillOvr) continue;
+              var c = (T.skillOvr - o) / 10 * T.skillRate * (body - T.skillAge + 1);
+              if(Math.random() < Math.min(.85, c)){
+                state.retired.push({name:p[0], real:p[1], team:tid, kind:kd, age:real, ovr:o, year:state.year, type:'실력', why:'계약 못 함'});
+                news.push(getTeam(tid).name + ' ' + playerDisplayName(p) + '(' + real + '세)');
+                arr.splice(i, 1); ages.splice(i, 1);
+              }
+            }
+          });
+        });
+        state.retirementNews = news;
+      }catch(e){ console.error(V + ' 실력 은퇴:', e); }
+      return news;
+    };
+    window.processRetirements = retire; try{ processRetirements = retire; }catch(_){ }
+  }
+
+  /* 화면: 선수 카드 "몸 상태" · 스토브리그 목록 나이 옆 */
+  function bodyLine(kind, p, age, tid){
+    var d = durOf(kind, p, age), r = estRetire(kind, p, age, tid), left = Math.max(0, r - age);
+    var word = d >= 85 ? '아주 튼튼' : d >= 70 ? '튼튼' : d >= 55 ? '보통' : d >= 45 ? '약한 편' : '약함';
+    return '내구성 ' + d + '(' + word + ') · 예상 은퇴 약 ' + r + '세' + (left ? ' (' + left + '시즌 남음)' : ' (올해 은퇴 검토)');
+  }
+  window.playerBodyLineV162 = bodyLine;
+  var baseSheet = window.openSheet;
+  if(typeof baseSheet === 'function'){
+    var os = function(team, tab, idx){
+      var r = baseSheet.apply(this, arguments);
+      try{
+        if(state.mode !== 'sim' || !team) return r;
+        var kind = tab === 'bat' ? 'bat' : 'pit', p = (team[kind] || [])[idx], t = state.players[team.id];
+        var age = t && t.age && t.age[kind] ? +t.age[kind][idx] : 0;
+        var sh = document.getElementById('sheet');
+        if(p && sh && !isLegend(p) && !sh.querySelector('.body-v162'))
+          sh.insertAdjacentHTML('beforeend', '<div class="reveal body-v162"><div class="lbl">몸 상태</div>' + bodyLine(kind, p, age, team.id) + '</div>');
+      }catch(e){ console.error(V + ' 몸 상태:', e); }
+      return r;
+    };
+    window.openSheet = os; try{ openSheet = os; }catch(_){ }
+  }
+  function stove(){
+    try{
+      var body = document.getElementById('frontBody'); if(!body || state.mode !== 'sim') return;
+      var m = state.season && state.season.market;
+      body.querySelectorAll('.prow[data-fa]').forEach(function(row){
+        if(row.dataset.bodyV162) return;
+        var fa = m && m.fa && m.fa[+row.dataset.fa]; if(!fa || !fa.data) return;
+        var nm = row.querySelector('.nm span'); if(!nm) return;
+        row.dataset.bodyV162 = '1';
+        var d = durOf(fa.kind, fa.data, fa.age), r = estRetire(fa.kind, fa.data, fa.age, fa.from);
+        nm.insertAdjacentHTML('afterend', ' <span class="body-tag-v162">💪' + d + ' · 은퇴 ~' + r + '세</span>');
+      });
+      var mine = state.players[state.myTeam];
+      body.querySelectorAll('.prow[data-cutrow][data-cri]').forEach(function(row){
+        if(row.dataset.bodyV162 || !mine) return;
+        var kd = row.dataset.cutrow, i = +row.dataset.cri, p = mine[kd] && mine[kd][i]; if(!p) return;
+        var nmEl = row.querySelector('.nm'); if(!nmEl) return;
+        row.dataset.bodyV162 = '1';
+        var age = +mine.age[kd][i] || 0;
+        nmEl.insertAdjacentHTML('beforeend', ' <span class="body-tag-v162">' + age + '세 · 💪' + durOf(kd, p, age) + ' · 은퇴 ~' + estRetire(kd, p, age, state.myTeam) + '세</span>');
+      });
+    }catch(e){ console.error(V + ' 스토브리그 표시:', e); }
+  }
+  window.stoveBodyTagsV162 = stove;
+  ['renderFront', 'openMarketSectionV108', 'setFrontSubTab'].forEach(function(fn){
+    var prev = window[fn]; if(typeof prev !== 'function' || prev.__bodyV162) return;
+    var w = function(){ var r = prev.apply(this, arguments); stove(); return r; };
+    w.__bodyV162 = true; window[fn] = w;
+    try{ if(fn === 'renderFront') renderFront = w; else if(fn === 'setFrontSubTab') setFrontSubTab = w; }catch(_){ }
+  });
+})();
+</script>
+<style id="durability-style-v162">
+.body-tag-v162{font-size:11px;color:#8FE3AE;white-space:nowrap}
+</style>
+<!-- v1.6.2 · 내구성 END -->
 
 </body>
 </html>
