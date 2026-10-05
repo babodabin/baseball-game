@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.6.14';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.0';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -12191,12 +12191,14 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     let curInn=1,curHalf='초';
     function pitcherFor(defSide){
       const s=st[defSide],legacySta=Number.isFinite(Number(s.pit&&s.pit[7]))?Number(s.pit[7]):70,detailSta=Number.isFinite(Number(s.pit?.skills?.stamina))?Number(s.pit.skills.stamina):legacySta,sta=detailSta*.82+legacySta*.18,role=s.pit[2];
-      const baseMaxPa=role==='선발'?Math.round(22+(sta-70)*.35):role==='불펜'?Math.round(5+(sta-45)*.12):99,maxPa=Math.max(3,Math.round(baseMaxPa*bullpenFactorFor(s.team.id)));
+      /* v1.7.0 · 불펜 역할이 켜져 있으면 마무리도 불펜처럼 한도(예전엔 99 — 동점·연장에 나오면 끝까지 던지고 며칠 못 나왔다) */const baseMaxPa=role==='선발'?Math.round(22+(sta-70)*.35):(role==='불펜'||(role==='마무리'&&typeof window.penPickV170==='function'))?Math.round(5+(sta-45)*.12):99,maxPa=Math.max(3,Math.round(baseMaxPa*bullpenFactorFor(s.team.id)));
       const defKey=defSide,atkKey=defSide==='home'?'away':'home',lead=sc[defKey]-sc[atkKey],highLev=curInn>=7&&Math.abs(lead)<=3;
       const fatigueTrigger=s.pitPa>=maxPa||(highLev&&s.pitPa>=Math.max(3,maxPa-2));
       if(fatigueTrigger){let next=null;const bpOrder=bullpenOrderOfV310(s.team.id),closer=bpOrder.length?s.team.pit[bpOrder[0]]:null,relievers=bpOrder.slice(1).map(i=>s.team.pit[i]).filter(Boolean);
         const available=relievers.filter(p=>p!==s.pit&&!isInjured(s.team.id,'pit',p));
-        if(role==='선발')next=(curInn>=8&&lead>0&&lead<=3&&closer)?closer:(available[0]||closer);else if(role==='불펜'){if(curInn>=9&&lead>0&&lead<=3&&closer)next=closer;else{const cur=relievers.indexOf(s.pit);next=relievers.slice(Math.max(0,cur+1)).find(p=>p&&!isInjured(s.team.id,'pit',p))||available[0]||closer||s.pit;}}
+        /* v1.7.0 · 불펜 역할(pen-role-v170)이 상황에 맞는 투수를 고른다. undefined 면 아래 예전 방식 */
+        const pickV170=typeof window.penPickV170==='function'?window.penPickV170(s.team.id,{starter:role==='선발',inn:curInn,lead,cur:s.pit,order:bpOrder,used:s.usedV170||(s.usedV170=new Set())}):undefined;
+        if(pickV170!==undefined)next=pickV170;else if(role==='선발')next=(curInn>=8&&lead>0&&lead<=3&&closer)?closer:(available[0]||closer);else if(role==='불펜'){if(curInn>=9&&lead>0&&lead<=3&&closer)next=closer;else{const cur=relievers.indexOf(s.pit);next=relievers.slice(Math.max(0,cur+1)).find(p=>p&&!isInjured(s.team.id,'pit',p))||available[0]||closer||s.pit;}}
         if(next&&next!==s.pit){s.pit=next;s.pitPa=0;ev.push({inn:curInn,half:curHalf,text:`🔁 ${s.team.name} 투수 교체 → ${playerDisplayName(next)}${highLev?' (승부처)':''}`,cls:highLev?'scoreev':''});}}
       return s.pit;
     }
@@ -12275,7 +12277,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     if(!oldValid)state.lineups[teamId]=null;
     const lu=ensureHealthyLineup(teamId);if(!lu||lu.order?.length!==9||new Set(lu.order).size!==9)throw new Error(teamId+' 라인업을 구성하지 못했습니다.');
     const starters=t.pit.map((p,i)=>({p,i,o:pitOvr(p,teamId)})).filter(x=>x.p[2]==='선발'&&!isInjured(teamId,'pit',x.p)).sort((a,b)=>b.o-a.o).slice(0,5).map(x=>x.i);if(starters.length<5)t.pit.forEach((p,i)=>{if(p[2]==='선발'&&!starters.includes(i)&&starters.length<5)starters.push(i);});if(starters.length!==5)throw new Error(teamId+' 선발 로테이션을 구성하지 못했습니다.');
-    state.rotOrder=state.rotOrder&&typeof state.rotOrder==='object'?state.rotOrder:{};state.rotOrder[teamId]=starters;state.pitchPlan=state.pitchPlan&&typeof state.pitchPlan==='object'?state.pitchPlan:{};const bullpen=t.pit.map((p,i)=>i).filter(i=>!starters.includes(i));state.pitchPlan[teamId]={starters:starters.slice(),bullpen:bullpen.slice(),closers:bullpen.slice(0,1)};
+    state.rotOrder=state.rotOrder&&typeof state.rotOrder==='object'?state.rotOrder:{};state.rotOrder[teamId]=starters;state.pitchPlan=state.pitchPlan&&typeof state.pitchPlan==='object'?state.pitchPlan:{};/* v1.7.0 · 불펜 순서(= 역할)는 이전 계획 순서를 지킨다 — 예전엔 경기마다 선수 배열 순서로 덮어써서 사용자·감독이 바꾼 마무리가 다음 경기에 되돌아갔다 */const oldPP=state.pitchPlan[teamId]||{},prevB=[...(Array.isArray(oldPP.closers)?oldPP.closers:[]),...(Array.isArray(oldPP.bullpen)?oldPP.bullpen:[])];let bullpen=t.pit.map((p,i)=>i).filter(i=>!starters.includes(i));bullpen=[...new Set(prevB.filter(i=>bullpen.includes(i)))].concat(bullpen.filter(i=>!prevB.includes(i)));state.pitchPlan[teamId]={starters:starters.slice(),bullpen:bullpen.slice(),closers:bullpen.slice(0,1)};
   }
   window.playMyGame=function(){
     try{if(typeof ensureSeasonRuntimeV286==='function')ensureSeasonRuntimeV286();if(!state?.season)throw new Error('진행 중인 시즌이 없습니다.');const m=myMatchToday();if(!m)throw new Error('오늘 경기 일정이 없습니다.');normalizeTeam(m.home);normalizeTeam(m.away);ensureStats();setGameRecordModeV348(FORCED_RECORD_MODE||(spdSel==='inn'?'inning':spdSel==='fast'?'result':'full'));STAT_SINK=recordPA;const homeSp=nextSpIdx(m.home),awaySp=nextSpIdx(m.away);if(!Number.isInteger(homeSp)||!Number.isInteger(awaySp))throw new Error('선발투수를 선택하지 못했습니다.');const game=simGame(m.home,m.away,homeSp,awaySp);if(!game?.sc)throw new Error('경기 결과 생성에 실패했습니다.');curGame=game;markStart(m.home,homeSp);markStart(m.away,awaySp);advanceRot(m.home);advanceRot(m.away);recordResult(m.home,m.away,game.sc);const isHome=m.home===state.myTeam,myWon=isHome?game.sc.home>game.sc.away:game.sc.away>game.sc.home;game.settle=settleGame(isHome,myWon);refreshHeader();const others=playOtherGames();finishDay(`${game.away.name} ${game.sc.away} : ${game.sc.home} ${game.home.name}`,others);save();return game;
@@ -32669,6 +32671,248 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 })();
 </script>
 <!-- v1.6.14 · 10팀 리그 유지 END -->
+
+<!-- v1.7.0 · 불펜 역할 -->
+<script id="pen-role-v170">
+/* 불펜 역할(사용자 2026-10-05): 마무리 · 필승조 · 추격조 · 패전조.
+   역할은 투수진 화면의 불펜 순서로 정한다 — 1번 마무리 · 2~4번 필승조 · 5~7번 추격조 · 그 뒤 패전조(긴 이닝).
+   사용자는 오프시즌이든 시즌 중이든 순서를 바꿔 역할을 바꾼다. AI 는 마무리(1번)를 빼고 능력치 순으로 역할을 나눈다.
+   경기 엔진(simGame 의 pitcherFor)이 투수를 바꿀 때 window.penPickV170 을 불러 상황에 맞는 역할에서 고른다:
+     9회+ 1~3점 앞섬 → 마무리 / 7회+ 동점~3점 앞섬 → 필승조 / 4회 전에 무너진 선발 · 4점+ 차이 → 패전조 / 그 밖(1~3점 뒤짐 · 6회 전 접전) → 추격조
+     역할 안에서는 덜 지친 투수 먼저, 한 경기에 한 번만 나옴. 그 역할이 비면 옆 역할로.
+   감독: 마무리가 무너지면(15이닝+ 평균자책 5.50+ 이고, 필승조 중 2.00 넘게 나은 투수가 있으면) 둘을 바꾼다 — 같은 팀 20경기에 한 번. 우리 팀은 소식 "🔁"
+   함께 고침: 불펜 순서를 바꿔도 마무리가 제자리로 돌아가던 것(pitchPlanOfV310 이 예전 closers 를 앞에 다시 붙였다)
+   조정값 window.PEN_ROLE_V170 · ?nov170 으로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov170')>=0) return;
+  var V = window.APP_VERSION;
+  var R = window.PEN_ROLE_V170 = {setup:3, chase:3, swapIp:15, swapEra:5.5, swapGap:2, swapEvery:20};
+  var NAME = window.PEN_ROLE_NAME_V170 = {CL:'마무리', SU:'필승조', CH:'추격조', LG:'패전조'};
+  var COLOR = {CL:'#F6BE4A', SU:'#EC6753', CH:'#7FB2FF', LG:'#8FA396'};
+
+  function my(){ return state.myTeam; }
+  function plan(tid){ try{ return pitchPlanOfV310(tid); }catch(_){ return {starters:[], bullpen:[], closers:[]}; } }
+  function fat(tid, p){ try{ return +playerHealth(tid, 'pit', p).fatigue || 0; }catch(_){ return 0; } }
+  function hurt(tid, p){ try{ return isInjured(tid, 'pit', p); }catch(_){ return false; } }
+  function ovr(tid, p){ try{ return pitOvr(p, tid); }catch(_){ return 60; } }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p ? p[0] : ''; } }
+  function roleAt(n){ return n === 0 ? 'CL' : n <= R.setup ? 'SU' : n <= R.setup + R.chase ? 'CH' : 'LG'; }
+
+  /* 불펜 순서 → 역할 표. 우리 팀은 사용자가 정한 순서 그대로, AI 는 마무리 뒤를 능력치 순으로 */
+  function roles(tid){
+    var t = getTeam(tid), b = plan(tid).bullpen.filter(function(i){ return t.pit[i]; }), out = {};
+    if(tid !== my() && b.length > 2){
+      var rest = b.slice(1).sort(function(x, y){ return ovr(tid, t.pit[y]) - ovr(tid, t.pit[x]); });
+      b = [b[0]].concat(rest);
+    }
+    b.forEach(function(i, n){ out[i] = roleAt(n); });
+    return out;
+  }
+  window.penRolesV170 = roles;
+
+  function want(c){
+    var inn = c.inn, L = c.lead;
+    if(inn >= 9 && L >= 1 && L <= 3) return ['CL', 'SU', 'CH', 'LG'];
+    if(inn >= 7 && L >= 0 && L <= 3) return inn >= 9 ? ['SU', 'CL', 'CH', 'LG'] : ['SU', 'CH', 'LG'];
+    if((c.starter && inn <= 4) || L >= 4 || L <= -4) return ['LG', 'CH', 'SU'];
+    return ['CH', 'LG', 'SU'];
+  }
+
+  window.penPickV170 = function(tid, c){
+    try{
+      checkCloser(tid);
+      var t = getTeam(tid), ro = roles(tid), used = c.used;
+      if(used && c.cur) used.add(c.cur);
+      var free = function(x){ return x.p && x.p !== c.cur && !(used && used.has(x.p)) && !hurt(tid, x.p); };
+      var cand = (c.order || []).map(function(i){ return {i:i, p:t.pit[i]}; }).filter(free);
+      /* 그날 명단(덜 지친 투수)이 다 나왔으면 지쳤어도 아직 안 나온 1군 불펜 — 없으면 지금 투수가 계속 던진다.
+         (예전 방식으로 넘기면 마무리를 아무 때나 불러 연장까지 던지게 했다) */
+      if(!cand.length) cand = plan(tid).bullpen.map(function(i){ return {i:i, p:t.pit[i]}; }).filter(free);
+      if(!cand.length) return c.cur || undefined;
+      var order = want(c);
+      for(var k = 0; k < order.length; k++){
+        var g = cand.filter(function(x){ return (ro[x.i] || 'LG') === order[k]; });
+        if(!g.length) continue;
+        g.sort(function(a, b){ return fat(tid, a.p) - fat(tid, b.p); });
+        if(used) used.add(g[0].p);
+        return g[0].p;
+      }
+      /* 원하는 역할이 모두 비면 남은 투수 중 아무나 — 단 마무리는 세이브·9회 이후 동점에만(아끼다 못 쓰는 게 낫다). 없으면 지금 투수가 계속 */
+      var rest = cand.filter(function(x){ return ro[x.i] !== 'CL' || order.indexOf('CL') >= 0; });
+      if(!rest.length) return c.cur || undefined;
+      if(used) used.add(rest[0].p);
+      return rest[0].p;
+    }catch(e){ console.error(V + ' 불펜 역할:', e); return undefined; }
+  };
+
+  /* 불펜 순서는 투수 이름(가명)으로 따로 기억한다(state.penOrderV170[팀]).
+     1·2군 이동 때 여러 겹이 state.pitchPlan[팀] = null 로 계획을 지우고, 다시 만들 땐 선수 배열 순서라
+     사용자·감독이 정한 마무리가 며칠 만에 되돌아갔다. 계획을 만들 때마다 기억한 순서로 다시 줄 세운다.
+     처음 보는 투수(콜업·영입)는 맨 뒤(패전조). */
+  function mem(){ return state.penOrderV170 || (state.penOrderV170 = {}); }
+  /* 선수 데이터의 보직 칸(p[2] '마무리')도 1번에 맞춘다 — 엔진은 '마무리' 보직 투수를 경기 끝까지 안 내려서,
+     내려간 마무리가 필승조로 7회에 나와 끝까지 던졌다(41경기 86이닝). 1군 불펜 안에서만 바꾼다 */
+  function syncLabel(t, b){
+    b.forEach(function(i, n){
+      var p = t.pit[i]; if(!p) return;
+      if(n === 0 && p[2] !== '마무리') p[2] = '마무리';
+      else if(n > 0 && p[2] === '마무리') p[2] = '불펜';
+    });
+  }
+  var basePlan = window.pitchPlanOfV310;
+  if(typeof basePlan === 'function'){
+    var planW = function(tid){
+      var pl = basePlan.apply(this, arguments);
+      try{
+        var t = getTeam(tid), M = mem(), keys = M[tid];
+        if(!pl || !Array.isArray(pl.bullpen) || !t) return pl;
+        if(!Array.isArray(keys)){
+          /* 처음: 마무리(1번)는 그대로, 나머지는 능력치 순 — 선수 데이터 순서는 아무 뜻이 없다 */
+          var cl0 = pl.bullpen.filter(function(i){ return t.pit[i] && t.pit[i][2] === '마무리'; })[0];
+          var first = cl0 != null ? cl0 : pl.bullpen[0];
+          var rest0 = pl.bullpen.filter(function(i){ return i !== first; }).sort(function(x, y){ return ovr(tid, t.pit[y]) - ovr(tid, t.pit[x]); });
+          keys = M[tid] = [first].concat(rest0).map(function(i){ return t.pit[i] && t.pit[i][0]; }).filter(Boolean);
+        }
+        var pos = {}; keys.forEach(function(k, n){ pos[k] = n; });
+        var orig = pl.bullpen.slice(), rank = function(i){ var p = t.pit[i], n = p ? pos[p[0]] : null; return n == null ? 1e6 + orig.indexOf(i) : n; };
+        var b = orig.slice().sort(function(x, y){ return rank(x) - rank(y); });
+        b.forEach(function(i){ var p = t.pit[i]; if(p && pos[p[0]] == null){ pos[p[0]] = keys.length; keys.push(p[0]); } });
+        if(keys.length > 40){ var have = {}; t.pit.forEach(function(p){ if(p) have[p[0]] = 1; }); M[tid] = keys.filter(function(k){ return have[k]; }); }
+        if(b.some(function(v, n){ return v !== orig[n]; })){ pl.bullpen = b; pl.closers = b.slice(0, Math.min(2, b.length)); }
+        syncLabel(t, b);
+      }catch(e){ console.error(V + ' 불펜 순서 기억:', e); }
+      return pl;
+    };
+    window.pitchPlanOfV310 = planW; try{ pitchPlanOfV310 = planW; }catch(_){ }
+  }
+  /* 순서 저장 — 기억(이름 순서)과 계획을 함께 고친다. 1군에 없는 투수 이름은 기억 순서 뒤에 그대로 */
+  function setBullpen(tid, b){
+    var t = getTeam(tid), p = plan(tid);
+    p.bullpen = b; p.closers = b.slice(0, Math.min(2, b.length));
+    if(!state.pitchPlan) state.pitchPlan = {};
+    state.pitchPlan[tid] = p;
+    var now = b.map(function(i){ return t.pit[i] && t.pit[i][0]; }).filter(Boolean);
+    mem()[tid] = now.concat((mem()[tid] || []).filter(function(k){ return now.indexOf(k) < 0; }));
+  }
+
+  /* 감독: 무너진 마무리 ↔ 잘 던지는 필승조 */
+  function era(st){ var o = +(st && st.out) || 0; return o ? (+st.er || 0) * 27 / o : 99; }
+  function checkCloser(tid){
+    var d = +(state.season && state.season.day) || 0;
+    var chk = state.penChkV170 || (state.penChkV170 = {});
+    if(chk[tid] === d) return; chk[tid] = d;
+    var sw = state.penSwapV170 || (state.penSwapV170 = {});
+    if(sw[tid] != null && d - sw[tid] < R.swapEvery) return;
+    var S = state.season && state.season.stats && state.season.stats[tid]; if(!S || !S.pit) return;
+    var t = getTeam(tid), b = plan(tid).bullpen.slice(), ro = roles(tid);
+    var cl = t.pit[b[0]]; if(!cl) return;
+    var cs = S.pit[cl[0]]; if(!cs || (+cs.out || 0) < R.swapIp * 3) return;
+    var ce = era(cs); if(ce < R.swapEra) return;
+    var best = null;
+    b.forEach(function(i, n){
+      if(n === 0 || ro[i] !== 'SU') return;
+      var p = t.pit[i]; if(!p || hurt(tid, p)) return;
+      var s = S.pit[p[0]]; if(!s || (+s.out || 0) < R.swapIp * 3) return;
+      var e = era(s); if(e > ce - R.swapGap) return;
+      if(!best || e < best.e) best = {n:n, p:p, e:e};
+    });
+    if(!best) return;
+    var tmp = b[0]; b[0] = b[best.n]; b[best.n] = tmp;
+    setBullpen(tid, b); sw[tid] = d;
+    if(tid === my()){
+      try{ if(typeof pushClubNews === 'function') pushClubNews('🔁 마무리 교체', nm(best.p) + ' 마무리 ↑ (평균자책 ' + best.e.toFixed(2) + ') · ' + nm(cl) + ' 필승조로 (평균자책 ' + ce.toFixed(2) + ')'); }catch(_){ }
+    }
+  }
+  window.penCheckCloserV170 = checkCloser;
+
+  /* 화면: 투수진 불펜 줄에 역할 표시 · 순서 바꾸기 창에도 */
+  var baseSwap = window.completePitchStaffSwapV310;
+  if(typeof baseSwap === 'function'){
+    /* 불펜은 여기서 직접 바꾼다 — 예전 함수는 계획만 고쳐서, 다시 그릴 때 기억한 순서로 되돌아간다 */
+    var swap = function(group, slot, tg, ts){
+      if(group !== 'bullpen' || tg !== 'bullpen') return baseSwap.apply(this, arguments);
+      try{
+        var ok = canSwapBullpenSlotsV313(my(), slot, ts);
+        if(!ok.ok){ showAlert(ok.msg); return; }
+        var b = plan(my()).bullpen.slice();
+        if(b[slot] === undefined || b[ts] === undefined) return;
+        var tmp = b[slot]; b[slot] = b[ts]; b[ts] = tmp;
+        setBullpen(my(), b);
+        save(); closeSheet(); renderLineup();
+        if(navigator.vibrate) navigator.vibrate(18);
+      }catch(e){ console.error(V + ' 불펜 순서:', e); }
+    };
+    window.completePitchStaffSwapV310 = swap; try{ completePitchStaffSwapV310 = swap; }catch(_){ }
+  }
+  var SHORT = {CL:'마무리', SU:'필승', CH:'추격', LG:'패전'};
+  var DESC = {CL:'9회 1~3점 앞설 때', SU:'이길 때·동점 7·8회', CH:'1~3점 뒤질 때·중반 접전', LG:'점수 차 클 때·긴 이닝'};
+  function tag(r){ return '<span style="display:inline-block;padding:1px 7px;border-radius:9px;font-size:11px;font-weight:700;white-space:nowrap;color:#10140f;background:' + COLOR[r] + '">' + NAME[r] + '</span>'; }
+  function shortTag(r){ return '<span style="color:' + COLOR[r] + ';font-weight:700;font-size:12px;white-space:nowrap">' + SHORT[r] + '</span>'; }
+  var baseRender = window.renderPitchStaffV310;
+  if(typeof baseRender === 'function'){
+    var render = function(spBox, t){
+      var r = baseRender.apply(this, arguments);
+      try{
+        var b = plan(t.id).bullpen.filter(function(i){ return t.pit[i]; }), ro = roles(t.id);
+        var rows = spBox.querySelectorAll('.pitch-row-v310'), first = rows.length - b.length;
+        b.forEach(function(i, n){
+          var row = rows[first + n]; if(!row) return;
+          var lp = row.querySelector('.lp'); if(lp) lp.innerHTML = tag(ro[i] || 'LG');
+          var od = row.querySelector('.ord'); if(od) od.textContent = String(n + 1);
+        });
+        spBox.querySelectorAll('.pitch-section-v3417').forEach(function(h){
+          if(/불펜/.test(h.textContent) && !/예비/.test(h.textContent)) h.textContent = '불펜 ' + b.length + '명 — 순서가 곧 역할 (1 마무리 · 2~' + (1 + R.setup) + ' 필승조 · ' + (2 + R.setup) + '~' + (1 + R.setup + R.chase) + ' 추격조 · 그 뒤 패전조)';
+          else if(/불펜 예비/.test(h.textContent)) h.style.display = 'none';
+        });
+      }catch(e){ console.error(V + ' 불펜 역할 화면:', e); }
+      return r;
+    };
+    window.renderPitchStaffV310 = render; try{ renderPitchStaffV310 = render; }catch(_){ }
+  }
+  /* 실제로 보이는 투수 배치 화면(라인업 → 투수 배치, renderLineup 의 renderPitchers)은 "Closer 1 · Bullpen 3" 로 적는다 → 역할로 */
+  var baseLineup = window.renderLineup;
+  if(typeof baseLineup === 'function'){
+    var lineup = function(){
+      var r = baseLineup.apply(this, arguments);
+      try{
+        var box = document.getElementById('spList'); if(!box) return r;
+        var h = [].filter.call(box.querySelectorAll('h2.sec'), function(x){ return /^불펜/.test(x.textContent); })[0]; if(!h) return r;
+        var t = getTeam(my()), b = plan(my()).bullpen.filter(function(i){ return t.pit[i]; }), ro = roles(my());
+        h.innerHTML = '불펜 <small>' + b.length + '명 · 순서가 곧 역할 — 누르면 순서 바꾸기</small>';
+        var n = 0, el = h.nextElementSibling;
+        while(el && el.classList.contains('prow') && n < b.length){
+          var hd = el.querySelector('.hand');
+          if(hd){ hd.innerHTML = hd.innerHTML.replace(/ · (Closer \d|Bullpen \d+)/, '').replace(/Closer \d|Bullpen \d+/, ''); hd.insertAdjacentHTML('afterbegin', tag(ro[b[n]] || 'LG') + ' '); }
+          n++; el = el.nextElementSibling;
+        }
+      }catch(e){ console.error(V + ' 불펜 역할 화면:', e); }
+      return r;
+    };
+    window.renderLineup = lineup; try{ renderLineup = lineup; }catch(_){ }
+  }
+  var basePicker = window.openPitchStaffPickerV310;
+  if(typeof basePicker === 'function'){
+    var picker = function(group, slot){
+      var r = basePicker.apply(this, arguments);
+      try{
+        if(group !== 'bullpen') return r;
+        var sheet = document.getElementById('sheet'); if(!sheet) return r;
+        sheet.querySelectorAll('.pitch-choice-v313').forEach(function(btn, n){
+          var lp = btn.querySelector('.lp'); if(lp) lp.innerHTML = shortTag(roleAt(n));
+          var sub = btn.querySelector('.ln span'); if(sub) sub.textContent = NAME[roleAt(n)] + ' · ' + DESC[roleAt(n)];
+          var od = btn.querySelector('.ord'); if(od) od.textContent = String(n + 1);
+        });
+        var hint = sheet.querySelector('.hint');
+        if(hint) hint.textContent = '바꿀 자리를 고르세요. 순서가 곧 역할입니다 — 1번 마무리 · 2~' + (1 + R.setup) + '번 필승조(이길 때 7·8회) · ' + (2 + R.setup) + '~' + (1 + R.setup + R.chase) + '번 추격조(지고 있을 때) · 그 뒤 패전조(점수 차 클 때·긴 이닝).';
+      }catch(e){ console.error(V + ' 불펜 순서 창:', e); }
+      return r;
+    };
+    window.openPitchStaffPickerV310 = picker; try{ openPitchStaffPickerV310 = picker; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.0 · 불펜 역할 END -->
 
 </body>
 </html>
