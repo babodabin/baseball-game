@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.13';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.14';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -34815,6 +34815,48 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.13 · 외국인 스카우트 창 END -->
+
+<!-- v1.7.14 · 신인 지명 뒤 화면이 튀지 않게 -->
+<script id="draft-scroll-v1714">
+/* 사용자 2026-10-05 "신인 드래프트를 할 때 화면이 떨렸다". 실제 브라우저(휴대폰 크기)로 재 보니 "1라운드 지명"을 누르면
+   ① AI 지명 + 운영 화면 전체 다시 그리기로 약 1초 멈추고 ② 다시 그리는 순간 페이지가 잠깐 짧아져 스크롤이 13,801 → 8,927 로 튐(요소 399개 교체).
+   v1.0.6 의 되돌리기는 손가락이 닿으면 멈추고, 지명 때는 기억 시점이 늦어 못 막았다.
+   → 지명 직전 화면에 보이던 기준점(드래프트 칸 제목 · 없으면 처음 보이는 후보 줄)의 화면 위치를 기억하고, 지명 뒤 같은 자리로 맞춘다(바로 · 다음 프레임 · 0.12초 · 0.4초). ?nov1714 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1714')>=0) return;
+  var V = window.APP_VERSION;
+  function scroller(){ var m = document.querySelector('main'); return (m && m.scrollHeight > m.clientHeight + 5) ? m : (document.scrollingElement || document.documentElement); }
+  function anchor(){
+    var hs = [].filter.call(document.querySelectorAll('h2.sec, .sec'), function(h){ return h.offsetHeight > 0 && /신인 드래프트|드래프트/.test(h.textContent); });
+    if(hs.length) return {el:hs[0], key:'h:' + hs[0].textContent.slice(0, 12)};
+    return null;
+  }
+  function findAgain(a){
+    if(!a) return null;
+    var hs = [].filter.call(document.querySelectorAll('h2.sec, .sec'), function(h){ return h.offsetHeight > 0 && /신인 드래프트|드래프트/.test(h.textContent); });
+    return hs[0] || null;
+  }
+  var base = window.draftPick;
+  if(typeof base === 'function'){
+    var pick = function(){
+      var sc = scroller(), st = sc.scrollTop, a = anchor(), top0 = a ? a.el.getBoundingClientRect().top : null;
+      var r = base.apply(this, arguments);
+      var fix = function(){
+        try{
+          var s2 = scroller(), el = findAgain(a);
+          if(el && top0 != null){ var d = el.getBoundingClientRect().top - top0; if(Math.abs(d) > 2) s2.scrollTop += d; }
+          else if(Math.abs(s2.scrollTop - st) > 2) s2.scrollTop = st;
+        }catch(_){ }
+      };
+      fix(); requestAnimationFrame(fix); setTimeout(fix, 120); setTimeout(fix, 400);
+      return r;
+    };
+    window.draftPick = pick; try{ draftPick = pick; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.14 · 신인 지명 뒤 화면 END -->
 
 </body>
 </html>
