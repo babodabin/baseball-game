@@ -32713,8 +32713,13 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
   function roleAt(n){ return n === 0 ? 'CL' : n <= R.setup ? 'SU' : n <= R.setup + R.chase ? 'CH' : 'LG'; }
 
   /* 불펜 순서 → 역할 표. 우리 팀은 사용자가 정한 순서 그대로, AI 는 마무리 뒤를 능력치 순으로 */
-  function roles(tid){
-    var t = getTeam(tid), b = plan(tid).bullpen.filter(function(i){ return t.pit[i]; }), out = {};
+  /* 속도(v1.7.5): 역할 표는 같은 날·같은 불펜이면 그대로 — AI 는 능력치 정렬이라 투수 교체 때마다 다시 계산하면 경기당 50ms 가까이 들었다 */
+  var roleCache = {};
+  function roles(tid, pb){
+    var t = getTeam(tid), b = (pb || plan(tid).bullpen).filter(function(i){ return t.pit[i]; }), out = {};
+    var ck = (+(state.season && state.season.day) || 0) + '|' + (tid === my()) + '|' + b.join(','), hit = roleCache[tid];
+    if(hit && hit.k === ck) return hit.v;
+    roleCache[tid] = {k:ck, v:out};
     if(tid !== my() && b.length > 2){
       var rest = b.slice(1).sort(function(x, y){ return ovr(tid, t.pit[y]) - ovr(tid, t.pit[x]); });
       b = [b[0]].concat(rest);
@@ -32735,13 +32740,17 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
   window.penPickV170 = function(tid, c){
     try{
       checkCloser(tid);
-      var t = getTeam(tid), ro = roles(tid), used = c.used;
+      /* 속도(v1.7.5): 투수 계획은 한 경기 안에선 안 바뀐다 — 경기마다 한 번만(c.used 는 경기·팀마다 새 Set).
+         계획을 만들 때 투수마다 1군 여부를 묻고, 그때마다 리그 전체 이름 해시(v1.1.4 sig)가 돌아 경기당 40ms 넘게 들었다 */
+      var used = c.used, pb = used && used.__pbV175;
+      if(!pb){ pb = plan(tid).bullpen.slice(); if(used) used.__pbV175 = pb; }
+      var t = getTeam(tid), ro = roles(tid, pb);
       if(used && c.cur) used.add(c.cur);
       var free = function(x){ return x.p && x.p !== c.cur && !(used && used.has(x.p)) && !hurt(tid, x.p); };
       var cand = (c.order || []).map(function(i){ return {i:i, p:t.pit[i]}; }).filter(free);
       /* 그날 명단(덜 지친 투수)이 다 나왔으면 지쳤어도 아직 안 나온 1군 불펜 — 없으면 지금 투수가 계속 던진다.
          (예전 방식으로 넘기면 마무리를 아무 때나 불러 연장까지 던지게 했다) */
-      if(!cand.length) cand = plan(tid).bullpen.map(function(i){ return {i:i, p:t.pit[i]}; }).filter(free);
+      if(!cand.length) cand = pb.map(function(i){ return {i:i, p:t.pit[i]}; }).filter(free);
       if(!cand.length) return c.cur || undefined;
       var order = want(c);
       for(var k = 0; k < order.length; k++){
@@ -32773,13 +32782,19 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
       else if(n > 0 && p[2] === '마무리') p[2] = '불펜';
     });
   }
-  var basePlan = window.pitchPlanOfV310;
+  var basePlan = window.pitchPlanOfV310, planCache = {};
   if(typeof basePlan === 'function'){
     var planW = function(tid){
       var pl = basePlan.apply(this, arguments);
       try{
         var t = getTeam(tid), M = mem(), keys = M[tid];
         if(!pl || !Array.isArray(pl.bullpen) || !t) return pl;
+        /* 속도(v1.7.5): 이 함수는 경기마다 수백 번 불린다 — 계획·기억이 지난번과 같으면 지난번 결과를 그대로 */
+        var sig = pl.bullpen.join(','), last = planCache[tid];
+        if(last && last.sig === sig && last.keys === keys && last.klen === (keys ? keys.length : -1)){
+          if(last.out !== sig){ pl.bullpen = last.b.slice(); pl.closers = last.b.slice(0, Math.min(2, last.b.length)); }
+          return pl;
+        }
         if(!Array.isArray(keys)){
           /* 처음: 마무리(1번)는 그대로, 나머지는 능력치 순 — 선수 데이터 순서는 아무 뜻이 없다 */
           var cl0 = pl.bullpen.filter(function(i){ return t.pit[i] && t.pit[i][2] === '마무리'; })[0];
@@ -32794,6 +32809,7 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
         if(keys.length > 40){ var have = {}; t.pit.forEach(function(p){ if(p) have[p[0]] = 1; }); M[tid] = keys.filter(function(k){ return have[k]; }); }
         if(b.some(function(v, n){ return v !== orig[n]; })){ pl.bullpen = b; pl.closers = b.slice(0, Math.min(2, b.length)); }
         syncLabel(t, b);
+        planCache[tid] = {sig:orig.join(','), keys:M[tid], klen:M[tid].length, b:b.slice(), out:b.join(',')};
       }catch(e){ console.error(V + ' 불펜 순서 기억:', e); }
       return pl;
     };
@@ -32814,7 +32830,7 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
   function checkCloser(tid){
     var d = +(state.season && state.season.day) || 0;
     var chk = state.penChkV170 || (state.penChkV170 = {});
-    if(chk[tid] === d) return; chk[tid] = d;
+    if(chk[tid] === d || d % 4) return; chk[tid] = d;   /* 속도(v1.7.5): 4경기마다 한 번이면 충분 */
     var sw = state.penSwapV170 || (state.penSwapV170 = {});
     if(sw[tid] != null && d - sw[tid] < R.swapEvery) return;
     var S = state.season && state.season.stats && state.season.stats[tid]; if(!S || !S.pit) return;
@@ -33497,7 +33513,7 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
       try{
         if(tid !== state.myTeam || r === undefined || r === c.cur || Math.random() >= M.err[stars()]) return r;
         /* 실수: 상황과 상관없이 아직 안 나온 1군 불펜 아무나(마무리는 빼고) */
-        var t = getTeam(tid), cl = t.pit[pitchPlanOfV310(tid).bullpen[0]];
+        var t = getTeam(tid), cl = t.pit[((c.used && c.used.__pbV175) || pitchPlanOfV310(tid).bullpen)[0]];   /* 속도: 경기마다 한 번 만든 계획(pen-role-v170) */
         var pool = (c.order || []).map(function(i){ return t.pit[i]; }).filter(function(p){ return p && p !== c.cur && p !== cl && p !== r && !(c.used && c.used.has(p)) && !isInjured(tid, 'pit', p); });
         if(!pool.length) return r;
         var w = pool[Math.floor(Math.random() * pool.length)];
@@ -33695,7 +33711,7 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
     return o;
   }
   function analyze(){
-    if(cache.d === day() && cache.y === (+state.year || 1)) return;
+    if(cache.d >= 0 && Math.floor(cache.d / 4) === Math.floor(day() / 4) && cache.y === (+state.year || 1)) return;   /* 속도(v1.7.5): 4경기마다 한 번 — 선수단은 매일 안 바뀐다 */
     var ids = Object.keys(state.players || {}), all = {};
     ids.forEach(function(id){ all[id] = profile(id); });
     var lg = {sp:avg(ids.map(function(id){ return all[id].sp; })), rp:avg(ids.map(function(id){ return all[id].rp; })), pow:avg(ids.map(function(id){ return all[id].pow; })), spd:avg(ids.map(function(id){ return all[id].spd; }))};
