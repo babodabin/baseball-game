@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.17';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.18';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -35108,7 +35108,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
         if(cands.length){ var to = cands[hashS(f.data[0] + '|' + state.year) % cands.length].id; if(moveTo(f, to)) rec = {type:'영입', to:to}; }
       }
       if(rec) out.push({name:playerDisplayName(f.data), pos:f.data[2], ovr:o, age:age, from:f.from, to:rec.to, type:rec.type});
-      else if(f.from !== my()) stash.push(f);
+      else stash.push(f);   /* v1.7.18 · 우리 외국인 FA 도 — 국내 FA 마감으로 넘기면 자리 검사 없이 AI 가 데려갔다(KT 5명) */
     });
     stash.forEach(function(f){ var i = m.fa.indexOf(f); if(i >= 0) m.fa.splice(i, 1); });
     s.foreignV1717 = out;
@@ -35124,7 +35124,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
           var stash = [];
           try{ stash = foreignStep(); }catch(e){ console.error(V + ' 외국인 FA:', e); }
           try{ return go.apply(this, arguments); }
-          finally{ try{ var m = mkt(); stash.forEach(function(f){ if(m.fa.indexOf(f) < 0) m.fa.push(f); }); save(); }catch(_){ } }
+          finally{ try{ var m = mkt(); stash.forEach(function(f){ if(f.from !== my() && m.fa.indexOf(f) < 0) m.fa.push(f); }); save(); }catch(_){ } }   /* 우리 선수는 아무도 안 데려가면 잔류(closeFa 와 같음) */
         });
       };
       try{ showConfirm = window.showConfirm; }catch(_){ }
@@ -35333,6 +35333,71 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.17 END -->
+
+<!-- v1.7.18 · 감독 운영이 실제 화면에서도 · 1·2군 조정이 되돌아가지 않게 -->
+<script id="v1718-fix">
+/* 2026-10-06 TODO ↔ 게임 대조(경기 화면을 실제로 열고 진행)에서 찾은 것 — 예전 측정은 경기 화면 없이 돌려서 못 봤다
+   ① 경기 화면을 열 때마다 v0.60 겹이 state.gameControl='direct' 로 바꾼다 → 경기 엔진(aiGamePlan)이 우리 팀을 "직접 감독"으로 보고
+      고용한 감독 성향(v1.7.3 myPlanV173)과 팀 분석(v1.7.4 adaptPlanV174)을 건너뛰었다(경기 화면을 연 뒤 3경기 호출 0번 / 안 열면 231번).
+      → 경기 계산 동안만 'auto' 로(직접 감독 스위치 directMgrV14 를 켠 경우는 그대로)
+   ② 경기 화면을 그릴 때·경기 시작 때마다 v0.26.6 ensureUserRosterMinimumV266 이 포지션별 최고 타자 + OVR 상위 12명 · 선발 상위 5명을
+      부상·부진과 상관없이 1군으로 올렸다 → 감독의 부상 대체·부진 2군 조정·선발 거름·장기 부상 [직접 고르기]가 되돌아감
+      (96경기 실제 진행: 내려간 박시원·박건우·김주원 모두 1군, 올라온 도태훈·한석현은 2군)
+      → 선수단이 기본 모양(포지션 8개 · 타자 12+ · 선발 5+ · 불펜 4+ · 마무리 1 · 투수 10+)이고 1군이 이미 경기를 치를 수 있으면
+        (건강한 1군 타자 10+ · 포수 1+ · 투수 9+ · 선발 4+) 그 함수를 건너뛴다. 모자랄 때만 예전처럼 채움
+        (처음엔 부른 뒤 되돌렸더니 1·2군이 매번 바뀌어 캐시가 깨져 한 경기 1초 넘게 걸렸다)
+   ?nov1718 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1718')>=0) return;
+  var V = window.APP_VERSION;
+  function copyProps(from, to){ for(var k in from) if(Object.prototype.hasOwnProperty.call(from, k)) to[k] = from[k]; }
+
+  /* ① */
+  var baseSim = window.simGame;
+  if(typeof baseSim === 'function'){
+    var sim = function(){
+      var flip = false;
+      try{ flip = !!(state && state.gameControl === 'direct' && !state.directMgrV14); }catch(_){ }
+      if(flip) state.gameControl = 'auto';
+      try{ return baseSim.apply(this, arguments); }
+      finally{ if(flip) state.gameControl = 'direct'; }
+    };
+    copyProps(baseSim, sim);
+    window.simGame = sim; try{ simGame = sim; }catch(_){ }
+  }
+
+  /* ② */
+  function key(kind, p){ try{ return squadKey(kind, p); }catch(_){ return kind + ':' + p[0]; } }
+  function hurt(id, kind, p){ try{ return isInjured(id, kind, p); }catch(_){ return false; } }
+  function playable(id, L){
+    var t = getTeam(id); if(!t) return false;
+    var first = function(kind, p){ return L[key(kind, p)] !== 'second' && !hurt(id, kind, p); };
+    var bats = t.bat.filter(function(p){ return p && first('bat', p); }), pits = t.pit.filter(function(p){ return p && first('pit', p); });
+    return bats.length >= 10 && bats.some(function(p){ return p[2] === 'C'; }) && pits.length >= 9 && pits.filter(function(p){ return p[2] === '선발'; }).length >= 4;
+  }
+  var baseMin = window.ensureUserRosterMinimumV266;
+  if(typeof baseMin === 'function'){
+    var POS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
+    function shapeOk(t){
+      var role = function(r){ return t.pit.filter(function(p){ return p && p[2] === r; }).length; };
+      return POS.every(function(pos){ return t.bat.some(function(p){ return p && p[2] === pos; }); }) && t.bat.length >= 12 &&
+        role('선발') >= 5 && role('불펜') >= 4 && role('마무리') >= 1 && t.pit.length >= 10 &&
+        t.age && Array.isArray(t.age.bat) && Array.isArray(t.age.pit) && t.age.bat.length >= t.bat.length && t.age.pit.length >= t.pit.length;
+    }
+    var keep = function(){
+      try{
+        var id = state && state.myTeam, t = id && getTeam(id), L = state.squadLevel && state.squadLevel[id];
+        if(t && L && shapeOk(t) && playable(id, L)) return false;
+      }catch(e){ console.error(V + ' 1·2군 유지:', e); }
+      return baseMin.apply(this, arguments);
+    };
+    copyProps(baseMin, keep);
+    window.ensureUserRosterMinimumV266 = keep; try{ ensureUserRosterMinimumV266 = keep; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.18 END -->
 
 </body>
 </html>
