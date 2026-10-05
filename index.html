@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.2';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.3';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -12178,6 +12178,8 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
       if(teamId===state.myTeam&&mgrDirect)return{attack:mgrPlan.attack||'balanced',bullpen:mgrPlan.bullpen||'normal',risk:'normal'};
       let style='balanced',staffManager='balanced';
       try{style=state.aiManagerV3413?.clubs?.[teamId]?.style||'balanced';staffManager=state.aiStaffV3413?.clubs?.[teamId]?.manager||'balanced';}catch(_){}
+      /* v1.7.3 · 우리 팀은 고용한 감독 성향(mgr-v173) — 예전엔 AI 직원 기록의 무작위 값을 따랐다 */
+      if(teamId===state.myTeam&&typeof window.myPlanV173==='function'){try{const q=window.myPlanV173();if(q){style=q.style;staffManager=q.manager;}}catch(_){}}
       const map={power:{attack:'power',bullpen:'normal',risk:'aggressive'},small:{attack:'small',bullpen:'quick',risk:'aggressive'},develop:{attack:'balanced',bullpen:'late',risk:'patient'},balanced:{attack:'balanced',bullpen:'normal',risk:'normal'}};
       const plan={...(map[style]||map.balanced)};
       if(staffManager==='offense')plan.attack='power';
@@ -33426,6 +33428,237 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 })();
 </script>
 <!-- v1.7.2 · 최근 소식 10개 END -->
+
+<!-- v1.7.3 · 감독 자동 운영 — 성향 · ★ 판단 -->
+<style id="mgr-v173-css">
+/* 직접 감독은 숨긴다(지우지 않음 — 여러 겹에 걸쳐 있어 지우다 깨질 위험) */
+[data-mgrmode-v14] button{display:none!important}
+.mgr-style-v173,.mgr-pick-v14 button span.mgr-style-v173{display:inline!important;margin:0;font-size:inherit;color:var(--amber)}
+</style>
+<script id="mgr-v173">
+/* 1단계 감독 자동 운영(사용자 2026-10-05).
+   · 항상 자동 감독 — "직접 맡기" 버튼 숨김, 예전 저장의 직접 감독은 자동으로(state.directMgrV14 = false). 라인업·불펜 순서 고치기는 그대로.
+   · 사용자 계획(1·2군 · 타순 · 로테이션 · 불펜 순서)은 그대로 쓰고, 감독은 "쓰는 방식"만 성향대로(사용자: 공격적/수비적/불펜/선발 같은 건 감독이):
+       공격 성향 = 고용할 때의 성향(style) — 균형형 · 공격형(강공·적극 주루·주전을 덜 쉬게 restAt +5) · 수비형(스몰볼·작전)
+       투수 성향 = 새로(pitchStyle, 이름으로 정해짐) — 보통 · 선발 중심(선발을 길게 ×1.18) · 불펜 중심(선발을 일찍 ×0.78)
+     경기 엔진(simGame 의 aiGamePlan, 제자리 훅 myPlanV173)이 우리 팀은 이 값을 쓴다 — 예전엔 AI 직원 기록의 무작위 값이었다.
+   · ★ = 판단 품질(사용자: ★1↔★5 약 3~4승). 우리 팀만, AI 는 ★3 과 같은 규칙:
+       불펜 기용 실수(상황과 안 맞는 투수) ★1 25% · ★2 15% · ★3 8% · ★4 4% · ★5 0%
+       부진 판단(OPS 기대보다 얼마나 낮아야 내리나) .27 · .23 · .20 · .18 · .16
+       부상 대체(몇 경기 넘게 빠지면 올리나) 7 · 5 · 3 · 2 · 1
+       피로 관리(타자 피로 몇부터 쉬게 하나) 40 · 35 · 30 · 28 · 26
+   조정값 window.MGR_V173 · ?nov173 으로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov173')>=0) return;
+  var V = window.APP_VERSION, U = window.USAGE_V164 || {};
+  var M = window.MGR_V173 = {
+    pitchName:{normal:'보통', starter:'선발 중심', bullpen:'불펜 중심'},
+    attackMap:{balanced:'balanced', offense:'power', defense:'small'},
+    pitchMap:{normal:'balanced', starter:'develop', bullpen:'defense'},
+    err:{1:.25, 2:.15, 3:.08, 4:.04, 5:0},
+    slumpGap:{1:.27, 2:.23, 3:.20, 4:.18, 5:.16},
+    injDown:{1:7, 2:5, 3:3, 4:2, 5:1},
+    restAt:{1:40, 2:35, 3:30, 4:28, 5:26}
+  };
+  var ATTACK = {balanced:'균형형', offense:'공격형', defense:'수비형'};
+  var DESC_A = {balanced:'상황 따라 고르게', offense:'강공·적극 주루, 주전을 덜 쉬게', defense:'번트·도루 작전, 한 점 지키는 야구'};
+  var DESC_P = {normal:'투수 교체 보통', starter:'선발을 길게', bullpen:'선발을 일찍 바꾸고 불펜을 많이'};
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(ch){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[ch]; }); }
+  try{ Object.keys(DESC_A).forEach(function(k){ if(STAFF_INFO.manager[k]) STAFF_INFO.manager[k].desc = DESC_A[k]; }); }catch(_){ }
+  function hash(s){ var h = 2166136261; s = String(s); for(var i = 0; i < s.length; i++){ h = (h ^ s.charCodeAt(i)) >>> 0; h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+  function pitchOf(m){ if(!m) return 'normal'; if(!m.pitchStyle) m.pitchStyle = ['normal', 'starter', 'bullpen'][hash(m.name + '|p') % 3]; return m.pitchStyle; }
+  function mgr(){ try{ return state.mgrV14 || null; }catch(_){ return null; } }
+  function stars(){ var m = mgr(); return Math.max(1, Math.min(5, +(m && m.stars) || 3)); }
+  window.mgrPitchStyleV173 = function(m){ return M.pitchName[pitchOf(m || mgr())]; };
+  window.mgrStyleTextV173 = function(m){ m = m || mgr(); if(!m) return ''; return (ATTACK[m.style] || '균형형') + ' · ' + M.pitchName[pitchOf(m)]; };
+
+  /* 경기 운영 — 엔진이 우리 팀 계획을 물을 때 */
+  window.myPlanV173 = function(){
+    var m = mgr(); if(!m) return null;
+    return {style:M.attackMap[m.style] || 'balanced', manager:M.pitchMap[pitchOf(m)] || 'balanced'};
+  };
+
+  /* ★ 판단 품질 — 경기마다 우리 팀 값을 맞춘다(이 값들은 우리 팀 규칙에서만 쓰인다) */
+  function apply(){
+    var s = stars(), m = mgr();
+    U.slumpGap = M.slumpGap[s];
+    U.injDown = M.injDown[s];
+    U.restAt = M.restAt[s] + (m && m.style === 'offense' ? 5 : 0);
+    try{ if(state.directMgrV14){ state.directMgrV14 = false; state.gameControl = 'auto'; } }catch(_){ }
+  }
+  var basePick = window.penPickV170;
+  if(typeof basePick === 'function'){
+    window.penPickV170 = function(tid, c){
+      var r = basePick.apply(this, arguments);
+      try{
+        if(tid !== state.myTeam || r === undefined || r === c.cur || Math.random() >= M.err[stars()]) return r;
+        /* 실수: 상황과 상관없이 아직 안 나온 1군 불펜 아무나(마무리는 빼고) */
+        var t = getTeam(tid), cl = t.pit[pitchPlanOfV310(tid).bullpen[0]];
+        var pool = (c.order || []).map(function(i){ return t.pit[i]; }).filter(function(p){ return p && p !== c.cur && p !== cl && p !== r && !(c.used && c.used.has(p)) && !isInjured(tid, 'pit', p); });
+        if(!pool.length) return r;
+        var w = pool[Math.floor(Math.random() * pool.length)];
+        if(c.used){ c.used.delete(r); c.used.add(w); }
+        var B = state.season && (state.season.mgrV173 = state.season.mgrV173 || {miss:0});
+        if(B) B.miss++;
+        return w;
+      }catch(_){ return r; }
+    };
+  }
+
+  /* ★ 운영 능력(작전·교체 타이밍 등 눈에 안 보이는 판단) — 우리 팀 타격·투구 확률 보정에 (★−3)×edge. AI 는 ★3 = 0.
+     위의 눈에 보이는 판단(불펜 실수·부진·부상·피로)만으로는 ★1↔★5 가 0.8승이라 사용자 목표(3~4승)에 맞춰 더한다 */
+  M.edge = .0022;
+  ['managerAttackBonus', 'managerPitchBonus'].forEach(function(fn){
+    var base = window[fn]; if(typeof base !== 'function') return;
+    window[fn] = function(teamId){
+      var v = base.apply(this, arguments);
+      try{ if(teamId === state.myTeam) v += (stars() - 3) * M.edge; }catch(_){ }
+      return v;
+    };
+    try{ (0, eval)(fn + '=window.' + fn); }catch(_){ }
+  });
+
+  var prev = window.playMyGame;
+  if(typeof prev === 'function'){
+    var play = function(){ try{ apply(); }catch(_){ } return prev.apply(this, arguments); };
+    play.__autoV15 = prev.__autoV15;
+    window.playMyGame = play; try{ playMyGame = play; }catch(_){ }
+  }
+  try{ apply(); }catch(_){ }
+
+  /* 화면: 경기 화면 감독 줄 · 감독 고르기 창에 투수 성향 */
+  function paintRow(){
+    try{
+      var row = document.querySelector('[data-mgrmode-v14]'); if(!row) return;
+      var sm = row.querySelector('small'), m = mgr(); if(!sm || !m) return;
+      var txt = window.mgrStyleTextV173(m) + ' · ' + '★★★★★'.slice(0, stars()) + '☆☆☆☆☆'.slice(0, 5 - stars()) + ' — 계약·교체: 운영 → 구단 경영';
+      if(sm.textContent !== txt) sm.textContent = txt;
+    }catch(_){ }
+  }
+  var baseSetup = window.renderGameSetup;
+  if(typeof baseSetup === 'function'){
+    window.renderGameSetup = function(){ var r = baseSetup.apply(this, arguments); paintRow(); return r; };
+    try{ renderGameSetup = window.renderGameSetup; }catch(_){ }
+  }
+  function paintPick(){
+    try{
+      var s = document.getElementById('sheet'); if(!s) return;
+      var list = (state.mgrPoolV14 && state.mgrPoolV14.list) || [];
+      s.querySelectorAll('button[onclick^="hireMgrV14("]').forEach(function(b){
+        if(b.querySelector('.mgr-style-v173')) return;
+        var i = +(String(b.getAttribute('onclick')).match(/hireMgrV14\((\d+)/) || [])[1], c = list[i]; if(!c) return;
+        var sps = b.querySelectorAll('span'), sp = sps[sps.length - 1]; if(!sp) return;   /* 성향 줄("균형형 ★★★ — …") */
+        sp.innerHTML = esc(ATTACK[c.style] || '균형형') + ' · <span class="mgr-style-v173">' + M.pitchName[pitchOf(c)] + '</span> ' + '★★★★★'.slice(0, c.stars) + '☆☆☆☆☆'.slice(0, 5 - c.stars) + '<br>' + esc(DESC_A[c.style] || '') + ' · ' + esc(DESC_P[pitchOf(c)]);
+      });
+      [].forEach.call(s.querySelectorAll('div'), function(d){ if(d.children.length === 0 && /성향 효과가 큽니다/.test(d.textContent)) d.textContent = '★이 높을수록 판단이 좋습니다 — 부진·부상 대처 · 불펜 기용 · 피로 관리 · 작전.'; });
+      [].forEach.call(s.querySelectorAll('.hint, .mgr-fee-v14, div'), function(d){
+        if(d.children.length === 0 && /직접 감독을 맡을 수도/.test(d.textContent)) d.textContent = d.textContent.replace(/\s*경기 화면에서 직접 감독을 맡을 수도 있습니다\.?/, '');
+      });
+      s.innerHTML.indexOf('직접 감독을 맡을 수도') >= 0 && s.querySelectorAll('br').forEach(function(br){ var n = br.nextSibling; if(n && n.nodeType === 3 && /직접 감독을 맡을 수도/.test(n.textContent)){ n.textContent = ''; br.remove(); } });
+    }catch(_){ }
+  }
+  try{
+    var sheet = document.getElementById('sheet');
+    if(sheet && window.MutationObserver) new MutationObserver(function(){ if(sheet.querySelector('button[onclick^="hireMgrV14("]') || /직접 감독을 맡을 수도/.test(sheet.innerHTML)) paintPick(); }).observe(sheet, {childList:true});
+  }catch(_){ }
+})();
+</script>
+<!-- v1.7.3 · 감독 자동 운영 END -->
+
+<!-- v1.7.3 · 시즌 총평 — 감독이 바꾼 것 -->
+<script id="mgr-summary-v173">
+/* 시즌 끝 "감독이 바꾼 것" 요약(사용자 1단계 — 다음 오프시즌 계획에 반영하도록). 시즌 총평(v1.5.0 review-v15) 맨 아래에 붙는다.
+   · 시즌 동안 감독 소식(📞 ↩️ 🔁 🚑 💪 🩼)을 따로 모은다 — 소식 목록은 80개에서 잘려 시즌 전체가 안 남는다(state.season.mgrLogV173)
+   · 시즌 첫 경기 때 계획(주전 9명 · 로테이션 5 · 마무리)을 찍어 두고 끝날 때와 비교
+   ?nov173 으로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov173')>=0) return;
+  var V = window.APP_VERSION;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]; }); }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p ? p[0] : ''; } }
+  function my(){ return state.myTeam; }
+  var RX = /^(📞|↩️|🔁|🚑|💪|🩼)/;
+  var basePush = window.pushClubNews;
+  if(typeof basePush === 'function'){
+    window.pushClubNews = function(title, body){
+      var r = basePush.apply(this, arguments);
+      try{ if(state.season && !state.season.post && RX.test(String(title))){ var L = state.season.mgrLogV173 || (state.season.mgrLogV173 = []); L.push({d:+state.season.day || 0, t:String(title), b:String(body || '')}); } }catch(_){ }
+      return r;
+    };
+    try{ (0, eval)('pushClubNews=window.pushClubNews'); }catch(_){ }
+  }
+  function planNow(){
+    var id = my(), t = getTeam(id), o = {reg:[], rot:[], cl:null};
+    try{ var pref = (state.autoLineupV15 && state.autoLineupV15.pref) || []; o.reg = t.bat.filter(function(p){ return pref.indexOf(longKey('bat', p)) >= 0; }).map(function(p){ return p[0]; }); }catch(_){ }
+    try{ o.rot = (rotOrderOf(id) || []).map(function(i){ return t.pit[i] && t.pit[i][0]; }).filter(Boolean); }catch(_){ }
+    try{ var c = t.pit[pitchPlanOfV310(id).bullpen[0]]; o.cl = c ? c[0] : null; }catch(_){ }
+    return o;
+  }
+  var prev = window.playMyGame;
+  if(typeof prev === 'function'){
+    var play = function(){
+      var r = prev.apply(this, arguments);
+      /* 첫 경기 뒤에 찍는다 — 첫 경기 전엔 주전 계획(autoLineupV15.pref)이 아직 비어 있다 */
+      try{ var s = state.season; if(s && !s.post && !isOffseason() && (!s.planStartV173 || !(s.planStartV173.reg || []).length)) s.planStartV173 = planNow(); }catch(_){ }
+      return r;
+    };
+    play.__autoV15 = prev.__autoV15;
+    window.playMyGame = play; try{ playMyGame = play; }catch(_){ }
+  }
+  function byName(kind, n){ try{ var p = getTeam(my())[kind].find(function(q){ return q && q[0] === n; }); return p ? nm(p) : n; }catch(_){ return n; } }
+
+  function html(){
+    var s = state.season || {}, L = s.mgrLogV173 || [], m = state.mgrV14 || {};
+    var cnt = function(rx){ return L.filter(function(x){ return rx.test(x.t); }).length; };
+    var moves = [['부상 대체', /부상 대체/], ['부진', /부진/], ['유망주', /유망주/], ['2군이 더 나음', /1·2군 교체/], ['자리 보충', /1군 보강|선발 보충|불펜 보충|선발 정리/], ['지친 선발 대신', /선발 휴식/]]
+      .map(function(x){ return [x[0], cnt(x[1])]; }).filter(function(x){ return x[1]; });
+    var back = L.filter(function(x){ return /1군 복귀|선발 복귀/.test(x.t); }), kept = back.filter(function(x){ return /남김/.test(x.b); });
+    var long = L.filter(function(x){ return /🚑 (장기 부상|시즌 아웃)/.test(x.t); }), after = L.filter(function(x){ return /후유증/.test(x.t); });
+    var cl = L.filter(function(x){ return /마무리 교체/.test(x.t); });
+    var a = s.planStartV173 || {}, b = planNow(), out = [];
+    var regIn = b.reg.filter(function(n){ return (a.reg || []).indexOf(n) < 0; }), regOut = (a.reg || []).filter(function(n){ return b.reg.indexOf(n) < 0; });
+    var rotIn = b.rot.filter(function(n){ return (a.rot || []).indexOf(n) < 0; }), rotOut = (a.rot || []).filter(function(n){ return b.rot.indexOf(n) < 0; });
+    var star = Math.max(1, Math.min(5, +m.stars || 3));
+    out.push('<li>' + (moves.length ? '1·2군 이동 <b>' + moves.reduce(function(x, y){ return x + y[1]; }, 0) + '번</b> — ' + moves.map(function(x){ return x[0] + ' ' + x[1]; }).join(' · ') : '1·2군 이동 없음') +
+      (back.length ? ' · 복귀 ' + back.length + (kept.length ? '(대체 선수 남김 ' + kept.length + ')' : '') : '') + '</li>');
+    if(long.length) out.push('<li>장기 부상: ' + long.map(function(x){ return esc(x.b.split(' — ')[0]) + (/시즌 아웃/.test(x.t) ? '(시즌 아웃)' : ''); }).join(' · ') + (after.length ? ' — 후유증 ' + after.map(function(x){ return esc(x.b.split(' — ')[0]); }).join(' · ') : '') + '</li>');
+    if(a.cl && b.cl && a.cl !== b.cl) out.push('<li>마무리: ' + esc(byName('pit', a.cl)) + ' → <b>' + esc(byName('pit', b.cl)) + '</b>' + (cl.length ? ' (감독 교체)' : '') + '</li>');
+    if(regIn.length || regOut.length) out.push('<li>주전이 바뀐 자리: ' + (regOut.length ? esc(regOut.map(function(n){ return byName('bat', n); }).join(' · ')) + ' → ' : '') + '<b>' + esc(regIn.map(function(n){ return byName('bat', n); }).join(' · ') || '—') + '</b></li>');
+    if(rotIn.length) out.push('<li>로테이션: ' + esc(rotOut.map(function(n){ return byName('pit', n); }).join(' · ') || '—') + ' → <b>' + esc(rotIn.map(function(n){ return byName('pit', n); }).join(' · ')) + '</b></li>');
+    var miss = (s.mgrV173 && s.mgrV173.miss) || 0;
+    if(miss) out.push('<li class="dim">감독 ★' + star + ' — 상황과 안 맞는 불펜 기용 ' + miss + '번(★가 높을수록 줄어듦)</li>');
+    var keepNames = kept.map(function(x){ var m2 = x.b.match(/· (.+?) 1군에 남김/); return m2 ? m2[1] : null; }).filter(Boolean);
+    var note = keepNames.length ? '시즌 중 감독이 남긴 ' + keepNames.join(' · ') + ' — 오프시즌 계획(1·2군·주전)에 넣을지 정하세요.' : '시즌 중 바뀐 것은 그대로 남아 있습니다. 오프시즌에 1·2군·타순·불펜 순서를 다시 짜면 그게 새 계획입니다.';
+    return '<div class="sec">🎽 감독이 바꾼 것 <small>' + esc((m.name || '감독') + ' 감독 · ' + (window.mgrStyleTextV173 ? window.mgrStyleTextV173(m) : '') + ' · ' + '★★★★★'.slice(0, star) + '☆☆☆☆☆'.slice(0, 5 - star)) + '</small></div>' +
+      '<ul data-mgr-sum-v173="1">' + out.join('') + '</ul><div class="rec">📌 ' + esc(note) + '</div>';
+  }
+  window.mgrSummaryHtmlV173 = html;
+
+  var baseDone = window.renderSeasonDone;
+  if(typeof baseDone === 'function'){
+    var done = function(){
+      var r = baseDone.apply(this, arguments);
+      try{
+        var s = state.season, kept = s && s.reviewV15; if(!kept || !kept.html) return r;
+        if(kept.mgrV173 !== kept.y){
+          var add = html(), i = kept.html.lastIndexOf('</div>');
+          kept.html = i >= 0 ? kept.html.slice(0, i) + add + kept.html.slice(i) : kept.html + add;
+          kept.mgrV173 = kept.y;
+          var el = document.querySelector('#seasonDoneText [data-review-v15="' + kept.y + '"]');
+          if(el && !el.querySelector('[data-mgr-sum-v173]')) el.insertAdjacentHTML('beforeend', add);
+          try{ save(); }catch(_){ }
+        }
+      }catch(e){ console.error(V + ' 감독이 바꾼 것:', e); }
+      return r;
+    };
+    for(var k in baseDone) if(Object.prototype.hasOwnProperty.call(baseDone, k)) done[k] = baseDone[k];
+    window.renderSeasonDone = done; try{ renderSeasonDone = done; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.3 · 시즌 총평 — 감독이 바꾼 것 END -->
 
 </body>
 </html>
