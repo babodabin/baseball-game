@@ -33224,5 +33224,132 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 </script>
 <!-- v1.7.2 · 부상 정도 · 장기 부상 · 부상 결과 END -->
 
+<!-- v1.7.2 · 장기 부상 알림 -->
+<script id="injury-ask-v172">
+/* 우리 팀 선수가 장기 부상·시즌 아웃(injury-v172)을 당하면 알림 + [감독에게 맡기기] / [직접 고르기](사용자 2단계).
+   자동 진행 중이면 그 경기에서 멈춘다(시즌에 몇 번 안 되는 중요한 결정). 짧은 부상·피로는 지금처럼 감독이 알아서.
+   감독에게 맡기기: 아무것도 안 바꿈 — 다음 경기 1·2군 운영(usage-callup-v164 의 부상 규칙)이 같은 자리 2군 선수를 올린다.
+   직접 고르기: 같은 자리(포수·내야·외야·지명 / 선발·불펜) 2군 선수 중 고르면 바로 1군 ↑, 부상 선수는 2군 ↓.
+     기록은 1·2군 운영과 같은 형식(state.sentV164 · callV164, why '부상') — 다 나으면 거기서 되돌린다. ?nov172 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov172')>=0) return;
+  var V = window.APP_VERSION;
+  function my(){ return state.myTeam; }
+  function box(){ var s = state.season; if(!s.injV172) s.injV172 = {ev:null, long:{}, log:[]}; return s.injV172; }
+  function sk(kind, p){ try{ return squadKey(kind, p); }catch(_){ return kind + ':' + p[0]; } }
+  function lv(kind, p){ try{ return state.squadLevel[my()][sk(kind, p)] || 'first'; }catch(_){ return 'first'; } }
+  function ovr(kind, p){ try{ return kind === 'bat' ? batOvr(p, my()) : pitOvr(p, my()); }catch(_){ return 60; } }
+  function ageOf(kind, p){ try{ var t = state.players[my()]; return +t.age[kind][t[kind].indexOf(p)] || 28; }catch(_){ return 28; } }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p[0]; } }
+  function group(kind, p){ if(kind === 'pit') return p[2] === '선발' ? 'SP' : 'RP'; var s = p[2]; return s === 'C' ? 'C' : /^(1B|2B|3B|SS)$/.test(s) ? 'IF' : /^(LF|CF|RF)$/.test(s) ? 'OF' : 'DH'; }
+  var GN = {C:'포수', IF:'내야', OF:'외야', DH:'지명', SP:'선발', RP:'불펜'};
+  function find(kind, name){ var t = getTeam(my()); return (t[kind] || []).find(function(p){ return p && p[0] === name; }); }
+  function hurt(kind, p){ try{ return isInjured(my(), kind, p); }catch(_){ return false; } }
+  function candidates(kind, inj){
+    var t = getTeam(my()), g = group(kind, inj), sents = state.sentV164 || {}, mgrUp = sents[sk(kind, inj)] && sents[sk(kind, inj)].swap;
+    return (t[kind] || []).filter(function(p){
+      if(!p || p === inj || hurt(kind, p) || sents[sk(kind, p)]) return false;
+      if(lv(kind, p) !== 'second' && sk(kind, p) !== mgrUp) return false;   /* 2군 선수 + 감독이 방금 올린 선수 */
+      var x = group(kind, p); return x === g || (g === 'DH') || (g === 'IF' && x === 'DH');
+    }).map(function(p){ return {p:p, o:ovr(kind, p), a:ageOf(kind, p), dev:!!(window.isDevelopingV1610 && window.isDevelopingV1610(my(), kind, p))}; })
+      .sort(function(a, b){ return (a.dev - b.dev) || (b.o - a.o); });
+  }
+  function pending(){ var B = box(); if(!B.ask) B.ask = []; return B.ask; }
+
+  /* 새 장기 부상 찾기 — injury-v172 의 기록(log) 중 아직 안 물어본 우리 팀 것 */
+  function collect(){
+    var B = box(), from = B.askFrom || 0, out = 0;
+    for(var i = from; i < B.log.length; i++){
+      var x = B.log[i];
+      if(x.tid === my() && (x.sev === 'long' || x.sev === 'out')){ pending().push({kind:x.kind, name:x.name, sev:x.sev, len:x.len, d:x.d}); out++; }
+    }
+    B.askFrom = B.log.length;
+    return out;
+  }
+
+  function sheet(html){
+    var s = document.getElementById('sheet'), m = document.getElementById('mask'); if(!s || !m) return false;
+    s.innerHTML = html; m.classList.add('on'); return true;
+  }
+  var BTN = 'style="display:block;width:100%;margin-top:8px;padding:13px;border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;min-height:48px;cursor:pointer;';
+  function show(){
+    var q = pending(); if(!q.length) return;
+    var x = q[0], p = find(x.kind, x.name);
+    if(!p || !hurt(x.kind, p)){ q.shift(); return show(); }   /* 감독이 이미 대체했어도 묻는다(직접 고르면 감독 것을 되돌림) */
+    var c = candidates(x.kind, p), rec = c.filter(function(y){ return !y.dev; })[0];
+    var done = (state.sentV164 || {})[sk(x.kind, p)], doneUp = done && done.swap && c.filter(function(y){ return sk(x.kind, y.p) === done.swap; })[0];
+    var head = '<div class="top"><div class="pname">🚑 ' + (x.sev === 'out' ? '시즌 아웃' : '장기 부상') + ' — ' + nm(p) + '</div><button class="close" onclick="injAskV172(\'auto\')">✕</button></div>';
+    var body = '<div class="hint" style="font-size:14px;line-height:1.6">' + GN[group(x.kind, p)] + ' · OVR ' + ovr(x.kind, p) + ' · ' +
+      (x.sev === 'out' ? '남은 시즌을 뛸 수 없습니다.' : '약 <b>' + x.len + '경기</b> 결장합니다.') + '<br>' +
+      (doneUp ? '감독이 2군의 <b>' + nm(doneUp.p) + '</b>(OVR ' + doneUp.o + ' · ' + doneUp.a + '세)를 올렸습니다.'
+        : rec ? '감독 생각: 2군의 <b>' + nm(rec.p) + '</b>(OVR ' + rec.o + ' · ' + rec.a + '세)를 올려 그 자리를 맡깁니다.'
+        : c.length ? '2군 같은 자리엔 키우는 선수(🌱)뿐이라, 감독은 1군 후보나 다른 자리 2군 선수로 메웁니다. 키우는 선수를 쓰려면 직접 고르세요.'
+        : '2군에 같은 자리 선수가 없어 1군 후보로 메웁니다.') + '</div>';
+    var btns = '<button type="button" ' + BTN + 'background:var(--amber);color:#10140f;border:0" onclick="injAskV172(\'auto\')">감독에게 맡기기</button>' +
+      (c.length ? '<button type="button" ' + BTN + 'background:transparent;color:var(--chalk);border:1px solid var(--line)" onclick="injAskV172(\'pick\')">직접 고르기</button>' : '');
+    sheet(head + body + btns);
+  }
+  function showPick(){
+    var x = pending()[0]; if(!x) return;
+    var p = find(x.kind, x.name); if(!p) return;
+    var c = candidates(x.kind, p);
+    var rows = c.map(function(y, n){
+      return '<button type="button" class="lrow" style="width:100%;text-align:left;display:flex;gap:10px;align-items:center;padding:10px;margin-top:6px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);color:var(--chalk);font-family:inherit;min-height:48px" onclick="injAskV172(\'take\',' + n + ')">' +
+        '<b style="min-width:34px">' + y.o + '</b><span style="flex:1">' + nm(y.p) + ' <small style="color:var(--dim)">' + y.p[2] + ' · ' + y.a + '세' + (y.dev ? ' · 🌱 키우는 선수' : '') + '</small></span></button>';
+    }).join('');
+    sheet('<div class="top"><div class="pname">' + nm(p) + ' 자리 — 2군에서 올릴 선수</div><button class="close" onclick="injAskV172(\'back\')">✕</button></div>' +
+      '<div class="hint">고르면 바로 1군에 올라오고, ' + nm(p) + '은(는) 나을 때까지 2군 명단으로 갑니다. 다 나으면 감독이 되돌립니다.</div>' + rows +
+      '<button type="button" ' + BTN + 'background:transparent;color:var(--dim);border:1px solid var(--line)" onclick="injAskV172(\'auto\')">감독에게 맡기기</button>');
+  }
+  window.injAskV172 = function(act, n){
+    try{
+      var q = pending(), x = q[0];
+      if(act === 'pick'){ showPick(); return; }
+      if(act === 'back'){ show(); return; }
+      if(act === 'take' && x){
+        var p = find(x.kind, x.name), c = p ? candidates(x.kind, p) : [], y = c[n];
+        if(p && y){
+          var L = state.squadLevel[my()], kd = sk(x.kind, p), ku = sk(x.kind, y.p), d = +(state.season.day) || 0;
+          var sents = state.sentV164 || (state.sentV164 = {}), calls = state.callV164 || (state.callV164 = {});
+          var prevUp = sents[kd] && sents[kd].swap;   /* 감독이 먼저 올린 선수는 2군으로 되돌린다 */
+          if(prevUp && prevUp !== ku){ L[prevUp] = 'second'; delete calls[prevUp]; }
+          L[kd] = 'second'; L[ku] = 'first';
+          sents[kd] = {day:d, why:'부상', until:null, swap:ku, back:true};
+          calls[ku] = {day:d, why:'부상', swap:kd};
+          try{ if(state.pitchPlan) state.pitchPlan[my()] = null; if(state.rotOrder) state.rotOrder[my()] = null; }catch(_){ }
+          try{ pushClubNews('📞 부상 대체(직접)', nm(y.p) + ' 1군 ↑ · ' + nm(p) + ' 2군 ↓ (부상 — 나으면 복귀)'); }catch(_){ }
+        }
+      }
+      q.shift();
+      try{ save(); }catch(_){ }
+      if(q.length){ show(); return; }
+      try{ closeSheet(); }catch(_){ }
+      try{ renderGameSetup(); }catch(_){ }
+    }catch(e){ console.error(V + ' 장기 부상 알림:', e); try{ closeSheet(); }catch(_){ } }
+  };
+  window.injAskShowV172 = show;
+
+  var prev = window.playMyGame;
+  if(typeof prev === 'function'){
+    var play = function(){
+      var r = prev.apply(this, arguments);
+      try{
+        if(state.season && (collect(), pending().length) && !window.INJURY_ASK_OFF_V172){
+          var busy = window.autoRunBusyV16 && window.autoRunBusyV16();
+          if(busy && window.autoRunStopV16) window.autoRunStopV16();
+          var wait = function(){ try{ if(window.autoRunBusyV16 && window.autoRunBusyV16()) setTimeout(wait, 200); else show(); }catch(_){ } };
+          setTimeout(wait, busy ? 300 : 50);
+        }
+      }catch(e){ console.error(V + ' 장기 부상 알림:', e); }
+      return r;
+    };
+    play.__autoV15 = prev.__autoV15;
+    window.playMyGame = play; try{ playMyGame = play; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.2 · 장기 부상 알림 END -->
+
 </body>
 </html>
