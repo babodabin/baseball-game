@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.11';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.12';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -29265,12 +29265,16 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     main.innerHTML = ''; main.dataset.layoutV14 = phase;
     /* v1.4.22 · 타일 정리 — 구단 현황·시설은 구단 경영 안으로, 설정은 맨 아래 작은 버튼, AI 구단은 내용이 있을 때만 */
     main.appendChild(tile('💰', '구단 경영', eco() ? '돈·모기업·스폰서·감독·시설' : '감독·구단주·시설', "openOpsPageV14('openClubBizV14')"));
-    main.appendChild(tile('👥', '선수단', '1군·2군·훈련', "openMarketSectionV108('squad')"));
+    /* v1.7.12 · 선수단을 1군 · 2군 두 칸으로(사용자) */
+    if(typeof window.openSquadV1712 === 'function'){ main.appendChild(tile('👥', '1군', '주전·후보·훈련', "openSquadV1712('first')")); main.appendChild(tile('🌱', '2군', '육성·대기·훈련', "openSquadV1712('second')")); }
+    else main.appendChild(tile('👥', '선수단', '1군·2군·훈련', "openMarketSectionV108('squad')"));
     /* 오프시즌엔 FA·외국인·레전드 시장이 이 화면에 열린다 */
     if(offseason()) main.appendChild(tile('📝', 'FA·계약', 'FA·외국인·레전드·연봉·코치', "openMarketSectionV108('front')"));
     else main.appendChild(tile('📝', '계약·코치', '연봉 협상·방출·코치진', "openMarketSectionV108('front')"));
-    main.appendChild(tile('↔️', '트레이드', '선수 영입·맞교환', "openOpsPageV14('openTradeSheet')"));
-    if(state.mode === 'sim') main.appendChild(tile('🔭', '스카우트', '신인 드래프트 정보', "openOpsPageV14('openScoutV102')"));   /* 실황은 드래프트가 없다 */
+    /* v1.7.12 · 트레이드 + 스카우트 → 스카우트/트레이드 한 칸(외국인 스카우트 · 신인 드래프트 · 트레이드) */
+    if(typeof window.openScoutTradeHubV1712 === 'function') main.appendChild(tile('🔭', '스카우트/트레이드', '외국인·신인·트레이드', "openOpsPageV14('openScoutTradeHubV1712')"));
+    else { main.appendChild(tile('↔️', '트레이드', '선수 영입·맞교환', "openOpsPageV14('openTradeSheet')"));
+    if(state.mode === 'sim') main.appendChild(tile('🔭', '스카우트', '신인 드래프트 정보', "openOpsPageV14('openScoutV102')")); }   /* 실황은 드래프트가 없다 */
     var ai = body.querySelector('.front-pane[data-fpane="ai"]');
     if(ai && ai.children.length && !ai.querySelector('.ai-pane-empty-v3432')) main.appendChild(tile('🤖', 'AI 구단', '상대 구단 운영·소식', "openMarketSectionV108('ai')"));
     var title0 = main.parentElement && main.parentElement.querySelector('.front-menu-title-v999');
@@ -34554,6 +34558,163 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.11 · 트레이드 — 팀 처지별 가치 END -->
+
+<!-- v1.7.12 · 운영 6칸 · 1군/2군 창 · 상태 줄 · 연봉 협상 겹침 -->
+<style id="ops-v1712-css">
+.status-v1712{margin:8px 0 12px;padding:10px 12px;border:1px solid rgba(244,196,94,.35);border-radius:12px;background:#0A1A12;font-size:12.5px;line-height:1.7}
+.status-v1712 b{color:#F4C45E}.status-v1712 .bad{color:#EC6753;font-weight:800}.status-v1712 .ok{color:#4ADE9B;font-weight:800}
+.hub-v1712 button{display:flex;align-items:center;gap:12px;width:100%;margin-top:10px;padding:14px;min-height:64px;border-radius:14px;border:1px solid var(--line,rgba(184,211,194,.2));background:var(--panel2,#13261C);color:var(--chalk,#F7F4EC);font-family:inherit;text-align:left;cursor:pointer}
+.hub-v1712 button .i{font-size:26px}.hub-v1712 button b{display:block;font-size:15px}.hub-v1712 button small{color:var(--dim,#9DB0A5);font-size:12px}
+.hub-v1712 button[disabled]{opacity:.5;cursor:default}
+</style>
+<script id="ops-v1712">
+/* 3번 화면·계약 정리 마무리(사용자 2026-10-05)
+   ① 연봉 협상 겹침: buildSalaryDemands 는 리그 상위 10% 성적이면 인상 요구 — FA 자격(faRemaining ≤ 0)·외국인도 넣어 FA 시장과 겹쳤다 → 둘 다 뺀다(외국인은 ⑨ 재계약)
+   ② 상태 줄: 오프시즌 FA·계약 · 스카우트 · 1군/2군 화면 위 — 선수단 N/45(1군·2군) · 외국인 a/3 · 아시아 b/1 · 부족한 자리(45명 구성: 선발 8 · 불펜 14 · 포수 3 · 타자 23)
+   ③ 운영 칸: 구단 경영 · 1군 · 2군 · FA·계약 · 스카우트/트레이드 · AI 구단(소식 있을 때) — 1군·2군은 선수단 화면을 나눠 보여 주고, 스카우트/트레이드는 외국인 스카우트·신인 드래프트·트레이드 세 갈래
+   ?nov1712 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1712')>=0) return;
+  var V = window.APP_VERSION;
+  var T = window.OPS_V1712 = {cap:45, sp:8, rp:14, c:3, bat:23};
+  function my(){ return state.myTeam; }
+  function off(){ try{ return isOffseason(); }catch(_){ return false; } }
+  function first(kind, p){ try{ return isFirstTeam(my(), kind, p); }catch(_){ return true; } }
+
+  /* ① 연봉 협상 겹침 */
+  var baseDem = window.buildSalaryDemands;
+  if(typeof baseDem === 'function'){
+    var dem = function(){
+      var had = !!(state.season && state.season.demands);
+      var r = baseDem.apply(this, arguments);
+      try{
+        var s = state.season; if(had || !s || !Array.isArray(s.demands) || s.demandsV1712) return r;
+        var t = getTeam(my());
+        s.demands = s.demands.filter(function(d){
+          var p = (d.kind === 'bat' ? t.bat : t.pit)[d.idx]; if(!p) return false;
+          try{ if(window.isForeignV1613 && window.isForeignV1613(p, d.kind)) return false; }catch(_){ }
+          try{ if(faRemaining(d.kind, p) <= 0) return false; }catch(_){ }
+          return true;
+        });
+        s.demandResults = {}; s.demandsV1712 = true;
+      }catch(e){ console.error(V + ' 연봉 협상:', e); }
+      return r;
+    };
+    window.buildSalaryDemands = dem; try{ buildSalaryDemands = dem; }catch(_){ }
+  }
+
+  /* ② 상태 줄 */
+  function statusHtml(){
+    try{
+      var t = getTeam(my()), n = t.bat.length + t.pit.length, f1 = 0;
+      var sp = 0, rp = 0, c = 0;
+      t.bat.forEach(function(p){ if(first('bat', p)) f1++; if(p[2] === 'C') c++; });
+      t.pit.forEach(function(p){ if(first('pit', p)) f1++; if(p[2] === '선발') sp++; else rp++; });
+      /* 외국인 수 — 기본 명단 외국인은 데이터 표시가 없어 foreignCounts 가 0 으로 셌다 → v1.6.13 판별(isForeignV1613), 아시아쿼터는 화면 이름으로 */
+      var fc = {regular:0, asia:0};
+      [['bat', t.bat], ['pit', t.pit]].forEach(function(kp){ kp[1].forEach(function(p){ try{ if(window.isForeignV1613 && window.isForeignV1613(p, kp[0])){ if(/아시아쿼터/.test(playerDisplayName(p))) fc.asia++; else fc.regular++; } }catch(_){ } }); });
+      var lim = (typeof FOREIGN_LIMIT !== 'undefined') ? FOREIGN_LIMIT : {regular:3, asia:1};
+      var lack = [];
+      if(sp < T.sp) lack.push('선발 ' + (T.sp - sp)); if(rp < T.rp) lack.push('불펜 ' + (T.rp - rp));
+      if(c < T.c) lack.push('포수 ' + (T.c - c)); if(t.bat.length < T.bat) lack.push('타자 ' + (T.bat - t.bat.length));
+      if(fc.regular < lim.regular) lack.push('외국인 ' + (lim.regular - fc.regular)); if(fc.asia < lim.asia) lack.push('아시아쿼터 ' + (lim.asia - fc.asia));
+      return '<div class="status-v1712">선수단 <b>' + n + '/' + T.cap + '</b> (1군 ' + f1 + ' · 2군 ' + (n - f1) + ') · 외국인 <b>' + fc.regular + '/' + lim.regular + '</b> · 아시아 <b>' + fc.asia + '/' + lim.asia + '</b>'
+        + ' · 선발 ' + sp + ' · 불펜 ' + rp + ' · 포수 ' + c + ' · 타자 ' + t.bat.length + '<br>'
+        + (lack.length ? '<span class="bad">⚠ 모자람: ' + lack.join(' · ') + '</span> <span style="color:#98AAA0">(45명 구성 기준 — 채울지는 단장 결정)</span>' : '<span class="ok">✅ 45명 구성 기준으로 빈 자리 없음</span>') + '</div>';
+    }catch(_){ return ''; }
+  }
+  window.rosterStatusHtmlV1712 = statusHtml;
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    window.renderOffseason = function(){
+      var h = baseOff.apply(this, arguments);
+      try{
+        if(typeof h === 'string' && state.mode === 'sim' && h.indexOf('status-v1712') < 0){
+          /* 화면이 앞부분을 잘라 쓰므로 맨 앞이 아니라 "우리팀 재계약"/"FA 시장" 바로 위에 */
+          var at = h.indexOf('<div class="fat-box-v176">'); if(at < 0) at = h.indexOf('<h2 class="sec" style="margin-top:14px">FA 시장');
+          h = at >= 0 ? h.slice(0, at) + statusHtml() + h.slice(at) : statusHtml() + h;
+        }
+      }catch(_){ }
+      return h;
+    };
+    try{ renderOffseason = window.renderOffseason; }catch(_){ }
+  }
+  var baseScout = window.openScoutV102;
+  if(typeof baseScout === 'function'){
+    window.openScoutV102 = function(){
+      var r = baseScout.apply(this, arguments);
+      try{ var sh = document.getElementById('sheet'), top = sh && sh.querySelector('.top'); if(top && !sh.querySelector('.status-v1712')) top.insertAdjacentHTML('afterend', statusHtml()); }catch(_){ }
+      return r;
+    };
+  }
+
+  /* ③-1 1군 · 2군 창 — 선수단 화면을 나눠 보여 준다(줄의 "2군"/"1군" 버튼으로 지금 어느 쪽인지 안다) */
+  var sqFilter = null;
+  window.openSquadV1712 = function(level){ window.__sqNextV1712 = level; openMarketSectionV108('squad'); };
+  var baseNav = window.gotoNav; if(typeof baseNav === 'function'){ window.gotoNav = function(){ sqFilter = null; return baseNav.apply(this, arguments); }; try{ gotoNav = window.gotoNav; }catch(_){ } }
+  var baseSec = window.openMarketSectionV108;
+  if(typeof baseSec === 'function'){
+    var sec = function(tab){
+      /* 칸(1군/2군)에서 열면 그 쪽, 선수단 화면을 다시 그리면(2군 내리기 등) 그대로, 다른 화면이면 풀기 */
+      if(tab !== 'squad') sqFilter = null; else if(window.__sqNextV1712) sqFilter = window.__sqNextV1712; window.__sqNextV1712 = null;
+      var r = baseSec.apply(this, arguments);
+      try{ applyFilter(); }catch(_){ }
+      return r;
+    };
+    for(var k in baseSec) if(Object.prototype.hasOwnProperty.call(baseSec, k)) sec[k] = baseSec[k];
+    window.openMarketSectionV108 = sec; try{ openMarketSectionV108 = sec; }catch(_){ }
+  }
+  function applyFilter(){
+    var box = document.querySelector('[data-fpane="squad"]') || document.getElementById('squadRosterV114'); if(!box) return;
+    var head = [].filter.call(box.querySelectorAll('h2.sec'), function(x){ return /1군·2군 관리|1군 선수단|2군 선수단/.test(x.textContent); })[0];
+    var rows = box.querySelectorAll('.prow'), shown = 0;
+    [].forEach.call(rows, function(row){
+      var b = row.querySelector('button[onclick^="setSquadLevel("]'); if(!b){ row.style.display = ''; return; }
+      var lv = /'second'\)/.test(b.getAttribute('onclick')) ? 'first' : 'second';
+      var on = !sqFilter || sqFilter === lv; row.style.display = on ? '' : 'none'; if(on) shown++;
+    });
+    if(head){
+      if(!head.dataset.origV1712) head.dataset.origV1712 = head.innerHTML;
+      /* 바뀐 게 있을 때만 쓴다 — 아니면 감시(MutationObserver)가 다시 불러 끝없이 돌았다 */
+      var key = (sqFilter || 'all') + '|' + shown;
+      if(head.dataset.keyV1712 !== key){ head.dataset.keyV1712 = key; head.innerHTML = sqFilter ? (sqFilter === 'first' ? '👥 1군 선수단 ' : '🌱 2군 선수단 ') + '<small>' + shown + '명 · 다른 쪽은 ' + (sqFilter === 'first' ? '2군' : '1군') + ' 칸에서</small>' : head.dataset.origV1712; }
+      if(sqFilter && !box.querySelector('.status-v1712')) head.insertAdjacentHTML('afterend', statusHtml());
+      else if(!sqFilter){ var st = box.querySelector('.status-v1712'); if(st) st.remove(); }
+    }
+  }
+  try{
+    var fb = document.getElementById('frontBody');
+    var busyF = false;
+    if(fb && window.MutationObserver) new MutationObserver(function(){ if(sqFilter && !busyF){ busyF = true; try{ applyFilter(); }catch(_){ } setTimeout(function(){ busyF = false; }, 0); } }).observe(fb, {childList:true, subtree:true});
+  }catch(_){ }
+
+  /* ③-2 스카우트/트레이드 — 세 갈래 */
+  window.openScoutTradeHubV1712 = function(){
+    var sh = document.getElementById('sheet'), m = document.getElementById('mask'); if(!sh || !m) return;
+    var o = off(), sim = state.mode === 'sim';
+    sh.innerHTML = '<div class="top"><div class="pname">🔭 스카우트 · 트레이드</div><button class="close" onclick="closeSheet()">✕</button></div>'
+      + statusHtml()
+      + '<div class="hub-v1712">'
+      + '<button type="button" onclick="scoutHubGoV1712(\'foreign\')"' + (o ? '' : ' disabled') + '><span class="i">🌍</span><span><b>외국인 스카우트</b><small>' + (o ? '외국인 · 아시아쿼터 계약(오프시즌)' : '오프시즌에 열림 — 시즌 중엔 2/3 점검에서 성적 확인') + '</small></span></button>'
+      + (sim ? '<button type="button" onclick="scoutHubGoV1712(\'draft\')"><span class="i">🎓</span><span><b>신인 드래프트</b><small>' + (o ? '신인 지명 · 스카우트 보고서' : '스카우트 보고서 — 지명은 오프시즌') + '</small></span></button>' : '')
+      + '<button type="button" onclick="scoutHubGoV1712(\'trade\')"><span class="i">🔄</span><span><b>트레이드</b><small>언제나 · 상대가 원하는 것 · 제안</small></span></button>'
+      + '</div>';
+    m.classList.add('on');
+  };
+  window.scoutHubGoV1712 = function(w){
+    try{
+      if(w === 'trade'){ openTradeSheet(); return; }
+      if(w === 'draft'){ openScoutV102(); return; }
+      if(w === 'foreign'){
+        closeSheet(); openMarketSectionV108('front');
+        setTimeout(function(){ var h = [].filter.call(document.querySelectorAll('h2.sec'), function(x){ return /외국인 선수 시장/.test(x.textContent) && x.offsetHeight > 0; })[0]; if(h) h.scrollIntoView({block:'start'}); }, 120);
+      }
+    }catch(e){ console.error(V + ' 스카우트·트레이드:', e); }
+  };
+})();
+</script>
+<!-- v1.7.12 · 운영 6칸 END -->
 
 </body>
 </html>
