@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.4';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.5';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -33769,6 +33769,116 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 })();
 </script>
 <!-- v1.7.4 · 팀을 분석하는 감독 END -->
+
+<!-- v1.7.5 · 경기 진행 버튼 고정 -->
+<style id="progbar-v175-css">
+#progBarV175{display:none;flex:0 0 auto;gap:6px;padding:8px 10px;background:var(--bg,#08150F);border-top:1px solid var(--line,rgba(184,211,194,.16))}
+#progBarV175.on{display:flex}
+#progBarV175 button{flex:1 1 0;min-height:52px;border-radius:12px;border:1px solid var(--line,rgba(184,211,194,.2));background:var(--panel2,#13261C);color:var(--chalk,#F7F4EC);font-family:inherit;font-weight:800;font-size:14px;line-height:1.15;padding:4px 2px;cursor:pointer}
+#progBarV175 button small{display:block;font-size:10px;font-weight:600;color:var(--dim,#9DB0A5);margin-top:2px}
+#progBarV175 button.main{flex:1.25 1 0;background:var(--amber,#F6BE4A);color:#10140f;border:0}
+#progBarV175 button.main small{color:#3a3016}
+#progBarV175 .run{flex:3 1 0;display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:52px;padding:0 4px}
+#progBarV175 .run .t{font-size:13px;font-weight:800}
+#progBarV175 .run .bar{height:7px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}
+#progBarV175 .run .bar i{display:block;height:100%;background:var(--amber,#F6BE4A)}
+html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newGameBtn,html.progbar-v175 #skip5Btn{display:none!important}
+</style>
+<script id="progbar-v175">
+/* 경기 진행 버튼을 아래 메뉴 바로 위 한 줄에 고정(사용자 2026-10-05: "한 버튼을 누르면 그 버튼만 계속 눌러지게 —
+   화면이 바뀌거나 글이 늘어 버튼이 밑으로 가는 건 싫다. 처음부터 그 버튼을 내려서 끝까지 계속 누르게").
+   · 줄은 스크롤 영역 밖(메뉴 바로 위)이라 경기 결과·글이 늘어도 자리가 안 바뀐다
+   · [▶ 한 경기] [10경기] [한 달] [시즌 끝까지] — 같은 자리를 계속 누르면 된다:
+       경기 준비 화면이면 바로 한 경기 · 결과 화면이면 다음 경기를 바로 시작(예전엔 "다음 경기 준비"를 한 번 더 눌러야 했다) ·
+       중계 보는 중이면 그 자리가 "⚡ 바로 끝내기"
+   · 자동 진행 중엔 같은 줄이 진행 막대 + ⏸ 멈추기(⏸ 은 맨 오른쪽 — "시즌 끝까지" 자리)
+   · 경기 탭 · 정규시즌 · 시즌이 남았을 때만 보인다. 원래 버튼(#playBtn 등)은 숨기기만 하고 그대로 쓴다. ?nov175 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov175')>=0) return;
+  var V = window.APP_VERSION, MONTH = 24;
+  function $(id){ return document.getElementById(id); }
+  function bar(){
+    var b = $('progBarV175'); if(b) return b;
+    var nav = document.querySelector('nav'); if(!nav || !nav.parentNode) return null;
+    b = document.createElement('div'); b.id = 'progBarV175';
+    nav.parentNode.insertBefore(b, nav);
+    b.addEventListener('click', function(e){
+      var t = e.target.closest && e.target.closest('button'); if(!t) return;
+      act(t.getAttribute('data-act'));
+    });
+    return b;
+  }
+  function left(){ try{ return Math.max(0, state.season.sched.length - (+state.season.day || 0)); }catch(_){ return 0; } }
+  function busy(){ try{ return !!(window.autoRunBusyV16 && window.autoRunBusyV16()); }catch(_){ return false; } }
+  function liveState(){
+    var live = $('gameLive'); if(!live || live.style.display === 'none') return 'setup';
+    var next = $('newGameBtn');
+    return next && next.style.display !== 'none' ? 'done' : 'playing';
+  }
+  function visible(){
+    try{
+      var scr = $('scr-game'); if(!scr || !scr.classList.contains('on')) return false;
+      if(!state || !state.season || state.season.post) return false;
+      if(typeof isOffseason === 'function' && isOffseason()) return false;
+      var sd = $('seasonDone'); if(sd && sd.style.display !== 'none') return false;
+      return left() > 0 || busy();
+    }catch(_){ return false; }
+  }
+  function act(a){
+    try{
+      if(a === 'stop'){ if(window.autoRunStopV16) autoRunStopV16(); return; }
+      if(busy()) return;
+      var ls = liveState();
+      if(a === 'one'){
+        if(ls === 'playing'){ var sk = $('skipBtn'); if(sk) sk.click(); return; }
+        if(ls === 'done'){ try{ renderGameSetup(); }catch(_){ } }
+        var pb = $('playBtn'); if(pb && !pb.disabled) pb.click();
+        return;
+      }
+      var n = a === 'ten' ? 10 : a === 'month' ? MONTH : left();
+      if(ls === 'playing') return;
+      if(ls === 'done'){ try{ renderGameSetup(); }catch(_){ } }
+      if(window.autoRunV16) autoRunV16(n);
+    }catch(e){ console.error(V + ' 진행 버튼:', e); }
+  }
+  window.progBarActV175 = act;
+  function paint(){
+    var b = bar(); if(!b) return;
+    var on = visible();
+    b.classList.toggle('on', on);
+    document.documentElement.classList.toggle('progbar-v175', on);
+    if(!on) return;
+    var html;
+    if(busy()){
+      var d = 0, tot = 1, stop = false;
+      try{ var m = /(\d+)\s*\/\s*(\d+)경기/.exec(($('autoRunV16') || {}).textContent || ''); if(m){ d = +m[1]; tot = +m[2]; } stop = /멈추는 중/.test(($('autoRunV16') || {}).textContent || ''); }catch(_){ }
+      html = '<div class="run"><div class="t">⏳ ' + d + ' / ' + tot + '경기 <small style="color:var(--dim);font-weight:600">' + (+state.season.day || 0) + '/' + state.season.sched.length + '차전</small></div><div class="bar"><i style="width:' + Math.round(d / Math.max(1, tot) * 100) + '%"></i></div></div>'
+        + '<button type="button" data-act="stop">' + (stop ? '멈추는 중…' : '⏸ 멈추기') + '</button>';
+    }else{
+      var ls = liveState(), n = left();
+      var first = ls === 'playing' ? '<button type="button" class="main" data-act="one">⚡ 바로 끝내기<small>이 경기 결과</small></button>'
+        : '<button type="button" class="main" data-act="one">▶ 한 경기<small>' + ((+state.season.day || 0) + 1) + '차전</small></button>';
+      html = first
+        + '<button type="button" data-act="ten">10경기<small>자동</small></button>'
+        + '<button type="button" data-act="month">한 달<small>' + MONTH + '경기</small></button>'
+        + '<button type="button" data-act="all">시즌 끝까지<small>남은 ' + n + '</small></button>';
+    }
+    if(b.innerHTML !== html) b.innerHTML = html;
+  }
+  window.progBarPaintV175 = paint;
+  /* 화면이 바뀌는 곳마다 다시 그린다 — 그리고 0.25초마다 한 번(자동 진행 표시·중계 끝남 따라가기).
+     ⚠ 300~1500ms 간격 setInterval 은 v0.65 가 경기 재생 타이머로 보고 지운다(함정 ③) → 250ms */
+  ['show', 'renderGameSetup', 'gotoNav'].forEach(function(name){
+    var prev = window[name]; if(typeof prev !== 'function') return;
+    window[name] = function(){ var r = prev.apply(this, arguments); try{ paint(); }catch(_){ } return r; };
+    try{ (0, eval)(name + '=window.' + name); }catch(_){ }
+  });
+  setInterval(function(){ try{ paint(); }catch(_){ } }, 250);
+  try{ paint(); }catch(_){ }
+})();
+</script>
+<!-- v1.7.5 · 경기 진행 버튼 고정 END -->
 
 </body>
 </html>
