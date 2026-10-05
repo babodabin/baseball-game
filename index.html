@@ -23533,7 +23533,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       +'<div class="club-reps-v999">'+reps.map(function(x){var n=pName(x.p);return '<button class="club-rep-v999" type="button" data-player-kind-v999="'+x.kind+'" data-player-index-v999="'+x.idx+'"><img alt="" src="'+portrait(t,x)+'"><span class="n">'+esc(n)+'</span><span class="o">OVR '+x.ovr+'</span></button>';}).join('')+'</div></div>'
       +'<div class="club-two-v999">'
       +'<div class="concept-panel-v999"><div class="concept-panel-head-v999"><div class="concept-panel-title-v999">최근 일정</div><div class="concept-panel-more-v999">'+(state.season?'시즌 '+(state.season.day||0)+'일차':'시즌 준비')+'</div></div><div class="club-list-v999">'+(sched.length?sched.map(function(x){return '<div class="club-list-row-v999"><span class="lead">'+x.day+'경기</span><span class="sub">'+(x.where==='홈'?'vs ':'@ ')+esc(x.opp)+'</span><span class="tag">'+(x.done?'완료':x.where)+'</span></div>';}).join(''):'<div class="club-news-item-v999"><div class="txt"><div class="t">시즌 일정 준비 중</div><div class="b">시즌을 시작하면 최근 일정이 표시됩니다.</div></div></div>')+'</div></div>'
-      +'<div class="concept-panel-v999"><div class="concept-panel-head-v999"><div class="concept-panel-title-v999">최근 소식</div><div class="concept-panel-more-v999">구단 뉴스</div></div><div class="club-news-v999">'+news.map(function(x){return '<div class="club-news-item-v999"><span class="ico">'+x.ico+'</span><div class="txt"><div class="t">'+esc(x.title)+'</div><div class="b">'+esc(x.body)+'</div></div></div>';}).join('')+'</div></div></div>'
+      +'<div class="concept-panel-v999"><div class="concept-panel-head-v999"><div class="concept-panel-title-v999">최근 소식</div><div class="concept-panel-more-v999">더 보기 ›</div></div><div class="club-news-v999">'+news.map(function(x){return '<div class="club-news-item-v999"><span class="ico">'+x.ico+'</span><div class="txt"><div class="t">'+esc(x.title)+'</div><div class="b">'+esc(x.body)+'</div></div></div>';}).join('')+'</div></div></div>'
       +'<div class="club-two-v999">'
       +'<div class="concept-panel-v999"><div class="concept-panel-head-v999"><div class="concept-panel-title-v999">시즌 목표</div></div><div class="club-goals-v999">'
       +'<div class="club-goal-v999"><span class="i">🏆</span><span class="t">정규 시즌 1위</span><span class="v">현재 '+rk+'위 ('+r.w+'승 '+r.l+'패)</span></div>'
@@ -33392,6 +33392,40 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 })();
 </script>
 <!-- v1.7.2 · 장기 부상 알림 END -->
+
+<!-- v1.7.2 · 최근 소식 10개 -->
+<script id="news-more-v172">
+/* 구단 탭 "최근 소식"(3개)을 누르면 최근 소식 10개(사용자 2026-10-05). 구단 홈은 자주 다시 그려서 문서 전체에서 눌림을 받는다 */
+(function(){
+  'use strict';
+  var V = window.APP_VERSION, N = 10;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]; }); }
+  window.openNewsV172 = function(){
+    try{
+      var list = (state && Array.isArray(state.news) ? state.news : []).slice(0, N);
+      var rows = list.length ? list.map(function(x){
+        return '<div style="padding:10px 2px;border-bottom:1px solid var(--line)"><div style="font-weight:700;font-size:14px">' + esc(x.title || '구단 소식') +
+          ' <span style="color:var(--dim);font-weight:400;font-size:11px">' + (x.year || 1) + '년차 ' + (x.day || 0) + '일</span></div>' +
+          '<div style="color:var(--dim);font-size:13px;margin-top:3px;line-height:1.5">' + esc(x.body || '') + '</div></div>';
+      }).join('') : '<div class="hint">아직 소식이 없습니다.</div>';
+      var s = document.getElementById('sheet'), m = document.getElementById('mask'); if(!s || !m) return;
+      s.innerHTML = '<div class="top"><div class="pname">📣 최근 소식</div><button class="close" onclick="closeSheet()">✕</button></div>' + rows;
+      m.classList.add('on');
+    }catch(e){ console.error(V + ' 최근 소식:', e); }
+  };
+  document.addEventListener('click', function(e){
+    try{
+      var p = e.target && e.target.closest && e.target.closest('.concept-panel-v999'); if(!p) return;
+      var t = p.querySelector('.concept-panel-title-v999'); if(!t || t.textContent.trim() !== '최근 소식') return;
+      window.openNewsV172();
+    }catch(_){ }
+  });
+  var css = document.createElement('style');
+  css.textContent = '.club-news-v999{cursor:pointer}.concept-panel-v999 .concept-panel-more-v999{cursor:pointer}';
+  document.head.appendChild(css);
+})();
+</script>
+<!-- v1.7.2 · 최근 소식 10개 END -->
 
 </body>
 </html>
