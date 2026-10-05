@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.5';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.6';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -33897,6 +33897,245 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.5 · 경기 진행 버튼 고정 END -->
+
+<!-- v1.7.6 · FA 3단계 · 우리팀 재계약 · 무료 계약 -->
+<style id="fa-tier-v176-css">
+.fat-sec-v176{margin:14px 0 6px;font-weight:900;font-size:14px;color:var(--amber,#F6BE4A)}
+.fat-sec-v176 small{color:var(--dim,#9DB0A5);font-weight:600;font-size:11px;margin-left:6px}
+.fat-box-v176{margin:10px 0 12px;padding:12px;border:1px solid var(--line,rgba(184,211,194,.2));border-radius:14px;background:var(--panel2,#13261C)}
+.fat-box-v176 .s{color:var(--dim,#9DB0A5);font-size:12px;line-height:1.6;margin-bottom:6px}
+.fat-row-v176{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px solid var(--line,rgba(184,211,194,.12))}
+.fat-row-v176 .nm{flex:1;min-width:0;font-weight:700;font-size:14px}
+.fat-row-v176 .nm small{display:block;color:var(--dim,#9DB0A5);font-weight:500;font-size:11px;margin-top:2px}
+.fat-row-v176 .o{font-weight:900;min-width:28px;text-align:center}
+.fat-row-v176 button{min-height:40px;padding:0 12px;border-radius:10px;border:0;background:var(--amber,#F6BE4A);color:#10140f;font-weight:800;font-family:inherit;cursor:pointer}
+.fat-row-v176 button[disabled]{background:rgba(255,255,255,.1);color:var(--dim,#9DB0A5)}
+</style>
+<script id="fa-tier-v176">
+/* 선수 채우기(사용자 2026-10-05) — 팀마다(우리·AI) 오프시즌 우선순위: ① 스카우트(신인·외국인) ② 우리팀 재계약 ③ FA 1·2단계 ④ 3단계 무료 계약. 트레이드는 언제나.
+   선수단 크기는 사용자가 정한다(우리 팀을 자동으로 채우지 않음) — 대신 채울 길을 연다.
+   · FA 금액 단계(faCost — AI 입찰도 이 값을 쓴다): 1단계 대형 OVR 78+ (OVR−60)×2.2억(그대로) · 2단계 중간 68~77 2억 + (OVR−68)×1.5 · 그 아래 1억.
+     예전엔 OVR 70 도 22억이라 중간 선수는 시장에 나올 수 없었다
+   · FA 명단: 예전엔 AI 선수 중 FA 자격 OVR 상위 12명뿐(전부 스타) → 2단계 OVR 68~77 상위 12명을 더함(해마다 한 번, faFixedV13 명단에 붙임)
+   · 🤝 우리팀 재계약(FA 화면 맨 위): 우리 FA 를 우선 협상가(시작가의 90%)에 바로 잡는다 — 4년 분할(v1.3.1 과 같은 장부). 안 잡으면 입찰로 넘어가 AI 가 데려갈 수 있다
+   · 🆓 3단계 무료 계약: FA 마감 + 신인 지명이 끝나면 열림. 드래프트에서 안 뽑힌 신인(상위 10명) + AI 가 방출한 베테랑(40명 넘는 AI 팀의 31세+ 2군 최하위 1명씩).
+     바로 계약 · 계약금 없음 · 연봉은 능력치 기본(대부분 최저 0.5억). 정원 45명까지.
+     AI 도 같은 순서 — 오프시즌을 끝낼 때 40명 아래인 AI 팀이 남은 무료 선수로 채운다(그래도 모자라면 예전처럼 aiTopUp).
+   ?nov176 으로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov176')>=0) return;
+  var V = window.APP_VERSION, NL = String.fromCharCode(10);
+  var T = window.FA_TIER_V176 = {t1:78, t2:68, mid:12, resign:.9, free:10, cap:45, aiFill:40};
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]; }); }
+  function R1(x){ return Math.round(x * 10) / 10; }
+  function sim(){ return state && state.mode === 'sim'; }
+  function off(){ try{ return isOffseason(); }catch(_){ return false; } }
+  function mkt(){ return state.season && state.season.market; }
+  function my(){ return state.myTeam; }
+  function eco(){ try{ return typeof ecoOn === 'function' ? ecoOn() : true; }catch(_){ return true; } }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p ? p[0] : ''; } }
+  function size(tid){ var t = getTeam(tid); return t ? t.bat.length + t.pit.length : 0; }
+
+  /* ── FA 금액 단계 ── */
+  function cost(ovr){ ovr = +ovr || 60; return ovr >= T.t1 ? Math.max(8, (ovr - 60) * 2.2) : ovr >= T.t2 ? 2 + (ovr - T.t2) * 1.5 : 1; }
+  window.faCostV176 = cost;
+  window.faCost = cost; try{ (0, eval)('faCost=window.faCost'); }catch(_){ }
+  function tier(ovr){ return (+ovr || 0) >= T.t1 ? 1 : 2; }
+
+  /* ── 2단계 중간 FA 를 명단에 더함(해마다 한 번) ── */
+  /* 은퇴는 오프시즌 시작에(사용자: 선수가 나가는 걸 알고 채운다). 예전엔 "새 시즌 시작"(doOffseasonEnd) 때 성장 바로 뒤라
+     무료 계약으로 45명을 채워도 곧바로 38명이 됐고, 은퇴할 선수가 FA 명단에도 나왔다. 여기서 한 번 하고 doOffseasonEnd 에선 건너뛴다 */
+  function earlyRetire(){
+    var s = state.season; if(!s || !sim() || !off() || s.retiredV176) return;
+    s.retiredV176 = [];
+    var list = [];
+    try{ list = processRetirements() || []; }catch(e){ console.error(V + ' 은퇴:', e); }
+    s.retiredV176 = list.slice();
+    if(list.length) setTimeout(function(){ try{ showAlert('은퇴 발표\n\n' + list.slice(0, 12).join('\n') + (list.length > 12 ? '\n외 ' + (list.length - 12) + '명' : '')); }catch(_){ } }, 150);
+  }
+  window.earlyRetireV176 = earlyRetire;
+  var baseBuild = window.buildOffseasonMarket;
+  if(typeof baseBuild === 'function'){
+    window.buildOffseasonMarket = function(){
+      try{ earlyRetire(); }catch(_){ }
+      var r = baseBuild.apply(this, arguments);
+      try{
+        var m = mkt(); if(!m || !sim() || m.faTierV176 === state.year) return r;
+        var s = m.faBidV13; if(s && s.year === state.year && s.closed) return r;
+        m.faTierV176 = state.year;
+        var have = {}; (m.fa || []).forEach(function(f){ have[f.kind + '|' + f.from + '|' + f.data[0]] = 1; });
+        var add = [];
+        Object.keys(state.players).forEach(function(tid){
+          if(tid === my()) return;
+          var t = state.players[tid];
+          ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(pl, i){
+            try{ if(aiFaRemaining(tid, kind, pl) > 0) return; }catch(_){ return; }
+            try{ if(window.isForeignV1613 && window.isForeignV1613(pl, kind)) return; }catch(_){ }
+            var o = kind === 'bat' ? batOvr(pl, tid) : pitOvr(pl, tid);
+            if(o < T.t2 || o >= T.t1 || have[kind + '|' + tid + '|' + pl[0]]) return;
+            add.push({from:tid, kind:kind, data:pl.slice(), age:(t.age && t.age[kind] && t.age[kind][i]) || 28, ovr:o, tierV176:2});
+          }); });
+        });
+        add.sort(function(a, b){ return b.ovr - a.ovr; });
+        m.fa = (m.fa || []).concat(add.slice(0, T.mid));
+      }catch(e){ console.error(V + ' FA 2단계:', e); }
+      return r;
+    };
+    try{ buildOffseasonMarket = window.buildOffseasonMarket; }catch(_){ }
+  }
+
+  /* ── 우리팀 재계약 ── */
+  function installs(){ if(!Array.isArray(state.faInstallV131)) state.faInstallV131 = []; return state.faInstallV131; }
+  window.resignV176 = function(idx){
+    try{
+      var m = mkt(), fa = m && m.fa && m.fa[idx]; if(!fa || fa.from !== my()) return;
+      var price = R1(cost(fa.ovr) * T.resign), per = R1(price / 4);
+      if(eco() && (+state.money || 0) < per){ showAlert('잔고가 모자랍니다. 올해 낼 돈 ' + per.toFixed(1) + '억(4년 분할)'); return; }
+      if(eco()){
+        state.money = R1((+state.money || 0) - per);
+        installs().push({name:nm(fa.data), kind:fa.kind, alias:fa.data[0], total:price, per:per, left:3, year:state.year, paidYear:state.year});
+      }
+      var arr = getTeam(my())[fa.kind] || [], p = arr.find(function(q){ return q && q[0] === fa.data[0]; });
+      if(p){ if(!state.faGames) state.faGames = {}; try{ state.faGames[squadKey(fa.kind, p)] = window.FA_RESIGN_GAMES_V131 ? window.FA_RESIGN_GAMES_V131() : 72; }catch(_){ } }
+      m.fa.splice(idx, 1);
+      try{ pushClubNews('🤝 재계약', nm(fa.data) + ' · ' + fa.data[2] + ' · ' + price.toFixed(1) + '억(4년 분할)'); }catch(_){ }
+      try{ save(); }catch(_){ }
+      redraw();
+    }catch(e){ console.error(V + ' 재계약:', e); }
+  };
+
+  /* ── 3단계 무료 계약 ── */
+  function freeBox(){
+    var m = mkt(); if(!m) return null;
+    if(m.freeV176 && m.freeV176.year === state.year) return m.freeV176;
+    var s = m.faBidV13; if(!(s && s.closed) || !m.drafted) return null;
+    var list = [];
+    (m.draft || []).filter(function(d){ return d && !d.taken; }).map(function(d){ var o = 0; try{ o = draftCandidateOvr(d, my()); }catch(_){ } return {src:'draft', d:d, ovr:o}; })
+      .sort(function(a, b){ return b.ovr - a.ovr; }).slice(0, T.free)
+      .forEach(function(x){ list.push({src:'draft', kind:x.d.kind, name:x.d.data[0], age:x.d.age, ovr:x.ovr, ref:x.d}); });
+    Object.keys(state.players).forEach(function(tid){
+      if(tid === my() || size(tid) <= T.aiFill) return;
+      var t = state.players[tid], best = null;
+      ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(pl, i){
+        var a = +(t.age && t.age[kind] && t.age[kind][i]) || 28; if(a < 31) return;
+        try{ if(isFirstTeam(tid, kind, pl)) return; if(window.isForeignV1613 && window.isForeignV1613(pl, kind)) return; }catch(_){ return; }
+        var o = kind === 'bat' ? batOvr(pl, tid) : pitOvr(pl, tid);
+        if(!best || o < best.ovr) best = {kind:kind, i:i, p:pl, age:a, ovr:o};
+      }); });
+      if(!best) return;
+      var arr = t[best.kind], ages = t.age && t.age[best.kind];
+      arr.splice(best.i, 1); if(ages) ages.splice(best.i, 1);
+      try{ if(state.lineups) state.lineups[tid] = null; if(state.pitchPlan) state.pitchPlan[tid] = null; if(state.rotOrder) state.rotOrder[tid] = null; }catch(_){ }
+      list.push({src:'vet', kind:best.kind, name:best.p[0], data:best.p.slice(), age:best.age, ovr:best.ovr, from:tid});
+    });
+    m.freeV176 = {year:state.year, list:list};
+    try{ save(); }catch(_){ }
+    return m.freeV176;
+  }
+  function signFree(tid, x){
+    var t = state.players[tid]; if(!t) return false;
+    if(x.src === 'draft'){ if(x.ref.taken) return false; x.ref.taken = tid; addDraftPlayer(tid, x.ref); }
+    else { t[x.kind].push(x.data.slice()); t.age[x.kind].push(x.age); try{ ensureSquadState(); state.squadLevel[tid][squadKey(x.kind, x.data)] = 'second'; }catch(_){ } }
+    x.signed = tid;
+    try{ if(state.lineups) state.lineups[tid] = null; }catch(_){ }
+    return true;
+  }
+  window.freeSignV176 = function(i){
+    try{
+      var B = freeBox(), x = B && B.list[i]; if(!x || x.signed) return;
+      if(size(my()) >= T.cap){ showAlert('정원 ' + T.cap + '명이 찼습니다. 방출한 뒤 계약하세요.'); return; }
+      if(!signFree(my(), x)) return;
+      try{ pushClubNews('🆓 무료 계약', x.name + ' (' + (x.src === 'draft' ? '미지명 신인' : '방출 선수') + ', OVR ' + x.ovr + ', ' + x.age + '세) — 2군'); }catch(_){ }
+      try{ save(); }catch(_){ }
+      redraw();
+    }catch(e){ console.error(V + ' 무료 계약:', e); }
+  };
+  /* AI 도 같은 순서 — 오프시즌을 끝낼 때 40명 아래인 AI 팀이 남은 무료 선수로 채운다 */
+  function aiFill(){
+    var B = freeBox(); if(!B) return;
+    var left = B.list.filter(function(x){ return !x.signed; }).sort(function(a, b){ return b.ovr - a.ovr; });
+    Object.keys(state.players).forEach(function(tid){
+      if(tid === my()) return;
+      while(size(tid) < T.aiFill && left.length){ var x = left.shift(); if(x.from === tid){ continue; } signFree(tid, x); }
+    });
+  }
+  var baseEnd = window.doOffseasonEnd;
+  if(typeof baseEnd === 'function'){
+    window.doOffseasonEnd = function(){
+      try{ if(sim()) earlyRetire(); }catch(_){ }
+      try{ if(sim()) aiFill(); }catch(e){ console.error(V + ' AI 무료 계약:', e); }
+      /* 은퇴는 오프시즌 시작에 이미 했다 — 여기선 건너뛴다(빈 목록이면 "은퇴 발표" 창도 안 뜬다) */
+      var done = state.season && state.season.retiredV176, realRet = window.processRetirements;
+      if(done){ window.processRetirements = function(){ return []; }; try{ (0, eval)('processRetirements=window.processRetirements'); }catch(_){ } }
+      try{ return baseEnd.apply(this, arguments); }
+      finally{ if(done){ window.processRetirements = realRet; try{ (0, eval)('processRetirements=window.processRetirements'); }catch(_){ } } }
+    };
+    try{ doOffseasonEnd = window.doOffseasonEnd; }catch(_){ }
+  }
+
+  /* ── 화면 ── */
+  function redraw(){ try{ if(typeof renderFront === 'function') renderFront(); }catch(_){ } }
+  var ROW = /<div class="prow" style="cursor:pointer" data-fa="(\d+)">[\s\S]*?<\/div>\s*<button class="signbtn[^"]*">[^<]*<\/button><\/div>/g;
+  function decorate(h){
+    var m = mkt(); if(!m) return h;
+    var s = m.faBidV13 || {}, rows = {};
+    /* FA 줄을 모아 뺀 뒤, 단계별로 다시 놓는다. 우리 선수 줄은 재계약 칸으로 */
+    var first = -1;
+    h = h.replace(ROW, function(whole, idx, at){ if(first < 0) first = at; rows[+idx] = whole; return '\u0000'; });
+    if(first < 0) return h;
+    var t1 = [], t2 = [], mine = [];
+    Object.keys(rows).forEach(function(k){
+      var fa = m.fa[+k]; if(!fa) return;
+      if(fa.from === my() && !s.closed){ mine.push(+k); return; }
+      (tier(fa.ovr) === 1 ? t1 : t2).push(rows[k]);
+    });
+    var out = '';
+    if(t1.length) out += '<div class="fat-sec-v176">1단계 · 대형 FA <small>OVR ' + T.t1 + '+ · 경쟁 입찰</small></div>' + t1.join('');
+    if(t2.length) out += '<div class="fat-sec-v176">2단계 · 중간 FA <small>OVR ' + T.t2 + '~' + (T.t1 - 1) + ' · 수억 원대</small></div>' + t2.join('');
+    h = h.replace('\u0000', out).replace(/\u0000/g, '');
+    /* 🤝 우리팀 재계약 — FA 시장 제목 바로 위 */
+    if(!s.closed){
+      var mineAll = (m.fa || []).map(function(f, i){ return {f:f, i:i}; }).filter(function(x){ return x.f.from === my(); });
+      var box = '<div class="fat-box-v176"><div class="fat-sec-v176" style="margin-top:0">🤝 우리팀 재계약 <small>우선 협상 · 시작가의 ' + Math.round(T.resign * 100) + '%</small></div>'
+        + '<div class="s">FA 가 된 우리 선수입니다. 지금 잡으면 입찰 없이 남습니다(4년 분할). 안 잡으면 FA 입찰로 넘어가 다른 구단이 데려갈 수 있습니다.</div>'
+        + (mineAll.length ? mineAll.map(function(x){ var pr = R1(cost(x.f.ovr) * T.resign);
+            return '<div class="fat-row-v176"><div class="o">' + x.f.ovr + '</div><div class="nm">' + esc(nm(x.f.data)) + '<small>' + esc(x.f.data[2]) + ' · ' + x.f.age + '세 · ' + pr.toFixed(1) + '억(올해 ' + (pr / 4).toFixed(1) + '억)</small></div><button type="button" onclick="resignV176(' + x.i + ')">재계약</button></div>'; }).join('')
+          : '<div class="s">올해 FA 가 된 우리 선수가 없습니다.</div>') + '</div>';
+      var head = '<h2 class="sec" style="margin-top:14px">FA 시장', at = h.indexOf(head);
+      h = at >= 0 ? h.slice(0, at) + box + h.slice(at) : box + h;
+    }
+    /* 🆓 3단계 무료 계약 — FA 결과 아래 */
+    var B = freeBox();
+    var fbox = '<div class="fat-box-v176"><div class="fat-sec-v176" style="margin-top:0">🆓 3단계 · 무료 계약 <small>바로 계약 · 계약금 없음</small></div>';
+    if(!B) fbox += '<div class="s">FA 마감과 신인 지명이 끝나면 열립니다 — 드래프트에서 안 뽑힌 신인, 다른 구단에서 방출된 선수.</div>';
+    else {
+      var n = size(my());
+      fbox += '<div class="s">스카우트 · 재계약 · FA 로 못 채운 자리를 채웁니다. 우리 선수단 <b>' + n + '/' + T.cap + '명</b>. 계약하면 2군으로 갑니다.</div>'
+        + B.list.map(function(x, i){
+            var sal = 0.5; try{ sal = Math.max(0.5, Math.pow(Math.max(0, x.ovr - 50) / 10, 2.1) * 0.9); }catch(_){ }
+            return '<div class="fat-row-v176"><div class="o">' + x.ovr + '</div><div class="nm">' + esc(x.name) + '<small>' + (x.kind === 'bat' ? '타자' : '투수') + ' · ' + x.age + '세 · ' + (x.src === 'draft' ? '미지명 신인' : '방출 — ' + esc((getTeam(x.from) || {}).name || '')) + ' · 연봉 약 ' + sal.toFixed(1) + '억</small></div>'
+              + (x.signed ? '<button type="button" disabled>' + (x.signed === my() ? '계약함' : '다른 구단') + '</button>' : '<button type="button" onclick="freeSignV176(' + i + ')"' + (n >= T.cap ? ' disabled' : '') + '>계약</button>') + '</div>';
+          }).join('');
+    }
+    fbox += '</div>';
+    var anchor = 'onclick="openFaResultV13()">전체 결과 보기</button></div>', ai = h.indexOf(anchor);
+    if(s.closed && ai >= 0) h = h.slice(0, ai + anchor.length) + fbox + h.slice(ai + anchor.length);
+    else h += fbox;
+    return h;
+  }
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    window.renderOffseason = function(t){
+      var h = baseOff.apply(this, arguments);
+      try{ if(sim() && off() && typeof h === 'string') h = decorate(h); }catch(e){ console.error(V + ' FA 3단계 화면:', e); }
+      return h;
+    };
+    try{ renderOffseason = window.renderOffseason; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.6 · FA 3단계 END -->
 
 </body>
 </html>
