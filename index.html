@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.9';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.10';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -2082,6 +2082,12 @@ function loadStore(){
   return migrated;
 }
 function save(){
+  /* v1.7.10 · 페이지를 읽는 동안의 저장은 다 읽은 뒤 한 번으로 모은다 — 저장 정리 겹들이 각자 save() 를 불러 110KB 를 여러 번 압축했다(새로고침 느림) */
+  if(document.readyState!=='complete'){
+    window.__pendingSaveV1710=true;
+    if(!window.__saveHookV1710){ window.__saveHookV1710=1; window.addEventListener('load',function(){ setTimeout(function(){ if(window.__pendingSaveV1710){ window.__pendingSaveV1710=false; try{ (window.save||save)(); }catch(e){ console.error('저장(로드 뒤):',e); } } },0); }); }
+    return true;
+  }
   try{
     store.active=finiteIntV286(store.active,0,0,4);
     store.slots=Array.isArray(store.slots)?store.slots.slice(0,5):[];
@@ -6332,7 +6338,11 @@ function initialFaGamesByAge(age){
 
 const _ensureSquadV250=ensureSquadState;
 ensureSquadState=function(){
-  aiTopUpRosters();
+  /* v1.7.10 · 페이지를 읽는 동안엔 구단별 인원이 그대로면 AI 재정리(aiTopUpRosters — AI 10팀 1군 다시 고르기)를 건너뛴다.
+     로드 중 저장 정리 겹들이 1·2군을 조회할 때마다(isFirstTeam → 여기) 불려 606번 · 2초 넘게 걸렸다(뒤쪽 성능 겹 v1.1.4 는 아직 없을 때). 다 읽은 뒤엔 예전 그대로 */
+  var cnt=function(){ var n=0; try{ for(var k in state.players){ var t=state.players[k]; n=n*31+((t&&t.bat||[]).length)*100+((t&&t.pit||[]).length); n=n%1000000007; } }catch(_){ } return n; };
+  var loadingV1710=document.readyState!=='complete';
+  if(!(loadingV1710 && state && state.players && window.__topCntV1710===cnt())){ aiTopUpRosters(); if(loadingV1710 && state && state.players) window.__topCntV1710=cnt(); }
   _ensureSquadV250();
   if(state.mode!=='sim'||!state.players) return;
   if(!state.faInitialized){
@@ -13328,7 +13338,8 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
   const oldFront=window.renderFront;if(typeof oldFront==='function')window.renderFront=function(){update(false);const out=oldFront.apply(this,arguments);try{const pane=document.querySelector('.front-pane[data-fpane="front"]');if(pane&&!pane.querySelector('.ai-roster-v3413'))pane.insertAdjacentHTML('beforeend',panel());}catch(e){console.error(VER,e);}return out;};
   const oldFinish=window.finishDay;if(typeof oldFinish==='function')window.finishDay=function(){const out=oldFinish.apply(this,arguments);try{update(false);}catch(e){console.error(VER,e);}return out;};
   const oldSeason=window.newSeason;if(typeof oldSeason==='function')window.newSeason=function(){const out=oldSeason.apply(this,arguments);try{ensure().lastKey='';update(true);}catch(e){console.error(VER,e);}return out;};
-  try{ensure();update(true);window.skillEngineV329=Object.assign({},window.skillEngineV329||{},{aiRosterVersion:'0.34.13'});save();}catch(e){console.error(VER,e);}
+  /* v1.7.10 · 페이지를 열 때마다 AI 10팀 1군을 강제로 다시 짜던 것(update(true), 새로고침 7초+) — 같은 4경기 구간이면 이미 한 것이라 필요할 때만 */
+  try{ensure();update(false);window.skillEngineV329=Object.assign({},window.skillEngineV329||{},{aiRosterVersion:'0.34.13'});save();}catch(e){console.error(VER,e);}
 })();
 </script>
 
@@ -26376,7 +26387,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
      · 이 겹만 지우면 원래 동작으로 되돌아간다. */
   var base = window.ensureSquadState;
   if(typeof base !== 'function') return;
-  var lastSig = null, busy = false;
+  var lastSig = null, busy = false, lastTopSig = null;
 
   /* 문자열을 만들지 않고 숫자 해시만 굴린다. 선수 600명이라도 한 번에 1ms 미만. */
   function mix(h, str){
@@ -26407,10 +26418,13 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     if(busy) return;            /* v0.65 가 막던 재진입을 이 겹에서도 막는다 */
     busy = true;
     try{
-      if(typeof window.aiTopUpRosters === 'function'){
+      /* v1.7.10 · 페이지를 읽는 동안엔 선수단이 그대로면 AI 재정리를 건너뛴다 — 로드 중 1·2군 조회마다 불려 606번(2.3초)이었다.
+         다 읽은 뒤(경기 중)는 예전처럼 매번(한 경기 1번쯤, 5ms) */
+      var cur = sig(), loading = document.readyState !== 'complete';
+      if(typeof window.aiTopUpRosters === 'function' && !(loading && cur !== null && cur === lastTopSig)){
         try{ window.aiTopUpRosters(); }catch(_){ }
+        lastTopSig = sig(); cur = lastTopSig;
       }
-      var cur = sig();
       if(cur !== null && cur === lastSig) return;   /* 로스터가 그대로면 훑지 않는다 */
       var r = base.apply(this, arguments);
       lastSig = sig();          /* 체인이 선수를 늘렸을 수 있으니 끝난 뒤 다시 찍는다 */
@@ -30311,6 +30325,8 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
         out.unshift({c:'info', i:'📝', t:'시즌 총평 다시 보기 — ' + lab, go:"openOpsPageV14('openReviewV15')"});
       }
     }catch(_){ }
+    /* v1.7.10 · 시즌 2/3 점검(96경기)을 지나면 시즌이 끝날 때까지 다시 보기(사용자: 다른 창을 누르니 다시 못 들어갔다) */
+    try{ var ss = state.season; if(ss && ss.summerV177 && !ss.post && typeof window.summerReportV177 === 'function' && !(typeof isOffseason === 'function' && isOffseason())) out.unshift({c:'info', i:'🌞', t:'시즌 2/3 점검 다시 보기 — 외국인 성적 · 약한 자리 · 트레이드', go:'summerReportV177()'}); }catch(_){ }
     return out;
   }
   /* 오프시즌 FA·계약 화면에 "새 시즌 시작 조건"이 두 번 나오던 것 — 위쪽(바로가기 있는 것)만 남긴다 */
@@ -34431,6 +34447,22 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     m.classList.add('on');
   }
   window.summerReportV177 = show;
+  /* v1.7.10 · 경기 화면 감독 줄 아래에도 다시 보기 */
+  var baseSetupV1710 = window.renderGameSetup;
+  if(typeof baseSetupV1710 === 'function'){
+    window.renderGameSetup = function(){
+      var r = baseSetupV1710.apply(this, arguments);
+      try{
+        var s = state.season, row = document.querySelector('[data-mgrmode-v14]'); if(!row) return r;
+        var old = row.querySelector('.summer-again-v1710');
+        var on = s && s.summerV177 && !s.post && !(typeof isOffseason === 'function' && isOffseason());
+        if(!on){ if(old) old.remove(); return r; }
+        if(!old){ var host = row.querySelector('div') || row; host.insertAdjacentHTML('beforeend', '<button type="button" class="summer-again-v1710" onclick="summerReportV177()" style="display:block!important;margin-top:6px;padding:6px 10px;min-height:34px;border-radius:9px;border:1px solid rgba(244,196,94,.45);background:transparent;color:#F4C45E;font-family:inherit;font-size:12px;font-weight:800">🌞 시즌 2/3 점검 다시 보기</button>'); }
+      }catch(_){ }
+      return r;
+    };
+    try{ renderGameSetup = window.renderGameSetup; }catch(_){ }
+  }
   /* v1.7.8 · 진행 버튼을 누를 때 문지기: 이번 진행(n경기) 안에 점검 시점이 있으면 시작 전에 창을 띄우고, [그대로 진행]으로 이어 간다 */
   var pendingGo = null;
   /* v1.7.9 · 문지기 대신 "여기까지만": 이번 진행이 96경기를 넘으면 96경기까지만 진행하고, 거기서 멈춘 뒤 창(아래 playMyGame 겹) */
