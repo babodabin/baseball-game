@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.14';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.15';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -34857,6 +34857,70 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.14 · 신인 지명 뒤 화면 END -->
+
+<!-- v1.7.15 · 불러온 첫 화면에서 그림 얼굴 → 실제 사진 -->
+<script id="photo-late-v1715">
+/* 사용자 2026-10-06 "다른 화면에 갔다 와야 원래 사진이 보여" — 저장된 게임을 불러오면 첫 홈 화면을 그리는 시점이
+   요나단 페라자(v1.1.1 블록)·오웬 화이트(뒤쪽 블록) 사진 등록보다 앞이라, 두 선수가 그림 얼굴(생성 SVG)로 나왔다.
+   → 문서 끝(모든 사진 등록 뒤)에서, 화면에 남은 그림 얼굴의 이웃 글자에 사진 있는 이름이 있으면 그 사진으로 바꾼다
+   (불러오기 직후 · 0.3초 · 1초 · 페이지 load 뒤). ?nov1715 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1715')>=0) return;
+  function fix(){
+    try{
+      var bank = window.PLAYER_PORTRAITS_V101 || {};
+      var names = Object.keys(bank).filter(function(k){ return k.indexOf(':') < 0 && typeof bank[k] === 'string' && !/^data:image\/svg/.test(bank[k]) && k.length >= 2; })
+        .sort(function(a, b){ return b.length - a.length; });
+      if(!names.length) return;
+      [].forEach.call(document.querySelectorAll('img[src^="data:image/svg"]'), function(img){
+        var e = img, txt = '';
+        for(var k = 0; k < 4 && e; k++){ e = e.parentElement; txt = (e && e.textContent || '').replace(/\s+/g, ' '); if(txt.length > 4) break; }
+        if(!txt) return;
+        for(var i = 0; i < names.length; i++){ var at = txt.indexOf(names[i]); if(at >= 0 && !/[가-힣]/.test(txt.charAt(at - 1)) && !/[가-힣]/.test(txt.charAt(at + names[i].length))){ img.setAttribute('src', bank[names[i]]); return; } }
+      });
+    }catch(_){ }
+  }
+  window.fixLatePhotosV1715 = fix;
+  fix(); [300, 1000].forEach(function(ms){ setTimeout(fix, ms); });
+  window.addEventListener('load', function(){ fix(); setTimeout(fix, 300); });
+})();
+</script>
+<!-- v1.7.15 · 불러온 첫 화면 사진 END -->
+
+<!-- v1.7.15 · 운영 칸 밖으로 샌 오프시즌 내용(레전드·드래프트·훈련) 제자리로 -->
+<script id="stray-pane-v1715">
+/* 사용자 2026-10-06 "레전드 영입이 왜 AI 구단에 있어?" — 오프시즌 화면(renderOffseason) 글이 FA·계약 칸(front-pane[front])을 일찍 닫아서,
+   뒤쪽 🏅 레전드 영입 · 신인 드래프트 · 훈련 배정이 칸 밖(front-legacy-v999 바로 아래)에 남아 1군·2군·AI 구단 등 어느 칸을 열어도 같이 보였다.
+   → 화면을 그린 뒤, FA·계약 칸 바로 뒤에서 다음 칸 전까지 떠 있는 요소를 FA·계약 칸 끝으로 옮긴다. ?nov1715 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1715')>=0) return;
+  var V = window.APP_VERSION;
+  function tidy(){
+    var lg = document.querySelector('#frontBody .front-legacy-v999'); if(!lg) return;
+    var fr = lg.querySelector(':scope > .front-pane[data-fpane="front"]'); if(!fr) return;
+    var n = fr.nextElementSibling, move = [];
+    while(n && !(n.classList && n.classList.contains('front-pane'))){ move.push(n); n = n.nextElementSibling; }
+    move.forEach(function(el){ fr.appendChild(el); });
+  }
+  window.tidyStrayPaneV1715 = tidy;
+  var base = window.renderFront;
+  if(typeof base === 'function'){
+    var rf = function(){ var r = base.apply(this, arguments); try{ tidy(); }catch(e){ console.error(V + ' 운영 칸 정리:', e); } return r; };
+    for(var k in base) if(Object.prototype.hasOwnProperty.call(base, k)) rf[k] = base[k];
+    window.renderFront = rf; try{ renderFront = rf; }catch(_){ }
+  }
+  var baseSec = window.openMarketSectionV108;
+  if(typeof baseSec === 'function'){
+    var sec = function(){ try{ tidy(); }catch(_){ } var r = baseSec.apply(this, arguments); try{ tidy(); }catch(_){ } return r; };
+    for(var k2 in baseSec) if(Object.prototype.hasOwnProperty.call(baseSec, k2)) sec[k2] = baseSec[k2];
+    window.openMarketSectionV108 = sec; try{ openMarketSectionV108 = sec; }catch(_){ }
+  }
+  try{ tidy(); }catch(_){ }
+})();
+</script>
+<!-- v1.7.15 · 운영 칸 정리 END -->
 
 </body>
 </html>
