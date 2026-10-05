@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.16';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.17';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -29269,10 +29269,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     if(typeof window.openSquadV1712 === 'function'){ main.appendChild(tile('👥', '1군', '주전·후보·훈련', "openSquadV1712('first')")); main.appendChild(tile('🌱', '2군', '육성·대기·훈련', "openSquadV1712('second')")); }
     else main.appendChild(tile('👥', '선수단', '1군·2군·훈련', "openMarketSectionV108('squad')"));
     /* 오프시즌엔 FA·외국인·레전드 시장이 이 화면에 열린다 */
-    if(offseason()) main.appendChild(tile('📝', 'FA·계약', 'FA·외국인·레전드·연봉·코치', "openMarketSectionV108('front')"));
+    if(offseason()) main.appendChild(tile('📝', 'FA·계약', 'FA·레전드·연봉·코치', "openMarketSectionV108('front')"));
     else main.appendChild(tile('📝', '계약·코치', '연봉 협상·방출·코치진', "openMarketSectionV108('front')"));
     /* v1.7.12 · 트레이드 + 스카우트 → 스카우트/트레이드 한 칸(외국인 스카우트 · 신인 드래프트 · 트레이드) */
-    if(typeof window.openScoutTradeHubV1712 === 'function') main.appendChild(tile('🔭', '스카우트/트레이드', '외국인·신인·트레이드', "openOpsPageV14('openScoutTradeHubV1712')"));
+    if(typeof window.openScoutTradeHubV1712 === 'function') main.appendChild(tile('🔭', '스카우트/트레이드/신인', '외국인·신인 드래프트·트레이드', "openOpsPageV14('openScoutTradeHubV1712')"));
     else { main.appendChild(tile('↔️', '트레이드', '선수 영입·맞교환', "openOpsPageV14('openTradeSheet')"));
     if(state.mode === 'sim') main.appendChild(tile('🔭', '스카우트', '신인 드래프트 정보', "openOpsPageV14('openScoutV102')")); }   /* 실황은 드래프트가 없다 */
     var ai = body.querySelector('.front-pane[data-fpane="ai"]');
@@ -34712,7 +34712,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   window.openScoutTradeHubV1712 = function(){
     var sh = document.getElementById('sheet'), m = document.getElementById('mask'); if(!sh || !m) return;
     var o = off(), sim = state.mode === 'sim';
-    sh.innerHTML = '<div class="top"><div class="pname">🔭 스카우트 · 트레이드</div><button class="close" onclick="closeSheet()">✕</button></div>'
+    sh.innerHTML = '<div class="top"><div class="pname">🔭 스카우트 · 트레이드 · 신인</div><button class="close" onclick="closeSheet()">✕</button></div>'
       + statusHtml()
       + '<div class="hub-v1712">'
       + '<button type="button" onclick="scoutHubGoV1712(\'foreign\')"' + (o ? '' : ' disabled') + '><span class="i">🌍</span><span><b>외국인 스카우트</b><small>' + (o ? '외국인 · 아시아쿼터 계약(오프시즌)' : '오프시즌에 열림 — 시즌 중엔 2/3 점검에서 성적 확인') + '</small></span></button>'
@@ -35021,6 +35021,318 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.16 · 외국인 전체 END -->
+
+<!-- v1.7.17 · 외국인 한도 버그 · 외국인 FA 는 외국인 길로 · 신인 드래프트 창 · 레전드 위로 -->
+<script id="v1717-fix">
+/* 사용자 2026-10-06
+   ③ "구단 FA 경쟁에서도 AI 는 스카우트/트레이드 → 외국인으로, 외국인 전용으로 모두" — 실제로 재 보니 FA 마감 한 번에 AI 외국인이 4명 → 5~7명:
+      ⓐ 국내 FA 마감(closeFa)이 외국인 FA 를 자리 검사 없이 AI 에 넘김(LG 에레디아 · 한화 알칸타라 …)
+      ⓑ AI 외국인 운영(v0.34.13)이 foreignType(데이터 표시만 봄)으로 세서 실제 명단 외국인을 0명으로 보고 팀마다 1~3명 더 영입
+      → foreignType 이 실제 명단 외국인(FOREIGN_BASE_V1613 · 아시아쿼터 이름)도 알아보게. 우리 구단 외국인 영입 한도(signForeign)도 같이 바로잡힘
+      → 다른 구단 외국인 FA 는 국내 FA 마감 전에 따로 처리: 원소속팀 재계약(OVR 74+ · 70+이면서 31세 이하) 또는 빈 외국인 자리가 있는 구단만 영입,
+        나머지는 "풀린 외국인"으로 남음(시작가 계약). 결과는 외국인 스카우트 창에. 우리가 입찰해 둔 외국인은 원래대로 FA 마감에서 겨룸
+      → FA·계약 "🤖 AI 구단 FA 경쟁"에서 외국인 줄 뺌
+   ① "신인 드래프트는 스카우트/트레이드에서" — FA·계약 화면 맨 아래에 있던 드래프트를 🎓 신인 드래프트 창(스카우트/트레이드/신인 → 신인 드래프트)으로
+   ② 드래프트 깜빡임 — 지명마다 운영 화면 전체를 다시 그리고 스크롤을 4번 되돌려 떨렸다(v1.7.14). 창 안에서는 운영 화면을 다시 그리지 않고
+      창 내용만 바꾸고 스크롤 자리를 지킴. 운영 화면은 창을 닫을 때 한 번 다시 그림(지명마다 1초 멈춤도 사라짐)
+   ④ 레전드 영입이 방출 명단 뒤(약 9,200px)에 있어서 → 선수 계약 위(FA 바로 아래)로
+   ?nov1717 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1717')>=0) return;
+  var V = window.APP_VERSION;
+  function my(){ return state.myTeam; }
+  function mkt(){ return state.season && state.season.market; }
+  function off(){ try{ return isOffseason(); }catch(_){ return false; } }
+  function sheet(){ return document.getElementById('sheet'); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]; }); }
+  function tname(id){ try{ return getTeam(id).name; }catch(_){ return id; } }
+
+  /* ── ③-ⓑ foreignType: 실제 명단 외국인도 ── */
+  var NAMES = {}; (window.FOREIGN_BASE_V1613 || []).forEach(function(n){ NAMES[n] = 1; });
+  var baseFT = window.foreignType;
+  if(typeof baseFT === 'function'){
+    var ft = function(p, isBat){
+      var r = baseFT.apply(this, arguments); if(r) return r;
+      try{
+        if(!p) return null;
+        var a = String(p[0] || ''), b = String(p[1] || '');
+        if(/아시아쿼터/.test(a + b)) return 'asia';
+        if(NAMES[a] || NAMES[b] || NAMES[b.replace(/\s*\(.*?\)\s*/g, '').trim()]) return 'regular';
+      }catch(_){ }
+      return null;
+    };
+    window.foreignType = ft; try{ foreignType = ft; }catch(_){ }
+  }
+  function fType(p, kind){ try{ return window.foreignType(p, kind === 'bat'); }catch(_){ return null; } }
+  function fCount(tid){ var t = getTeam(tid), c = {regular:0, asia:0}; ['bat', 'pit'].forEach(function(k){ ((t && t[k]) || []).forEach(function(p){ var x = fType(p, k); if(x) c[x]++; }); }); return c; }
+  function isFa(f){ try{ return !!(window.isForeignV1613 && window.isForeignV1613(f.data, f.kind)); }catch(_){ return false; } }
+  function faKey(f){ return f.kind + '|' + f.from + '|' + (f.data && f.data[0]); }
+  function hashS(s){ var h = 0; s = String(s); for(var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+
+  /* AI 외국인 계약(v0.34.13 장부)에 올해 계약으로 적어 둠 — 바로 뒤 AI 외국인 운영이 계약 끝으로 보고 방출하지 않게 */
+  function bookContract(tid, kind, p, o, age){
+    try{
+      if(!state.aiForeignV3413) state.aiForeignV3413 = {contracts:{}, processedYears:{}, results:[], clubSummary:{}, poolYears:{}};
+      var r = state.aiForeignV3413; if(!r.contracts) r.contracts = {};
+      r.contracts[tid + '|' + kind + '|' + p[0]] = {teamId:tid, kind:kind, name:playerDisplayName(p), years:1, salary:Math.round(Math.max(9, (o - 55) * 1.35) * 10) / 10,
+        adapt:65, asia:fType(p, kind) === 'asia', lastYear:state.year, age:age, ovr:o};
+    }catch(_){ }
+  }
+  function moveTo(f, tid){
+    var m = mkt(), src = state.players[f.from], dst = state.players[tid]; if(!src || !dst) return false;
+    var isBat = f.kind === 'bat', sArr = isBat ? src.bat : src.pit, sAge = src.age && src.age[f.kind], dArr = isBat ? dst.bat : dst.pit;
+    var si = sArr.findIndex(function(p){ return p && p[0] === f.data[0]; });
+    var player = si >= 0 ? sArr[si] : f.data.slice(), age = (si >= 0 && sAge) ? sAge[si] : f.age;
+    if(si >= 0){ sArr.splice(si, 1); if(sAge) sAge.splice(si, 1); }
+    dArr.push(player); if(!dst.age) dst.age = {bat:[], pit:[]}; (dst.age[f.kind] = dst.age[f.kind] || []).push(age);
+    try{ if(state.lineups){ state.lineups[tid] = null; state.lineups[f.from] = null; } if(state.rotOrder){ state.rotOrder[tid] = null; state.rotOrder[f.from] = null; } }catch(_){ }
+    bookContract(tid, f.kind, player, +f.ovr || 60, age);
+    var i = m.fa.indexOf(f); if(i >= 0) m.fa.splice(i, 1);
+    return true;
+  }
+  /* ── ③-ⓐ 외국인 FA — 국내 FA 마감 전에 외국인 길로 ── */
+  function foreignStep(){
+    var m = mkt(), s = m && m.faBidV13; if(!m || !s || s.closed) return [];
+    var bids = s.bids || {}, out = [], stash = [];
+    var list = (m.fa || []).filter(function(f){ return isFa(f) && !(+bids[faKey(f)] > 0); }).sort(function(a, b){ return (+b.ovr || 0) - (+a.ovr || 0); });
+    list.forEach(function(f){
+      var o = +f.ovr || 60, age = +f.age || 30, asia = fType(f.data, f.kind) === 'asia', rec = null;
+      if(f.from !== my() && (o >= 74 || (o >= 70 && age <= 31))){
+        var i = m.fa.indexOf(f); if(i >= 0) m.fa.splice(i, 1);
+        var t = getTeam(f.from), arr = t && t[f.kind], p = arr && arr.find(function(x){ return x && x[0] === f.data[0]; });
+        if(p) bookContract(f.from, f.kind, p, o, age);
+        rec = {type:'재계약', to:f.from};
+      }else if(o >= 72){
+        var cands = (TEAMS || []).filter(function(tm){ if(tm.id === my() || tm.id === f.from || !getTeam(tm.id)) return false; var c = fCount(tm.id); return asia ? c.asia < 1 : c.regular < 3; });
+        if(cands.length){ var to = cands[hashS(f.data[0] + '|' + state.year) % cands.length].id; if(moveTo(f, to)) rec = {type:'영입', to:to}; }
+      }
+      if(rec) out.push({name:playerDisplayName(f.data), pos:f.data[2], ovr:o, age:age, from:f.from, to:rec.to, type:rec.type});
+      else if(f.from !== my()) stash.push(f);
+    });
+    stash.forEach(function(f){ var i = m.fa.indexOf(f); if(i >= 0) m.fa.splice(i, 1); });
+    s.foreignV1717 = out;
+    return stash;
+  }
+  var baseClose = window.faCloseV13;
+  if(typeof baseClose === 'function'){
+    window.faCloseV13 = function(){
+      var sc = window.showConfirm;
+      window.showConfirm = function(msg, go){
+        window.showConfirm = sc; try{ showConfirm = sc; }catch(_){ }
+        return sc.call(this, msg, function(){
+          var stash = [];
+          try{ stash = foreignStep(); }catch(e){ console.error(V + ' 외국인 FA:', e); }
+          try{ return go.apply(this, arguments); }
+          finally{ try{ var m = mkt(); stash.forEach(function(f){ if(m.fa.indexOf(f) < 0) m.fa.push(f); }); save(); }catch(_){ } }
+        });
+      };
+      try{ showConfirm = window.showConfirm; }catch(_){ }
+      try{ return baseClose.apply(this, arguments); }
+      finally{ if(window.showConfirm !== sc){ window.showConfirm = sc; try{ showConfirm = sc; }catch(_){ } } }
+    };
+  }
+
+  /* ── AI 외국인 운영(v0.34.13): 실제 명단 외국인을 세기 시작하니 계약 끝난 선수를 너무 많이 방출하고(한화 4명 모두) 못 채웠다(1~2명).
+        잘하는 외국인(OVR 75+ · 72+이면서 31세 이하)은 남기고, 빈자리(일반 3 · 아시아 1)는 올해 후보 중 OVR 높은 선수로 끝까지 채운다 ── */
+  function ovrOf(tid, kind, p){ try{ return kind === 'bat' ? batOvr(p, tid) : pitOvr(p, tid); }catch(_){ return 60; } }
+  var baseAiF = window.runAiForeignMarketV3413;
+  if(typeof baseAiF === 'function'){
+    window.runAiForeignMarketV3413 = function(){
+      var yk = String(state.year), r0 = state.aiForeignV3413, was = !!(r0 && r0.processedYears && r0.processedYears[yk]);
+      if(!was && state.mode === 'sim'){
+        try{
+          if(!state.aiForeignV3413) state.aiForeignV3413 = {contracts:{}, processedYears:{}, results:[], clubSummary:{}, poolYears:{}};
+          var C = state.aiForeignV3413.contracts = state.aiForeignV3413.contracts || {};
+          (TEAMS || []).forEach(function(tm){
+            if(tm.id === my()) return; var t = getTeam(tm.id); if(!t) return;
+            ['bat', 'pit'].forEach(function(k){ (t[k] || []).forEach(function(p, i){
+              if(!fType(p, k)) return;
+              var o = ovrOf(tm.id, k, p), a = +(t.age && t.age[k] && t.age[k][i]) || 30;
+              if(!(o >= 75 || (o >= 72 && a <= 31))) return;
+              var key = tm.id + '|' + k + '|' + p[0], c = C[key];
+              if(!c) bookContract(tm.id, k, p, o, a);
+              else if(c.lastYear !== state.year) c.years = Math.max(+c.years || 1, 2);
+            }); });
+          });
+        }catch(e){ console.error(V + ' AI 외국인 유지:', e); }
+      }
+      var r = baseAiF.apply(this, arguments);
+      var R = state.aiForeignV3413;
+      if(!was && R && R.processedYears && R.processedYears[yk]){
+        try{
+          var onRoster = {};
+          Object.keys(state.players || {}).forEach(function(tid){ ['bat', 'pit'].forEach(function(k){ (state.players[tid][k] || []).forEach(function(p){ onRoster[p[0]] = 1; }); }); });
+          var pool = ((R.poolYears && R.poolYears[yk]) || []).filter(function(f){ return f && f.data && !onRoster[f.data[0]]; }).sort(function(a, b){ return (+b.ovr || 0) - (+a.ovr || 0); });
+          (TEAMS || []).forEach(function(tm){
+            if(tm.id === my()) return; var t = getTeam(tm.id); if(!t) return;
+            var c = fCount(tm.id), guard = 0;
+            while((c.regular < 3 || c.asia < 1) && guard++ < 6){
+              var i = pool.findIndex(function(f){ return f.asia ? c.asia < 1 : c.regular < 3; }); if(i < 0) break;
+              var f = pool.splice(i, 1)[0], p = f.data.slice();
+              t[f.kind].push(p); if(!t.age) t.age = {bat:[], pit:[]}; (t.age[f.kind] = t.age[f.kind] || []).push(+f.age || 28);
+              bookContract(tm.id, f.kind, p, +f.ovr || 60, +f.age || 28);
+              (R.results = R.results || []).push({teamId:tm.id, name:p[0], displayName:playerDisplayName(p), type:f.asia ? '아시아쿼터 영입' : '외국인 영입', years:1, salary:0, ovr:f.ovr});
+              try{ if(state.lineups) state.lineups[tm.id] = null; if(state.rotOrder) state.rotOrder[tm.id] = null; }catch(_){ }
+              c = fCount(tm.id);
+            }
+            try{ if(R.clubSummary && R.clubSummary[tm.id]){ R.clubSummary[tm.id].regular = c.regular; R.clubSummary[tm.id].asia = c.asia; } }catch(_){ }
+          });
+          save();
+        }catch(e){ console.error(V + ' AI 외국인 채우기:', e); }
+      }
+      return r;
+    };
+  }
+
+  /* ── 외국인 스카우트 창: 올해 외국인 FA 결과 ── */
+  var baseFS = window.openForeignScoutV1713;
+  if(typeof baseFS === 'function'){
+    window.openForeignScoutV1713 = function(){
+      var r = baseFS.apply(this, arguments);
+      try{
+        var m = mkt(), s = m && m.faBidV13, sh = sheet(); if(!off() || !s || !sh) return r;
+        var box = sh.querySelector('.foreign-all-v1716'); if(!box) return r;
+        var h = '<div style="margin:16px 0 4px;font-weight:900;font-size:14px;color:var(--amber,#F6BE4A)">🔨 다른 구단 외국인 FA <small style="color:var(--dim,#9DB0A5);font-weight:600;font-size:11px">' + (s.closed ? 'FA 마감 결과' : 'FA 마감 때 정해짐') + '</small></div>';
+        if(!s.closed) h += '<div class="hint">FA 마감 때 다른 구단 외국인 FA 는 원소속팀이 재계약하거나, 외국인 자리(일반 3 · 아시아 1)가 빈 구단만 데려갑니다. 남은 선수는 위 "풀린 외국인"에서 시작가로 계약할 수 있습니다.</div>';
+        else { var list = s.foreignV1717 || []; h += list.length ? list.map(function(x){ return '<div style="padding:7px 2px;border-top:1px solid var(--line,rgba(184,211,194,.12));font-size:13px"><b>' + x.ovr + '</b> ' + esc(x.name) + ' <small style="color:var(--dim)">' + esc(x.pos) + ' · ' + x.age + '세</small> → ' + (x.type === '재계약' ? esc(tname(x.to)) + ' 재계약' : esc(tname(x.from)) + ' → <b>' + esc(tname(x.to)) + '</b> 영입') + '</div>'; }).join('') : '<div class="hint">재계약·이적한 외국인 FA 가 없습니다.</div>'; }
+        box.insertAdjacentHTML('afterbegin', h);
+      }catch(e){ console.error(V + ' 외국인 FA 결과:', e); }
+      return r;
+    };
+  }
+
+  /* ── ① 신인 드래프트 창 ── */
+  var lastDraft = '', dirty = false, flow = null;
+  var DRAFT_RE = /<h2 class="sec"[^>]*>신인 드래프트/;
+  var HINT = '<div class="hint" style="margin-top:14px">🎓 신인 드래프트는 <b>운영 → 스카우트/트레이드/신인 → 신인 드래프트</b>에서 합니다. <button type="button" onclick="openOpsPageV14(\'openDraftWindowV1717\')" style="margin-left:6px;min-height:32px;padding:0 10px;border-radius:9px;border:1px solid rgba(244,196,94,.5);background:transparent;color:#F4C45E;font-family:inherit;font-weight:800">열기</button></div>';
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    window.renderOffseason = function(){
+      var h = baseOff.apply(this, arguments);
+      try{
+        if(typeof h !== 'string') return h;
+        var mm = DRAFT_RE.exec(h);
+        if(mm){ var a = mm.index, b = h.indexOf('<h2 class="sec"', a + 10); if(b < 0) b = h.length; lastDraft = h.slice(a, b); h = h.slice(0, a) + HINT + h.slice(b); }
+        /* ③ AI FA 경쟁 칸에서 외국인 줄 빼기 */
+        var x = h.indexOf('🤖 AI 구단 FA 경쟁');   /* 앞 겹이 감싸는 div 를 벗겨 내서 제목으로 찾음 */
+        if(x >= 0){
+          var y = h.indexOf('<h2', x + 10); if(y < 0) y = h.length;
+          h = h.slice(0, x) + h.slice(x, y).replace(/<div class="prow"><div class="pos">[^<]*<\/div><div class="mid"><div class="nm">([^<]*)<\/div><div class="hand">[^<]*<\/div><\/div><\/div>/g, function(all, n){
+            try{ return window.isForeignV1613([n, n], 'bat') ? '' : all; }catch(_){ return all; }
+          }) + h.slice(y);
+        }
+      }catch(e){ console.error(V + ' 오프시즌 화면:', e); }
+      return h;
+    };
+    try{ renderOffseason = window.renderOffseason; }catch(_){ }
+  }
+  function draftBody(){
+    var h = '';
+    try{ if(window.rosterStatusHtmlV1712) h += window.rosterStatusHtmlV1712(); }catch(_){ }
+    lastDraft = '';
+    try{ renderOffseason(getTeam(my())); }catch(e){ console.error(V + ' 드래프트 창:', e); }
+    h += lastDraft || '<div class="hint">드래프트 정보를 불러오지 못했습니다.</div>';
+    h += '<button type="button" class="btn ghost" style="margin-top:14px" onclick="openScoutV102()">🔭 스카우트 바꾸기 · 보고서</button>';
+    return '<div class="top"><div class="pname">🎓 신인 드래프트</div><button class="close" onclick="closeSheet()">✕</button></div><div class="draftwin-v1717">' + h + '</div>';
+  }
+  function paint(scroll){
+    var sh = sheet(); if(!sh) return;
+    var back = sh.querySelector(':scope > .pg-back-v14');
+    sh.innerHTML = draftBody();
+    if(back) sh.insertBefore(back, sh.firstChild);
+    if(scroll != null) sh.scrollTop = scroll;
+  }
+  function inWin(){ var sh = sheet(); return !!(sh && sh.querySelector('.draftwin-v1717') && document.getElementById('mask').classList.contains('on')); }
+  window.openDraftWindowV1717 = function(){
+    if(state.mode !== 'sim' || !off() || !mkt()){ try{ openScoutV102(); }catch(_){ } return; }
+    var mk = document.getElementById('mask'); paint(null); if(mk) mk.classList.add('on');
+  };
+  /* 후보를 눌러 상세 → [지명] 은 closeSheet();draftPick(i) — 창 안에서는 닫지 않고 창으로 돌아온다 */
+  var baseOpen = window.openDraftSheet;
+  if(typeof baseOpen === 'function'){
+    window.openDraftSheet = function(){
+      var was = inWin(), st = was ? sheet().scrollTop : 0;
+      var r = baseOpen.apply(this, arguments);
+      if(was && !inWin()) flow = {scroll:st};
+      return r;
+    };
+    try{ openDraftSheet = window.openDraftSheet; }catch(_){ }
+  }
+  var baseCS = window.closeSheet;
+  if(typeof baseCS === 'function'){
+    var cs = function(){
+      if(flow){ var f = flow; flow = null; try{ paint(f.scroll); return; }catch(_){ } }
+      var r = baseCS.apply(this, arguments);
+      if(dirty){ dirty = false; try{ renderFront(); }catch(_){ } }
+      return r;
+    };
+    for(var k in baseCS) if(Object.prototype.hasOwnProperty.call(baseCS, k)) cs[k] = baseCS[k];
+    window.closeSheet = cs; try{ closeSheet = cs; }catch(_){ }
+  }
+  function quietRun(fn, args){
+    var rf = window.renderFront;
+    window.renderFront = function(){ dirty = true; }; try{ renderFront = window.renderFront; }catch(_){ }
+    try{ return fn.apply(null, args); }
+    finally{ window.renderFront = rf; try{ renderFront = rf; }catch(_){ } }
+  }
+  var basePick = window.draftPick;
+  if(typeof basePick === 'function'){
+    var pk = function(){
+      if(!inWin()) return basePick.apply(this, arguments);
+      var st = sheet().scrollTop, r = quietRun(basePick, arguments);
+      try{ paint(st); }catch(e){ console.error(V + ' 드래프트 창:', e); }
+      return r;
+    };
+    window.draftPick = pk; try{ draftPick = pk; }catch(_){ }
+  }
+  var baseStart = window.startDraftV3413;
+  if(typeof baseStart === 'function'){
+    window.startDraftV3413 = function(){
+      if(!inWin()) return baseStart.apply(this, arguments);
+      var r = quietRun(baseStart, arguments); try{ paint(0); }catch(_){ } return r;
+    };
+  }
+  /* 허브 → 신인 드래프트 · 체크리스트 "신인 지명" → 이 창 */
+  var baseGo = window.scoutHubGoV1712;
+  if(typeof baseGo === 'function'){
+    window.scoutHubGoV1712 = function(w){ if(w === 'draft' && state.mode === 'sim' && off()){ try{ openDraftWindowV1717(); }catch(e){ console.error(V + ' 드래프트 창:', e); } return; } return baseGo.apply(this, arguments); };
+  }
+  var baseJump = window.jumpOffseasonTaskV66;
+  if(typeof baseJump === 'function'){
+    window.jumpOffseasonTaskV66 = function(key){
+      if(key === 'draft' && state.mode === 'sim' && off()){ try{ openOpsPageV14('openDraftWindowV1717'); }catch(_){ } return; }
+      return baseJump.apply(this, arguments);
+    };
+  }
+
+  /* ── ④ 레전드 영입 → 선수 계약 위로 ── */
+  function moveLegend(){
+    var pane = document.querySelector('#frontBody .front-legacy-v999 .front-pane[data-fpane="front"]'); if(!pane) return;
+    var hs = [].slice.call(pane.querySelectorAll('h2.sec'));
+    var lg = hs.find(function(h){ return /🏅 레전드 영입/.test(h.textContent); }), ct = hs.find(function(h){ return /📝 선수 계약/.test(h.textContent); });
+    if(!lg || !ct || lg.dataset.movedV1717 === '1') return;
+    if(ct.compareDocumentPosition(lg) & Node.DOCUMENT_POSITION_PRECEDING) return;   /* 이미 위 */
+    var grp = [lg], n = lg.nextElementSibling;
+    while(n && !(n.matches && n.matches('h2.sec'))){ grp.push(n); n = n.nextElementSibling; }
+    grp.forEach(function(el){ ct.parentNode.insertBefore(el, ct); });
+    lg.dataset.movedV1717 = '1';
+  }
+  var baseRF = window.renderFront;
+  if(typeof baseRF === 'function'){
+    var rf2 = function(){ var r = baseRF.apply(this, arguments); try{ moveLegend(); }catch(e){ console.error(V + ' 레전드 위치:', e); } return r; };
+    for(var k3 in baseRF) if(Object.prototype.hasOwnProperty.call(baseRF, k3)) rf2[k3] = baseRF[k3];
+    window.renderFront = rf2; try{ renderFront = rf2; }catch(_){ }
+  }
+  var baseSec = window.openMarketSectionV108;
+  if(typeof baseSec === 'function'){
+    var sec2 = function(){ var r = baseSec.apply(this, arguments); try{ moveLegend(); }catch(_){ } return r; };
+    for(var k4 in baseSec) if(Object.prototype.hasOwnProperty.call(baseSec, k4)) sec2[k4] = baseSec[k4];
+    window.openMarketSectionV108 = sec2; try{ openMarketSectionV108 = sec2; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.17 END -->
 
 </body>
 </html>
