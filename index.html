@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.3';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.4';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -12180,6 +12180,8 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
       try{style=state.aiManagerV3413?.clubs?.[teamId]?.style||'balanced';staffManager=state.aiStaffV3413?.clubs?.[teamId]?.manager||'balanced';}catch(_){}
       /* v1.7.3 · 우리 팀은 고용한 감독 성향(mgr-v173) — 예전엔 AI 직원 기록의 무작위 값을 따랐다 */
       if(teamId===state.myTeam&&typeof window.myPlanV173==='function'){try{const q=window.myPlanV173();if(q){style=q.style;staffManager=q.manager;}}catch(_){}}
+      /* v1.7.4 · 감독이 자기 팀을 분석해 운영을 맞춘다(adapt-v174) — 우리 팀·AI 모두, ★ 높을수록 분석대로 */
+      if(typeof window.adaptPlanV174==='function'){try{const q=window.adaptPlanV174(teamId,style,staffManager);if(q){style=q.style;staffManager=q.manager;}}catch(_){}}
       const map={power:{attack:'power',bullpen:'normal',risk:'aggressive'},small:{attack:'small',bullpen:'quick',risk:'aggressive'},develop:{attack:'balanced',bullpen:'late',risk:'patient'},balanced:{attack:'balanced',bullpen:'normal',risk:'normal'}};
       const plan={...(map[style]||map.balanced)};
       if(staffManager==='offense')plan.attack='power';
@@ -33643,7 +33645,7 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
       try{
         var s = state.season, kept = s && s.reviewV15; if(!kept || !kept.html) return r;
         if(kept.mgrV173 !== kept.y){
-          var add = html(), i = kept.html.lastIndexOf('</div>');
+          var add = (window.mgrSummaryHtmlV173 || html)(), i = kept.html.lastIndexOf('</div>');
           kept.html = i >= 0 ? kept.html.slice(0, i) + add + kept.html.slice(i) : kept.html + add;
           kept.mgrV173 = kept.y;
           var el = document.querySelector('#seasonDoneText [data-review-v15="' + kept.y + '"]');
@@ -33659,6 +33661,113 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 })();
 </script>
 <!-- v1.7.3 · 시즌 총평 — 감독이 바꾼 것 END -->
+
+<!-- v1.7.4 · 팀을 분석하는 감독 -->
+<script id="adapt-v174">
+/* 사용자 2026-10-05: "자기 선수를 분석해서 하는 감독 — 똑같지 않고 팀에 맞춰서", "AI 감독도 맞게".
+   감독은 하루에 한 번 자기 팀을 리그와 비교한다:
+     투수: 로테이션 5명 평균 OVR 과 1군 불펜 상위 6명 평균 OVR 을 리그 평균과 비교 → 선발이 상대적으로 강하면(+1) "선발을 길게", 불펜이 강하면 "일찍 불펜", 비슷하면 보통
+     타선: 라인업 9명의 파워 vs (정확+주루)/2 를 리그와 비교 → 파워가 앞서면(+1.5) 강공, 발·정확이 앞서면 작전 야구, 비슷하면 고르게
+   그날 분석을 따를지 자기 성향대로 할지는 ★ — ★1 20% · ★2 40% · ★3 60% · ★4 80% · ★5 95%(팀·날짜로 정해지는 값이라 다시 계산해도 같다).
+   우리 팀 ★ = 고용한 감독, AI ★ = 팀·해마다 2~4(이름 해시). 경기 엔진 aiGamePlan 의 제자리 훅 adaptPlanV174.
+   보여 주기: 경기 화면 감독 줄 아래 "분석: …", 시즌 총평 감독 칸에 분석대로 운영한 비율. 조정값 window.ADAPT_V174 · ?nov174 으로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov174')>=0) return;
+  var V = window.APP_VERSION;
+  var A = window.ADAPT_V174 = {follow:{1:.2, 2:.4, 3:.6, 4:.8, 5:.95}, gapP:1, gapB:1.5};
+  function hash(s){ var h = 2166136261; s = String(s); for(var i = 0; i < s.length; i++){ h = (h ^ s.charCodeAt(i)) >>> 0; h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+  function day(){ return +(state.season && state.season.day) || 0; }
+  function num(p, k, i){ var s = p && p.skills; var v = s && typeof s[k] === 'number' ? s[k] : +p[i]; return isFinite(v) ? v : 60; }
+  function avg(a){ return a.length ? a.reduce(function(x, y){ return x + y; }, 0) / a.length : 0; }
+
+  var cache = {d:-1, y:-1, team:{}, lg:null};
+  function profile(tid){
+    var t = getTeam(tid), o = {sp:0, rp:0, pow:0, spd:0};
+    try{ o.sp = avg((rotOrderOf(tid) || []).map(function(i){ return t.pit[i]; }).filter(Boolean).map(function(p){ return pitOvr(p, tid); })); }catch(_){ }
+    try{ o.rp = avg((pitchPlanOfV310(tid).bullpen || []).map(function(i){ return t.pit[i]; }).filter(Boolean).map(function(p){ return pitOvr(p, tid); }).sort(function(a, b){ return b - a; }).slice(0, 6)); }catch(_){ }
+    try{
+      var lu = getLineup(tid), bats = (lu && lu.order || []).map(function(i){ return t.bat[i]; }).filter(Boolean);
+      o.pow = avg(bats.map(function(p){ return num(p, 'power', 5); }));
+      o.spd = avg(bats.map(function(p){ return (num(p, 'contact', 4) + num(p, 'running', 6)) / 2; }));
+    }catch(_){ }
+    return o;
+  }
+  function analyze(){
+    if(cache.d === day() && cache.y === (+state.year || 1)) return;
+    var ids = Object.keys(state.players || {}), all = {};
+    ids.forEach(function(id){ all[id] = profile(id); });
+    var lg = {sp:avg(ids.map(function(id){ return all[id].sp; })), rp:avg(ids.map(function(id){ return all[id].rp; })), pow:avg(ids.map(function(id){ return all[id].pow; })), spd:avg(ids.map(function(id){ return all[id].spd; }))};
+    var rank = function(k, id){ return 1 + ids.filter(function(x){ return all[x][k] > all[id][k] + 1e-9; }).length; };
+    ids.forEach(function(id){
+      var x = all[id], p = (x.sp - lg.sp) - (x.rp - lg.rp), b = (x.pow - lg.pow) - (x.spd - lg.spd);
+      x.pitch = p > A.gapP ? 'starter' : p < -A.gapP ? 'bullpen' : 'normal';
+      x.attack = b > A.gapB ? 'power' : b < -A.gapB ? 'small' : 'balanced';
+      x.rank = {sp:rank('sp', id), rp:rank('rp', id), pow:rank('pow', id), spd:rank('spd', id)};
+    });
+    cache = {d:day(), y:+state.year || 1, team:all, lg:lg};
+  }
+  function starsOf(tid){
+    if(tid === state.myTeam){ var m = state.mgrV14; return Math.max(1, Math.min(5, +(m && m.stars) || 3)); }
+    return 2 + hash(tid + '|' + (state.year || 1) + '|ai-mgr') % 3;
+  }
+  window.teamAnalysisV174 = function(tid){ analyze(); return cache.team[tid] || null; };
+  window.aiMgrStarsV174 = starsOf;
+
+  var PSTYLE = {starter:'develop', bullpen:'defense', normal:'balanced'};
+  window.adaptPlanV174 = function(tid, style, manager){
+    try{
+      if(!state.season || !state.players || !state.players[tid]) return null;
+      analyze();
+      var x = cache.team[tid]; if(!x) return null;
+      var follow = (hash(tid + '|' + (state.year || 1) + '|' + day()) % 1000) / 1000 < A.follow[starsOf(tid)];
+      if(tid === state.myTeam && state.season && !state.season.post){
+        var B = state.season.adaptV174 = state.season.adaptV174 || {d:-1, yes:0, no:0};
+        if(B.d !== day()){ B.d = day(); follow ? B.yes++ : B.no++; }
+      }
+      if(!follow) return null;
+      return {style:x.attack, manager:PSTYLE[x.pitch]};
+    }catch(e){ console.error(V + ' 팀 분석:', e); return null; }
+  };
+
+  /* 화면 — 경기 화면 감독 줄 아래 한 줄 */
+  var TXT_P = {starter:'선발이 불펜보다 강해 길게 끌고 갑니다', bullpen:'불펜이 선발보다 강해 일찍 넘깁니다', normal:'선발·불펜이 비슷해 보통으로 바꿉니다'};
+  var TXT_A = {power:'장타력이 앞서 강공', small:'발·정확이 앞서 작전 야구', balanced:'타선은 상황 따라'};
+  window.analysisTextV174 = function(tid){
+    var x = window.teamAnalysisV174(tid || state.myTeam); if(!x || !x.rank) return '';
+    return '분석: 선발 ' + x.rank.sp + '위 · 불펜 ' + x.rank.rp + '위 → ' + TXT_P[x.pitch] + ' · ' + TXT_A[x.attack];
+  };
+  function paint(){
+    try{
+      var row = document.querySelector('[data-mgrmode-v14]'); if(!row || !state.season) return;
+      var el = row.querySelector('.adapt-v174');
+      var s = Math.max(1, Math.min(5, +(state.mgrV14 && state.mgrV14.stars) || 3));
+      var txt = window.analysisTextV174() + ' (★' + s + ' — 분석대로 ' + Math.round(A.follow[s] * 100) + '%)';
+      if(!el){ el = document.createElement('small'); el.className = 'adapt-v174'; el.style.cssText = 'display:block;margin-top:3px;color:var(--dim);font-size:11px;line-height:1.4'; var host = row.querySelector('div') || row; host.appendChild(el); }
+      if(el.textContent !== txt) el.textContent = txt;
+    }catch(_){ }
+  }
+  var baseSetup = window.renderGameSetup;
+  if(typeof baseSetup === 'function'){
+    window.renderGameSetup = function(){ var r = baseSetup.apply(this, arguments); paint(); return r; };
+    try{ renderGameSetup = window.renderGameSetup; }catch(_){ }
+  }
+  /* 시즌 총평 감독 칸에 한 줄 */
+  var baseSum = window.mgrSummaryHtmlV173;
+  if(typeof baseSum === 'function'){
+    window.mgrSummaryHtmlV173 = function(){
+      var h = baseSum.apply(this, arguments);
+      try{
+        var B = state.season && state.season.adaptV174, n = B ? B.yes + B.no : 0;
+        var line = '<li>' + window.analysisTextV174() + (n ? ' — 시즌 ' + Math.round(B.yes / n * 100) + '% 경기를 분석대로 운영' : '') + '</li>';
+        h = h.replace('<ul data-mgr-sum-v173="1">', '<ul data-mgr-sum-v173="1">' + line);
+      }catch(_){ }
+      return h;
+    };
+  }
+})();
+</script>
+<!-- v1.7.4 · 팀을 분석하는 감독 END -->
 
 </body>
 </html>
