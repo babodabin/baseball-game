@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.10';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.11';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -34371,7 +34371,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
           + '<button type="button" onclick="takeSuggestV178(' + i + ')" style="min-height:36px;padding:0 10px;border-radius:9px;border:0;background:#F4C45E;color:#10140f;font-weight:800;font-family:inherit">담기</button></div>';
       }).join('') : '<div>· 이 팀과는 바로 성사될 1대1 제안을 못 찾았습니다(직접 골라 보세요)</div>';
     return '<div class="trade-need-v177"><div><b>🔎 ' + esc(getTeam(opp).name) + '와(과) 볼 것</b> — 상대 ' + rankNow(opp) + '위 · 우리 ' + rankNow(my()) + '위' +
-      (rankNow(opp) >= 7 ? ' · 하위권이라 베테랑을 내주고 젊은 선수를 원할 수 있음' : rankNow(opp) <= 3 ? ' · 상위권이라 즉시 전력을 원함' : '') + '</div>' +
+      '</div>' +   /* 처지(우승 경쟁·보통·리빌딩)는 v1.7.11 trade-stance 가 다음 줄에 */
       '<div style="margin-top:6px"><b>우리에게 필요한 자리 · 이 팀 선수</b></div>' + (a || '<div>· 약한 자리 없음(모두 리그 6위 안)</div>') +
       '<div style="margin-top:6px"><b>상대가 필요한 자리 · 우리가 줄 만한 선수</b></div>' + (b || '<div>· 상대도 약한 자리 없음</div>') +
       '<div style="margin-top:6px"><b>🚑 우리 부상 선수</b> ' + injuredHtml(my()) + '</div>' +
@@ -34498,6 +34498,62 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.7 · 여름 보고서 · 트레이드 정보 END -->
+
+<!-- v1.7.11 · 트레이드 — 팀 처지별 가치 -->
+<script id="trade-stance-v1711">
+/* 사용자 2026-10-05("원래 트레이드는 어렵다"): 선수 가치(TradeValue = 지금 실력 54% + 미래 46% …)를 모든 팀이 같게 봐서
+   1위 팀도 37세 주전을 2군 백업과 바꿔 줬다. 받는 팀의 처지에 따라 비율을 바꾼다:
+     우승 경쟁(구단 방침 title 이거나 3위 안) 지금 70 : 미래 30 · 보통 54 : 46(그대로) · 리빌딩(방침 rebuild 이거나 8위 아래) 35 : 65
+   계산: TradeValue + (w − 0.54) × (지금 가치 − 미래 가치) — evaluate(v0.34.13)의 AIValue·FutureValue 를 그대로 쓴다.
+   트레이드 화면 "🔎 OO와 볼 것"에 상대 처지를 표시. 조정값 window.TRADE_STANCE_V1711 · ?nov1711 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1711')>=0) return;
+  var V = window.APP_VERSION;
+  var W = window.TRADE_STANCE_V1711 = {title:.70, normal:.54, rebuild:.35, top:3, bottom:8};
+  function rankOf(id){ try{ var r = rankOrder().indexOf(id); return r >= 0 ? r + 1 : 5; }catch(_){ return 5; } }
+  function stance(id){
+    var st = '';
+    try{ st = ((window.aiClubCoreV3413 && window.aiClubCoreV3413(id)) || {}).strategy || ''; }catch(_){ }
+    var r = rankOf(id);
+    if(st === 'title' || r <= W.top) return {k:'title', w:W.title, label:'우승 경쟁 — 즉시 전력을 원하고, 주전은 잘 안 내줌'};
+    if(st === 'rebuild' || r >= W.bottom) return {k:'rebuild', w:W.rebuild, label:'리빌딩 — 젊은 선수를 원하고, 베테랑은 쉽게 내줌'};
+    return {k:'normal', w:W.normal, label:'보통 — 지금 실력과 미래를 고르게 봄'};
+  }
+  window.tradeStanceV1711 = stance;
+  var base = window.perceivedValue;
+  if(typeof base === 'function'){
+    var pv = function(receiverId, kind, ovr, pos, age, p, ownerId){
+      var v = base.apply(this, arguments);
+      try{
+        if(!receiverId || receiverId === state.myTeam || !p || typeof window.aiPlayerValueV3413 !== 'function') return v;
+        var s = stance(receiverId); if(s.w === W.normal) return v;
+        var e = window.aiPlayerValueV3413(p, receiverId, {kind:kind, ovr:ovr, pos:pos, position:pos, age:age, teamId:ownerId || receiverId});
+        var adj = (s.w - .54) * ((+e.AIValue || 0) - (+e.FutureValue || 0));
+        var need = 1; try{ if(typeof positionNeed === 'function') need = Math.max(.82, Math.min(1.22, positionNeed(receiverId, kind, pos))); }catch(_){ }
+        return v + adj * need;
+      }catch(_){ return v; }
+    };
+    window.perceivedValue = pv; try{ (0, eval)('perceivedValue=window.perceivedValue'); }catch(_){ }
+  }
+  /* 트레이드 화면 — 상대 처지 한 줄 */
+  var baseTrade = window.openTradeSheet;
+  if(typeof baseTrade === 'function'){
+    window.openTradeSheet = function(){
+      var r = baseTrade.apply(this, arguments);
+      try{
+        var box = document.querySelector('#sheet .trade-need-v177'); if(!box || box.querySelector('.stance-v1711') || typeof tradeOppId === 'undefined' || !tradeOppId) return r;
+        var s = stance(tradeOppId), first = box.firstElementChild;
+        var html = '<div class="stance-v1711" style="margin-top:4px">처지: <b>' + s.label + '</b> <span style="color:#98AAA0">(지금 ' + Math.round(s.w * 100) + ' : 미래 ' + Math.round((1 - s.w) * 100) + ')</span></div>';
+        if(first) first.insertAdjacentHTML('afterend', html); else box.insertAdjacentHTML('afterbegin', html);
+      }catch(e){ console.error(V + ' 트레이드 처지:', e); }
+      return r;
+    };
+    try{ openTradeSheet = window.openTradeSheet; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.11 · 트레이드 — 팀 처지별 가치 END -->
 
 </body>
 </html>
