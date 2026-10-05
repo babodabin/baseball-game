@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.8';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.9';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -33849,10 +33849,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       if(busy()) return;
       var ls = liveState();
       /* v1.7.8 · 이번 진행 안에 8월 점검이 있으면 시작 전에 창 — [그대로 진행]이면 같은 동작을 이어 간다 */
-      if(ls !== 'playing' && typeof window.summerGateV177 === 'function'){
-        var nn = a === 'one' ? 1 : a === 'ten' ? 10 : a === 'month' ? MONTH : left();
-        if(window.summerGateV177(nn, function(){ act(a); })) return;
-      }
+
       if(a === 'one'){
         if(ls === 'playing'){ var sk = $('skipBtn'); if(sk) sk.click(); return; }
         if(ls === 'done'){ try{ renderGameSetup(); }catch(_){ } }
@@ -33860,6 +33857,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
         return;
       }
       var n = a === 'ten' ? 10 : a === 'month' ? MONTH : left();
+      if(typeof window.summerCapV179 === 'function') n = window.summerCapV179(n);   /* v1.7.9 · 시즌 2/3(96경기)에서 멈춘다 */
       if(ls === 'playing') return;
       if(ls === 'done'){ try{ renderGameSetup(); }catch(_){ } }
       if(window.autoRunV16) autoRunV16(n);
@@ -34206,6 +34204,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   }
   window.teamNeedsV177 = needs;
   /* tid 의 자리 pos 를 메울 만한 from 팀 선수(우리 주전보다 OVR 2 넘게 높음) */
+  function fitsOver(from, pos, over, add){ var r = fits(from, pos, over - 2 + (add || 0)); return r; }
   function fits(from, pos, over){
     var t = getTeam(from), out = [];
     if(pos === 'SP' || pos === 'RP'){
@@ -34273,11 +34272,23 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   }
   window.injuredHtmlV178 = injuredHtml;
   /* 트레이드 제안 — 1대1, 우리 약한 자리를 메우고 상대가 받아들일 만한 것(evalTrade 와 같은 기준) */
+  /* 우리 팀 자리를 순위 낮은 순으로(약하지 않아도) — 2단계에서 쓴다 */
+  function weakest(tid, k){
+    var Lt = league()[tid]; if(!Lt) return [];
+    return Object.keys(Lt).map(function(pos){ return {pos:pos, ovr:Lt[pos].ovr, rank:Lt[pos].rank, p:Lt[pos].p}; }).sort(function(a, b){ return b.rank - a.rank || a.ovr - b.ovr; }).slice(0, k);
+  }
   function suggest(opp){
+    var a = suggestStep(opp, 1);
+    if(a.length < 2) a = a.concat(suggestStep(opp, 2).filter(function(x){ return !a.some(function(y){ return y.get.p === x.get.p; }); }));
+    if(a.length < 1) a = a.concat(suggestStep(opp, 3));
+    var seenT = {}; a = a.filter(function(x){ if(seenT[x.get.p[0]]) return false; seenT[x.get.p[0]] = 1; return true; });
+    return a.slice(0, 3);
+  }
+  function suggestStep(opp, step){
     var out = [];
     try{
       if(typeof evalTrade !== 'function') return out;
-      var me = my(), L = league(), mine = needs(me).slice(0, 3), theirs = needs(opp).slice(0, 4);
+      var me = my(), L = league(), mine = step === 1 ? needs(me).slice(0, 3) : weakest(me, 4), theirs = needs(opp).slice(0, 4), over = step === 1 ? 2 : 0;
       var myStarters = {}; Object.keys(L[me] || {}).forEach(function(k){ var x = L[me][k]; if(x.p) myStarters[x.p[0]] = 1; (x.list || []).forEach(function(q){ myStarters[q[0]] = 1; }); });
       var tm = getTeam(me), to = getTeam(opp);
       var offers = [];
@@ -34290,7 +34301,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       var saveM = tradeMyPicks, saveO = tradeOppPicks;
       var usedGive = {};
       mine.forEach(function(n){
-        fits(opp, n.pos, n.ovr).filter(function(f){ try{ return !isInjured(opp, f.kind, f.p); }catch(_){ return true; } }).slice(0, 2).forEach(function(f){
+        fitsOver(opp, n.pos, n.ovr, over).filter(function(f){ try{ return !isInjured(opp, f.kind, f.p); }catch(_){ return true; } }).slice(0, step === 1 ? 2 : 3).forEach(function(f){
           var oi = to[f.kind].indexOf(f.p); if(oi < 0) return;
           for(var k = 0; k < offers.length; k++){
             var o = offers[k]; if(usedGive[o.p[0]]) continue;
@@ -34298,18 +34309,29 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
             var ev = null; try{ ev = evalTrade(); }catch(_){ }
             if(ev && !ev.gradeBlocked && !ev.rosterBlocked && ev.gain >= -5){ usedGive[o.p[0]] = 1; out.push({pos:n.pos, give:o, get:{kind:f.kind, idx:oi, p:f.p, ovr:f.ovr}, gain:ev.gain}); break; }
           }
+          /* 3단계: 1대1 이 안 되면 우리 2명 ↔ 상대 1명 */
+          if(step === 3 && !out.some(function(x){ return x.get.p === f.p; })){
+            for(var u = 0; u < offers.length && !out.some(function(x){ return x.get.p === f.p; }); u++){
+              for(var w = u + 1; w < offers.length; w++){
+                var o1 = offers[u], o2 = offers[w]; if(usedGive[o1.p[0]] || usedGive[o2.p[0]]) continue;
+                tradeMyPicks = [{kind:o1.kind, idx:o1.idx}, {kind:o2.kind, idx:o2.idx}]; tradeOppPicks = [{kind:f.kind, idx:oi}];
+                var ev2 = null; try{ ev2 = evalTrade(); }catch(_){ }
+                if(ev2 && !ev2.gradeBlocked && !ev2.rosterBlocked && ev2.gain >= -5){ usedGive[o1.p[0]] = usedGive[o2.p[0]] = 1; out.push({pos:n.pos, give:o1, give2:o2, get:{kind:f.kind, idx:oi, p:f.p, ovr:f.ovr}, gain:ev2.gain}); break; }
+              }
+            }
+          }
         });
       });
       tradeMyPicks = saveM; tradeOppPicks = saveO;
     }catch(e){ console.error(V + ' 트레이드 제안:', e); }
     var seen = {};
-    return out.filter(function(x){ var k = x.give.p[0] + '|' + x.get.p[0]; if(seen[k]) return false; seen[k] = 1; return true; })
+    return out.filter(function(x){ var k = x.get.p[0]; if(seen[k]) return false; seen[k] = 1; return true; })   /* 데려올 선수가 겹치지 않게 */
       .sort(function(a, b){ return (b.get.ovr - b.give.ovr) - (a.get.ovr - a.give.ovr); }).slice(0, 3);
   }
   var lastSug = [];
   window.takeSuggestV178 = function(i){
     var x = lastSug[i]; if(!x) return;
-    tradeMyPicks = [{kind:x.give.kind, idx:x.give.idx}]; tradeOppPicks = [{kind:x.get.kind, idx:x.get.idx}];
+    tradeMyPicks = [{kind:x.give.kind, idx:x.give.idx}].concat(x.give2 ? [{kind:x.give2.kind, idx:x.give2.idx}] : []); tradeOppPicks = [{kind:x.get.kind, idx:x.get.idx}];
     try{ openTradeSheet(); }catch(_){ }
   };
 
@@ -34329,7 +34351,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     var used = (state.season && state.season.tradeCount) || 0, left = Math.max(0, 3 - used);   /* 시즌(오프시즌)당 트레이드 3회 — 다 쓰면 제안이 거절된다 */
     lastSug = left ? suggest(opp) : [];
     var sug = lastSug.length ? lastSug.map(function(x, i){
-        return '<div style="display:flex;gap:8px;align-items:center;margin-top:5px"><div style="flex:1">· <b>' + KO[x.pos] + '</b> 보강: 우리 ' + esc(nm(x.give.p)) + ' ' + Math.round(x.give.ovr) + '(' + esc(roleOf(my(), x.give.kind, x.give.p)) + ') ↔ ' + esc(nm(x.get.p)) + ' ' + Math.round(x.get.ovr) + '(' + esc(roleOf(opp, x.get.kind, x.get.p)) + ') — ' + (x.gain >= 0 ? '<b style="color:#4ADE9B">수락 확실</b>' : '수락 확률 약 ' + Math.round(60 * ((function(){ try{ return diffRuleV43().tradeSoft || 1; }catch(_){ return 1; } })())) + '%(상대가 약간 손해)') + '</div>'
+        return '<div style="display:flex;gap:8px;align-items:center;margin-top:5px"><div style="flex:1">· <b>' + KO[x.pos] + '</b> 보강: 우리 ' + esc(nm(x.give.p)) + ' ' + Math.round(x.give.ovr) + '(' + esc(roleOf(my(), x.give.kind, x.give.p)) + ')' + (x.give2 ? ' + ' + esc(nm(x.give2.p)) + ' ' + Math.round(x.give2.ovr) + '(' + esc(roleOf(my(), x.give2.kind, x.give2.p)) + ')' : '') + ' ↔ ' + esc(nm(x.get.p)) + ' ' + Math.round(x.get.ovr) + '(' + esc(roleOf(opp, x.get.kind, x.get.p)) + ') — ' + (x.gain >= 0 ? '<b style="color:#4ADE9B">수락 확실</b>' : '수락 확률 약 ' + Math.round(60 * ((function(){ try{ return diffRuleV43().tradeSoft || 1; }catch(_){ return 1; } })())) + '%(상대가 약간 손해)') + '</div>'
           + '<button type="button" onclick="takeSuggestV178(' + i + ')" style="min-height:36px;padding:0 10px;border-radius:9px;border:0;background:#F4C45E;color:#10140f;font-weight:800;font-family:inherit">담기</button></div>';
       }).join('') : '<div>· 이 팀과는 바로 성사될 1대1 제안을 못 찾았습니다(직접 골라 보세요)</div>';
     return '<div class="trade-need-v177"><div><b>🔎 ' + esc(getTeam(opp).name) + '와(과) 볼 것</b> — 상대 ' + rankNow(opp) + '위 · 우리 ' + rankNow(my()) + '위' +
@@ -34400,24 +34422,26 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     var r = state.season.rec[my()] || {}, rk = rankNow(my()), gap = '';
     try{ var ord = rankOrder(), fifth = state.season.rec[ord[4]], me = r; if(fifth && rk > 5) gap = ' · 5위와 ' + (((fifth.w - me.w) + (me.l - fifth.l)) / 2).toFixed(1) + '경기 차'; }catch(_){ }
     s.innerHTML = '<div class="top"><div class="pname">🌞 시즌 2/3 점검</div><button class="close" onclick="closeSheet()">✕</button></div>'
-      + '<div class="sum-v177"><div class="hint">' + (state.season.day || 0) + '경기 · ' + (r.w || 0) + '승 ' + (r.l || 0) + '패 · ' + rk + '위' + gap + '. 트레이드는 언제든 할 수 있고, 지금은 남은 시즌을 위해 점검하는 때입니다.</div>'
+      + '<div class="sum-v177"><div class="hint">' + (state.season.day || 0) + '경기 · ' + (r.w || 0) + '승 ' + (r.l || 0) + '패 · ' + rk + '위' + gap + '. 시즌 2/3 — 진행을 잠시 멈췄습니다. 트레이드는 언제든 할 수 있고, 지금은 남은 시즌을 위해 점검하는 때입니다.</div>'
       + '<div class="sec">🌍 외국인 · 아시아쿼터</div>' + foreignLines()
       + '<div class="sec">🚑 우리 부상 선수</div><div class="row"><div class="v">' + injuredHtml(my()) + '</div></div>'
       + '<div class="sec">📍 보강하면 좋은 자리</div>' + needLines()
       + '<div class="btns"><button type="button" style="background:var(--amber,#F6BE4A);color:#10140f;border:0" onclick="closeSheet();try{openOpsPageV14(\'openTradeSheet\')}catch(e){openTradeSheet()}">트레이드 화면 열기</button>'
-      + '<button type="button" style="background:transparent;color:var(--chalk,#F7F4EC);border:1px solid var(--line,rgba(184,211,194,.2))" onclick="summerGoV177()">' + (n ? '그대로 진행 (' + n + '경기)' : '닫고 계속') + '</button></div></div>';
+      + '<button type="button" style="background:transparent;color:var(--chalk,#F7F4EC);border:1px solid var(--line,rgba(184,211,194,.2))" onclick="closeSheet()">닫기 — 진행 버튼으로 이어 가기</button></div></div>';
     m.classList.add('on');
   }
   window.summerReportV177 = show;
   /* v1.7.8 · 진행 버튼을 누를 때 문지기: 이번 진행(n경기) 안에 점검 시점이 있으면 시작 전에 창을 띄우고, [그대로 진행]으로 이어 간다 */
   var pendingGo = null;
-  window.summerGateV177 = function(n, go){
+  /* v1.7.9 · 문지기 대신 "여기까지만": 이번 진행이 96경기를 넘으면 96경기까지만 진행하고, 거기서 멈춘 뒤 창(아래 playMyGame 겹) */
+  window.summerCapV179 = function(n){
     try{
-      var s = state.season; if(!s || s.post || s.summerV177 || state.mode !== 'sim' || window.SUMMER_OFF_V177) return false;
-      var d = +s.day || 0; if(d + n < S.day) return false;
-      s.summerV177 = true; pendingGo = go; show(n); return true;
-    }catch(_){ return false; }
+      var s = state.season; if(!s || s.post || s.summerV177 || state.mode !== 'sim' || window.SUMMER_OFF_V177) return n;
+      var d = +s.day || 0; if(d >= S.day) return n;
+      return Math.min(n, S.day - d);
+    }catch(_){ return n; }
   };
+  window.summerGateV177 = function(){ return false; };
   window.summerGoV177 = function(){ var g = pendingGo; pendingGo = null; try{ closeSheet(); }catch(_){ } if(typeof g === 'function') setTimeout(g, 30); };
   var prev = window.playMyGame;
   if(typeof prev === 'function'){
