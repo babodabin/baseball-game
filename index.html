@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.15';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.16';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -32482,7 +32482,11 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
   var V = window.APP_VERSION;
   var BASE = ["오스틴 딘","치리노스","톨허스트","요나단 페라자","윌켈 에르난데스","오웬 화이트","해럴드 카스트로","네일","애덤 올러","디아즈","후라도","크리스 페덱","맷 매닝",
     "유니오 세베리노","크리스 플렉센","잭 로그","샘 힐리어드","맷 사우어","케일럽 보쉴리","에레디아","미치 화이트","드류 앤더슨","빅터 레이예스","엘빈 로드리게스","제러미 비슬리",
-    "블레인","라일리 톰슨","커티스 테일러","맷 데이비슨","히우라","라울 알칸타라"];
+    "블레인","라일리 톰슨","커티스 테일러","맷 데이비슨","히우라","라울 알칸타라",
+    /* v1.7.16 · 빠져 있던 외국인(옛 저장·명단 교체 전 선수) — 국내 선수로 잘못 셌다 */
+    "라클란 웰스","플로리얼","왕옌청","미야지 유라","케이브","다즈 카메론","다무라 이치로","스기모토 코우키","다케다 쇼타",
+    "교야마 마사야","도다 나츠키","트렌튼 브룩스","엔마누엘 데 헤이수스","에릭 요키시","가나쿠보 유토","소크라테스 브리토",
+    "시라카와 케이쇼","크리스 페덱","아데를린"];
   var SET = {}; BASE.forEach(function(n){ SET[n] = 1; });
   window.FOREIGN_BASE_V1613 = BASE;
   window.isForeignV1613 = function(p, kind){
@@ -34921,6 +34925,102 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.15 · 운영 칸 정리 END -->
+
+<!-- v1.7.16 · 외국인은 모두 외국인 스카우트 창에 — 우리 외국인 · 다른 구단 외국인 -->
+<script id="foreign-all-v1716">
+/* 사용자 2026-10-06: "외국인은 모두 외국인 스카우트에 넣어두라고 했는데 … 타팀 외국인도 그렇게 해놔"
+     · 외국인 스카우트 창 아래에 ⚾ 우리 외국인(지금 선수단) · 🏟 다른 구단 외국인(팀별 명단 + 이번 오프시즌 AI 재계약·교체 결과)을 붙인다 — 시즌 중에도 보임
+     · 🤖 AI 구단 칸의 "🌍 AI 외국인 선수 운영"(v0.34.13 패널)은 뺀다. 오프시즌 체크리스트 "AI 외국인 운영"을 누르면 이 창으로
+   ?nov1716 으로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1716')>=0) return;
+  var V = window.APP_VERSION;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]; }); }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p ? p[0] : ''; } }
+  function isF(p, kind){ try{ return !!(window.isForeignV1613 && window.isForeignV1613(p, kind)); }catch(_){ return false; } }
+  function isAsia(p, kind){ try{ if(typeof foreignType === 'function' && foreignType(p, kind === 'bat') === 'asia') return true; }catch(_){ } return /아시아쿼터/.test(String(p[0] || '') + String(p[1] || '')); }
+  function pos(kind, d){ return kind === 'bat' ? esc(d[2]) : (d[2] === '선발' ? 'SP' : d[2] === '마무리' ? 'CL' : 'RP'); }
+  function ovr(tid, kind, p){ try{ return kind === 'bat' ? batOvr(p, tid) : pitOvr(p, tid); }catch(_){ return '-'; } }
+  function foreigners(tid){
+    var t = getTeam(tid), out = []; if(!t) return out;
+    ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(p, i){
+      if(!isF(p, kind)) return;
+      out.push({kind:kind, p:p, asia:isAsia(p, kind), age:(t.age && t.age[kind] && t.age[kind][i]) || '-', ovr:ovr(tid, kind, p)});
+    }); });
+    return out.sort(function(a, b){ return (a.asia - b.asia) || ((+b.ovr || 0) - (+a.ovr || 0)); });
+  }
+  var ROW = 'style="display:flex;gap:10px;align-items:center;padding:8px 2px;border-top:1px solid var(--line,rgba(184,211,194,.12))"';
+  function sec(t, s){ return '<div style="margin:16px 0 4px;font-weight:900;font-size:14px;color:var(--amber,#F6BE4A)">' + t + ' <small style="color:var(--dim,#9DB0A5);font-weight:600;font-size:11px">' + s + '</small></div>'; }
+  function tag(x){ return ' <span style="color:#F4C45E;font-size:11px">' + (x.asia ? '아시아쿼터' : '외국인') + '</span>'; }
+  function line(x, extra){
+    return '<div ' + ROW + '><b style="min-width:28px">' + x.ovr + '</b><div style="flex:1">' + esc(nm(x.p).replace(/\s*\(아시아쿼터\)/, '')) + tag(x)
+      + '<small style="display:block;color:var(--dim)">' + pos(x.kind, x.p) + ' · ' + x.age + '세' + (extra || '') + '</small></div></div>';
+  }
+  function cnt(list){ var a = list.filter(function(x){ return x.asia; }).length; return '일반 ' + (list.length - a) + '/3 · 아시아 ' + a + '/1'; }
+  function aiResults(tid){
+    try{
+      var r = state.aiForeignV3413; if(!r || !r.processedYears || !r.processedYears[String(state.year)]) return null;
+      return (r.results || []).filter(function(x){ return x.teamId === tid; });
+    }catch(_){ return null; }
+  }
+  function extraHtml(){
+    var my = state.myTeam, h = '';
+    /* ⚾ 우리 외국인 */
+    var mine = foreigners(my);
+    h += sec('⚾ 우리 외국인', cnt(mine));
+    if(!mine.length) h += '<div class="hint">지금 외국인 선수가 없습니다.</div>';
+    else mine.forEach(function(x){ var sal = ''; try{ sal = ' · 연봉 ' + salaryOf(x.p, x.kind === 'bat').toFixed(1) + '억'; }catch(_){ } h += line(x, sal); });
+    /* 🏟 다른 구단 외국인 */
+    h += sec('🏟 다른 구단 외국인', '팀별 지금 외국인 · 오프시즌엔 AI 재계약·교체 결과');
+    (window.TEAMS || TEAMS || []).forEach(function(tm){
+      if(!tm || tm.id === my || !getTeam(tm.id)) return;
+      var list = foreigners(tm.id), res = aiResults(tm.id);
+      h += '<details style="border-top:1px solid var(--line,rgba(184,211,194,.12));padding:2px 0"><summary style="cursor:pointer;padding:9px 2px;font-weight:800;list-style-position:inside">'
+        + esc(getTeam(tm.id).name) + ' <small style="color:var(--dim);font-weight:600">' + cnt(list) + (list.length ? ' · ' + list.map(function(x){ return esc(String(x.p[1] || x.p[0]).replace(/\s*\(.*?\)\s*/g, '')); }).join(', ') : '') + '</small></summary>';
+      if(!list.length) h += '<div class="hint">외국인 선수가 없습니다.</div>';
+      else list.forEach(function(x){ h += line(x); });
+      if(res && res.length) h += '<div style="font-size:11.5px;color:var(--dim);padding:4px 2px 8px;line-height:1.6">이번 오프시즌: ' + res.map(function(x){ return esc((x.displayName || x.name) + ' ' + x.type + (x.years ? ' ' + x.years + '년' : '')); }).join(' · ') + '</div>';
+      h += '</details>';
+    });
+    return '<div class="foreign-all-v1716">' + h + '</div>';
+  }
+
+  var baseOpen = window.openForeignScoutV1713;
+  if(typeof baseOpen === 'function'){
+    window.openForeignScoutV1713 = function(){
+      var r = baseOpen.apply(this, arguments);
+      try{ var sh = document.getElementById('sheet'); if(sh && /외국인 스카우트/.test((sh.querySelector('.pname') || {}).textContent || '')) sh.insertAdjacentHTML('beforeend', extraHtml()); }catch(e){ console.error(V + ' 외국인 전체:', e); }
+      return r;
+    };
+  }
+
+  /* 🤖 AI 구단 칸의 "AI 외국인 선수 운영" 빼기 — 외국인 스카우트 창으로 옮김 */
+  function strip(h){
+    var a = h.indexOf('<div class="ai-foreign-v3413">'); if(a < 0) return h;
+    var re = /<\/?div\b[^>]*>/g, depth = 0, m; re.lastIndex = a;
+    while((m = re.exec(h))){ depth += m[0].charAt(1) === '/' ? -1 : 1; if(depth === 0) return h.slice(0, a) + h.slice(re.lastIndex); }
+    return h;
+  }
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    window.renderOffseason = function(){
+      var h = baseOff.apply(this, arguments);
+      try{ if(typeof h === 'string') h = strip(h); }catch(e){ console.error(V + ' AI 외국인 칸:', e); }
+      return h;
+    };
+    try{ renderOffseason = window.renderOffseason; }catch(_){ }
+  }
+  var baseJump = window.jumpOffseasonTaskV66;
+  if(typeof baseJump === 'function'){
+    window.jumpOffseasonTaskV66 = function(key){
+      if(key === 'aiforeign'){ try{ if(window.openOpsPageV14) openOpsPageV14('openForeignScoutV1713'); else openForeignScoutV1713(); }catch(e){ console.error(V + ' 외국인 스카우트:', e); } return; }
+      return baseJump.apply(this, arguments);
+    };
+  }
+})();
+</script>
+<!-- v1.7.16 · 외국인 전체 END -->
 
 </body>
 </html>
