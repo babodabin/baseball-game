@@ -33772,7 +33772,7 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 
 <!-- v1.7.5 · 경기 진행 버튼 고정 -->
 <style id="progbar-v175-css">
-#progBarV175{display:none;flex:0 0 auto;gap:6px;padding:8px 10px;background:var(--bg,#08150F);border-top:1px solid var(--line,rgba(184,211,194,.16))}
+#progBarV175{display:none;position:fixed;left:0;right:0;bottom:var(--navh-v175,68px);z-index:60;max-width:760px;margin:0 auto;gap:6px;padding:8px 10px;box-shadow:0 -6px 14px rgba(0,0,0,.25);background:var(--bg,#08150F);border-top:1px solid var(--line,rgba(184,211,194,.16))}
 #progBarV175.on{display:flex}
 #progBarV175 button{flex:1 1 0;min-height:52px;border-radius:12px;border:1px solid var(--line,rgba(184,211,194,.2));background:var(--panel2,#13261C);color:var(--chalk,#F7F4EC);font-family:inherit;font-weight:800;font-size:14px;line-height:1.15;padding:4px 2px;cursor:pointer}
 #progBarV175 button small{display:block;font-size:10px;font-weight:600;color:var(--dim,#9DB0A5);margin-top:2px}
@@ -33782,12 +33782,13 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
 #progBarV175 .run .t{font-size:13px;font-weight:800}
 #progBarV175 .run .bar{height:7px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}
 #progBarV175 .run .bar i{display:block;height:100%;background:var(--amber,#F6BE4A)}
+html.progbar-v175 #scr-game{padding-bottom:96px!important}
 html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newGameBtn,html.progbar-v175 #skip5Btn{display:none!important}
 </style>
 <script id="progbar-v175">
 /* 경기 진행 버튼을 아래 메뉴 바로 위 한 줄에 고정(사용자 2026-10-05: "한 버튼을 누르면 그 버튼만 계속 눌러지게 —
    화면이 바뀌거나 글이 늘어 버튼이 밑으로 가는 건 싫다. 처음부터 그 버튼을 내려서 끝까지 계속 누르게").
-   · 줄은 스크롤 영역 밖(메뉴 바로 위)이라 경기 결과·글이 늘어도 자리가 안 바뀐다
+   · 줄은 메뉴 바로 위에 떠 있는 고정 줄(position:fixed, 메뉴 높이만큼 위)이라 경기 결과·글이 늘어도 자리가 안 바뀐다. 경기 화면 아래 여백 96px
    · [▶ 한 경기] [10경기] [한 달] [시즌 끝까지] — 같은 자리를 계속 누르면 된다:
        경기 준비 화면이면 바로 한 경기 · 결과 화면이면 다음 경기를 바로 시작(예전엔 "다음 경기 준비"를 한 번 더 눌러야 했다) ·
        중계 보는 중이면 그 자리가 "⚡ 바로 끝내기"
@@ -33846,6 +33847,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   function paint(){
     var b = bar(); if(!b) return;
     var on = visible();
+    try{ var nav = document.querySelector('nav'); if(nav){ var nh = Math.round(nav.getBoundingClientRect().height); if(nh > 0) document.documentElement.style.setProperty('--navh-v175', nh + 'px'); } }catch(_){ }
     b.classList.toggle('on', on);
     document.documentElement.classList.toggle('progbar-v175', on);
     if(!on) return;
