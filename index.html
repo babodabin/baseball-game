@@ -32085,7 +32085,7 @@ window.isDevelopingV1610 = function(tid, kind, p){
         if(kind === 'pit'){ try{ if(rotOrderOf(my()).indexOf(t.pit.indexOf(p)) >= 0) return; }catch(_){ } }
         var g = group(kind, p); if(keepGrp && g === keepGrp) return;
         if(g === 'C' && firstOf('bat').filter(function(x){ return group('bat', x) === 'C'; }).length <= 2) return;
-        var sc = ovr(kind, p) + (ageOf(kind, p) <= 24 ? 3 : 0); if(sc < ds){ ds = sc; down = p; }
+        var sc = ovr(kind, p) + (ageOf(kind, p) <= 24 ? 3 : 0); if(window.downScoreV171) sc = window.downScoreV171(my(), kind, p, sc, ageOf(kind, p)); if(sc < ds){ ds = sc; down = p; }   /* v1.7.1 · 나이·최근 성적 */
       });
       return down ? {p:down, o:ovr(kind, down)} : null;
     };
@@ -32112,7 +32112,7 @@ window.isDevelopingV1610 = function(tid, kind, p){
     }
     /* v1.6.12 · ㉣ 백업 보강: 2군 출장 몫이 목표(5%)보다 모자라고 올라와 있는 2군 타자가 없으면, 키우는 선수가 아닌 2군 백업·베테랑 1명을 roundTrip(14) 경기 올린다
        (v1.6.10 에서 키우는 선수를 빼자 올릴 이유가 거의 없어져 2군 출장이 1%로 떨어졌다) */
-    if(!moved){
+    if(!moved && !U.quotaOffV171){   /* v1.7.1 · 2군 몫 채우기 끔 */
       var c0 = tally(), all0 = c0.reg + c0.bench + c0.farm;
       var upNow = t.bat.some(function(p){ return lv('bat', p) === 'first' && calls()[key('bat', p)]; });
       if(all0 > 90 && c0.farm / all0 < U.target.farm && !upNow){
@@ -32172,6 +32172,7 @@ window.isDevelopingV1610 = function(tid, kind, p){
   function tally(){ var s = state.season; if(!s.usageV164) s.usageV164 = {reg:0, bench:0, farm:0}; return s.usageV164; }
   function cat(p){ return calls()[key('bat', p)] ? 'farm' : isStarter(p) ? 'reg' : 'bench'; }
   function balance(){
+    if(U.quotaOffV171) return;   /* v1.7.1 · 비율을 억지로 맞추지 않음(사용자: 출장 비율은 피로 규칙으로 자연스럽게) */
     try{
       var id = my(), t = T(), lu = getLineup(id); if(!lu || !Array.isArray(lu.order)) return;
       var tg = U.target || {reg:.70, bench:.20, farm:.10}, c = tally(), all = c.reg + c.bench + c.farm;
@@ -33045,6 +33046,28 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
     }catch(e){ console.error(V + ' 불펜 부진:', e); }
   }
   window.penSlumpV171 = penSlump;
+
+  /* 2군 운영 방침(사용자 2026-10-05): 2군은 억지로 돌리지 않는다. 올라오는 이유는 부상 · 부진 · 2군 쪽이 더 잘함 · 유망주 성장뿐.
+     출장 비율(80/15/5)은 목표가 아니라 피로 규칙으로 자연스럽게 나오는 결과 → 비율 맞추기(balance)·2군 몫 채우기(백업 보강) 끔.
+     올라온 자리에 내려갈 선수는 1군 후보 중 "못하거나 나이 들어 떨어진" 선수: 능력치 − 33세부터 해마다 1 − 최근 성적이 기대보다 나쁜 만큼 */
+  U.quotaOffV171 = true;
+  window.downScoreV171 = function(tid, kind, p, sc, age){
+    try{
+      var v = sc - Math.max(0, (+age || 28) - 32);
+      var s = base(g(F.batGames)); if(!s) return v;
+      if(kind === 'bat'){
+        var t = getTeam(tid), i = t.bat.indexOf(p), x = state.season.stats[tid].bat[i]; if(!x) return v;
+        var a = s.b[p[0]] || [0, 0, 0, 0, 0, 0], ab = (+x.ab || 0) - a[0], bb = (+x.bb || 0) - a[1], h = (+x.h || 0) - a[2], pa = ab + bb;
+        if(pa < 30) return v;
+        var ops = (h + bb) / pa + (h + ((+x.b2 || 0) - a[3]) + 2 * ((+x.b3 || 0) - a[4]) + 3 * ((+x.hr || 0) - a[5])) / Math.max(1, ab);
+        return v - Math.max(-3, Math.min(4, (window.formExpectV171(tid, p) - ops) * 20));
+      }
+      var y = state.season.stats[tid].pit[p[0]] || {}, b = (s.p[tid] && s.p[tid][p[0]]) || [0, 0], out = (+y.out || 0) - b[0];
+      if(out < 15) return v;
+      var gap = ((+y.er || 0) - b[1]) * 27 / out - (4.3 - (pitOvr(p, tid) - 70) * 0.08);
+      return v - Math.max(-3, Math.min(4, gap * 0.6));
+    }catch(_){ return sc; }
+  };
 
   var prev = window.playMyGame;
   if(typeof prev === 'function'){
