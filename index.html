@@ -32945,7 +32945,7 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
       (t.bat || []).forEach(function(p, i){ var x = sb[i]; if(p && x) b[p[0]] = [+x.ab || 0, +x.bb || 0, +x.h || 0, +x.b2 || 0, +x.b3 || 0, +x.hr || 0]; });
       Object.keys(state.players || {}).forEach(function(tid){
         var tt = getTeam(tid), sp = (S[tid] && S[tid].pit) || {}, o = pp[tid] = {};
-        (tt.pit || []).forEach(function(p){ if(p && p[2] === '선발' && sp[p[0]]) o[p[0]] = [+sp[p[0]].out || 0, +sp[p[0]].er || 0]; });
+        (tt.pit || []).forEach(function(p){ if(p && (p[2] === '선발' || tid === my) && sp[p[0]]) o[p[0]] = [+sp[p[0]].out || 0, +sp[p[0]].er || 0]; });   /* 우리 팀은 불펜도 */
       });
       B.snaps.push({d:d, b:b, p:pp});
       if(B.snaps.length > F.keep) B.snaps.splice(0, B.snaps.length - F.keep);
@@ -33002,11 +33002,55 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
     }catch(e){ console.error(V + ' 최근 투구:', e); return l; }
   };
 
+  /* 불펜 부진(우리 팀, 사용자 2026-10-05) — 마무리(불펜 1번)·외국인·부상 제외. 최근 20경기 8이닝+ · 평균자책 7.00+ 이고 기대보다 3.0 넘게 나쁘면
+     2군 불펜 중 가장 나은 투수(키우는 선수 제외)와 10경기 맞바꿈. 8경기마다 한 명, 돌아온 뒤 30경기는 다시 안 내림.
+     되돌리기는 1·2군 운영(usage-callup-v164)의 "내려간 선수" 기록(state.sentV164 · until)을 그대로 써서 거기서 처리된다 */
+  Object.assign(F, {penGames:20, penIp:8, penEra:7.0, penGap:3.0, penEvery:8, penOvrGap:4});   /* 2군 투수가 OVR 4 넘게 낮으면 안 바꿈 */
+  function sk(kind, p){ try{ return squadKey(kind, p); }catch(_){ return kind + ':' + p[0]; } }
+  function lvOf(p){ try{ return state.squadLevel[state.myTeam][sk('pit', p)] || 'first'; }catch(_){ return 'first'; } }
+  function penSlump(){
+    try{
+      var my = state.myTeam, t = getTeam(my), d = day(), B = box();
+      if(B.penLast != null && d - B.penLast < F.penEvery) return;
+      var s = base(g(F.penGames)); if(!s) return;
+      B.penLast = d;
+      var sents = state.sentV164 || (state.sentV164 = {}), calls = state.callV164 || (state.callV164 = {});
+      var cl = null; try{ cl = t.pit[pitchPlanOfV310(my).bullpen[0]]; }catch(_){ }
+      var C = B.cool, worst = null, wg = 0, wl = null;
+      t.pit.forEach(function(p){
+        if(!p || p === cl || p[2] === '선발' || lvOf(p) !== 'first' || foreign('pit', p)) return;
+        try{ if(isInjured(my, 'pit', p)) return; }catch(_){ }
+        var k = sk('pit', p); if(sents[k] || calls[k]) return;                 /* 다른 이유로 오르내리는 중이면 손대지 않음 */
+        if(C['pit:' + p[0]] != null && d - C['pit:' + p[0]] < F.cool) return;
+        var x = (state.season.stats[my].pit || {})[p[0]] || {}, a = (s.p[my] && s.p[my][p[0]]) || [0, 0];
+        var out = (+x.out || 0) - a[0], er = (+x.er || 0) - a[1]; if(out < F.penIp * 3) return;
+        var era = er * 27 / out, gap = era - (4.3 - (pitOvr(p, my) - 70) * 0.08);
+        if(era >= F.penEra && gap > F.penGap && gap > wg){ wg = gap; worst = p; wl = {ip:out / 3, era:era}; }
+      });
+      if(!worst) return;
+      var up = null, us = -1e9;
+      t.pit.forEach(function(p){
+        if(!p || p[2] === '선발' || lvOf(p) !== 'second' || sents[sk('pit', p)]) return;
+        try{ if(isInjured(my, 'pit', p)) return; if(window.isDevelopingV1610 && window.isDevelopingV1610(my, 'pit', p)) return; }catch(_){ }
+        var o = pitOvr(p, my); if(o > us){ us = o; up = p; }
+      });
+      if(!up || us < pitOvr(worst, my) - F.penOvrGap) return;   /* 2군 쪽이 한참 약하면 그대로(바꾸는 게 손해) */
+      var L = state.squadLevel[my], kd = sk('pit', worst), ku = sk('pit', up);
+      L[kd] = 'second'; L[ku] = 'first';
+      sents[kd] = {day:d, why:'부진', until:d + 10, swap:ku, back:true};
+      calls[ku] = {day:d, why:'부진', swap:kd};
+      C['pit:' + worst[0]] = d + 10;
+      try{ if(state.pitchPlan) state.pitchPlan[my] = null; }catch(_){ }
+      try{ pushClubNews('📞 부진 불펜 — 2군 조정', playerDisplayName(up) + ' 1군 ↑ · ' + playerDisplayName(worst) + ' 2군 ↓ (최근 ' + Math.round(wl.ip) + '이닝 평균자책 ' + wl.era.toFixed(2) + ', 10경기)'); }catch(_){ }
+    }catch(e){ console.error(V + ' 불펜 부진:', e); }
+  }
+  window.penSlumpV171 = penSlump;
+
   var prev = window.playMyGame;
   if(typeof prev === 'function'){
     var play = function(){
       var r = prev.apply(this, arguments);
-      try{ if(state.season && !isOffseason()){ var sn = box().snaps, last = sn.length ? sn[sn.length - 1].d : 0; if(day() - last >= F.every) snap(); } }catch(_){ }
+      try{ if(state.season && !isOffseason()){ var sn = box().snaps, last = sn.length ? sn[sn.length - 1].d : 0; if(day() - last >= F.every) snap(); penSlump(); } }catch(_){ }
       return r;
     };
     play.__autoV15 = prev.__autoV15;
