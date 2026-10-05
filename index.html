@@ -32051,8 +32051,13 @@ window.isDevelopingV1610 = function(tid, kind, p){
       if(inj(kind, p)) return;
       var r = s.swap && arr.find(function(x){ return key(kind, x) === s.swap; });
       setLv(kind, p, 'first'); delete sents()[k];
-      if(r && lv(kind, r) === 'first'){ setLv(kind, r, 'second'); delete calls()[s.swap]; }
-      news('↩️ 1군 복귀', nm(p) + (r ? ' ↑ · ' + nm(r) + ' 2군 ↓' : ''));
+      /* v1.7.2 · 대신 올라온 선수가 잘하고 있으면 감독이 남기고, 1군 후보 중 가장 처지는 선수를 내린다(keepCallupV172) */
+      var keep = (r && lv(kind, r) === 'first' && window.keepCallupV172) ? window.keepCallupV172(my(), kind, r, p) : null;
+      if(keep){ setLv(kind, keep.down, 'second'); delete calls()[s.swap]; news('↩️ 1군 복귀', nm(p) + ' ↑ · ' + nm(r) + ' 1군에 남김(' + keep.why + ') · ' + nm(keep.down) + ' 2군 ↓'); }
+      else {
+        if(r && lv(kind, r) === 'first'){ setLv(kind, r, 'second'); delete calls()[s.swap]; }
+        news('↩️ 1군 복귀', nm(p) + (r ? ' ↑ · ' + nm(r) + ' 2군 ↓' : ''));
+      }
     });
   }
   /* ② 순환 · ③ 부진 */
@@ -33052,6 +33057,43 @@ window.FARM_V165 = {"KT":{"bat":[["조대현","C","우",61,55,56,64,59,27,"68089
      출장 비율(80/15/5)은 목표가 아니라 피로 규칙으로 자연스럽게 나오는 결과 → 비율 맞추기(balance)·2군 몫 채우기(백업 보강) 끔.
      올라온 자리에 내려갈 선수는 1군 후보 중 "못하거나 나이 들어 떨어진" 선수: 능력치 − 33세부터 해마다 1 − 최근 성적이 기대보다 나쁜 만큼 */
   U.quotaOffV171 = true;
+
+  /* 부상 선수가 돌아올 때(사용자 2026-10-05 "그건 감독이 하는 걸로"): 대신 올라온 선수가 최근 잘하고 있으면 남기고,
+     1군 후보(주전·로테이션·외국인·부상자·방금 돌아온 선수 빼고) 중 downScore 가 가장 낮은 선수를 내린다 — 그 선수가 대체 선수보다 처질 때만.
+     잘함 = 타자 최근 20경기 30타석+ · OPS 가 기대보다 .030 넘게 높음 / 불펜 최근 20경기 8이닝+ · 평균자책이 기대보다 0.50 넘게 낮음. 선발 대체는 그대로 되돌림(1군 선발 5명) */
+  window.keepCallupV172 = function(tid, kind, r, back){
+    try{
+      if(kind === 'pit' && r[2] === '선발') return null;
+      var s = base(g(F.batGames)); if(!s) return null;
+      var why = null;
+      if(kind === 'bat'){
+        var t = getTeam(tid), x = state.season.stats[tid].bat[t.bat.indexOf(r)]; if(!x) return null;
+        var a = s.b[r[0]] || [0, 0, 0, 0, 0, 0], ab = (+x.ab || 0) - a[0], bb = (+x.bb || 0) - a[1], h = (+x.h || 0) - a[2], pa = ab + bb; if(pa < 30) return null;
+        var ops = (h + bb) / pa + (h + ((+x.b2 || 0) - a[3]) + 2 * ((+x.b3 || 0) - a[4]) + 3 * ((+x.hr || 0) - a[5])) / Math.max(1, ab);
+        if(ops < window.formExpectV171(tid, r) + .03) return null;
+        why = '최근 OPS ' + ops.toFixed(3).replace(/^0/, '');
+      }else{
+        var y = state.season.stats[tid].pit[r[0]] || {}, b = (s.p[tid] && s.p[tid][r[0]]) || [0, 0], out = (+y.out || 0) - b[0]; if(out < 24) return null;
+        var era = ((+y.er || 0) - b[1]) * 27 / out; if(era > 4.3 - (pitOvr(r, tid) - 70) * 0.08 - .5) return null;
+        why = '최근 평균자책 ' + era.toFixed(2);
+      }
+      var tt = getTeam(tid), L = state.squadLevel[tid] || {}, calls = state.callV164 || {}, pref = (state.autoLineupV15 && state.autoLineupV15.pref) || [];
+      var rot = []; try{ rot = rotOrderOf(tid) || []; }catch(_){ }
+      var cl = null; try{ cl = tt.pit[pitchPlanOfV310(tid).bullpen[0]]; }catch(_){ }
+      var age = function(q){ try{ return +state.players[tid].age[kind][tt[kind].indexOf(q)] || 28; }catch(_){ return 28; } };
+      var sc = function(q){ return window.downScoreV171(tid, kind, q, (kind === 'bat' ? batOvr(q, tid) : pitOvr(q, tid)) + (age(q) <= 24 ? 3 : 0), age(q)); };
+      var down = null, ds = 1e9;
+      (tt[kind] || []).forEach(function(q){
+        if(!q || q === r || q === back || (L[sk(kind, q)] || 'first') !== 'first' || calls[sk(kind, q)] || foreign(kind, q)) return;
+        try{ if(isInjured(tid, kind, q)) return; }catch(_){ }
+        if(kind === 'bat'){ if(pref.indexOf(longKey('bat', q)) >= 0) return; if(q[2] === 'C' && tt.bat.filter(function(z){ return z[2] === 'C' && (L[sk('bat', z)] || 'first') === 'first'; }).length <= 2) return; }
+        else { if(q[2] === '선발' || q === cl || rot.indexOf(tt.pit.indexOf(q)) >= 0) return; }
+        var v = sc(q); if(v < ds){ ds = v; down = q; }
+      });
+      if(!down || ds >= sc(r)) return null;
+      return {down:down, why:why};
+    }catch(e){ console.error(V + ' 복귀 판단:', e); return null; }
+  };
   window.downScoreV171 = function(tid, kind, p, sc, age){
     try{
       var v = sc - Math.max(0, (+age || 28) - 32);
