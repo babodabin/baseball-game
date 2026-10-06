@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.26';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.27';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -36344,7 +36344,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
    → 신인 드래프트의 스카우트 규칙은 없앤다:
      ① 모든 구단이 후보 44명을 처음부터 정확히 본다(관찰 4/4 · 숨은 특성 공개 — 옛 보고서 계산이 관찰 수로 오차를 줄이므로 관찰을 채움). 성향 · 보이는 수 제한 · 관찰 버튼 없음
      ② 스카우트(연봉 2억)는 외국인 스카우트 — 해마다 새 외국인 일반 5 · 아시아 3명을 찾아옴(v1.7.25). 스카우트 창은 그 안내 + 외국인 스카우트 · 신인 후보 보기
-     ③ 각성 — 오프시즌 끝(성장 전) 리그 25세 이하 국내 1~2명 잠재력 +4~8(최대 95) · 소식 "💥 각성"
+     ③ ~~각성~~ — v1.7.27 에 뺌(사용자)
      ④ 드래프트 창 후보 줄에 45명 구성의 모자란 자리면 "필요"
    조정값 window.SCOUT_V1724 · ?nov1724 로 끔 */
 (function(){
@@ -36450,36 +36450,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   var baseGo = window.scoutHubGoV1712;
   if(typeof baseGo === 'function') window.scoutHubGoV1712 = function(w){ if(w === 'draft' && sim() && !off()){ try{ openSeasonScoutBoardV3413(); }catch(e){ console.error(V + ' 신인 후보:', e); } return; } return baseGo.apply(this, arguments); };
 
-  /* ── ③ 각성 ── */
-  function awaken(){
-    if(!sim() || state.awakenYearV1724 === state.year) return;
-    state.awakenYearV1724 = state.year;
-    var A = S.awaken, list = [];
-    Object.keys(state.players || {}).forEach(function(tid){ var t = state.players[tid]; ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(p, i){
-      var age = +(t.age && t.age[kind] && t.age[kind][i]) || 30; if(age > A.maxAge) return;
-      try{ if(window.isForeignV1613 && window.isForeignV1613(p, kind)) return; }catch(_){ }
-      var pr = null; try{ pr = window.playerGrowthProfileV335(p, kind === 'bat'); }catch(_){ } if(!pr || !(+pr.potentialOvr < A.cap)) return;
-      list.push({tid:tid, kind:kind, p:p, age:age, pr:pr});
-    }); }); });
-    if(!list.length) return;
-    var n = A.n[0] + (Math.random() < .5 ? A.n[1] - A.n[0] : 0), lines = [];
-    for(var j = 0; j < n && list.length; j++){
-      var x = list.splice(Math.floor(Math.random() * list.length), 1)[0];
-      var up = A.up[0] + Math.floor(Math.random() * (A.up[1] - A.up[0] + 1)), from = Math.round(+x.pr.potentialOvr), to = Math.min(A.cap, from + up);
-      x.pr.potentialOvr = to; x.pr.awakenV1724 = (x.pr.awakenV1724 || []).concat([{year:state.year, from:from, to:to}]);
-      var nm = x.p[0]; try{ nm = playerDisplayName(x.p); }catch(_){ }
-      lines.push(getTeam(x.tid).name + ' ' + nm + '(' + x.age + '세) 잠재력 ' + from + ' → ' + to);
-      if(x.tid === my()){ try{ pushClubNews('💥 각성', nm + ' — 잠재력 ' + from + ' → ' + to + '(최대치 돌파)'); }catch(_){ } }
-    }
-    try{ if(!Array.isArray(state.aiNewsV13)) state.aiNewsV13 = []; state.aiNewsV13.unshift({when:state.year + '년차 오프시즌', title:'💥 각성', lines:lines}); state.aiNewsV13 = state.aiNewsV13.slice(0, 40); }catch(_){ }
-    (state.awakenLogV1724 = state.awakenLogV1724 || []).push({year:state.year, lines:lines});
-  }
-  window.awakenV1724 = awaken;
-  var baseEnd = window.doOffseasonEnd;
-  if(typeof baseEnd === 'function'){
-    var oe = function(){ try{ awaken(); }catch(e){ console.error(V + ' 각성:', e); } return baseEnd.apply(this, arguments); };
-    window.doOffseasonEnd = oe; try{ doOffseasonEnd = oe; }catch(_){ }
-  }
+  /* ③ 각성 — v1.7.24 에 넣었다가 v1.7.27 에 뺌(사용자 2026-10-06 "각성은 필요 없다") */
 })();
 </script>
 <!-- v1.7.24 END -->
