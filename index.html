@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.22';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.23';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -35812,7 +35812,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   'use strict';
   if(String(location.search||'').indexOf('nov1722')>=0) return;
   var V = window.APP_VERSION;
-  var CFG = window.AI_FIN_V1722 = {start:{normal:200, hard:165}, ownerMul:{spender:1, results:.9, develop:.75, saving:.6}, staff:2.8 + 2, sponsor:15, budgetX:4};
+  var CFG = window.AI_FIN_V1722 = {start:{normal:200, hard:165}, ownerMul:{spender:1, results:.9, develop:.75, saving:.6}, staff:2.8 + 2, sponsor:15, budgetX:4,
+    bailout:{debt:100, seed:30, years:3, mul:.5}};   /* v1.7.23 · 모기업 특별지원: 빚 100억 넘으면 빚 정리 + 운영 자금 30억, 3시즌 동안 FA 예산 절반 */
   function R1(v){ return Math.round((Number(v) || 0) * 10) / 10; }
   function clamp(v, a, b){ return Math.max(a, Math.min(b, Number(v) || 0)); }
   function ek(){ return state.eco === 'hard' ? 'hard' : 'normal'; }   /* 자유 모드도 AI 는 일반 규칙 */
@@ -35899,7 +35900,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       /* FA 예산(계약 총액) — 올해 낼 1/4 이 쓸 수 있는 돈 안. 쓸 수 있는 돈 = 지금 잔고와 "한 시즌 뒤 예상 잔고"(분할금 포함) 중 작은 쪽
          (잔고만 보면 해마다 FA 를 사서 3시즌 만에 9팀 중 6팀이 잔고 0 · 빚 — 측정) */
       var spendable = Math.min(+x.cash || 0, projected);
-      x.faBudget = spendable > 0 ? R1(spendable * CFG.budgetX * (CFG.ownerMul[ot] || .85)) : .1;
+      var austere = +x.austerityUntilV1723 > (+state.year || 1) ? CFG.bailout.mul : 1;   /* v1.7.23 · 특별지원 뒤 긴축 */
+      x.faBudget = spendable > 0 ? R1(spendable * CFG.budgetX * (CFG.ownerMul[ot] || .85) * austere) : .1;
       x.lastYear = state.year; x.lastDay = day; x.settledV1722 = settled;
       if(c){
         c.finance = clamp(Math.round(1 + projected / 35), 1, 5); c.ownerPressure = Math.round(x.pressure); c.financeDirective = directive;
@@ -35932,6 +35934,14 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       R.installs.forEach(function(it){ if(it.tid !== id || !(it.left > 0) || it.paidYear === state.year) return; if(it.alias && !onRoster(id, it.kind, it.alias)){ it.left = 0; return; } it.left--; it.paidYear = state.year; });
       var before = R1((+x.cash || 0) - (+x.debt || 0)), pos = R1(before + m.rev - m.exp);
       if(pos < 0){ x.cash = 0; x.debt = R1(-pos); } else { x.cash = pos; x.debt = 0; }
+      /* v1.7.23 · 모기업 특별지원(사용자 2026-10-06 — 매각은 나중에) — 빚이 선을 넘으면 모기업이 빚을 갚고 운영 자금을 넣어 주는 대신 몇 시즌 긴축 */
+      var B = CFG.bailout;
+      if(B && +x.debt > B.debt){
+        var paid = R1(+x.debt + B.seed);
+        x.debt = 0; x.cash = B.seed; x.austerityUntilV1723 = (+state.year || 1) + B.years;
+        x.bailoutsV1723 = (x.bailoutsV1723 || []).concat([{year:state.year, amt:paid}]);
+        try{ if(!Array.isArray(state.aiNewsV13)) state.aiNewsV13 = []; state.aiNewsV13.unshift({when:state.year + '년차 오프시즌', title:'🏢 모기업 특별지원', lines:[getTeam(id).name + ' — 모기업이 ' + paid.toFixed(1) + '억 지원(빚 정리 + 운영 자금 ' + B.seed + '억) · ' + B.years + '시즌 긴축(FA 예산 절반)']}); state.aiNewsV13 = state.aiNewsV13.slice(0, 40); }catch(_){ }
+      }
       x.rankV1722 = rank; x.lastSeasonV1722 = {year:state.year, rank:rank, rev:m.rev, exp:m.exp, net:R1(m.rev - m.exp), parts:m.parts};
       if(fin && Array.isArray(fin.history)){ fin.history.push({year:state.year, teamId:id, revenue:m.rev, expense:m.exp, cashBefore:before, cashAfter:x.cash, debt:x.debt, directive:x.directive, v1722:true}); if(fin.history.length > 120) fin.history = fin.history.slice(-120); }
     });
@@ -35956,6 +35966,375 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.22 END -->
+
+<!-- v1.7.23 · AI 선수단 운영 · AI 45명 · 돈이 모자라면 정리 · 드래프트 전 방출 -->
+<script id="ai-squad-v1723">
+/* 사용자 2026-10-06 ⑦ 4단계. 측정(v1.7.21, 4팀 × 2시즌): AI 는 1군을 4경기마다 OVR 순으로 다시 골라(manageClub · setBalancedFirstTeamV300 · 인원 맞추기 등 여러 곳)
+   늘 30명 · 주전 타석 86%, 부진으로 내려도 4경기 뒤 다시 올라옴. 인원은 40명에서 멈춤. 돈이 바닥나도 연봉을 줄이지 않음(v1.7.22 측정: 약한 팀 해마다 −30~−60억).
+   ① AI 1군 = 이 겹의 계획(state.season.aiSquadV1723)이 정한다 — squadLevelOf 를 AI 팀만 계획으로 답하게(다른 곳이 squadLevel 을 덮어써도 경기엔 안 먹힘)
+      시즌 시작: 1군 30 = 선발 5 · 불펜 9 · 타자 16(포지션마다 1명 먼저), 외국인은 늘 1군(v1.6.13), 키우는 선수(isDevelopingV1610)는 −12
+      매일(우리 감독과 같은 규칙): 부상 10경기+ → 2군 · 2군에서 같은 자리 최고 선수 콜업 / 나으면 복귀 · 대신 올라온 선수 내려감
+      4경기마다 부진: 주전 타자 최근 20경기 60타석+ OPS 가 기대(formExpectV171)보다 .200 낮음 · 선발 최근 25경기 20이닝+ 평균자책 6.00+ → 10경기 2군(30경기 동안 다시 안 내림)
+      14경기마다 점검: 2군 선수가 1군 같은 묶음 최하위보다 OVR 4+ 높으면 바꿈(한 번에 2명까지)
+   ② AI 45명: 오프시즌 무료 계약 명단에 "육성 선수"(20~24세 · 낮은 능력치 · 최저 연봉)를 모자란 만큼 더 넣고(우리도 계약 가능),
+      AI 는 45명 구성(선발 8 · 불펜 14 · 타자 23)에서 모자란 자리부터 채운다. 그래도 모자라면 육성 선수를 바로 만든다
+   ③ 돈이 모자란 AI(v1.7.22 지시 "연봉 절감") — FA 마감 전에 비싼 30세+ 선수(주전 9 · 선발 5 · 불펜 3 빼고)를 적자만큼, 최대 3명 방출(38명 아래로는 안 내림) → 무료 계약 명단으로
+   ④ 드래프트 전 방출: 지명할 3명만큼 빈자리(42명 이하)가 있어야 드래프트 시작. AI 는 가치 낮은 2군 선수부터 자동 방출, 우리는 안내 후 멈춤(방출은 단장이)
+   ⑤ 우리 팀: 자동으로 채우지 않음(사용자 원칙) — 상태 줄에 42명 아래면 "🆓 무료 계약으로 채울 수 있음" 안내
+   조정값 window.AI_SQUAD_V1723 · ?nov1723 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1723')>=0) return;
+  var V = window.APP_VERSION;
+  var A = window.AI_SQUAD_V1723 = {cap:45, first:30, sp:5, rp:9, bat:16, need:{sp:8, rp:14, bat:23, c:3}, injOut:10, every:4, review:14, gap:4, slumpDays:10, cool:30,
+    batGames:20, slumpPa:60, slumpGap:.20, spGames:25, spIp:20, spEra:6.0, devPen:12, room:3, cutMax:3, cutKeep:38, cutAge:30, extraDev:10};
+  function R1(v){ return Math.round((Number(v) || 0) * 10) / 10; }
+  function sim(){ return !!(state && state.mode === 'sim'); }
+  function my(){ return state.myTeam; }
+  function T(tid){ return state.players && state.players[tid]; }
+  function size(tid){ var t = T(tid); return t ? t.bat.length + t.pit.length : 0; }
+  function day(){ return +(state.season && state.season.day) || 0; }
+  function g(n){ try{ return Math.max(1, Math.round(g36V16(n * 36 / 144))); }catch(_){ return n; } }
+  function key(kind, p){ try{ return squadKey(kind, p); }catch(_){ return kind + ':' + p[0]; } }
+  function ovr(tid, kind, p){ try{ return kind === 'bat' ? batOvr(p, tid) : pitOvr(p, tid); }catch(_){ return 55; } }
+  function isF(kind, p){ try{ return !!(window.isForeignV1613 && window.isForeignV1613(p, kind)); }catch(_){ return false; } }
+  function inj(tid, kind, p){ try{ return +playerHealth(tid, kind, p).injury || 0; }catch(_){ return 0; } }
+  function dev(tid, kind, p){ try{ return typeof window.isDevelopingV1610 === 'function' && window.isDevelopingV1610(tid, kind, p); }catch(_){ return false; } }
+  function ageAt(tid, kind, i){ var t = T(tid); return +(t && t.age && t.age[kind] && t.age[kind][i]) || 28; }
+  function grp(kind, p){ return kind === 'bat' ? 'bat' : p[2] === '선발' ? 'sp' : 'rp'; }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p ? p[0] : ''; } }
+  function ai(tid){ return sim() && tid && tid !== my() && !!T(tid); }
+  function aiTeams(){ return (TEAMS || []).map(function(t){ return t.id; }).filter(ai); }
+  function box(){ var s = state.season; if(!s) return null; if(!s.aiSquadV1723 || typeof s.aiSquadV1723 !== 'object') s.aiSquadV1723 = {}; return s.aiSquadV1723; }
+  function planOf(tid){ var s = state.season, b = s && s.aiSquadV1723; return b ? b[tid] || null : null; }
+  function rows(tid){
+    var t = T(tid), out = [];
+    ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(p, i){ if(!p) return; out.push({kind:kind, p:p, i:i, k:key(kind, p), g:grp(kind, p), o:ovr(tid, kind, p), f:isF(kind, p), inj:inj(tid, kind, p), age:ageAt(tid, kind, i), dev:dev(tid, kind, p)}); }); });
+    return out;
+  }
+  function val(r){ return r.o - (r.dev ? A.devPen : 0) - (r.inj >= A.injOut ? 100 : r.inj > 0 ? 3 : 0); }
+  function reset(tid){ try{ if(state.lineups) state.lineups[tid] = null; if(state.rotOrder) state.rotOrder[tid] = null; if(state.pitchPlan) state.pitchPlan[tid] = null; }catch(_){ } }
+  function mirror(tid, P){ try{ if(!state.squadLevel) state.squadLevel = {}; var L = state.squadLevel[tid] || (state.squadLevel[tid] = {}); Object.keys(P.lv).forEach(function(k){ L[k] = P.lv[k]; }); }catch(_){ } }
+
+  /* ── ① 시즌 시작: 1군 30 ── */
+  function select(tid){
+    var R = rows(tid), lv = {}, first = {}, cnt = {bat:0, sp:0, rp:0};
+    var put = function(r){ if(first[r.k]) return false; first[r.k] = 1; cnt[r.g]++; return true; };
+    R.filter(function(r){ return r.f; }).forEach(put);   /* 외국인은 늘 1군 */
+    var by = function(a, b){ return val(b) - val(a); };
+    ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].forEach(function(pos){
+      if(R.some(function(r){ return first[r.k] && r.g === 'bat' && r.p[2] === pos; })) return;
+      var x = R.filter(function(r){ return r.g === 'bat' && r.p[2] === pos && !first[r.k]; }).sort(by)[0]; if(x) put(x);
+    });
+    var fill = function(gk, n, alt){ R.filter(function(r){ return r.g === gk && !first[r.k]; }).sort(by).forEach(function(r){ if(cnt[gk] < n) put(r); });
+      if(alt && cnt[gk] < n) R.filter(function(r){ return r.g === alt && !first[r.k]; }).sort(by).forEach(function(r){ if(cnt[gk] < n){ first[r.k] = 1; cnt[gk]++; } }); };
+    fill('sp', A.sp, 'rp'); fill('rp', A.rp, 'sp'); fill('bat', A.bat);
+    var n = Object.keys(first).length;
+    R.filter(function(r){ return !first[r.k]; }).sort(by).forEach(function(r){ if(n < A.first){ first[r.k] = 1; n++; } });
+    R.forEach(function(r){ lv[r.k] = first[r.k] ? 'first' : 'second'; });
+    var P = {lv:lv, sent:{}, calls:{}, snaps:[], cool:{}, last:{review:day(), slump:day()}, log:[]};
+    var b = box(); if(b) b[tid] = P;
+    mirror(tid, P); reset(tid);
+    return P;
+  }
+  function selectAll(){ if(!sim() || !state.season) return; aiTeams().forEach(function(tid){ try{ select(tid); }catch(e){ console.error(V + ' AI 1군 고르기:', e); } }); }
+
+  /* AI 팀의 1·2군은 계획이 답한다 */
+  var baseLv = window.squadLevelOf || (typeof squadLevelOf === 'function' ? squadLevelOf : null);
+  if(typeof baseLv === 'function'){
+    var lvF = function(teamId, kind, p){
+      if(teamId !== state.myTeam && state.mode === 'sim' && p){ var P = planOf(teamId); if(P){ var v = P.lv[key(kind, p)]; if(v) return v; } }
+      return baseLv.apply(this, arguments);
+    };
+    window.squadLevelOf = lvF; try{ squadLevelOf = lvF; }catch(_){ }
+  }
+
+  /* ── 매일: 부상 · 복귀 · 부진 · 점검 ── */
+  function log(P, s){ P.log.push(day() + ' ' + s); if(P.log.length > 40) P.log.splice(0, P.log.length - 40); }
+  function bestDown(R, P, gk, pos, except){
+    var c = R.filter(function(r){ return P.lv[r.k] === 'second' && r.inj === 0 && r.k !== except && !(P.sent[r.k] && P.sent[r.k].why === '부진' && day() < P.sent[r.k].until) && (r.g === gk || (gk !== 'bat' && r.g !== 'bat')); });
+    c.sort(function(a, b){ var pa = (pos && a.p[2] === pos ? 6 : 0) + (a.g === gk ? 3 : 0) + val(a), pb = (pos && b.p[2] === pos ? 6 : 0) + (b.g === gk ? 3 : 0) + val(b); return pb - pa; });
+    return c[0] || null;
+  }
+  function snapBat(tid, P){
+    var S = state.season.stats && state.season.stats[tid] && state.season.stats[tid].bat || {}, t = T(tid), b = {};
+    t.bat.forEach(function(p, i){ var x = S[i]; if(p && x) b[p[0]] = [+x.ab || 0, +x.bb || 0, +x.h || 0, +x.b2 || 0, +x.b3 || 0, +x.hr || 0, (+x.ab || 0) + (+x.bb || 0)]; });
+    P.snaps.push({d:day(), b:b}); if(P.snaps.length > 8) P.snaps.splice(0, P.snaps.length - 8);
+  }
+  function recentOps(tid, P, p, i){
+    var n = g(A.batGames), d = day(); if(d < n) return null;
+    var base = null; P.snaps.forEach(function(s){ if(s.d <= d - n + A.every - 1 && (!base || s.d > base.d)) base = s; }); if(!base) return null;
+    var x = (state.season.stats[tid].bat || {})[i]; if(!x) return null;
+    var a = base.b[p[0]] || [0, 0, 0, 0, 0, 0, 0];
+    var ab = (+x.ab || 0) - a[0], bb = (+x.bb || 0) - a[1], h = (+x.h || 0) - a[2], b2 = (+x.b2 || 0) - a[3], b3 = (+x.b3 || 0) - a[4], hr = (+x.hr || 0) - a[5], pa = ab + bb;
+    if(pa < A.slumpPa) return null;
+    return (h + bb) / pa + (h + b2 + 2 * b3 + 3 * hr) / Math.max(1, ab);
+  }
+  function swap(tid, P, up, down, why, until){
+    P.lv[down.k] = 'second'; P.lv[up.k] = 'first';
+    P.sent[down.k] = {why:why, day:day(), until:until || 0, by:up.k};
+    P.calls[up.k] = {why:why, day:day(), for:down.k};
+    log(P, (why === '점검' ? '⇅ ' : why === '부상' ? '🚑 ' : '📉 ') + nm(down.p) + ' ↓ · ' + nm(up.p) + ' ↑');
+  }
+  function maintain(tid){
+    var P = planOf(tid); if(!P) P = select(tid);
+    var R = rows(tid), byK = {}, changed = false, d = day();
+    R.forEach(function(r){ byK[r.k] = r; if(!P.lv[r.k]){ P.lv[r.k] = r.f ? 'first' : 'second'; changed = true; } });
+    Object.keys(P.lv).forEach(function(k){ if(!byK[k]){ delete P.lv[k]; delete P.sent[k]; delete P.calls[k]; } });
+    R.forEach(function(r){ if(r.f && P.lv[r.k] !== 'first'){ P.lv[r.k] = 'first'; changed = true; } });
+    /* 부상 10경기+ → 2군, 같은 자리 대신 */
+    R.forEach(function(r){
+      if(r.f || P.lv[r.k] !== 'first' || r.inj < A.injOut) return;
+      var up = bestDown(R, P, r.g, r.g === 'bat' ? r.p[2] : null, r.k);
+      P.lv[r.k] = 'second'; P.sent[r.k] = {why:'부상', day:d, by:up ? up.k : null}; changed = true;
+      if(up){ P.lv[up.k] = 'first'; P.calls[up.k] = {why:'부상', day:d, for:r.k}; log(P, '🚑 ' + nm(r.p) + ' ↓ · ' + nm(up.p) + ' ↑'); } else log(P, '🚑 ' + nm(r.p) + ' ↓');
+    });
+    /* 나으면 복귀 — 대신 올라온 선수가 내려감 */
+    Object.keys(P.sent).forEach(function(k){
+      var s = P.sent[k], r = byK[k]; if(!r){ delete P.sent[k]; return; }
+      var back = (s.why === '부상' && r.inj === 0) || (s.why === '부진' && s.until && d >= s.until);
+      if(!back) return;
+      var by = s.by && byK[s.by];
+      if(s.why === '부진' && by && P.lv[by.k] === 'first' && by.o > r.o){ delete P.sent[k]; return; }   /* 대신 올라온 선수가 더 나으면 그대로 */
+      P.lv[k] = 'first'; delete P.sent[k]; changed = true;
+      var down = by && P.lv[by.k] === 'first' && !by.f ? by : null;
+      if(!down){ var c = R.filter(function(x){ return P.lv[x.k] === 'first' && !x.f && x.g === r.g && x.k !== k; }).sort(function(a, b){ return val(a) - val(b); }); down = c[0] || null; }
+      if(down){ P.lv[down.k] = 'second'; delete P.calls[down.k]; }
+      log(P, '↩ ' + nm(r.p) + ' ↑' + (down ? ' · ' + nm(down.p) + ' ↓' : ''));
+    });
+    /* 4경기마다: 부진 */
+    if(d - (P.last.slump || 0) >= A.every){
+      P.last.slump = d; snapBat(tid, P);
+      var t = T(tid), S = state.season.stats && state.season.stats[tid] || {}, pa = [];
+      t.bat.forEach(function(p, i){ var x = (S.bat || {})[i]; pa.push({p:p, i:i, pa:x ? (+x.ab || 0) + (+x.bb || 0) : 0}); });
+      pa.sort(function(a, b){ return b.pa - a.pa; });
+      pa.slice(0, 9).forEach(function(z){
+        var r = byK[key('bat', z.p)]; if(!r || r.f || P.lv[r.k] !== 'first' || (P.cool[r.k] && d - P.cool[r.k] < g(A.cool))) return;
+        var ops = recentOps(tid, P, z.p, z.i); if(ops == null) return;
+        var ex = .72; try{ ex = window.formExpectV171 ? window.formExpectV171(tid, z.p) : .72; }catch(_){ }
+        if(ops >= ex - A.slumpGap) return;
+        var up = bestDown(R, P, 'bat', r.p[2], r.k); if(!up || up.o < r.o - 6) return;
+        swap(tid, P, up, r, '부진', d + g(A.slumpDays)); P.cool[r.k] = d; changed = true;
+      });
+      R.forEach(function(r){
+        if(r.g !== 'sp' || r.f || P.lv[r.k] !== 'first' || (P.cool[r.k] && d - P.cool[r.k] < g(A.cool))) return;
+        var l = null; try{ l = window.formLineV171 ? window.formLineV171(tid, r.p, null) : null; }catch(_){ }
+        if(!l || l.ip < A.spIp || l.era < A.spEra) return;
+        var up = bestDown(R, P, 'sp', null, r.k); if(!up || up.o < r.o - 5) return;
+        swap(tid, P, up, r, '부진', d + g(A.slumpDays)); P.cool[r.k] = d; changed = true;
+      });
+    }
+    /* 14경기마다: 2군에 확실히 나은 선수가 있으면 */
+    if(d - (P.last.review || 0) >= g(A.review)){
+      P.last.review = d; var n = 0;
+      ['bat', 'sp', 'rp'].forEach(function(gk){
+        if(n >= 2) return;
+        var low = R.filter(function(r){ return r.g === gk && P.lv[r.k] === 'first' && !r.f && !P.calls[r.k] && r.inj === 0; }).sort(function(a, b){ return val(a) - val(b); })[0];
+        var hi = R.filter(function(r){ return r.g === gk && P.lv[r.k] === 'second' && r.inj === 0 && !P.sent[r.k]; }).sort(function(a, b){ return val(b) - val(a); })[0];
+        if(low && hi && val(hi) >= val(low) + A.gap){ swap(tid, P, hi, low, '점검'); delete P.calls[hi.k]; delete P.sent[low.k]; n++; changed = true; }
+      });
+    }
+    /* 1군 30 맞추기 */
+    var first = R.filter(function(r){ return P.lv[r.k] === 'first'; }), want = Math.min(A.first, R.length);
+    if(first.length > want){ first.filter(function(r){ return !r.f; }).sort(function(a, b){ return val(a) - val(b); }).slice(0, first.length - want).forEach(function(r){ P.lv[r.k] = 'second'; }); changed = true; }
+    else if(first.length < want){ R.filter(function(r){ return P.lv[r.k] === 'second' && r.inj < A.injOut; }).sort(function(a, b){ return val(b) - val(a); }).slice(0, want - first.length).forEach(function(r){ P.lv[r.k] = 'first'; }); changed = true; }
+    mirror(tid, P);
+    if(changed) reset(tid);
+  }
+  var baseFinish = window.finishDay;
+  if(typeof baseFinish === 'function'){
+    var fd = function(){ var out = baseFinish.apply(this, arguments); try{ if(sim() && state.season && !(typeof seasonOver === 'function' && seasonOver())) aiTeams().forEach(function(tid){ try{ maintain(tid); }catch(e){ console.error(V + ' AI 1군:', e); } }); }catch(e){ console.error(V + ' AI 1군:', e); } return out; };
+    window.finishDay = fd; try{ finishDay = fd; }catch(_){ }
+  }
+  var baseNew = window.newSeason;
+  if(typeof baseNew === 'function'){
+    var ns = function(){ var out = baseNew.apply(this, arguments); try{ if(state.season) state.season.aiSquadV1723 = {}; selectAll(); }catch(e){ console.error(V + ' AI 1군 시작:', e); } return out; };
+    window.newSeason = ns; try{ newSeason = ns; }catch(_){ }
+  }
+
+  /* ── ②③④ 오프시즌: 방출 · 육성 선수 · 45명 ── */
+  function mkt(){ return state.season && state.season.market; }
+  function pool(){ var m = mkt(); if(!m) return []; if(!Array.isArray(m.poolV1723)) m.poolV1723 = []; return m.poolV1723; }
+  function salaryOf(o){ return Math.max(.5, Math.pow(Math.max(0, o - 50) / 10, 2.1) * .9); }
+  function release(tid, r, src){
+    var t = T(tid), arr = t[r.kind], i = arr.indexOf(r.p); if(i < 0) return false;
+    arr.splice(i, 1); if(t.age && t.age[r.kind]) t.age[r.kind].splice(i, 1);
+    try{ if(state.squadLevel && state.squadLevel[tid]) delete state.squadLevel[tid][r.k]; }catch(_){ }
+    pool().push({src:src, kind:r.kind, name:r.p[0], data:r.p.slice(), age:r.age, ovr:r.o, from:tid});
+    reset(tid); return true;
+  }
+  /* 핵심(주전 9 · 선발 5 · 불펜 3)은 안 건드림 */
+  function core(R){
+    var c = {}, by = function(a, b){ return b.o - a.o; };
+    R.filter(function(r){ return r.g === 'bat'; }).sort(by).slice(0, 9).forEach(function(r){ c[r.k] = 1; });
+    R.filter(function(r){ return r.g === 'sp'; }).sort(by).slice(0, 5).forEach(function(r){ c[r.k] = 1; });
+    R.filter(function(r){ return r.g === 'rp'; }).sort(by).slice(0, 3).forEach(function(r){ c[r.k] = 1; });
+    return c;
+  }
+  function counts(R){ var c = {sp:0, rp:0, bat:0, c:0}; R.forEach(function(r){ c[r.g]++; if(r.g === 'bat' && r.p[2] === 'C') c.c++; }); return c; }
+  /* 자리를 비울 때 남길 최소(포수 2 · 선발 6 · 불펜 9) */
+  function canGo(R, r){ var c = counts(R); if(r.g === 'bat' && r.p[2] === 'C' && c.c <= 2) return false; if(r.g === 'sp' && c.sp <= 6) return false; if(r.g === 'rp' && c.rp <= 9) return false; return true; }
+  /* ③ 돈이 모자란 AI — 비싼 30세+ 정리 */
+  function cutForMoney(){
+    var m = mkt(); if(!m || m.cutV1723 === state.year) return; m.cutV1723 = state.year;
+    var F = state.aiFinanceV3413 && state.aiFinanceV3413.clubs || {}, out = [];
+    aiTeams().forEach(function(tid){
+      var x = F[tid]; if(!x || x.directive !== '연봉 절감') return;
+      var need = Math.max(0, -(+x.projected || 0)), saved = 0, n = 0, R = rows(tid), C = core(R), names = [];
+      R.filter(function(r){ return !r.f && !C[r.k] && r.age >= A.cutAge && salaryOf(r.o) >= 2; }).sort(function(a, b){ return salaryOf(b.o) - salaryOf(a.o); }).forEach(function(r){
+        if(n >= A.cutMax || saved >= need || size(tid) <= A.cutKeep) return;
+        if(!canGo(rows(tid), r)) return;
+        if(release(tid, r, 'cut')){ n++; saved += salaryOf(r.o) - .5; names.push(nm(r.p) + '(' + r.age + '세 · 연봉 ' + salaryOf(r.o).toFixed(1) + '억)'); }
+      });
+      if(names.length) out.push(getTeam(tid).name + ' — ' + names.join(', ') + ' · 연봉 ' + R1(saved) + '억 절감');
+    });
+    if(out.length) aiNews('💸 AI 연봉 정리', out);
+  }
+  /* ④ 드래프트 전 방출 — 지명할 자리 */
+  function roomForDraft(){
+    var m = mkt(); if(!m || m.roomV1723 === state.year) return; m.roomV1723 = state.year;
+    var out = [], lim = A.cap - A.room;
+    aiTeams().forEach(function(tid){
+      var names = [], guard = 0;
+      while(size(tid) > lim && guard++ < 12){
+        var R = rows(tid), C = core(R);
+        /* 가치 낮은 선수부터 — 24세 이하는 +8(키울 선수), 33세+ 는 −3 */
+        var keep = function(r){ return r.o + (r.age <= 24 ? 8 : 0) - (r.age >= 33 ? 3 : 0); };
+        var c = R.filter(function(r){ return !r.f && !C[r.k] && canGo(R, r); }).sort(function(a, b){ return keep(a) - keep(b); })[0];
+        if(!c || !release(tid, c, 'vet')) break;
+        names.push(nm(c.p) + '(' + c.age + '세 · OVR ' + c.o + ')');
+      }
+      if(names.length) out.push(getTeam(tid).name + ' — ' + names.join(', '));
+    });
+    if(out.length) aiNews('✂️ 드래프트 전 방출', out);
+  }
+  function aiNews(title, lines){ try{ if(!Array.isArray(state.aiNewsV13)) state.aiNewsV13 = []; state.aiNewsV13.unshift({when:state.year + '년차 오프시즌', title:title, lines:lines.slice(0, 30)}); state.aiNewsV13 = state.aiNewsV13.slice(0, 40); }catch(_){ } }
+  /* 육성 선수 — 20~24세, 리그 평균보다 많이 낮은 능력치(키워야 쓰는 선수), 최저 연봉 */
+  var devSeq = 0;
+  function makeDev(kind, role){
+    var ids = Object.keys(state.players || {}), src = T(ids[(devSeq + state.year) % ids.length]) || T(my());
+    var seed = 77000 + (+state.year || 1) * 137 + (devSeq++);
+    var p = kind === 'bat' ? genBackupBat(src.bat, seed) : genRelief(src.pit, seed);
+    if(kind === 'bat'){ p[2] = role; for(var i = 4; i <= 8; i++) p[i] = Math.max(35, (+p[i] || 50) - 6); }
+    else { p[2] = role; p[5] = Math.max(35, (+p[5] || 60) - 5); p[6] = Math.max(35, (+p[6] || 60) - 5); if(role === '선발') p[7] = Math.max(62, (+p[7] || 50) + 12); }   /* [4] 구속 · [7] 체력 — 선발은 체력 있게 */
+    p[1] = p[0];   /* 성장형이 이름마다 갈리게(v1.7.21 — 실명 칸이 모두 같으면 같은 유형) */
+    try{ if(typeof window.tagGeneratedPlayerV463 === 'function') window.tagGeneratedPlayerV463(p, kind, '육성 선수'); }catch(_){ }
+    return {src:'dev', kind:kind, name:p[0], data:p, age:20 + ((seed * 7) % 5), ovr:0, role:role};
+  }
+  function needOf(tid){
+    var R = rows(tid), c = counts(R), n = A.need;
+    return {sp:Math.max(0, n.sp - c.sp), rp:Math.max(0, n.rp - c.rp), bat:Math.max(0, n.bat - c.bat), c:Math.max(0, n.c - c.c)};
+  }
+  function devFor(tid){
+    var w = needOf(tid);
+    if(w.c > 0) return makeDev('bat', 'C');
+    if(w.sp > 0) return makeDev('pit', '선발');
+    if(w.rp > 0) return makeDev('pit', '불펜');
+    if(w.bat > 0) return makeDev('bat', ['SS', '2B', 'CF', '3B', '1B', 'LF', 'RF'][devSeq % 7]);
+    return (devSeq % 2) ? makeDev('pit', '불펜') : makeDev('bat', ['SS', '2B', 'CF', 'C'][devSeq % 4]);
+  }
+  function fixOvr(x){ try{ if(!x.ovr) x.ovr = x.kind === 'bat' ? batOvr(x.data, my()) : pitOvr(x.data, my()); }catch(_){ } return x; }
+  function signTo(tid, x){
+    var t = T(tid); if(!t || x.signed) return false;
+    if(x.src === 'draft'){ if(!x.ref || x.ref.taken) return false; x.ref.taken = tid; addDraftPlayer(tid, x.ref); }
+    else { t[x.kind].push(x.data.slice()); t.age[x.kind].push(x.age); try{ ensureSquadState(); state.squadLevel[tid][squadKey(x.kind, x.data)] = 'second'; }catch(_){ } }
+    x.signed = tid; reset(tid); return true;
+  }
+  /* 무료 계약 명단(v1.7.6 freeV176)에 방출 선수 · 육성 선수를 더한다(한 해 한 번) */
+  function extendFree(){
+    var m = mkt(); if(!m || !m.freeV176 || m.freeV176.year !== state.year || m.freeV176.v1723) return false;
+    var L = m.freeV176.list;
+    pool().forEach(function(x){ if(!x.added){ x.added = 1; L.push(x); } });
+    var shortAi = aiTeams().reduce(function(a, tid){ return a + Math.max(0, A.cap - size(tid)); }, 0);
+    var open = L.filter(function(x){ return !x.signed; }).length, want = Math.max(0, shortAi - open) + A.extraDev;
+    for(var i = 0; i < want; i++){ var tid = aiTeams()[i % Math.max(1, aiTeams().length)]; L.push(fixOvr(devFor(tid || my()))); }
+    m.freeV176.v1723 = true;
+    try{ save(); }catch(_){ }
+    return true;
+  }
+  /* AI 를 45명으로 — 45명 구성에서 모자란 자리부터 */
+  function fillAi(){
+    var m = mkt(), L = m && m.freeV176 && m.freeV176.year === state.year ? m.freeV176.list : [], lines = [];
+    var F = state.aiFinanceV3413 && state.aiFinanceV3413.clubs || {};
+    aiTeams().forEach(function(tid){
+      var got = [], guard = 0, broke = F[tid] && (F[tid].directive === '연봉 절감' || F[tid].directive === '비용 통제');   /* 돈이 모자라면 연봉 2억 이하(OVR 65 쯤까지)만 */
+      while(size(tid) < A.cap && guard++ < 20){
+        var w = needOf(tid), want = w.c > 0 ? 'c' : w.sp > 0 ? 'sp' : w.rp > 0 ? 'rp' : w.bat > 0 ? 'bat' : null;
+        var ok = function(x){ if(x.signed || x.from === tid) return false; if(broke && salaryOf(x.ovr || 0) > 2) return false; if(!want) return true; if(want === 'c') return x.kind === 'bat' && x.data && x.data[2] === 'C'; if(want === 'bat') return x.kind === 'bat'; var role = x.data && x.data[2]; return x.kind === 'pit' && (want === 'sp' ? role === '선발' : role !== '선발'); };
+        var c = L.filter(ok).map(fixOvr).sort(function(a, b){ return (b.ovr || 0) - (a.ovr || 0); })[0];
+        if(!c){ c = devFor(tid); fixOvr(c); }
+        if(!signTo(tid, c)) break;
+        got.push(c.name + (c.src === 'dev' ? '(육성)' : c.src === 'draft' ? '(미지명 신인)' : '(방출)'));
+      }
+      if(got.length) lines.push(getTeam(tid).name + ' +' + got.length + ': ' + got.slice(0, 6).join(', ') + (got.length > 6 ? ' …' : ''));
+    });
+    if(lines.length) aiNews('🆓 AI 선수 채우기(45명)', lines);
+  }
+
+  /* FA 마감 앞: 돈이 모자란 AI 정리 */
+  var baseFa = window.faCloseV13;
+  if(typeof baseFa === 'function'){
+    var fc = function(){ try{ if(sim()) cutForMoney(); }catch(e){ console.error(V + ' AI 연봉 정리:', e); } return baseFa.apply(this, arguments); };
+    window.faCloseV13 = fc; try{ faCloseV13 = fc; }catch(_){ }
+  }
+  /* 드래프트 시작: AI 는 자리를 비우고, 우리는 42명 넘으면 안내 */
+  var baseStart = window.startDraftV3413;
+  if(typeof baseStart === 'function'){
+    window.startDraftV3413 = function(){
+      try{
+        if(sim()){
+          var m = mkt(), lim = A.cap - A.room;
+          if(m && !m.draftStartedV3413 && size(my()) > lim){
+            showAlert('드래프트 전에 자리를 비워 주세요.\n\n지명할 ' + A.room + '명이 들어올 자리가 있어야 합니다.\n선수단 ' + size(my()) + '/' + A.cap + '명 → ' + (size(my()) - lim) + '명 방출 필요\n\n운영 → FA·계약 → 방출');
+            return;
+          }
+          roomForDraft();
+        }
+      }catch(e){ console.error(V + ' 드래프트 자리:', e); }
+      return baseStart.apply(this, arguments);
+    };
+  }
+  /* 오프시즌 끝: 명단 늘리기 → AI 45명(v1.7.6 aiFill 은 45 기준으로) → 그래도 모자라면 육성 선수 */
+  var baseEnd = window.doOffseasonEnd;
+  if(typeof baseEnd === 'function'){
+    var oe = function(){
+      try{
+        if(sim()){
+          if(window.FA_TIER_V176) window.FA_TIER_V176.aiFill = A.cap;
+          roomForDraft();
+          try{ renderOffseason(getTeam(my())); }catch(_){ }   /* 무료 계약 명단은 오프시즌 화면을 그릴 때 만들어진다 */
+          extendFree(); fillAi();
+        }
+      }catch(e){ console.error(V + ' AI 45명:', e); }
+      var out = baseEnd.apply(this, arguments);
+      try{ if(sim()){ var m = mkt(); if(!(m && m.freeV176)) fillAi(); } }catch(e){ console.error(V + ' AI 45명:', e); }
+      return out;
+    };
+    window.doOffseasonEnd = oe; try{ doOffseasonEnd = oe; }catch(_){ }
+  }
+  /* 무료 계약 명단이 열리면(화면) 방출·육성 선수를 더하고, 우리 상태 줄에 안내 */
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    var ro = function(){
+      var h = baseOff.apply(this, arguments);
+      try{
+        if(sim() && extendFree()) h = baseOff.apply(this, arguments);
+        if(typeof h === 'string' && sim() && size(my()) < A.cap - A.room){
+          var at = h.indexOf('status-v1712'); var end = at >= 0 ? h.indexOf('</div>', at) : -1;
+          if(end >= 0){ var m = mkt(), open = m && m.freeV176 ? m.freeV176.list.filter(function(x){ return !x.signed; }).length : 0;
+            h = h.slice(0, end) + '<br><span style="color:#F4C45E">🆓 ' + (A.cap - size(my())) + '자리 비어 있음 — ' + (open ? '무료 계약 명단(' + open + '명, 최저 연봉)에서 채울 수 있음' : 'FA 마감 · 신인 지명 뒤 무료 계약 명단이 열림') + '</span>' + h.slice(end); }
+        }
+      }catch(e){ console.error(V + ' 상태 줄:', e); }
+      return h;
+    };
+    window.renderOffseason = ro; try{ renderOffseason = ro; }catch(_){ }
+  }
+  /* 불러온 시즌 중 저장 — AI 1군 계획이 없으면 지금 고른다 */
+  try{ if(sim() && state.season && !(typeof seasonOver === 'function' && seasonOver()) && !(state.season.aiSquadV1723 && Object.keys(state.season.aiSquadV1723).length)) selectAll(); }catch(e){ console.error(V + ' AI 1군 처음:', e); }
+  window.aiSquadV1723 = {select:select, maintain:maintain, planOf:planOf, fillAi:fillAi, extendFree:extendFree, cutForMoney:cutForMoney, roomForDraft:roomForDraft};
+})();
+</script>
+<!-- v1.7.23 END -->
 
 </body>
 </html>
