@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.19';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.20';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -3022,7 +3022,7 @@ function paResult(bat, batTid, pit, pitTid, tactic){
   const myBatCoach = batTid===state.myTeam ? state.staff.batCoach : null;
   const myPitCoach = pitTid===state.myTeam ? state.staff.pitCoach : null;
   const mgrAtk = managerAttackBonus(batTid), mgrPit = managerPitchBonus(pitTid);
-  const kAdj = (tactic==='power' ? .022 : tactic==='small' ? -.012 : 0) - (myPitCoach==='breaking'?.008:0) - mgrPit;
+  const kAdj = (tactic==='power' ? .022 : tactic==='small' ? -.012 : 0) + (myPitCoach==='breaking'?.008:0) + mgrPit;   /* v1.7.20 · 부호 — 변화구 코치·감독 투수 보정이 우리 투수 삼진을 줄이고 있었다 */
   const hitAdj = (tactic==='power' ? .008 : tactic==='small' ? .018 : 0) + (myBatCoach==='contact'?.010:0) + mgrAtk;
   const hrAdj = (tactic==='power' ? .018 : tactic==='small' ? -.012 : 0) + (myBatCoach==='power'?.012:0);
   const kP  = clamp(.125 + (brk-72)*.004 + (velo-146)*.006 - (con-72)*.004 - (eye-70)*.002 + kAdj, .05, .37);
@@ -7894,7 +7894,7 @@ paResult=function(bat,batTid,pit,pitTid,tactic){
   tactic=tactic||'balanced';ensureStaff();
   const myBatCoach=batTid===state.myTeam?state.staff.batCoach:null,myPitCoach=pitTid===state.myTeam?state.staff.pitCoach:null;
   const mgrAtk=managerAttackBonus(batTid),mgrPit=managerPitchBonus(pitTid),sx=specialContextV281(batTid,bat,pitTid,pit,tactic);
-  const kAdj=(tactic==='power'?.022:tactic==='small'?-.012:0)-(myPitCoach==='breaking'?.008:0)-mgrPit+sx.k;
+  const kAdj=(tactic==='power'?.022:tactic==='small'?-.012:0)+(myPitCoach==='breaking'?.008:0)+mgrPit+sx.k;
   const hitAdj=(tactic==='power'?.008:tactic==='small'?.018:0)+(myBatCoach==='contact'?.010:0)+mgrAtk+sx.hit;
   const hrAdj=(tactic==='power'?.018:tactic==='small'?-.012:0)+(myBatCoach==='power'?.012:0)+sx.hr;
   const kP=clamp(.125+(brk-72)*.004+(velo-146)*.006-(con-72)*.004-(eye-70)*.002+kAdj,.05,.42);
@@ -10069,7 +10069,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     const sx=(typeof specialContextV281==='function')
       ? specialContextV281(batTid,bat,pitTid,pit,tactic)
       : {k:0,bb:0,hit:0,hr:0,dbl:0,trp:0,activeTexts:[]};
-    const kAdj=(tactic==='power'?.022:tactic==='small'?-.012:0)-(myPitCoach==='breaking'?.008:0)-mgrPit+(Number(sx.k)||0);
+    const kAdj=(tactic==='power'?.022:tactic==='small'?-.012:0)+(myPitCoach==='breaking'?.008:0)+mgrPit+(Number(sx.k)||0);
     const hitAdj=(tactic==='power'?.008:tactic==='small'?.018:0)+(myBatCoach==='contact'?.010:0)+mgrAtk+(Number(sx.hit)||0);
     const hrAdj=(tactic==='power'?.018:tactic==='small'?-.012:0)+(myBatCoach==='power'?.012:0)+(Number(sx.hr)||0);
     const specialText=Array.isArray(sx.activeTexts)?sx.activeTexts.filter(Boolean).join(' · '):'';
@@ -10323,7 +10323,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     const myBatCoach=batTid===state.myTeam?state.staff.batCoach:null,myPitCoach=pitTid===state.myTeam?state.staff.pitCoach:null;
     const mgrAtk=managerAttackBonus(batTid),mgrPit=managerPitchBonus(pitTid);
     const sx=typeof specialContextV281==='function'?specialContextV281(batTid,bat,pitTid,pit,tactic):{k:0,bb:0,hit:0,hr:0,dbl:0,trp:0,activeTexts:[]};
-    const kAdj=(tactic==='power'?.022:tactic==='small'?-.012:0)-(myPitCoach==='breaking'?.008:0)-mgrPit+num332(sx.k,0)+pp.k;
+    const kAdj=(tactic==='power'?.022:tactic==='small'?-.012:0)+(myPitCoach==='breaking'?.008:0)+mgrPit+num332(sx.k,0)+pp.k;
     const hitAdj=(tactic==='power'?.008:tactic==='small'?.018:0)+(myBatCoach==='contact'?.010:0)+mgrAtk+num332(sx.hit,0)+pp.hit;
     const hrAdj=(tactic==='power'?.018:tactic==='small'?-.012:0)+(myBatCoach==='power'?.012:0)+num332(sx.hr,0)+pp.hr;
     const specialText=Array.isArray(sx.activeTexts)?sx.activeTexts.filter(Boolean).join(' · '):'';
@@ -10613,7 +10613,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     const myBatCoach=batTid===state.myTeam?state.staff.batCoach:null,myPitCoach=pitTid===state.myTeam?state.staff.pitCoach:null;
     const sx=typeof specialContextV281==='function'?specialContextV281(batTid,bat,pitTid,pit,tactic):{k:0,bb:0,hit:0,hr:0,dbl:0,trp:0,activeTexts:[]};
     const matchup=bSplit*.012-pSplit*.012;
-    const kAdj=(tactic==='power'?.022:tactic==='small'?-.012:0)-(myPitCoach==='breaking'?.008:0)-managerPitchBonus(pitTid)+(Number(sx.k)||0)+(pp.k||0)+swing*.011+agg*.005+fastUse*.004+zone*.004-matchup;
+    const kAdj=(tactic==='power'?.022:tactic==='small'?-.012:0)+(myPitCoach==='breaking'?.008:0)+managerPitchBonus(pitTid)+(Number(sx.k)||0)+(pp.k||0)+swing*.011+agg*.005+fastUse*.004+zone*.004-matchup;
     const bbAdj=(Number(sx.bb)||0)+(pp.bb||0)-agg*.010-zone*.012-fastUse*.002+matchup*.25;
     const hitAdj=(tactic==='power'?.008:tactic==='small'?.018:0)+(myBatCoach==='contact'?.010:0)+managerAttackBonus(batTid)+(Number(sx.hit)||0)+(pp.hit||0)-swing*.004+matchup;
     const hrAdj=(tactic==='power'?.018:tactic==='small'?-.012:0)+(myBatCoach==='power'?.012:0)+(Number(sx.hr)||0)+(pp.hr||0)+swing*.015+air*.010-matchup*-.15;
@@ -29266,11 +29266,11 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     /* v1.4.22 · 타일 정리 — 구단 현황·시설은 구단 경영 안으로, 설정은 맨 아래 작은 버튼, AI 구단은 내용이 있을 때만 */
     main.appendChild(tile('💰', '구단 경영', eco() ? '돈·모기업·스폰서·감독·시설' : '감독·구단주·시설', "openOpsPageV14('openClubBizV14')"));
     /* v1.7.12 · 선수단을 1군 · 2군 두 칸으로(사용자) */
-    if(typeof window.openSquadV1712 === 'function'){ main.appendChild(tile('👥', '1군', '주전·후보·훈련', "openSquadV1712('first')")); main.appendChild(tile('🌱', '2군', '육성·대기·훈련', "openSquadV1712('second')")); }
+    if(typeof window.openSquadV1712 === 'function'){ main.appendChild(tile('👥', '1군', '주전·후보·코치', "openSquadV1712('first')")); main.appendChild(tile('🌱', '2군', '육성·대기·훈련', "openSquadV1712('second')")); }
     else main.appendChild(tile('👥', '선수단', '1군·2군·훈련', "openMarketSectionV108('squad')"));
     /* 오프시즌엔 FA·외국인·레전드 시장이 이 화면에 열린다 */
-    if(offseason()) main.appendChild(tile('📝', 'FA·계약', 'FA·레전드·연봉·코치', "openMarketSectionV108('front')"));
-    else main.appendChild(tile('📝', '계약·코치', '연봉 협상·방출·코치진', "openMarketSectionV108('front')"));
+    if(offseason()) main.appendChild(tile('📝', 'FA·계약', 'FA·레전드·연봉·방출', "openMarketSectionV108('front')"));
+    else main.appendChild(tile('📝', '계약', '연봉 협상·방출', "openMarketSectionV108('front')"));
     /* v1.7.12 · 트레이드 + 스카우트 → 스카우트/트레이드 한 칸(외국인 스카우트 · 신인 드래프트 · 트레이드) */
     if(typeof window.openScoutTradeHubV1712 === 'function') main.appendChild(tile('🔭', '스카우트/트레이드/신인', '외국인·신인 드래프트·트레이드', "openOpsPageV14('openScoutTradeHubV1712')"));
     else { main.appendChild(tile('↔️', '트레이드', '선수 영입·맞교환', "openOpsPageV14('openTradeSheet')"));
@@ -35485,6 +35485,210 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.19 END -->
+
+<!-- v1.7.20 · 성장 다시 짜기(실제 OVR 에 반영) · 어린 1군 선수 체력 부족 · 코치를 1군·2군 창으로 -->
+<script id="growth-v1720">
+/* 5 성장(사용자 2026-10-06). 측정: 유망주가 1군·2군 어디서든 1년에 OVR 0.3~0.5, 늙어도 거의 안 떨어짐.
+   원인: OVR·화면·AI 판단은 p.skills(세부 능력치)로 계산되는데 성장 대부분(기본 성장·코치·2군 자동 훈련)이 옛 배열 p[4..8] 만 올렸다(경기엔 18% 만 반영).
+   → 오프시즌 성장(applyGrowthWithTraining)은 예전 겹들을 그대로 돌리되(나이 증가 등) 능력치 변화는 되돌리고, 아래 규칙으로 skills 를 올리고 내린 뒤 옛 배열도 같은 만큼 움직인다.
+   규칙(사용자 확정 순서): 성장기 1년(풀시즌) = 1군 주전(직접 뛰기) +2.4 > 2군 +1.7(잠재력의 90%까지, 낮은 등급 95%) > 1군 벤치 +0.6 — 뛴 비율만큼, 24~26세 ×0.55
+     성장형(숨은 값): 보통 50% · 빨리 큼 20% · 늦게 터짐 15% · 안 큼 15%
+     나이: 28~30 −1~0 · 31~33 −1.2~2.2 · 34~36 −2.3~3.3 · 37+ −3~4 (늦게 터지는 선수는 2년 늦게) — 리그 평균이 안 오르게 맞춘 값
+   체력 부족(사용자 "1군에서 뛰면 더 빨리 크지만 체력 부족"): 23세 이하가 1군 경기에 나간 날 피로 +2(타자) · 던진 아웃 × 0.4(투수)
+   코치: FA·계약에서 1군·2군 창(선수단 화면) 맨 위로. 오프시즌 코치 보너스(우리 선수 25% 확률 +1)도 skills 에.
+   표본 기록: state.season.devV1720[팀|종류|이름] = {f:1군 날, s:2군 날, pa:타석}. ?nov1720 으로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1720')>=0) return;
+  var V = window.APP_VERSION;
+  var G = window.GROWTH_V1720 = {start:2.4, farm:1.7, bench:0.6,   /* 3.5/2.5/1.0 → 리그 평균 해마다 +0.7, 3.0/2.1/0.8 → +0.5(같은 선수 오프시즌 +0.57) → 2.4/1.7/0.6 + 나이 하락 키움 */
+    farmCap:.90, farmCapLow:.95, lowGrade:75, youngAge:23, fatBat:2, fatPitPerOut:.4,
+    types:[['보통', 50], ['빨리 큼', 20], ['늦게 터짐', 15], ['안 큼', 15]]};
+  function hashS(s){ var h = 2166136261; s = String(s); for(var i = 0; i < s.length; i++){ h = (h ^ s.charCodeAt(i)) >>> 0; h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+  function ovr(tid, kind, p){ try{ return kind === 'bat' ? batOvr(p, tid) : pitOvr(p, tid); }catch(_){ return 60; } }
+  function metaOf(p){ try{ var m = p.find(function(v){ return v && typeof v === 'object' && !Array.isArray(v) && v._schema === 'playerMetaV326'; }); return m || null; }catch(_){ return null; } }
+  function gtype(p){
+    var m = metaOf(p); if(m && m.growthTypeV1720) return m.growthTypeV1720;
+    var r = hashS((p[1] || p[0]) + '|gt1720') % 100, acc = 0, t = '보통';
+    for(var i = 0; i < G.types.length; i++){ acc += G.types[i][1]; if(r < acc){ t = G.types[i][0]; break; } }
+    if(m) m.growthTypeV1720 = t; return t;
+  }
+  window.growthTypeV1720 = gtype;
+  function typeMult(t, a){
+    if(t === '빨리 큼') return a <= 22 ? 1.5 : a <= 24 ? 1.3 : a <= 26 ? .5 : 0;
+    if(t === '늦게 터짐') return a <= 23 ? .5 : a <= 25 ? .8 : a <= 28 ? 1.5 : 0;
+    if(t === '안 큼') return a <= 26 ? .3 : 0;
+    return a <= 23 ? 1 : a <= 26 ? .55 : 0;
+  }
+  function rnd(a, b){ return a + Math.random() * (b - a); }
+  function aging(t, age){
+    var A = age - (t === '늦게 터짐' ? 2 : 0);
+    if(A <= 27) return 0;
+    if(A <= 30) return rnd(-1, 0);
+    if(A <= 33) return -rnd(1.2, 2.2);
+    if(A <= 36) return -rnd(2.3, 3.3);
+    return -rnd(3, 4);
+  }
+  var BAT_SK = ['contact', 'power', 'eye', 'patience', 'running', 'defense', 'arm'], PIT_SK = ['fastball', 'breaking', 'control', 'stamina', 'defense'];
+  var PHYS = {running:1, arm:1, stamina:1, velocity:1};
+  /* skills 를 한 칸씩 움직여 OVR 을 target 쪽으로. 옛 배열도 같은 만큼 */
+  function moveTo(tid, kind, p, steps){
+    if(!steps) return 0;
+    var sk = p.skills && typeof p.skills === 'object' ? p.skills : null, dir = steps > 0 ? 1 : -1, o0 = ovr(tid, kind, p), target = o0 + steps, d = {}, g = 0;
+    var keys = sk ? (kind === 'bat' ? BAT_SK : PIT_SK).filter(function(k){ return Number.isFinite(+sk[k]); }) : [];
+    while((dir > 0 ? ovr(tid, kind, p) < target : ovr(tid, kind, p) > target) && g++ < 60){
+      if(sk && keys.length){
+        var pool = keys;
+        if(dir < 0 && Math.random() < .5){ var ph = keys.filter(function(k){ return PHYS[k]; }); if(ph.length) pool = ph; }
+        var k = pool[Math.floor(Math.random() * pool.length)];
+        var nv = Math.max(30, Math.min(99, (+sk[k] || 60) + dir)); if(nv === +sk[k]) continue;
+        sk[k] = nv; d[k] = (d[k] || 0) + dir;
+        if(kind === 'pit' && sk.velocity != null && Math.random() < (dir > 0 ? .15 : .3)){ sk.velocity = Math.max(130, Math.min(162, (+sk.velocity || 145) + dir)); d.velocity = (d.velocity || 0) + dir; }
+      }else{
+        var idx = kind === 'bat' ? 4 + Math.floor(Math.random() * 5) : 5 + Math.floor(Math.random() * 3);
+        p[idx] = Math.max(30, Math.min(99, (+p[idx] || 60) + dir));
+      }
+    }
+    if(sk){   /* 옛 배열도 같은 만큼(경기 계산 18% 몫) */
+      var add = function(i, v){ if(!v) return; var max = (kind === 'pit' && i === 4) ? 158 : 99, min = (kind === 'pit' && i === 4) ? 128 : 30; p[i] = Math.max(min, Math.min(max, (+p[i] || 60) + Math.round(v))); };
+      if(kind === 'bat'){ add(4, d.contact); add(5, d.power); add(6, d.running); add(7, ((d.defense || 0) + (d.arm || 0)) / 2); add(8, ((d.eye || 0) + (d.patience || 0)) / 2); }
+      else { add(4, d.velocity); add(5, d.control); add(6, ((d.breaking || 0) + (d.fastball || 0)) / 2); add(7, d.stamina); }
+    }
+    return ovr(tid, kind, p) - o0;
+  }
+  function roundP(x){ var n = Math.floor(Math.abs(x)), f = Math.abs(x) - n; return (x < 0 ? -1 : 1) * (n + (Math.random() < f ? 1 : 0)); }
+
+  /* ── 시즌 중 표본: 1군/2군 날 · 타석 · 어린 1군 선수 피로 ── */
+  function dev(){ var s = state.season; if(!s) return null; if(!s.devV1720) s.devV1720 = {}; return s.devV1720; }
+  function lvl(tid, kind, p){ try{ var L = state.squadLevel && state.squadLevel[tid]; return L && L[squadKey(kind, p)] === 'second' ? 's' : 'f'; }catch(_){ return 'f'; } }
+  function afterGame(){
+    var D = dev(), st = state.season && state.season.stats; if(!D || !st) return;
+    Object.keys(state.players || {}).forEach(function(tid){
+      var t = state.players[tid], S = st[tid] || {};
+      ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(p, i){
+        if(!p) return;
+        var key = tid + '|' + kind + '|' + p[0], r = D[key] || (D[key] = {f:0, s:0, pa:0, out:0}), lv = lvl(tid, kind, p);
+        r[lv]++;
+        var now = 0; try{ var x = kind === 'bat' ? (S.bat || {})[i] : (S.pit || {})[p[0]]; now = x ? (kind === 'bat' ? (+x.ab || 0) + (+x.bb || 0) : (+x.out || 0)) : 0; }catch(_){ }
+        var prev = kind === 'bat' ? r.pa : r.out, inc = now - prev;
+        if(kind === 'bat') r.pa = Math.max(r.pa, now); else r.out = Math.max(r.out, now);
+        if(inc > 0 && lv === 'f'){
+          var age = +(t.age && t.age[kind] && t.age[kind][i]) || 30;
+          if(age <= G.youngAge){ try{ var h = playerHealth(tid, kind, p); if(h && !(h.injury > 0)) h.fatigue = Math.min(100, (+h.fatigue || 0) + (kind === 'bat' ? G.fatBat : Math.round(inc * G.fatPitPerOut))); }catch(_){ } }
+        }
+      }); });
+    });
+  }
+  var basePlay = window.playMyGame;
+  if(typeof basePlay === 'function'){
+    var play = function(){
+      var d0 = state.season && state.season.day, r = basePlay.apply(this, arguments);
+      try{ if(state.mode === 'sim' && state.season && !state.season.post && state.season.day !== d0) afterGame(); }catch(e){ console.error(V + ' 성장 표본:', e); }
+      return r;
+    };
+    for(var k0 in basePlay) if(Object.prototype.hasOwnProperty.call(basePlay, k0)) play[k0] = basePlay[k0];
+    window.playMyGame = play; try{ playMyGame = play; }catch(_){ }
+  }
+
+  /* ── 오프시즌 성장 ── */
+  function growOne(x, D, coach){
+    var tid = x.tid, kind = x.kind, p = x.p, age = x.age, t = gtype(p);
+    var o0 = ovr(tid, kind, p), P = o0;
+    try{ P = +window.playerGrowthProfileV335(p, kind === 'bat').potentialOvr || o0; }catch(_){ }
+    var r = D[tid + '|' + kind + '|' + p[0]] || {f:0, s:0, pa:0, out:0}, days = Math.max(1, r.f + r.s);
+    var f1 = r.f / days, fs = r.s / days;
+    var u = kind === 'bat' ? Math.min(1, r.pa / 500) : Math.min(1, (r.out / 3) / (p[2] === '선발' ? 140 : 55));
+    u = Math.min(u, f1);
+    var bench = Math.max(0, f1 - u), m = typeMult(t, age), g = 0;
+    if(m > 0 && P > o0){
+      var noise = rnd(.7, 1.3);
+      /* 잠재력 90%(낮은 등급 95%) 위는 1군에서 실제로 뛴 몫만 — 벤치·2군 몫은 거기까지(안 그러면 상한 근처에서 벤치가 2군보다 많이 컸다) */
+      var gPlay = G.start * u * m * noise, gSit = (G.bench * bench + G.farm * fs) * m * noise;
+      var cap = P * (P < G.lowGrade ? G.farmCapLow : G.farmCap);
+      gSit = Math.max(0, Math.min(gSit, cap - o0));
+      g = Math.min(gPlay + gSit, P - o0);
+    }
+    var total = g + aging(t, age);
+    var moved = moveTo(tid, kind, p, roundP(total));
+    if(coach && Math.random() < .25){   /* 우리 팀 코치 — 해당 능력 +1(skills · 옛 배열) */
+      var sk = p.skills, key = kind === 'bat' ? ({contact:'contact', power:'power', eye:'eye'})[coach.bat] || 'contact' : ({control:'control', breaking:'breaking', stamina:'stamina'})[coach.pit] || 'control';
+      if(sk && Number.isFinite(+sk[key]) && ovr(tid, kind, p) < P + 2){ sk[key] = Math.min(99, +sk[key] + 1);
+        var idx = kind === 'bat' ? {contact:4, power:5, eye:8}[key] : {control:5, breaking:6, stamina:7}[key]; if(idx) p[idx] = Math.min(99, (+p[idx] || 60) + 1); }
+    }
+    return {name:p[0], age:age, type:t, d:ovr(tid, kind, p) - o0, f1:f1, u:u, fs:fs};
+  }
+  window.growOneV1720 = growOne;   /* 시험용(같은 선수로 조건별 성장 비교) */
+  var baseGrow = window.applyGrowthWithTraining;
+  if(typeof baseGrow === 'function'){
+    var grow = function(){
+      if(!state || state.mode !== 'sim' || !state.players) return baseGrow.apply(this, arguments);
+      var snap = [];
+      Object.keys(state.players).forEach(function(tid){ var t = state.players[tid]; ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(p, i){
+        if(!p) return; snap.push({tid:tid, kind:kind, p:p, age:+(t.age && t.age[kind] && t.age[kind][i]) || 28, arr:p.slice(4, 9), sk:p.skills && typeof p.skills === 'object' ? Object.assign({}, p.skills) : null});
+      }); }); });
+      var n0 = (state.news || []).length;
+      var r = baseGrow.apply(this, arguments);
+      try{
+        /* 예전 성장 되돌리기(나이 증가 등 다른 처리는 그대로) */
+        snap.forEach(function(x){ for(var i = 0; i < x.arr.length; i++) x.p[4 + i] = x.arr[i]; if(x.sk && x.p.skills) Object.keys(x.sk).forEach(function(k){ x.p.skills[k] = x.sk[k]; }); });
+        var added = Math.max(0, (state.news || []).length - n0);
+        if(added) state.news.splice(0, added, ...state.news.slice(0, added).filter(function(n){ return !/성장·노화 보고/.test(String(n.title)); }));
+        var D = (state.season && state.season.devV1720) || {}, my = state.myTeam, coach = state.staff ? {bat:state.staff.batCoach, pit:state.staff.pitCoach} : null, reports = [];
+        snap.forEach(function(x){ var g = growOne(x, D, x.tid === my ? coach : null); if(x.tid === my && g.d) reports.push(g); });
+        reports.sort(function(a, b){ return Math.abs(b.d) - Math.abs(a.d); });
+        state.lastGrowthReportV335 = {year:state.year, players:reports.slice(0, 30).map(function(g){ return {name:g.name, age:g.age, stage:g.type, games:Math.round(g.f1 * 144), changes:['OVR ' + (g.d > 0 ? '+' : '') + g.d]}; })};
+        if(reports.length) pushClubNews('시즌 성장·노화 보고', reports.slice(0, 8).map(function(g){ return g.name + ' OVR ' + (g.d > 0 ? '+' : '') + g.d; }).join(' · '));
+      }catch(e){ console.error(V + ' 성장:', e); }
+      return r;
+    };
+    for(var k1 in baseGrow) if(Object.prototype.hasOwnProperty.call(baseGrow, k1)) grow[k1] = baseGrow[k1];
+    window.applyGrowthWithTraining = grow; try{ applyGrowthWithTraining = grow; }catch(_){ }
+  }
+  /* 2군 자동 훈련(옛 배열 +1, 새 시즌 때) — 2군 성장은 위 규칙에 들어 있어 끔 */
+  if(typeof window.applySecondTeamDevelopment === 'function'){ window.applySecondTeamDevelopment = function(){}; try{ applySecondTeamDevelopment = window.applySecondTeamDevelopment; }catch(_){ } }
+
+  /* ── 코치를 1군·2군 창(선수단 화면) 맨 위로 ── */
+  var COACH_NOTE = '<div class="hint" style="margin:4px 0 8px">코치 효과(우리 팀) — 경기: 정교 안타 +1.0%p · 장타 홈런 +1.2%p · 선구 볼넷 +1.0%p · 제구 상대 볼넷 −1.0%p · 변화구 삼진 +0.8%p · 체력 불펜 교체 늦춤.<br>성장: 오프시즌마다 1·2군 선수 25% 확률로 그 능력 +1.</div>';
+  function moveCoach(){
+    var lg = document.querySelector('#frontBody .front-legacy-v999'); if(!lg) return;
+    var sq = lg.querySelector('.front-pane[data-fpane="squad"]'); if(!sq) return;
+    if(sq.querySelector('.coach-v1720')){
+      /* 이미 옮겼으면 새로 그려진 쪽 코치 칸만 지운다 */
+    }
+    var notice = [].find.call(lg.querySelectorAll('.notice'), function(n){ return /감독·코치진/.test(n.textContent) && !n.closest('.coach-v1720'); });
+    if(!notice) return;
+    var grp = [notice], n = notice.nextElementSibling, seenPit = false;
+    while(n){
+      var tx = n.textContent || '';
+      if(n.matches('h2.sec') && !/코치|감독 성향/.test(tx)) break;
+      if(n.matches('.notice') && !/코치/.test(tx)) break;
+      grp.push(n);
+      if(n.matches('h2.sec') && /투수 코치/.test(tx)) seenPit = true;
+      else if(seenPit && n.matches('.hint')) break;
+      n = n.nextElementSibling;
+    }
+    var old = sq.querySelector('.coach-v1720'); if(old) old.remove();
+    var box = document.createElement('div'); box.className = 'coach-v1720'; box.style.marginBottom = '12px';
+    grp.forEach(function(el){ box.appendChild(el); });
+    box.insertAdjacentHTML('beforeend', COACH_NOTE);
+    sq.insertBefore(box, sq.firstChild);
+  }
+  window.moveCoachV1720 = moveCoach;
+  var baseRF = window.renderFront;
+  if(typeof baseRF === 'function'){
+    var rf = function(){ var r = baseRF.apply(this, arguments); try{ moveCoach(); }catch(e){ console.error(V + ' 코치 칸:', e); } return r; };
+    for(var k2 in baseRF) if(Object.prototype.hasOwnProperty.call(baseRF, k2)) rf[k2] = baseRF[k2];
+    window.renderFront = rf; try{ renderFront = rf; }catch(_){ }
+  }
+  var baseSec = window.openMarketSectionV108;
+  if(typeof baseSec === 'function'){
+    var sec = function(){ var r = baseSec.apply(this, arguments); try{ moveCoach(); }catch(_){ } return r; };
+    for(var k3 in baseSec) if(Object.prototype.hasOwnProperty.call(baseSec, k3)) sec[k3] = baseSec[k3];
+    window.openMarketSectionV108 = sec; try{ openMarketSectionV108 = sec; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.20 END -->
 
 </body>
 </html>
