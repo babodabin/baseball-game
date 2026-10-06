@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.20';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.21';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -35509,7 +35509,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   function metaOf(p){ try{ var m = p.find(function(v){ return v && typeof v === 'object' && !Array.isArray(v) && v._schema === 'playerMetaV326'; }); return m || null; }catch(_){ return null; } }
   function gtype(p){
     var m = metaOf(p); if(m && m.growthTypeV1720) return m.growthTypeV1720;
-    var r = hashS((p[1] || p[0]) + '|gt1720') % 100, acc = 0, t = '보통';
+    var nm = (p[1] && p[1] !== '신인') ? p[1] : p[0];   /* v1.7.21 · 신인은 실명 칸이 모두 '신인'이라 모두 같은 유형(빨리 큼)이 됐다 */
+    var r = hashS(nm + '|gt1720') % 100, acc = 0, t = '보통';
     for(var i = 0; i < G.types.length; i++){ acc += G.types[i][1]; if(r < acc){ t = G.types[i][0]; break; } }
     if(m) m.growthTypeV1720 = t; return t;
   }
@@ -35689,6 +35690,109 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.20 END -->
+
+<!-- v1.7.21 · 드래프트 잠재력 등급 -->
+<script id="draft-grade-v1721">
+/* 사용자 2026-10-06 "드래프트 잠재력 등급 제대로 맞추기"(⑧). 예전: 별 → 잠재 OVR {★1 72 · ★2 76 · ★3 82 · ★4 88 · ★5 93}, 후보 44명 중 ★4+ 가 27% →
+   지명된 신인 잠재력 평균 85.5(18~21세 86.9) — 거의 모두 천재급이라 v1.7.20 성장으로 3~4년차부터 리그 평균이 다시 올랐다.
+   → 후보 명단을 만들 때(그해 한 번) 등급을 다시 매긴다. 한 해 후보 44명:
+       영웅 ★5 잠재 88~92 — 25% 확률로 1명(3~5년에 1명) · 천재 ★4 81~87 — 1~2명 · 주전감 ★3 76~80 — 5명 · 1군감 ★2 70~75 — 13명 · 백업 ★1 63~69 — 나머지
+     처음 능력치는 평범하게: 출신 기본(고졸 49 · 대졸 57 · 사회인 64) + 등급(영웅 +9 · 천재 +6 · 주전감 +3 · 1군감 0 · 백업 −4) ± 3 으로 능력치 평균을 옮김
+     지명(addDraftPlayer) 때 잠재 OVR 을 등급 값으로. 이미 뽑힌 선수는 그대로. ?nov1721 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1721')>=0) return;
+  var V = window.APP_VERSION;
+  var GR = window.DRAFT_GRADE_V1721 = {
+    hero:{star:5, lo:88, hi:92, talent:9, label:'영웅'}, genius:{star:4, lo:81, hi:87, talent:6, label:'천재'},
+    starter:{star:3, lo:76, hi:80, talent:3, label:'주전감'}, regular:{star:2, lo:70, hi:75, talent:0, label:'1군감'}, backup:{star:1, lo:63, hi:69, talent:-4, label:'백업'},
+    heroChance:.25, geniusN:[1, 2], starterN:5, regularN:13
+  };
+  var ORIGIN_BASE = {high:49, college:57, social:64};
+  function hashS(s){ var h = 2166136261; s = String(s); for(var i = 0; i < s.length; i++){ h = (h ^ s.charCodeAt(i)) >>> 0; h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+  function rng(seed){ var x = seed >>> 0; return function(){ x += 0x6D2B79F5; var t = x; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function gradeClass(root){
+    if(!root || !Array.isArray(root.candidates) || !root.candidates.length) return false;
+    if(root.gradesV1721 === root.year) return false;
+    var list = root.candidates.slice(), r = rng(hashS('grade1721|' + root.year + '|' + (state.myTeam || '')));
+    for(var i = list.length - 1; i > 0; i--){ var j = Math.floor(r() * (i + 1)); var tmp = list[i]; list[i] = list[j]; list[j] = tmp; }
+    var plan = [];
+    if(r() < GR.heroChance) plan.push('hero');
+    var g = GR.geniusN[0] + (r() < .5 ? 0 : GR.geniusN[1] - GR.geniusN[0]); for(var a = 0; a < g; a++) plan.push('genius');
+    for(var b = 0; b < GR.starterN; b++) plan.push('starter');
+    for(var c = 0; c < GR.regularN; c++) plan.push('regular');
+    list.forEach(function(d, idx){
+      var key = plan[idx] || 'backup', G = GR[key];
+      var origin = (d.draftMetaV3413 && d.draftMetaV3413.origin) || (d.age <= 19 ? 'high' : d.age >= 24 ? 'social' : 'college');
+      var pot = G.lo + Math.floor(r() * (G.hi - G.lo + 1));
+      d.gradeV1721 = key; d.potV1721 = pot;
+      d.truePot = '★'.repeat(G.star); d.pot = d.truePot;
+      /* 처음 능력치 — 출신 기본 + 등급 */
+      try{
+        var idxs = d.kind === 'bat' ? [4, 5, 6, 7, 8] : (d.data[2] === '선발' ? [5, 6, 7] : [5, 6]);
+        var cur = idxs.reduce(function(s, k){ return s + (+d.data[k] || 50); }, 0) / idxs.length;
+        var target = (ORIGIN_BASE[origin] || 57) + G.talent + Math.round((r() - .5) * 6);
+        var shift = Math.round(target - cur);
+        idxs.forEach(function(k){ d.data[k] = Math.max(38, Math.min(86, (+d.data[k] || 50) + shift)); });
+        if(d.data.skills) delete d.data.skills;
+      }catch(_){ }
+    });
+    root.gradesV1721 = root.year;
+    return true;
+  }
+  function gradeNow(){ try{ if(state && state.mode === 'sim') return gradeClass(state.draftScoutingV3413); }catch(e){ console.error(V + ' 드래프트 등급:', e); } return false; }
+  window.draftGradeV1721 = gradeNow;
+  ['newSeason', 'buildOffseasonMarket'].forEach(function(fn){
+    var base = window[fn]; if(typeof base !== 'function') return;
+    var w = function(){ var r = base.apply(this, arguments); if(gradeNow()) try{ save(); }catch(_){ } return r; };
+    for(var k in base) if(Object.prototype.hasOwnProperty.call(base, k)) w[k] = base[k];
+    window[fn] = w; try{ (0, eval)(fn + '=window.' + fn); }catch(_){ }
+  });
+  /* 지명 — 잠재 OVR 을 등급 값으로 */
+  var baseAdd = window.addDraftPlayer;
+  if(typeof baseAdd === 'function'){
+    var add = function(teamId, d){
+      var r = baseAdd.apply(this, arguments);
+      try{
+        if(d && Number.isFinite(+d.potV1721)){
+          var t = state.players[teamId], arr = d.kind === 'bat' ? t.bat : t.pit, p = arr[arr.length - 1];
+          var m = Array.isArray(p) && p.find(function(v){ return v && typeof v === 'object' && !Array.isArray(v) && v._schema === 'playerMetaV326'; });
+          if(m){ m.growthProfileV335 = m.growthProfileV335 || {}; m.growthProfileV335.potentialOvr = +d.potV1721; m.draftGradeV1721 = d.gradeV1721; }
+          try{ var old = ensurePlayerProfileV314(p, d.kind === 'bat'); if(old) old.potentialOvr = +d.potV1721; }catch(_){ }
+        }
+      }catch(e){ console.error(V + ' 드래프트 잠재력:', e); }
+      return r;
+    };
+    for(var k2 in baseAdd) if(Object.prototype.hasOwnProperty.call(baseAdd, k2)) add[k2] = baseAdd[k2];
+    window.addDraftPlayer = add; try{ addDraftPlayer = add; }catch(_){ }
+  }
+  /* AI 지명 — 예전 점수는 지금 OVR 을 크게 봐서 처음 능력이 평범한 천재가 26순위까지 밀렸다(측정).
+     등급이 매겨진 후보는 잠재력 + 지금 OVR ×0.25 + 팀·후보마다 고정된 ±2 로 고른다(영웅·천재가 주로 1~3순위) */
+  var baseAi = window.aiDraftChoiceIndex;
+  if(typeof baseAi === 'function'){
+    window.aiDraftChoiceIndex = function(teamId, m){
+      try{
+        var list = (m && m.draft) || [];
+        if(list.some(function(d){ return d && !d.taken && Number.isFinite(+d.potV1721); })){
+          var best = -1, bs = -1e9;
+          list.forEach(function(d, i){
+            if(!d || d.taken) return;
+            var o = 60; try{ o = d.kind === 'bat' ? batOvr(d.data, teamId) : pitOvr(d.data, teamId); }catch(_){ }
+            var pot = Number.isFinite(+d.potV1721) ? +d.potV1721 : o;
+            var s = pot + o * .25 + (hashS(teamId + '|' + (d.data && d.data[0]) + '|' + state.year) % 401) / 100 - 2;
+            if(s > bs){ bs = s; best = i; }
+          });
+          if(best >= 0) return best;
+        }
+      }catch(e){ console.error(V + ' AI 지명:', e); }
+      return baseAi.apply(this, arguments);
+    };
+    try{ aiDraftChoiceIndex = window.aiDraftChoiceIndex; }catch(_){ }
+  }
+  try{ if(gradeNow()) save(); }catch(_){ }
+})();
+</script>
+<!-- v1.7.21 END -->
 
 </body>
 </html>
