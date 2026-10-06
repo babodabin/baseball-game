@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.25';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.26';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -36336,130 +36336,119 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 </script>
 <!-- v1.7.23 END -->
 
-<!-- v1.7.24 · 스카우트 하나로 · 성향 · 우리 보드 24명 · 각성 -->
+<!-- v1.7.24 · 스카우트 하나로 · 각성 (v1.7.26 · 신인 스카우트 규칙 없앰) -->
 <script id="scout-v1724">
-/* 사용자 2026-10-06 ⑧ 5단계(2026-10-04 설계 + 오늘 결정):
-   ① 스카우트 등급(지역 · 전국 · 수석) 삭제 — 정보 정확도는 모두 같게, "더 너그럽게": 예전 수석 값(관찰 18회 · 보고서 오차 0 · 숨은 특성 발견 70%)을 연봉 2억에.
-      state.scout 는 늘 'elite'(옛 코드가 등급 키로 관찰 횟수·오차·간격을 계산) · 이름은 "스카우트"
-   ② 스카우트 성향 — 투수형 7:3 · 타자형 3:7 · 균형형 5:5. 리그 후보 44명(공통 풀, AI 는 전부 봄) 중 우리 보드에 보이는 건 24명,
-      그 안의 투수:타자 비율만 성향대로(누가 보이는지는 무작위 — 능력과 무관). 그해 처음 볼 때 정해지고, 성향을 바꾸면 다음 해 후보부터.
-      안 보이는 후보는 시즌 보드 · 드래프트 창에서 빠지고 우리는 지명 못 함(무료 계약 명단의 "미지명 신인"은 공개 — 그땐 누구나 앎)
-   ③ 각성 — 오프시즌 끝(성장 전) 리그 25세 이하 국내 선수 중 해마다 1~2명, 잠재력 +4~8(최대 95). 소식 "💥 각성"
-   ④ 시즌 중 스카우트 창: 성향 고르기 + 📋 시즌 드래프트 보드(예전엔 숨은 화면에만 있어 들어갈 길이 없었다)
-   ⑤ 드래프트 창 후보 줄에 상태 줄(45명 구성)의 모자란 자리면 "필요" 표시
+/* 사용자 2026-10-06 ⑧ 5단계.
+   v1.7.24 처음: 스카우트 등급 삭제 + 성향(투수형·균형형·타자형)으로 우리 보드에 리그 후보 44명 중 24명만 보이게 했다.
+   v1.7.26 사용자: "꼴찌 팀 매력이 사라진다 · 20명이면 그냥 못 찾는 것 · 차이도 안 난다(해마다 3명만 뽑음) → 스카우트는 외국인으로만 남기자"
+   → 신인 드래프트의 스카우트 규칙은 없앤다:
+     ① 모든 구단이 후보 44명을 처음부터 정확히 본다(관찰 4/4 · 숨은 특성 공개 — 옛 보고서 계산이 관찰 수로 오차를 줄이므로 관찰을 채움). 성향 · 보이는 수 제한 · 관찰 버튼 없음
+     ② 스카우트(연봉 2억)는 외국인 스카우트 — 해마다 새 외국인 일반 5 · 아시아 3명을 찾아옴(v1.7.25). 스카우트 창은 그 안내 + 외국인 스카우트 · 신인 후보 보기
+     ③ 각성 — 오프시즌 끝(성장 전) 리그 25세 이하 국내 1~2명 잠재력 +4~8(최대 95) · 소식 "💥 각성"
+     ④ 드래프트 창 후보 줄에 45명 구성의 모자란 자리면 "필요"
    조정값 window.SCOUT_V1724 · ?nov1724 로 끔 */
 (function(){
   'use strict';
   if(String(location.search||'').indexOf('nov1724')>=0) return;
   var V = window.APP_VERSION;
-  var S = window.SCOUT_V1724 = {show:24, types:{pitch:{label:'투수형', pit:.7}, bat:{label:'타자형', pit:.3}, bal:{label:'균형형', pit:.5}}, salary:2,
-    awaken:{maxAge:25, n:[1, 2], up:[4, 8], cap:95}, need:{sp:8, rp:14, bat:23, c:3}};
+  var S = window.SCOUT_V1724 = {salary:2, awaken:{maxAge:25, n:[1, 2], up:[4, 8], cap:95}, need:{sp:8, rp:14, bat:23, c:3}};
   function sim(){ return !!(state && state.mode === 'sim'); }
   function my(){ return state.myTeam; }
-  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]; }); }
-  function hashS(s){ var h = 2166136261; s = String(s); for(var i = 0; i < s.length; i++){ h = (h ^ s.charCodeAt(i)) >>> 0; h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
-  function rng(seed){ var x = seed >>> 0; return function(){ x += 0x6D2B79F5; var t = x; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function off(){ try{ return !!isOffseason(); }catch(_){ return false; } }
 
-  /* ── ① 등급 하나로 ── */
+  /* ── 스카우트 하나(외국인 스카우트) ── */
   try{
-    SCOUT_INFO.elite.name = '스카우트';
-    SCOUT_INFO.elite.desc = '연봉 ' + S.salary + '억 · 시즌 관찰 18회 · 보고서 오차 없음 · 관찰마다 숨은 특성 발견 70%';
+    SCOUT_INFO.elite.name = '외국인 스카우트';
+    SCOUT_INFO.elite.desc = '연봉 ' + S.salary + '억 · 해마다 새 외국인 일반 5 · 아시아쿼터 3명을 찾아옵니다';
     delete SCOUT_INFO.basic; delete SCOUT_INFO.standard;
     if(window.CLUB_ECONOMY_V14 && window.CLUB_ECONOMY_V14.scout) window.CLUB_ECONOMY_V14.scout.salary.elite = S.salary;
-  }catch(e){ console.error(V + ' 스카우트 등급:', e); }
+  }catch(e){ console.error(V + ' 스카우트:', e); }
   var es = function(){ if(state) state.scout = 'elite'; };
   window.ensureScout = es; try{ ensureScout = es; }catch(_){ }
   try{ if(state) state.scout = 'elite'; }catch(_){ }
-  function type(){ var t = state.scoutTypeV1724; return S.types[t] ? t : 'bal'; }
+  window.scoutSeenV1724 = function(){ return true; };   /* 예전 이름(시험 도구 등) — 이제 모두 보임 */
 
-  /* ── ② 우리 보드 24명 ── */
+  /* ── ① 신인 후보 정보 전원 공개 ── */
   function classPool(){
     var m = state.season && state.season.market;
     if(m && m.kboDraft && Array.isArray(m.draft) && m.draft.length) return m.draft;
     var r = state.draftScoutingV3413; return r && Number(r.year) === Number(state.year) && Array.isArray(r.candidates) ? r.candidates : [];
   }
-  function visBox(){
-    var v = state.scoutVisV1724;
-    if(v && v.year === state.year && v.names && Object.keys(v.names).length) return v;
-    var pool = classPool(); if(!pool.length) return null;
-    var t = type(), r = rng(hashS('vis1724|' + state.year + '|' + my() + '|' + t));
-    var pit = [], bat = [];
-    pool.forEach(function(d){ if(d && d.data) (d.kind === 'pit' ? pit : bat).push(d.data[0]); });
-    var shuffle = function(a){ for(var i = a.length - 1; i > 0; i--){ var j = Math.floor(r() * (i + 1)); var x = a[i]; a[i] = a[j]; a[j] = x; } return a; };
-    shuffle(pit); shuffle(bat);
-    var nP = Math.round(S.show * S.types[t].pit), nB = S.show - nP;
-    if(pit.length < nP){ nB += nP - pit.length; nP = pit.length; } if(bat.length < nB){ nP = Math.min(pit.length, nP + nB - bat.length); nB = bat.length; }
-    var names = {}; pit.slice(0, nP).concat(bat.slice(0, nB)).forEach(function(n){ names[n] = 1; });
-    v = state.scoutVisV1724 = {year:state.year, type:t, names:names, pit:nP, bat:nB};
-    try{ save(); }catch(_){ }
-    return v;
+  function openAll(){
+    if(!sim() || !state.season) return false;
+    var changed = false;
+    classPool().forEach(function(d){
+      var m = d && d.draftMetaV3413; if(!m) return;
+      if((+m.observations || 0) < 4){ m.observations = 4; changed = true; }
+      if(!m.revealV14){ m.revealV14 = {gem:!!m.outlierGrowth, injury:!!m.outlierInjury, clean:!m.outlierGrowth && !m.outlierInjury}; changed = true; }
+    });
+    if(changed){ try{ var r = state.draftScoutingV3413; if(r && Array.isArray(r.candidates)) r.used = 0; save(); }catch(_){ } }
+    return changed;
   }
-  function seen(d){ if(!sim() || !d || !d.data) return true; var v = visBox(); return !v || !!v.names[d.data[0]]; }
-  window.scoutSeenV1724 = seen;
-  function draftAt(i){ var m = state.season && state.season.market; return m && Array.isArray(m.draft) ? m.draft[i] : null; }
-  function poolAt(i){ return classPool()[i]; }
-  function nope(){ try{ showAlert('우리 스카우트가 보고하지 않은 선수입니다.\n\n스카우트 성향(' + S.types[type()].label + ')으로 리그 후보 중 ' + S.show + '명만 알고 있습니다.'); }catch(_){ } }
-  var baseOpenD = window.openDraftSheet;
-  if(typeof baseOpenD === 'function') window.openDraftSheet = function(i){ if(!seen(draftAt(i))){ nope(); return; } return baseOpenD.apply(this, arguments); };
-  var basePick = window.draftPick;
-  if(typeof basePick === 'function'){ var pk = function(i){ if(!seen(draftAt(i))){ nope(); return; } return basePick.apply(this, arguments); }; for(var k0 in basePick) if(Object.prototype.hasOwnProperty.call(basePick, k0)) pk[k0] = basePick[k0]; window.draftPick = pk; try{ draftPick = pk; }catch(_){ } }
-  var baseObs = window.observeDraftCandidateV3413;
-  if(typeof baseObs === 'function') window.observeDraftCandidateV3413 = function(i){ if(!seen(poolAt(i))){ nope(); return; } return baseObs.apply(this, arguments); };
-  var baseCand = window.openScoutCandidateV3413;
-  if(typeof baseCand === 'function') window.openScoutCandidateV3413 = function(i){ if(!seen(poolAt(i))){ nope(); return; } return baseCand.apply(this, arguments); };
+  window.draftOpenAllV1726 = openAll;
+  /* 화면을 그리기 전에 공개 — 후보가 처음 만들어지는 화면이면 공개 뒤 한 번 더 그림 */
+  ['openSeasonScoutBoardV3413', 'openScoutCandidateV3413', 'openDraftSheet', 'openDraftWindowV1717'].forEach(function(fn){
+    var base = window[fn]; if(typeof base !== 'function') return;
+    window[fn] = function(){ openAll(); var r = base.apply(this, arguments); if(openAll()) r = base.apply(this, arguments); return r; };
+  });
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    var ro = function(){ openAll(); return baseOff.apply(this, arguments); };
+    window.renderOffseason = ro; try{ renderOffseason = ro; }catch(_){ }
+  }
+  window.observeDraftCandidateV3413 = function(i){ try{ window.openScoutCandidateV3413(i); }catch(_){ } };   /* 관찰 없음 — 상세만 */
 
-  /* 화면에서 안 보이는 후보 줄을 뺀다 + 모자란 자리 "필요" */
+  /* 화면 손질: 관찰 글·버튼 빼기 + 모자란 자리 "필요" */
   function needs(){
     var t = getTeam(my()), c = {sp:0, rp:0, bat:t.bat.length, c:0};
     t.pit.forEach(function(p){ c[p[2] === '선발' ? 'sp' : 'rp']++; }); t.bat.forEach(function(p){ if(p[2] === 'C') c.c++; });
     return {SP:c.sp < S.need.sp, RP:c.rp < S.need.rp, C:c.c < S.need.c, BAT:c.bat < S.need.bat};
   }
+  function draftAt(i){ var m = state.season && state.season.market; return m && Array.isArray(m.draft) ? m.draft[i] : null; }
   function tidy(root){
     if(!sim() || !root) return;
     var nd = null;
-    [].forEach.call(root.querySelectorAll('[onclick^="openDraftSheet("],[onclick^="observeDraftCandidateV3413("],[onclick^="openScoutCandidateV3413("]'), function(el){
-      var oc = el.getAttribute('onclick'), mm = /\((\d+)\)/.exec(oc); if(!mm) return;
-      var d = /^openDraftSheet/.test(oc) ? draftAt(+mm[1]) : poolAt(+mm[1]);
-      if(!seen(d)){ el.style.display = 'none'; el.setAttribute('data-hid-v1724', '1'); return; }
-      if(/^openDraftSheet/.test(oc) && !el.querySelector('.need-v1724')){
-        nd = nd || needs();
-        var pos = d && d.data ? (d.kind === 'pit' ? (d.data[2] === '선발' ? 'SP' : 'RP') : d.data[2]) : '';
-        var hit = d && (d.kind === 'pit' ? nd[pos] : (pos === 'C' && nd.C) || nd.BAT);
-        var nmEl = el.querySelector('.sr-name');
-        if(hit && nmEl) nmEl.insertAdjacentHTML('beforeend', ' <span class="need-v1724" style="font-size:10px;color:#4CC38A;border:1px solid #4CC38A;border-radius:6px;padding:0 4px">필요</span>');
-      }
+    [].forEach.call(root.querySelectorAll('[onclick^="observeDraftCandidateV3413("]'), function(b){ if(b.tagName === 'BUTTON') b.style.display = 'none'; });
+    [].forEach.call(root.querySelectorAll('.sr-meta'), function(el){ if(/ · 관찰 \d\/4/.test(el.textContent)) el.textContent = el.textContent.replace(/ · 관찰 \d\/4/, ''); });
+    [].forEach.call(root.querySelectorAll('.scout-report-v3413 > b'), function(el){ if(/관찰 \d\/4회/.test(el.textContent)) el.textContent = '후보 정보 · 모든 구단 공개'; });
+    [].forEach.call(root.querySelectorAll('.meta'), function(el){ if(/관찰 \d+\/\d+회/.test(el.textContent)) el.textContent = el.textContent.replace(/ · 관찰 \d+\/\d+회/, ' · 모든 구단이 같은 정보'); });
+    [].forEach.call(root.querySelectorAll('.notice'), function(el){ if(/최대 4번 관찰/.test(el.textContent)) el.style.display = 'none'; });
+    [].forEach.call(root.querySelectorAll('[onclick^="openDraftSheet("]'), function(el){
+      if(el.querySelector('.need-v1724')) return;
+      var mm = /\((\d+)\)/.exec(el.getAttribute('onclick')), d = mm ? draftAt(+mm[1]) : null; if(!d || !d.data) return;
+      nd = nd || needs();
+      var pos = d.kind === 'pit' ? (d.data[2] === '선발' ? 'SP' : 'RP') : d.data[2];
+      var hit = d.kind === 'pit' ? nd[pos] : (pos === 'C' && nd.C) || nd.BAT;
+      var nmEl = el.querySelector('.sr-name');
+      if(hit && nmEl) nmEl.insertAdjacentHTML('beforeend', ' <span class="need-v1724" style="font-size:10px;color:#4CC38A;border:1px solid #4CC38A;border-radius:6px;padding:0 4px">필요</span>');
     });
-    var head = [].filter.call(root.querySelectorAll('h2.sec'), function(x){ return /신인 드래프트/.test(x.textContent); })[0];
-    if(!head){ var pn = root.querySelector('.pname'); if(pn && /시즌 드래프트 보드/.test(pn.textContent)) head = root.querySelector('.meta'); }   /* 시즌 보드 */
-    var v = head && !root.querySelector('.vis-note-v1724') ? visBox() : null;
-    if(v) head.insertAdjacentHTML('afterend', '<div class="hint vis-note-v1724">🔭 스카우트 ' + S.types[v.type].label + ' — 리그 후보 ' + classPool().length + '명 중 ' + S.show + '명(투수 ' + v.pit + ' · 타자 ' + v.bat + ')을 알고 있습니다. 나머지는 다른 구단만 압니다.</div>');
   }
   try{
     var sh0 = document.getElementById('sheet'), busy = false;
-    if(sh0 && window.MutationObserver) new MutationObserver(function(){ if(busy) return; busy = true; try{ tidy(sh0); }catch(e){ console.error(V + ' 스카우트 보드:', e); } setTimeout(function(){ busy = false; }, 0); }).observe(sh0, {childList:true, subtree:true});
+    if(sh0 && window.MutationObserver) new MutationObserver(function(){ if(busy) return; busy = true; try{ tidy(sh0); }catch(e){ console.error(V + ' 드래프트 화면:', e); } setTimeout(function(){ busy = false; }, 0); }).observe(sh0, {childList:true, subtree:true});
   }catch(_){ }
 
-  /* ── ④ 스카우트 창 ── */
+  /* ── ② 스카우트 창 = 외국인 스카우트 안내 ── */
   window.openScoutV102 = function(){
     var sh = document.getElementById('sheet'), mk = document.getElementById('mask'); if(!sh) return;
     es();
-    var t = type(), v = sim() ? visBox() : null, fc = 1; try{ fc = facilityLevel('scouting'); }catch(_){ }
-    var off = false; try{ off = !!isOffseason(); }catch(_){ }
-    var btn = function(k){ var x = S.types[k], on = k === t; return '<button class="scout-card-v102 ' + (on ? 'on' : '') + '" onclick="chooseScoutTypeV1724(\'' + k + '\')"><span class="top"><span class="name">' + x.label + '</span><span class="pick">' + (on ? '선택 중' : '선택') + '</span></span><span class="desc">보이는 후보 ' + S.show + '명 중 투수 ' + Math.round(S.show * x.pit) + ' · 타자 ' + (S.show - Math.round(S.show * x.pit)) + '</span></button>'; };
     var h = '<div class="top"><div class="pname">🔭 스카우트</div><button class="close" onclick="closeSheet()">✕</button></div>';
     try{ if(window.rosterStatusHtmlV1712) h += window.rosterStatusHtmlV1712(); }catch(_){ }
-    h += '<div class="meta">' + esc(SCOUT_INFO.elite.desc) + (fc > 1 ? ' · 시설 Lv.' + fc + '(관찰 +' + (fc - 1) * 2 + ')' : '') + '</div>';
-    h += '<div class="hint" style="margin:6px 0">성향은 리그 후보 중 우리가 알게 되는 선수의 투수·타자 비율만 바꿉니다(능력은 무작위). '
-      + (v && v.type !== t ? '<b>올해 보드는 ' + S.types[v.type].label + '으로 이미 정해져 — 바꾼 성향은 다음 해 후보부터.</b>' : '') + '</div>';
-    h += btn('pitch') + btn('bal') + btn('bat');
-    if(sim()) h += '<button type="button" class="btn" style="margin-top:12px" onclick="' + (off ? 'openDraftWindowV1717()' : 'openSeasonScoutBoardV3413()') + '">' + (off ? '🎓 신인 드래프트 창' : '📋 시즌 드래프트 보드 · 후보 관찰') + '</button>';
+    h += '<div class="meta">🌍 외국인 스카우트 · ' + SCOUT_INFO.elite.desc + '</div>';
+    h += '<div class="hint" style="margin:6px 0">신인 드래프트 후보는 모든 구단이 같은 정보(능력 · 잠재력 · 성장형 · 부상 위험)를 처음부터 봅니다 — 꼴찌 팀부터 지명.</div>';
+    if(sim()){
+      h += '<button type="button" class="btn" style="margin-top:8px" onclick="' + (off() ? 'openForeignScoutV1713()' : 'closeSheet();openMarketSectionV108(\'front\')') + '">🌍 외국인 스카우트</button>';
+      h += '<button type="button" class="btn ghost" style="margin-top:8px" onclick="' + (off() ? 'openDraftWindowV1717()' : 'openSeasonScoutBoardV3413()') + '">🎓 ' + (off() ? '신인 드래프트 창' : '올해 신인 후보 보기') + '</button>';
+    }
     sh.innerHTML = h;
     if(mk) mk.classList.add('on');
   };
-  window.chooseScoutTypeV1724 = function(k){ if(!S.types[k]) return; state.scoutTypeV1724 = k; try{ save(); }catch(_){ } window.openScoutV102(); };
   window.chooseScoutV102 = function(){ window.openScoutV102(); };
-  window.setScout = function(){ es(); try{ save(); }catch(_){ } };   /* 예전 등급 버튼 — 이제 등급 없음 */
+  window.setScout = function(){ es(); try{ save(); }catch(_){ } };
   try{ setScout = window.setScout; }catch(_){ }
+  /* 허브 "신인 드래프트"(시즌 중) → 바로 후보 보기 */
+  var baseGo = window.scoutHubGoV1712;
+  if(typeof baseGo === 'function') window.scoutHubGoV1712 = function(w){ if(w === 'draft' && sim() && !off()){ try{ openSeasonScoutBoardV3413(); }catch(e){ console.error(V + ' 신인 후보:', e); } return; } return baseGo.apply(this, arguments); };
 
   /* ── ③ 각성 ── */
   function awaken(){
@@ -36479,8 +36468,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       var up = A.up[0] + Math.floor(Math.random() * (A.up[1] - A.up[0] + 1)), from = Math.round(+x.pr.potentialOvr), to = Math.min(A.cap, from + up);
       x.pr.potentialOvr = to; x.pr.awakenV1724 = (x.pr.awakenV1724 || []).concat([{year:state.year, from:from, to:to}]);
       var nm = x.p[0]; try{ nm = playerDisplayName(x.p); }catch(_){ }
-      var line = getTeam(x.tid).name + ' ' + nm + '(' + x.age + '세) 잠재력 ' + from + ' → ' + to;
-      lines.push(line);
+      lines.push(getTeam(x.tid).name + ' ' + nm + '(' + x.age + '세) 잠재력 ' + from + ' → ' + to);
       if(x.tid === my()){ try{ pushClubNews('💥 각성', nm + ' — 잠재력 ' + from + ' → ' + to + '(최대치 돌파)'); }catch(_){ } }
     }
     try{ if(!Array.isArray(state.aiNewsV13)) state.aiNewsV13 = []; state.aiNewsV13.unshift({when:state.year + '년차 오프시즌', title:'💥 각성', lines:lines}); state.aiNewsV13 = state.aiNewsV13.slice(0, 40); }catch(_){ }
