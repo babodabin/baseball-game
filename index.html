@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.31';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.32';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -12207,7 +12207,9 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
       const s=st[defSide],legacySta=Number.isFinite(Number(s.pit&&s.pit[7]))?Number(s.pit[7]):70,detailSta=Number.isFinite(Number(s.pit?.skills?.stamina))?Number(s.pit.skills.stamina):legacySta,sta=detailSta*.82+legacySta*.18,role=s.pit[2];
       /* v1.7.0 · 불펜 역할이 켜져 있으면 마무리도 불펜처럼 한도(예전엔 99 — 동점·연장에 나오면 끝까지 던지고 며칠 못 나왔다) */const baseMaxPa=role==='선발'?Math.round(22+(sta-70)*.35):(role==='불펜'||(role==='마무리'&&typeof window.penPickV170==='function'))?Math.round(5+(sta-45)*.12):99,maxPa=Math.max(3,Math.round(baseMaxPa*bullpenFactorFor(s.team.id)));
       const defKey=defSide,atkKey=defSide==='home'?'away':'home',lead=sc[defKey]-sc[atkKey],highLev=curInn>=7&&Math.abs(lead)<=3;
-      const fatigueTrigger=s.pitPa>=maxPa||(highLev&&s.pitPa>=Math.max(3,maxPa-2));
+      /* v1.7.32 · 세이브 상황(9회+ 1~3점 앞섬)이면 그 이닝 첫 타자부터 마무리 — 예전엔 지쳤을 때만 바꿔서 마무리가 9회 중간에 나와 세이브 35~46에 22~37이닝이었다 */
+      const saveStartV1732=typeof window.penPickV170==='function'&&curInn>=9&&lead>=1&&lead<=3&&role!=='마무리'&&s.innV1732!==curInn+curHalf;s.innV1732=curInn+curHalf;
+      const fatigueTrigger=s.pitPa>=maxPa||(highLev&&s.pitPa>=Math.max(3,maxPa-2))||saveStartV1732;
       if(fatigueTrigger){let next=null;const bpOrder=bullpenOrderOfV310(s.team.id),closer=bpOrder.length?s.team.pit[bpOrder[0]]:null,relievers=bpOrder.slice(1).map(i=>s.team.pit[i]).filter(Boolean);
         const available=relievers.filter(p=>p!==s.pit&&!isInjured(s.team.id,'pit',p));
         /* v1.7.0 · 불펜 역할(pen-role-v170)이 상황에 맞는 투수를 고른다. undefined 면 아래 예전 방식 */
@@ -17569,14 +17571,14 @@ function renderCustomCreator(){
  if(s===0){body=`<label class="ct-label">연고지</label><select class="ct-select" id="ctRegion" onchange="customCreator.region=this.value">${CUSTOM_REGIONS.map(x=>`<option ${x===customCreator.region?'selected':''}>${x}</option>`).join('')}</select><label class="ct-label">팀 닉네임</label><input class="ct-input" id="ctNickname" maxlength="14" placeholder="예: 웨일즈, 볼츠, 팬서스" value="${escCt(customCreator.nickname)}" oninput="customCreator.nickname=this.value"><div class="hint" style="margin-top:8px">지역과 닉네임을 합쳐 정식 팀명이 됩니다. 닉네임을 비우면 선택한 로고 이름을 사용합니다.</div>`}
  if(s===1){body=`<label class="ct-label">로고 선택</label><div class="ct-grid">${CUSTOM_LOGOS.map(([i,n])=>`<button class="ct-choice ${customCreator.logo===i?'on':''}" onclick="customCreator.logo='${i}';customCreator.logoName='${n}';renderCustomCreator()"><div class="ct-logo">${i}</div><small>${n}</small></button>`).join('')}</div>`}
  if(s===2){body=`<label class="ct-label">메인 컬러</label><div class="ct-colors">${CUSTOM_COLORS.map(c=>`<button aria-label="${c}" class="ct-color ${customCreator.primary===c?'on':''}" style="background:${c}" onclick="customCreator.primary='${c}';renderCustomCreator()"></button>`).join('')}</div><label class="ct-label">보조 컬러</label><div class="ct-colors">${CUSTOM_COLORS.map(c=>`<button aria-label="${c}" class="ct-color ${customCreator.secondary===c?'on':''}" style="background:${c}" onclick="customCreator.secondary='${c}';renderCustomCreator()"></button>`).join('')}</div>`}
- if(s===3){body=`<div class="ct-preview" style="background:linear-gradient(135deg,${customCreator.primary},${customCreator.secondary});color:#fff"><div class="ct-preview-logo">${customCreator.logo}</div><div><div class="ct-preview-name">${escCt(customFullName())}</div><div class="ct-preview-sub">KBO 신생 구단 · 창단 준비</div><div style="margin-top:10px;font-size:12px"><b>연고지</b> ${escCt(customCreator.region)} · <b>구단 색상</b> 메인/보조 적용</div></div></div><div class="notice" style="margin-top:12px"><b>이번 단계에서 저장되는 항목</b><br>팀명, 연고지, 로고, 메인·보조 색상. 다음 단계에서 선수단 생성과 KBO 11팀 일정에 연결합니다.</div>`}
+ if(s===3){body=`<div class="ct-preview" style="background:linear-gradient(135deg,${customCreator.primary},${customCreator.secondary});color:#fff"><div class="ct-preview-logo">${customCreator.logo}</div><div><div class="ct-preview-name">${escCt(customFullName())}</div><div class="ct-preview-sub">KBO 신생 구단 · 창단 준비</div><div style="margin-top:10px;font-size:12px"><b>연고지</b> ${escCt(customCreator.region)} · <b>구단 색상</b> 메인/보조 적용</div></div></div><div class="notice" style="margin-top:12px"><b>이번 단계에서 저장되는 항목</b><br>팀명, 연고지, 로고, 메인·보조 색상. 다음 단계에서 선수단을 꾸리고, 기존 구단 하나를 대신해 10팀 리그에 들어갑니다.</div>`}
  sheet.innerHTML=`<div class="top"><div class="pname">신생 구단 만들기</div><button class="close" onclick="closeSheet()">✕</button></div><div class="ct-step">${[0,1,2,3].map(i=>`<span class="${i<=s?'on':''}"></span>`).join('')}</div>${body}<div class="ct-actions">${s?`<button class="btn ghost" onclick="customCreator.step--;renderCustomCreator()">← 이전</button>`:'<button class="btn ghost" onclick="closeSheet()">취소</button>'}<button class="btn" onclick="customCreatorNext()">${s===3?'창단안 저장':'다음 →'}</button></div>`;
 }
 function customCreatorNext(){
  if(customCreator.step===0){customCreator.nickname=(document.getElementById('ctNickname')?.value||'').trim();customCreator.region=document.getElementById('ctRegion')?.value||customCreator.region;if(customCreator.nickname.length>14)return showAlert('팀 닉네임은 14자 이하로 입력하세요.');}
  if(customCreator.step<3){customCreator.step++;renderCustomCreator();return}
  const draft={region:customCreator.region,nickname:(customCreator.nickname||customCreator.logoName).trim(),logo:customCreator.logo,logoName:customCreator.logoName,primary:customCreator.primary,secondary:customCreator.secondary,fullName:customFullName(),createdAt:localDateStamp()};
- saveCustomDraft(draft);closeSheet();showAlert(`${draft.fullName} 창단안이 저장되었습니다. 다음 작업에서 선수단과 11팀 리그에 연결합니다.`)
+ saveCustomDraft(draft);closeSheet();showAlert(`${draft.fullName} 창단안이 저장되었습니다. 확장 드래프트로 선수단을 꾸린 뒤, 기존 구단 하나를 대신해 10팀 리그에 들어갑니다.`)
 }
 function renderCustomDraftCard(){
  const box=document.getElementById('customTeamDraftCard');if(!box)return;const d=currentCustomDraft();
@@ -17928,8 +17930,12 @@ window.addEventListener('DOMContentLoaded',()=>setTimeout(renderCustomDraftCard,
     D.sources.forEach(tid=>{
       const pool=poolOf(tid).filter(x=>!D.picked.some(y=>y.key===tid+'|'+x.kind+'|'+x.i));
       pool.sort((a,b)=>b.ovr-a.ovr);
+      /* v1.7.32 · 모자란 자리부터 — 예전엔 OVR 순이라 투수 8명이 모두 불펜(선발 0)이었다. 목표: 선발 6 · 불펜 7 · 포수 2 · 내야 5 · 외야 4 */
+      const WANT={SP:6,RP:7,C:2,IF:5,OF:4},cat=x=>x.kind==='pit'?(x.p&&x.p[2]==='선발'?'SP':'RP'):(x.p&&x.p[2]==='C'?'C':['1B','2B','3B','SS'].includes(x.p&&x.p[2])?'IF':['LF','CF','RF'].includes(x.p&&x.p[2])?'OF':'DH'),have={};
+      D.picked.forEach(y=>{try{const p=state.players[y.teamId][y.kind][y.idx];if(p){const c=cat({kind:y.kind,p});have[c]=(have[c]||0)+1;}}catch(_){}});
       while(countFrom(tid)<PER_TEAM&&pool.length){
-        const x=pool.shift();
+        pool.sort((a,b)=>(b.ovr+((have[cat(b)]||0)<(WANT[cat(b)]||0)?8:0))-(a.ovr+((have[cat(a)]||0)<(WANT[cat(a)]||0)?8:0)));
+        const x=pool.shift();have[cat(x)]=(have[cat(x)]||0)+1;
         D.picked.push({key:tid+'|'+x.kind+'|'+x.i,teamId:tid,kind:x.kind,idx:x.i,name:playerDisplayName(x.p),ovr:x.ovr});
       }
     });
@@ -33990,7 +33996,9 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     try{
       var gone = before.filter(function(x){ var t = state.players[x.tid]; return t && (t[x.kind] || []).indexOf(x.p) < 0; });
       s.retiredDataV1713 = gone.map(function(x){ var o = 60; try{ o = x.kind === 'bat' ? batOvr(x.p, x.tid) : pitOvr(x.p, x.tid); }catch(_){ } return {kind:x.kind, data:x.p.slice(), age:x.age, ovr:o, from:x.tid}; })
-        .filter(function(x){ try{ return !(window.isForeignV1613 && window.isForeignV1613(x.data, x.kind)); }catch(_){ return true; } });
+        .filter(function(x){ try{ return !(window.isForeignV1613 && window.isForeignV1613(x.data, x.kind)); }catch(_){ return true; } })
+        /* v1.7.32 · 은퇴 발표 명단에 이름이 있는 선수만 — 같은 때 다른 이유로 빠진 선수(32세 하주석 등)가 섞였다 */
+        .filter(function(x){ var n = nm(x.data), n0 = x.data[0]; return list.some(function(l){ l = String(l); return l.indexOf(n) >= 0 || l.indexOf(n0) >= 0; }); });
     }catch(_){ }
     s.retiredV176 = list.slice();
     if(list.length) setTimeout(function(){ try{ showAlert('은퇴 발표\n\n' + list.slice(0, 12).join('\n') + (list.length > 12 ? '\n외 ' + (list.length - 12) + '명' : '')); }catch(_){ } }, 150);
@@ -34813,6 +34821,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
         var a = h.indexOf('<h2 class="sec" style="margin-top:16px">🌍 외국인 선수 시장');
         if(a >= 0){
           var b = h.indexOf('<h2', a + 10); if(b < 0) b = h.length;
+          /* v1.7.32 · 다음 칸 제목 앞에 붙은 여는 상자(AI FA 경쟁 <div class=ai-fa-v3413>)까지 지우면 닫는 태그가 남아 FA·계약 칸이 일찍 닫혔다 */
+          var tail = h.slice(a, b).match(/(<div\b[^>]*>\s*)+$/); if(tail) b -= tail[0].length;
           h = h.slice(0, a) + '<div class="hint" style="margin-top:14px">🌍 외국인 재계약·새 외국인은 <b>운영 → 스카우트/트레이드 → 외국인 스카우트</b>에서 합니다. <button type="button" onclick="openOpsPageV14(\'openForeignScoutV1713\')" style="margin-left:6px;min-height:32px;padding:0 10px;border-radius:9px;border:1px solid rgba(244,196,94,.5);background:transparent;color:#F4C45E;font-family:inherit;font-weight:800">열기</button></div>' + h.slice(b);
         }
       }catch(e){ console.error(V + ' FA 화면 외국인:', e); }
