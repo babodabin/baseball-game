@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.36';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.37';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -39195,6 +39195,157 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.36 dibs END -->
+<!-- v1.7.37 · 실황 업데이트(실제 KBO 자료) -->
+<script id="live-update-v1737">
+/* 사용자(2026-10-07): 실황은 실제 선수를 게임이 못 건드리고 실제 자료로만 바뀜 — 이적 · 은퇴(명단에서 빠짐) · 새 선수. 우리 팀도 실제대로 + 바뀐 점 알림.
+   업데이트는 사용자가 말할 때마다 + 실제 시즌이 끝날 때마다: tools/kbo_collect.js → tools/live_update.js → 아래 LIVE_UPDATE_V1737 를 바꿈(ver 날짜).
+   실황 저장을 열 때 state.liveUpdV1737 !== ver 이면 한 번 반영: 빠짐 → 이적 → 새 선수(2군으로, 외국인은 떠난 외국인 자리만큼만 · flag).
+   기록: state.liveUpdLogV1737[ver] = {mine:[...], all:[...]}. ?nov1737 으로 끔 */
+window.LIVE_UPDATE_V1737 = {"ver":"2026-10-07","season":2026,"moves":[["HH","LG","pit","장시환","장시환"],["DS","KIA","pit","홍건희","홍건희"],["KT","LT","pit","박시영","박시영"],["SSG","KT","pit","오원석","오원석"]],"gone":[["LG","pit","박명근","박명근"],["SSG","pit","버하건","드류 앤더슨"],["SSG","pit","고효준","고효준"],["LT","pit","쿄야먀","교야마 마사야 (아시아쿼터)"],["KW","pit","주승욱","주승우"],["KW","pit","문성현","문성현"]],"add":[["KT","bat",25,"50066",["강현우","강현우","C","우",61,52,45,72,59]],["KW","bat",25,"50167",["이주형","이주형","CF","좌",62,56,74,72,58]],["SSG","pit",25,"50650",["최용준","최용준","불펜","우",145,62,63,53]],["NC","pit",25,"50992",["김태경","김태경","불펜","우",145,62,74,53]],["KT","bat",24,"51013",["유준규","유준규","CF","좌",62,52,74,72,59]],["LG","pit",24,"51111",["송승기","송승기","선발","좌",147,72,65,69]],["SS","pit",25,"51460",["이재희","이재희","불펜","우",145,62,74,53]],["KW","pit",28,"51761",["배동현","배동현","선발","우",147,73,70,74]],["SSG","pit",24,"51867",["김건우","김건우","선발","좌",147,62,74,69]],["SSG","pit",28,"51895",["장지훈","장지훈","불펜","우",145,70,63,53]],["KIA","bat",23,"52628",["한승연","한승연","LF","우",61,54,62,66,59]],["HH","pit",23,"52731",["박준영(96)","박준영(96)","불펜","우",145,62,75,53]],["DS","pit",22,"53259",["최준호","최준호","불펜","우",145,64,74,53]],["KW","pit",21,"54362",["전준표","전준표","선발","우",147,61,71,74]],["LT","pit",21,"54503",["박준우","박준우","불펜","우",145,68,64,53]],["NC","pit",21,"54906",["원종해","원종해","불펜","우",145,65,64,53]],["NC","pit",21,"54910",["김준원","김준원","불펜","우",145,62,74,53]],["LG","pit",20,"55121",["박시원","박시원","불펜","우",145,73,75,53]],["KW","pit",20,"55313",["정현우","정현우","불펜","우",145,65,61,53]],["KW","bat",20,"55392",["어준서","어준서","2B","우",62,50,66,70,58]],["SS","pit",23,"55420",["김백산","김백산","불펜","우",145,62,68,53]],["LT","bat",22,"55502",["김동현","김동현","LF","좌",61,55,62,66,59]],["LT","pit",20,"55503",["이영재","이영재","불펜","좌",145,63,74,53]],["HH","pit",20,"55764",["권민규","권민규","불펜","우",145,65,67,53]],["NC","pit",20,"55995",["김태훈","김태훈","불펜","우",145,70,72,53]],["KW","pit",20,"56345",["정다훈","정다훈","불펜","우",145,61,61,53]],["LT","pit",28,"56503",["이이무라","이이무라","불펜","우",145,74,72,53,"asia"]],["HH","pit",24,"56709",["박준영(68)","박준영(68)","선발","우",147,64,68,70]],["HH","pit",19,"56769",["강건우","강건우","불펜","좌",145,62,65,53]],["SSG","pit",29,"56801",["아빌라","아빌라","선발","우",147,74,76,76,"foreign"]],["SSG","pit",20,"56840",["김민준(40)","김민준(40)","선발","우",147,69,74,72]],["SS","pit",35,"60146",["이승현(26)","이승현(26)","불펜","우",145,62,74,53]],["NC","pit",36,"60263",["이재학","이재학","선발","우",147,64,65,70]],["KIA","bat",37,"61353",["고종욱","고종욱","LF","좌",61,52,62,66,59]],["HH","pit",32,"62951",["이형범","이형범","불펜","우",145,65,63,53]],["KW","bat",31,"64340",["임지열","임지열","2B","우",61,54,66,70,60]],["LG","pit",28,"67119",["고우석","고우석","불펜","우",145,70,74,53]],["LT","pit",27,"68036",["최이준","최이준","불펜","우",145,62,66,53]],["SSG","bat",27,"68868",["최준우","최준우","2B","우",62,54,66,70,60]],["LG","pit",26,"69168",["이상영","이상영","불펜","우",145,62,64,53]],["HH","pit",27,"69213",["윤산흠","윤산흠","불펜","우",145,62,70,53]],["SSG","pit",26,"69839",["백승건","백승건","불펜","우",145,62,65,53]]]};
+(function(){
+  'use strict';
+  if(String(location.search || '').indexOf('nov1737') >= 0) return;
+  var V = window.APP_VERSION, U = window.LIVE_UPDATE_V1737;
+  function tn(tid){ try{ return getTeam(tid).name; }catch(_){ return tid; } }
+  function clean(n){ return String(n || '').replace(/\s*\(.*\)$/, ''); }
+  function find(t, kind, alias, real){ var a = t[kind] || []; for(var i = 0; i < a.length; i++){ var p = a[i]; if(p && (p[0] === alias || (real && clean(p[1]) === clean(real)))) return i; } return -1; }
+  function reset(tid){ try{ if(state.lineups) state.lineups[tid] = null; if(state.rotOrder) state.rotOrder[tid] = null; if(state.pitchPlan) state.pitchPlan[tid] = null; }catch(_){ } }
+  function level(tid, kind, p, lv){ try{ ensureSquadState(); state.squadLevel[tid][squadKey(kind, p)] = lv; }catch(_){ } }
+  function apply(){
+    try{
+      if(!U || !state || state.mode !== 'live' || !state.players || !state.myTeam) return;
+      if(state.liveUpdV1737 === U.ver) return;
+      var my = state.myTeam, mine = [], all = [];
+      var log = function(tid, txt){ all.push(tn(tid) + ' · ' + txt); if(tid === my) mine.push(txt); };
+      (U.gone || []).forEach(function(g){
+        var t = state.players[g[0]]; if(!t) return; var i = find(t, g[1], g[2], g[3]); if(i < 0) return;
+        var p = t[g[1]].splice(i, 1)[0]; if(t.age && t.age[g[1]]) t.age[g[1]].splice(i, 1);
+        try{ if(state.squadLevel && state.squadLevel[g[0]]) delete state.squadLevel[g[0]][squadKey(g[1], p)]; }catch(_){ }
+        reset(g[0]); log(g[0], '📤 ' + clean(g[3] || g[2]) + ' — 실제 등록 명단에서 빠짐(은퇴 · 군 입대 · 방출 등)');
+      });
+      (U.moves || []).forEach(function(m){
+        var a = state.players[m[0]], b = state.players[m[1]]; if(!a || !b) return; var i = find(a, m[2], m[3], m[4]); if(i < 0) return;
+        var p = a[m[2]].splice(i, 1)[0], age = a.age && a.age[m[2]] ? a.age[m[2]].splice(i, 1)[0] : 28;
+        try{ if(state.squadLevel && state.squadLevel[m[0]]) delete state.squadLevel[m[0]][squadKey(m[2], p)]; }catch(_){ }
+        b[m[2]].push(p); if(b.age && b.age[m[2]]) b.age[m[2]].push(age); level(m[1], m[2], p, 'second');
+        reset(m[0]); reset(m[1]);
+        var txt = '🔁 ' + clean(m[4] || m[3]) + ' — ' + tn(m[0]) + ' → ' + tn(m[1]) + '(실제 이적)';
+        all.push(txt); if(m[0] === my || m[1] === my) mine.push(txt);
+      });
+      (U.add || []).forEach(function(x){
+        var t = state.players[x[0]]; if(!t) return; var p = x[4].slice();
+        if(find(t, x[1], p[0], p[1]) >= 0) return;
+        t[x[1]].push(p); if(!t.age) t.age = {bat:[], pit:[]}; (t.age[x[1]] = t.age[x[1]] || []).push(+x[2] || 25);
+        level(x[0], x[1], p, 'second'); reset(x[0]);
+        log(x[0], '🆕 ' + p[0] + ' (' + p[2] + (p[8] === 'asia' || p[9] === 'asia' ? ' · 아시아쿼터' : p[8] === 'foreign' || p[9] === 'foreign' ? ' · 외국인' : '') + ') — 실제 등록 · 2군으로');
+      });
+      try{ if(typeof window.ensurePlayerSkillsV326 === 'function') window.ensurePlayerSkillsV326(state.players); }catch(_){ }
+      state.liveUpdV1737 = U.ver;
+      if(!state.liveUpdLogV1737) state.liveUpdLogV1737 = {};
+      state.liveUpdLogV1737[U.ver] = {mine:mine, all:all};
+      try{ if(!Array.isArray(state.aiNewsV13)) state.aiNewsV13 = []; if(all.length) state.aiNewsV13.unshift({when:'실황 업데이트 ' + U.ver, title:'📡 실황 업데이트 — 실제 KBO 명단(' + U.ver + ')', lines:all.slice(0, 80)}); }catch(_){ }
+      try{ save(); }catch(_){ }
+      console.info(V + ' 실황 업데이트 ' + U.ver + ' — 리그 ' + all.length + '건 · 우리 팀 ' + mine.length + '건');
+      if(mine.length) setTimeout(function(){ try{ showAlert('📡 실황 업데이트 (' + U.ver + ' 실제 KBO 명단)\n\n우리 팀\n' + mine.join('\n') + '\n\n리그 전체 ' + all.length + '건은 뉴스 → 리그 소식에 있습니다.'); }catch(_){ } }, 600);
+    }catch(e){ console.error(V + ' 실황 업데이트:', e); }
+  }
+  window.liveUpdateApplyV1737 = apply;
+  apply();
+  ['startWithMode', 'switchSlot'].forEach(function(n){
+    var prev = window[n]; if(typeof prev !== 'function') return;
+    window[n] = function(){ var r = prev.apply(this, arguments); try{ apply(); }catch(_){ } return r; };
+    try{ (0, eval)(n + '=window.' + n); }catch(_){ }
+  });
+})();
+</script>
+<!-- v1.7.37 END -->
+<!-- v1.7.37 · 실황 규칙: 실제 선수는 게임이 못 건드림 -->
+<script id="live-rules-v1737">
+/* 사용자(2026-10-07): 실황의 실제 선수(실황 시작 · 실황 업데이트로 들어온 선수)는
+   ① 트레이드 · FA 안 됨 — 우리 · AI 모두(기타 선수만) ② 오프시즌 성장 안 함(시즌 중 훈련 효과는 둠) · 나이 · 은퇴는 원래 실황에서 안 함
+   실제 선수 표 = state.liveRealV1737 {종류|이름:1} — 실황 업데이트를 반영할 때 그때 명단 전부. ?nov1737r 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search || '').indexOf('nov1737r') >= 0) return;
+  var V = window.APP_VERSION;
+  function live(){ try{ return state && state.mode === 'live'; }catch(_){ return false; } }
+  function K(kind, p){ return kind + '|' + (p && p[0]); }
+  function realSet(){ return (state && state.liveRealV1737) || null; }
+  function isReal(kind, p){ var R = realSet(); return !!(R && p && R[K(kind, p)]); }
+  window.liveIsRealV1737 = isReal;
+  /* 실제 선수 표 만들기 — 실황 업데이트를 반영한 뒤 그때 명단 전부 */
+  function mark(force){
+    if(!live() || !state.players) return;
+    if(state.liveRealV1737 && !force && state.liveRealVerV1737 === state.liveUpdV1737) return;
+    var R = state.liveRealV1737 || {};
+    Object.keys(state.players).forEach(function(tid){ ['bat', 'pit'].forEach(function(kind){ (state.players[tid][kind] || []).forEach(function(p){ if(p) R[K(kind, p)] = 1; }); }); });
+    state.liveRealV1737 = R; state.liveRealVerV1737 = state.liveUpdV1737;
+    try{ save(); }catch(_){ }
+  }
+  var baseApply = window.liveUpdateApplyV1737;
+  if(typeof baseApply === 'function'){
+    window.liveUpdateApplyV1737 = function(){ var r = baseApply.apply(this, arguments); try{ mark(false); }catch(_){ } return r; };
+  }
+  try{ mark(false); }catch(_){ }
+  ['startWithMode', 'switchSlot'].forEach(function(n){
+    var prev = window[n]; if(typeof prev !== 'function') return;
+    window[n] = function(){ var r = prev.apply(this, arguments); try{ mark(false); }catch(_){ } return r; };
+    try{ (0, eval)(n + '=window.' + n); }catch(_){ }
+  });
+
+  /* ① 우리 트레이드 — 실제 선수가 끼면 안 됨 */
+  var baseTrade = window.proposeTrade;
+  if(typeof baseTrade === 'function'){
+    var pt = function(){
+      try{
+        if(live()){
+          var me = getTeam(state.myTeam), op = getTeam(tradeOppId), bad = [];
+          (tradeMyPicks || []).forEach(function(x){ var p = (x.kind === 'bat' ? me.bat : me.pit)[x.idx]; if(isReal(x.kind, p)) bad.push(p[0]); });
+          (tradeOppPicks || []).forEach(function(x){ var p = (x.kind === 'bat' ? op.bat : op.pit)[x.idx]; if(isReal(x.kind, p)) bad.push(p[0]); });
+          if(bad.length){ showAlert('📡 실황 모드\n\n실제 KBO 선수는 트레이드할 수 없습니다(실제 이적은 실황 업데이트로 반영).\n기타 선수(육성 · 신인 등)만 트레이드할 수 있습니다.\n\n' + bad.join(', ')); return; }
+        }
+      }catch(_){ }
+      return baseTrade.apply(this, arguments);
+    };
+    window.proposeTrade = pt; try{ proposeTrade = pt; }catch(_){ }
+  }
+  /* ① FA — 실황 오프시즌 FA 명단에서 실제 선수 빼기(원래 팀에 그대로 남음) */
+  var baseBuild = window.buildOffseasonMarket;
+  if(typeof baseBuild === 'function'){
+    window.buildOffseasonMarket = function(){
+      var r = baseBuild.apply(this, arguments);
+      try{
+        if(live() && state.season && state.season.market && Array.isArray(state.season.market.fa)){
+          var m = state.season.market, before = m.fa.length;
+          m.fa = m.fa.filter(function(f){ return !isReal(f.kind, f.data); });
+          if(before !== m.fa.length) console.info(V + ' 실황: FA 명단에서 실제 선수 ' + (before - m.fa.length) + '명 뺌');
+        }
+      }catch(e){ console.error(V + ' 실황 FA:', e); }
+      return r;
+    };
+    try{ buildOffseasonMarket = window.buildOffseasonMarket; }catch(_){ }
+  }
+  /* ② 오프시즌 성장 — 실제 선수는 되돌림 */
+  var baseGrow = window.applyGrowthWithTraining;
+  if(typeof baseGrow === 'function'){
+    window.applyGrowthWithTraining = function(){
+      var keep = [];
+      try{
+        if(live()) Object.keys(state.players || {}).forEach(function(tid){ ['bat', 'pit'].forEach(function(kind){ (state.players[tid][kind] || []).forEach(function(p){
+          if(isReal(kind, p)) keep.push({p:p, a:p.slice(0, 9), s:p.skills ? JSON.parse(JSON.stringify(p.skills)) : null});
+        }); }); });
+      }catch(_){ keep = []; }
+      try{ return baseGrow.apply(this, arguments); }
+      finally{
+        keep.forEach(function(x){ for(var i = 2; i < 9; i++) x.p[i] = x.a[i]; if(x.s) x.p.skills = x.s; });
+        if(keep.length) console.info(V + ' 실황: 실제 선수 ' + keep.length + '명 오프시즌 성장 되돌림');
+      }
+    };
+    try{ applyGrowthWithTraining = window.applyGrowthWithTraining; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.37 live-rules END -->
 
 </body>
 </html>
