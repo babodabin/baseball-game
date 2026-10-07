@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.34';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.35';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -38451,9 +38451,11 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     if(!rows || !rows.length) return '<div class="dim">기록 없음</div>';
     var tot = [0, 0, 0, 0, 0, 0, 0, 0, 0]; rows.forEach(function(r){ for(var k = 0; k < 9; k++) tot[k] += +r[k + 2] || 0; });
     var cell = function(v, hi){ return '<td ' + TD + '>' + (hi && v ? '<b style="color:#F4C45E">' + v + '</b>' : v) + '</td>'; };
-    return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><tr><th ' + TN.replace('text-align:left', 'text-align:left;color:#93A79B') + '>타자</th><th ' + TH + '>타수</th><th ' + TH + '>안타</th><th ' + TH + '>2루타</th><th ' + TH + '>3루타</th><th ' + TH + '>홈런</th><th ' + TH + '>타점</th><th ' + TH + '>득점</th><th ' + TH + '>볼넷</th><th ' + TH + '>삼진</th></tr>'
-      + rows.map(function(r){ return '<tr style="border-top:1px solid rgba(255,255,255,.06)"><td ' + TN + '>' + esc(r[0]) + ' <span class="dim" style="font-size:11px">' + esc(r[1]) + '</span></td>' + cell(r[2]) + cell(r[3], r[3] >= 2) + cell(r[4]) + cell(r[5]) + cell(r[6], true) + cell(r[7], r[7] >= 2) + cell(r[8]) + cell(r[9]) + cell(r[10]) + '</tr>'; }).join('')
-      + '<tr style="border-top:1px solid rgba(255,255,255,.18);font-weight:700"><td ' + TN + '>합계</td>' + tot.map(function(v){ return '<td ' + TD + '>' + v + '</td>'; }).join('') + '</tr></table></div>';
+    var BH = 'style="padding:3px 0;text-align:center;font-weight:700;color:#93A79B;font-size:11px"', BD = 'style="padding:3px 0;text-align:center"';   /* v1.7.35 · 세로 화면에 표가 다 들어가게(삼진 칸이 잘렸다) */
+    cell = function(v, hi){ return '<td ' + BD + '>' + (hi && v ? '<b style="color:#F4C45E">' + v + '</b>' : v) + '</td>'; };
+    return '<table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:12.5px"><colgroup><col style="width:26%">' + '<col>'.repeat(9) + '</colgroup><tr><th style="padding:3px 0;text-align:left;color:#93A79B;font-size:11px">타자</th>' + ['타수', '안타', '2루', '3루', '홈런', '타점', '득점', '볼넷', '삼진'].map(function(x){ return '<th ' + BH + '>' + x + '</th>'; }).join('') + '</tr>'
+      + rows.map(function(r){ return '<tr style="border-top:1px solid rgba(255,255,255,.06)"><td style="padding:3px 0;text-align:left;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(r[0]) + '<br><span class="dim" style="font-size:11px">' + esc(r[1]) + '</span></td>' + cell(r[2]) + cell(r[3], r[3] >= 2) + cell(r[4]) + cell(r[5]) + cell(r[6], true) + cell(r[7], r[7] >= 2) + cell(r[8]) + cell(r[9]) + cell(r[10]) + '</tr>'; }).join('')
+      + '<tr style="border-top:1px solid rgba(255,255,255,.18);font-weight:700"><td style="padding:3px 0">합계</td>' + tot.map(function(v){ return '<td ' + BD + '>' + v + '</td>'; }).join('') + '</tr></table>';
   }
   function pitTable(rows){
     if(!rows || !rows.length) return '<div class="dim">기록 없음</div>';
