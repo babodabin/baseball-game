@@ -37838,6 +37838,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       + '<details style="margin-top:6px"><summary class="dim" style="cursor:pointer">경기별 결과 ' + n + '개</summary>' + fg.map(function(x){ return '<div class="row"><span>' + (x.res === 'W' ? '🟢' : x.res === 'L' ? '🔴' : '⚪') + ' ' + x.day + '경기 vs ' + esc(tn(x.opp)) + '</span><span>' + x.my + ':' + x.op + '</span></div>'; }).join('') + '</details></div>';
     return {html:html, say:say};
   }
+  window.newsSummaryV1730 = summary;   /* v1.7.34 · 합친 뉴스 창(news-merge-v1734)이 10경기 · 한 달 총평에 씀 */
   var baseNews = window.openNewsV1729;
   if(typeof baseNews === 'function'){
     window.openNewsV1729 = function(id, opt){
@@ -38670,6 +38671,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     }).join('') + '</div>';
   }
   function autoOn(){ return !state || state.newsAutoV1729 !== false; }
+  /* 한 달(24경기) 총평이 다 들어가게 경기 뉴스 30개까지 */
+  try{ if(window.NEWS_V1729){ window.NEWS_V1729.games = Math.max(window.NEWS_V1729.games || 0, 30); window.NEWS_V1729.keep = Math.max(window.NEWS_V1729.keep || 0, 60); } }catch(_){ }
   var baseSports = window.openSportsV1733;
   if(typeof baseSports === 'function'){
     window.openSportsV1733 = function(from){
@@ -38677,6 +38680,11 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       try{
         var sh = document.getElementById('sheet'), B = nbox(); if(!sh || !B || !sh.querySelector('.sc-v1733')) return r;
         var g = B.items.find(function(x){ return x.type === 'game' && (from == null || x.id > from); });
+        /* 10경기 · 한 달 진행이면 총평(사용자 #49 — v1.7.33 에서 잘못 뺐던 것) */
+        if(from != null && window.newsSummaryV1730){
+          var fg = B.items.filter(function(x){ return x.type === 'game' && x.id > from; });
+          if(fg.length > 1){ var S = window.newsSummaryV1730(fg), card = sh.querySelector('.sc-v1733'); if(S && S.html && card){ card.insertAdjacentHTML('afterend', S.html); var pn = sh.querySelector('.pname'); if(pn) pn.textContent = '📺 스포츠 뉴스 — ' + (fg.length >= 20 ? '한 달 총평' : fg.length + '경기 총평'); } }
+        }
         var add = '<div class="seg"><div class="sh">STANDINGS · 순위</div>' + standings() + '</div>'
           + '<div class="seg"><div class="sh">NEXT GAME · 다음 경기</div>' + nextGame() + '</div>'
           + '<div class="seg"><div class="sh">LEAGUE · 리그 소식</div>' + league() + '</div>' + recent(g ? g.id : null);
