@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.35';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.36';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -12874,6 +12874,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
       const bids=[];
       TEAMS.forEach(t=>{
         if(t.id===state.myTeam||t.id===fa.from)return;
+        if(window.starCapBlockV1736&&window.starCapBlockV1736(t.id,fa))return;   /* v1.7.36 · 스타 선수 수 제한 */
         const c=clubInfo(m,t.id),cost=asking(fa);
         if(c.budget<cost||c.signed>=2)return;
         const sc=score(t.id,fa);
@@ -13060,7 +13061,7 @@ try{normalizeCloserPositionsV317();repairPitchPlansV316();ensurePlayerProfilesV3
     const maxDeals=phase()==='offseason'?3:(Number(state.season.day)>=g36V16(25)?3:2),used=new Set(),done=[];
     for(const [a,b] of pairs){
       if(done.length>=maxDeals)break;if(used.has(a)||used.has(b))continue;
-      const d=findDeal(a,b);if(!d)continue;
+      const d=findDeal(a,b);if(!d)continue;if(window.starCapTradeOkV1736&&!window.starCapTradeOkV1736(d))continue;   /* v1.7.36 · 스타 선수 수 제한 */
       if(execute(d)){
         used.add(a);used.add(b);
         const rec={year:state.year,day:Number(state.season.day)||0,phase:phase(),aTeam:a,bTeam:b,aName:d.a.p[0],aDisplay:playerDisplayName(d.a.p),aPos:d.a.pos,aOvr:d.a.ovr,bName:d.b.p[0],bDisplay:playerDisplayName(d.b.p),bPos:d.b.pos,bOvr:d.b.ovr,aStyle:style(a),bStyle:style(b)};
@@ -27833,6 +27834,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     var base = faCost(Number(fa.ovr) || 60), list = [];
     (typeof TEAMS !== 'undefined' ? TEAMS : []).forEach(function(t){
       if(t.id === state.myTeam) return;
+      if(window.starCapBlockV1736 && window.starCapBlockV1736(t.id, fa)) return;   /* v1.7.36 · 스타 선수 수 제한 */
       var max = maxBidOf(t.id, fa);
       if(max < base) return;
       list.push({teamId: t.id, max: max, appeal: appealOf(t.id, fa)});
@@ -27985,6 +27987,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       for(var i = 0; i < offers.length; i++){
         var o = offers[i];
         if(o.mine){
+          if(window.starCapBlockV1736 && window.starCapBlockV1736(o.teamId, fa)){ rec.mineFailed = true; rec.capV1736 = true; continue; }   /* v1.7.36 */
           if(signMine(fa, o.amount)){ rec.winner = o.teamId; rec.price = o.amount; break; }
           rec.mineFailed = true; continue;
         }
@@ -38741,6 +38744,144 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.34 news-merge END -->
+<!-- v1.7.36 · 스타 선수 수 제한 · AI 빚 지원 일찍 · 감독 궁합 -->
+<script id="balance-v1736">
+/* 사용자(2026-10-07) — ⑩ 점검: 10시즌에 9팀 모두 지출 > 수입 · 돈 남은 팀만 FA → 한 팀 독주(10시즌 6우승).
+   ① "돈은 복잡하니 선수 숫자로" → 스타 선수 수 제한: 국내 OVR 80+ 가 이미 STAR.max 명인 팀은 FA · 트레이드로 OVR 80+ 를 더 못 데려옴.
+      우리 · AI 같음. 자기 팀 FA 재계약 · 키운 선수 · 외국인은 상관없음. (시작 때 팀마다 0~4명, 4년차 최대 5명 — 측정)
+   ② AI 돈은 빚 지원만 일찍: 모기업 특별지원 문턱 빚 100억 → 30억(AI_FIN_V1722.bailout.debt)
+   ③ 감독 궁합(중간): 감독 공격 성향(공격형 · 수비형 · 균형형) · 투수 운영(선발 · 불펜 · 보통)이 우리 팀 분석(teamAnalysisV174)과
+      맞으면 ★ 한 단계만큼 +, 정반대면 −. 감독 고르는 창 · 경기 화면 분석 줄에 궁합 표시. ?nov1736 으로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search || '').indexOf('nov1736') >= 0) return;
+  var V = window.APP_VERSION;
+  var STAR = window.STAR_CAP_V1736 = {ovr:80, max:4};
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]; }); }
+  function isF(p, kind){ try{ return !!window.isForeignV1613(p, kind); }catch(_){ return false; } }
+  function ovr(tid, kind, p){ try{ return kind === 'bat' ? batOvr(p, tid) : pitOvr(p, tid); }catch(_){ return 0; } }
+  function starCount(tid){
+    var t = state.players && state.players[tid], n = 0; if(!t) return 0;
+    ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(p){ if(p && !isF(p, kind) && ovr(tid, kind, p) >= STAR.ovr) n++; }); });
+    return n;
+  }
+  window.starCountV1736 = starCount;
+  /* FA: 이 팀이 이 FA 를 데려오면 한도를 넘나 */
+  window.starCapBlockV1736 = function(tid, fa){
+    try{
+      if(!fa || tid === fa.from || (+fa.ovr || 0) < STAR.ovr) return false;
+      if(isF(fa.data, fa.kind)) return false;
+      return starCount(tid) >= STAR.max;
+    }catch(_){ return false; }
+  };
+  /* AI 끼리 1:1 트레이드 — 받는 쪽이 한도를 넘으면 안 함 */
+  window.starCapTradeOkV1736 = function(d){
+    try{
+      var side = function(get, give){
+        if(!get || (+get.ovr || 0) < STAR.ovr || isF(get.p, get.kind)) return true;
+        var after = starCount(give.teamId) - ((+give.ovr || 0) >= STAR.ovr && !isF(give.p, give.kind) ? 1 : 0) + 1;
+        return after <= STAR.max;
+      };
+      return side(d.a, d.b) && side(d.b, d.a);   /* d.a 선수는 b 팀으로, d.b 선수는 a 팀으로 */
+    }catch(_){ return true; }
+  };
+  /* 우리 FA 입찰 — 넣을 때 바로 알려 줌 */
+  var baseBid = window.faBidSetV13;
+  if(typeof baseBid === 'function'){
+    window.faBidSetV13 = function(idx, amount){
+      try{
+        var m = state.season && state.season.market, fa = m && m.fa && m.fa[idx];
+        if(fa && (+amount || 0) > 0 && window.starCapBlockV1736(state.myTeam, fa)){
+          showAlert('⭐ 스타 선수 한도\n\n우리 팀에 국내 OVR ' + STAR.ovr + '+ 선수가 이미 ' + starCount(state.myTeam) + '명입니다(한도 ' + STAR.max + '명).\nOVR ' + STAR.ovr + '+ FA 는 데려올 수 없습니다. 키운 선수 · 외국인 · 우리 선수 재계약은 상관없습니다.');
+          return;
+        }
+      }catch(_){ }
+      return baseBid.apply(this, arguments);
+    };
+  }
+  /* 우리 트레이드 */
+  var baseTrade = window.proposeTrade;
+  if(typeof baseTrade === 'function'){
+    var pt = function(){
+      try{
+        var me = state.myTeam, my = getTeam(me), opp = getTeam(tradeOppId);
+        var inS = (tradeOppPicks || []).filter(function(x){ var p = (x.kind === 'bat' ? opp.bat : opp.pit)[x.idx]; return p && !isF(p, x.kind) && ovr(tradeOppId, x.kind, p) >= STAR.ovr; }).length;
+        var outS = (tradeMyPicks || []).filter(function(x){ var p = (x.kind === 'bat' ? my.bat : my.pit)[x.idx]; return p && !isF(p, x.kind) && ovr(me, x.kind, p) >= STAR.ovr; }).length;
+        if(inS > 0 && starCount(me) - outS + inS > STAR.max){
+          showAlert('⭐ 스타 선수 한도\n\n이 트레이드를 하면 우리 팀 국내 OVR ' + STAR.ovr + '+ 선수가 ' + (starCount(me) - outS + inS) + '명이 됩니다(한도 ' + STAR.max + '명).');
+          return;
+        }
+      }catch(_){ }
+      return baseTrade.apply(this, arguments);
+    };
+    window.proposeTrade = pt; try{ proposeTrade = pt; }catch(_){ }
+  }
+
+  /* ② AI 빚 지원 일찍 */
+  try{ if(window.AI_FIN_V1722 && window.AI_FIN_V1722.bailout) window.AI_FIN_V1722.bailout.debt = 30; }catch(_){ }
+
+  /* ③ 감독 궁합 */
+  var EDGE = .0022;   /* mgr-v173 의 ★ 한 단계 값과 같음 */
+  var PNAME = {'보통':'normal', '선발 중심':'starter', '불펜 중심':'bullpen'};
+  function mgrA(m){ return {offense:'power', defense:'small'}[m && m.style] || 'balanced'; }
+  function mgrP(m){ try{ return PNAME[window.mgrPitchStyleV173(m)] || 'normal'; }catch(_){ return 'normal'; } }
+  function part(a, b, mid){ return a === b ? 1 : (a === mid || b === mid) ? .5 : 0; }
+  window.mgrFitV1736 = function(m, tid){
+    try{
+      var x = window.teamAnalysisV174 && window.teamAnalysisV174(tid || state.myTeam); if(!m || !x) return null;
+      var a = part(mgrA(m), x.attack, 'balanced'), p = part(mgrP(m), x.pitch, 'normal');
+      return {a:a, p:p, all:(a + p) / 2, teamA:x.attack, teamP:x.pitch};
+    }catch(_){ return null; }
+  };
+  function dots(f){ var n = Math.round(f * 4); return '●●●●'.slice(0, n) + '○○○○'.slice(0, 4 - n); }
+  var WORD = {1:'맞음', .5:'보통', 0:'안 맞음'};
+  window.mgrFitTextV1736 = function(m, tid){
+    var f = window.mgrFitV1736(m, tid); if(!f) return '';
+    return '궁합 ' + dots(f.all) + ' (타선 ' + WORD[f.a] + ' · 투수 ' + WORD[f.p] + ')';
+  };
+  ['managerAttackBonus', 'managerPitchBonus'].forEach(function(fn){
+    var base = window[fn]; if(typeof base !== 'function') return;
+    window[fn] = function(teamId){
+      var v = base.apply(this, arguments);
+      try{
+        if(teamId === state.myTeam && state.mgrV14){
+          var f = window.mgrFitV1736(state.mgrV14, teamId);
+          if(f) v += ((fn === 'managerAttackBonus' ? f.a : f.p) - .5) * 2 * EDGE;
+        }
+      }catch(_){ }
+      return v;
+    };
+    try{ (0, eval)(fn + '=window.' + fn); }catch(_){ }
+  });
+  /* 경기 화면 분석 줄에 지금 감독 궁합 */
+  var baseTxt = window.analysisTextV174;
+  if(typeof baseTxt === 'function'){
+    window.analysisTextV174 = function(tid){
+      var t = baseTxt.apply(this, arguments);
+      try{ if(t && (!tid || tid === state.myTeam) && state.mgrV14){ var f = window.mgrFitTextV1736(state.mgrV14); if(f) t += ' · ' + f; } }catch(_){ }
+      return t;
+    };
+  }
+  /* 감독 고르는 창 — 후보마다 궁합 한 줄 */
+  function paintFit(){
+    try{
+      var s = document.getElementById('sheet'); if(!s) return;
+      var list = (state.mgrPoolV14 && state.mgrPoolV14.list) || [];
+      s.querySelectorAll('button[onclick^="hireMgrV14("]').forEach(function(b){
+        if(b.querySelector('.fit-v1736')) return;
+        var i = +(String(b.getAttribute('onclick')).match(/hireMgrV14\((\d+)/) || [])[1], c = list[i]; if(!c) return;
+        var txt = window.mgrFitTextV1736(c); if(!txt) return;
+        b.insertAdjacentHTML('beforeend', '<span class="fit-v1736" style="display:block;color:#F4C45E;font-size:12px;margin-top:3px">🤝 ' + esc(txt) + '</span>');
+      });
+    }catch(_){ }
+  }
+  try{
+    var sh = document.getElementById('sheet');
+    if(sh && window.MutationObserver) new MutationObserver(function(){ if(sh.querySelector('button[onclick^="hireMgrV14("]')) setTimeout(paintFit, 0); }).observe(sh, {childList:true, subtree:true});
+  }catch(_){ }
+})();
+</script>
+<!-- v1.7.36 END -->
 
 </body>
 </html>
