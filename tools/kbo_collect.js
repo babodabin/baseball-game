@@ -101,7 +101,46 @@ async function roster(){
   return out;
 }
 
+/* 선수 상세(투타) — ids = ["bat:69212", "pit:...", ...] */
+async function detail(ids){
+  const out = {};
+  for(const x of ids){
+    const [kind, id] = x.split(':'), page = kind === 'pit' ? 'PitcherDetail' : 'HitterDetail';
+    const h = await get(BASE + '/Record/Player/' + page + '/Basic.aspx?playerId=' + id);
+    const hand = (h.match(/(우투|좌투|우언|좌언)(우타|좌타|양타)/) || [])[0] || '';
+    const pos = (h.match(/포지션\s*:?\s*<\/strong>\s*<span[^>]*>([^<]+)/) || h.match(/포지션[^가-힣]*([가-힣]+수)/) || [])[1] || '';
+    out[id] = {kind, hand, pos};
+  }
+  return out;
+}
+/* 수비 기록(포지션별 한 줄) — 팀마다 기본 순서 모든 쪽 */
+async function defense(season){
+  const url = BASE + '/Record/Player/Defense/Basic.aspx', out = {};
+  let base = await get(url);
+  base = await post(url, base, {[P + 'ddlSeason$ddlSeason']:String(season)}, P + 'ddlSeason$ddlSeason');
+  for(let pass = 0, hist = []; pass < 4; pass++){
+    for(const tm of teamsOf(base)){
+      const sets = {[P + 'ddlSeason$ddlSeason']:String(season), [P + 'ddlTeam$ddlTeam']:tm};
+      const h = await post(url, base, sets, P + 'ddlTeam$ddlTeam');
+      const grab = hh => rows(hh).rows.forEach(x => { out[x[0] + '|' + x[4]] = x; });
+      grab(h); for(const pg of rows(decode(h)).pages) grab(await post(url, h, sets, pg.tg));
+    }
+    hist.push(Object.keys(out).length); console.log('defense', hist.join(' → '));
+    if(pass >= 1 && hist[pass] === hist[pass - 1]) break;
+  }
+  return out;
+}
+
 (async function(){
+  if(process.argv[2] === 'extra'){
+    const ids = (process.argv[3] || '').split(',').filter(Boolean), season = +(process.argv[4] || 2026);
+    const D = await detail(ids), F = await defense(season), pos = {};
+    Object.values(F).forEach(x => { const id = x[0], g = +x[5] || 0; if(!pos[id] || g > pos[id].g) pos[id] = {p:x[4], g}; });
+    Object.keys(D).forEach(id => { if(pos[id]) D[id].field = pos[id].p; });
+    const out = path.join(__dirname, '..', 'data', 'kbo-extra.json');
+    fs.writeFileSync(out, JSON.stringify({made:new Date().toISOString().slice(0, 10), players:D}));
+    console.log('saved', out, Object.keys(D).length, 'no hand:', Object.keys(D).filter(k => !D[k].hand).length); return;
+  }
   if(process.argv[2] === 'roster'){
     const R = await roster(), out = path.join(__dirname, '..', 'data', 'kbo-roster.json');
     fs.mkdirSync(path.dirname(out), {recursive:true});
