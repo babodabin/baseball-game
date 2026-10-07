@@ -18,6 +18,7 @@ function strip(s){ return decode(s.replace(/<[^>]+>/g, '')).trim(); }
 function form(html){
   const f = new URLSearchParams();
   for(const m of html.matchAll(/<input[^>]*type="hidden"[^>]*>/g)){ const n = (m[0].match(/name="([^"]+)"/) || [])[1], v = (m[0].match(/value="([^"]*)"/) || [, ''])[1]; if(n) f.set(n, decode(v)); }
+  for(const m of html.matchAll(/<input[^>]*type="text"[^>]*>/g)){ const n = (m[0].match(/name="([^"]+)"/) || [])[1]; if(n) f.set(n, decode((m[0].match(/value="([^"]*)"/) || [, ''])[1])); }
   for(const m of html.matchAll(/<select[^>]*name="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)){
     const sel = (m[2].match(/<option[^>]*selected[^>]*value="([^"]*)"/) || m[2].match(/<option[^>]*value="([^"]*)"[^>]*selected/) || m[2].match(/<option[^>]*value="([^"]*)"/) || [, ''])[1];
     f.set(m[1], decode(sel));
@@ -74,7 +75,39 @@ function pick(U, cols){
   const o = {}; Object.values(U.rows).forEach(x => { o[x[0]] = {n:x[2], t:x[3], v:idx.map(i => x[i])}; }); return o;
 }
 
+/* 지금 등록 선수 명단(선수 조회) — 팀마다 모든 쪽 · 3번 연속 같을 때까지. [id, 등번호, 이름, 팀, 포지션, 생년월일, 체격, 출신교] */
+async function roster(){
+  const url = BASE + '/Player/Search.aspx', out = {};
+  for(let pass = 0, hist = []; pass < 6; pass++){
+    let base = await get(url);
+    const teams = (base.match(/<select[^>]*name="([^"]*ddlTeam)"[^>]*>([\s\S]*?)<\/select>/) || []);
+    const tn = teams[1], codes = teams[2] ? [...teams[2].matchAll(/value="([^"]*)"/g)].map(x => x[1]).filter(Boolean) : [];
+    for(const tm of codes){
+      let h = await post(url, base, {[tn]:tm}, tn), seen = new Set(), guard = 0;
+      while(guard++ < 30){
+        const body = (h.match(/<tbody>([\s\S]*?)<\/tbody>/) || [, ''])[1];
+        for(const tr of body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)){ const id = (tr[1].match(/playerId=(\d+)/) || [])[1]; if(!id) continue; out[id] = [id].concat([...tr[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(m => strip(m[1]))); }
+        const hd = decode(h);   /* 쪽 버튼 href 의 따옴표가 &#39; 로 옴 */
+        const pg = [...hd.matchAll(/__doPostBack\('([^']+btnNo(\d+))'/g)].map(m => ({tg:m[1], n:+m[2]})).filter(p => !seen.has(p.n));
+        const cur = +((hd.match(/<a[^>]*class="on"[^>]*>(\d+)<\/a>/) || [])[1] || 1); seen.add(cur);
+        let nx = pg.find(p => p.n === cur + 1);
+        if(!nx){ const nb = (hd.match(/__doPostBack\('([^']+btnNext)'/) || [])[1]; if(nb && !seen.has(cur + 1)){ h = await post(url, h, {[tn]:tm}, nb); continue; } break; }
+        h = await post(url, h, {[tn]:tm}, nx.tg);
+      }
+    }
+    hist.push(Object.keys(out).length); console.log('roster', hist.join(' → '));
+    if(pass >= 2 && hist[pass] === hist[pass - 1] && hist[pass - 1] === hist[pass - 2]) break;
+  }
+  return out;
+}
+
 (async function(){
+  if(process.argv[2] === 'roster'){
+    const R = await roster(), out = path.join(__dirname, '..', 'data', 'kbo-roster.json');
+    fs.mkdirSync(path.dirname(out), {recursive:true});
+    fs.writeFileSync(out, JSON.stringify({src:'koreabaseball.com 선수 조회', made:new Date().toISOString().slice(0, 10), cols:['id', '등번호', '이름', '팀', '포지션', '생년월일', '체격', '출신교'], rows:Object.values(R)}));
+    const per = {}; Object.values(R).forEach(x => { per[x[3]] = (per[x[3]] || 0) + 1; }); console.log('saved', out, Object.keys(R).length, JSON.stringify(per)); return;
+  }
   const seasons = process.argv.slice(2).map(Number).filter(Boolean);
   if(!seasons.length){ console.log('node tools/kbo_collect.js 2024 2025 2026'); return; }
   const HB1 = ['G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'RBI', 'SF'], HB2 = ['BB', 'IBB', 'HBP', 'SO', 'SLG', 'OBP'];
