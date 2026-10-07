@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.37';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.38';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -39346,6 +39346,62 @@ window.LIVE_UPDATE_V1737 = {"ver":"2026-10-07","season":2026,"moves":[["HH","LG"
 })();
 </script>
 <!-- v1.7.37 live-rules END -->
+<!-- v1.7.38 · 기록실에 기간 선수상 -->
+<script id="record-awards-v1738">
+/* 사용자(2026-10-07): 기록실에 선수상 남기기 — 해마다 👑 올해의 선수 · 🌗 전반기 · 🌙 이번 달(목록) · 🗓 이번 주(목록, 접힘),
+   맨 위엔 진행 중인 시즌 수상과 우리 팀 기간 수상 횟수. 자료 = state.periodAwardsV1733(지난 해들) + state.season.awV1733.list(올해). ?nov1738 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search || '').indexOf('nov1738') >= 0) return;
+  var V = window.APP_VERSION;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]; }); }
+  function tn(tid){ try{ return getTeam(tid).name; }catch(_){ return tid || ''; } }
+  function my(){ return state.myTeam; }
+  var LB = {year:'👑 올해의 선수', half:'🌗 전반기 선수', month:'🌙 이번 달의 선수', week:'🗓 이번 주의 선수'};
+  function all(){
+    var A = (state.periodAwardsV1733 || []).slice(), cur = state.season && state.season.awV1733 ? state.season.awV1733.list : [];
+    (cur || []).forEach(function(x){ if(x.per !== 'day' && !A.some(function(y){ return y.year === x.year && y.per === x.per && y.d === x.d && y.name === x.name; })) A.push({year:x.year, per:x.per, d:x.d, tid:x.tid, name:x.name, text:x.text}); });
+    return A;
+  }
+  function row(x){ return '<div class="row' + (x.tid === my() ? ' me' : '') + '"><span>' + (x.per === 'week' || x.per === 'month' ? x.d + '경기째 · ' : '') + esc(x.name) + ' <span class="dim">' + esc(String(tn(x.tid)).split(' ')[0]) + '</span></span><span class="dim" style="text-align:right;font-size:11.5px">' + esc(x.text || '') + '</span></div>'; }
+  function yearBlock(list){
+    var by = function(per){ return list.filter(function(x){ return x.per === per; }).sort(function(a, b){ return a.d - b.d; }); };
+    var h = '';
+    ['year', 'half'].forEach(function(per){ by(per).forEach(function(x){ h += '<div class="row' + (x.tid === my() ? ' me' : '') + '"><span>' + LB[per] + '</span><span>' + esc(x.name) + ' (' + esc(tn(x.tid)) + ')</span></div>'; }); });
+    ['month', 'week'].forEach(function(per){
+      var L = by(per); if(!L.length) return;
+      var mine = L.filter(function(x){ return x.tid === my(); }).length;
+      h += '<details style="margin-top:4px"><summary class="dim" style="cursor:pointer;font-size:12.5px">' + LB[per] + ' ' + L.length + '명' + (mine ? ' · 우리 팀 ' + mine + '번' : '') + '</summary>' + L.map(row).join('') + '</details>';
+    });
+    return h;
+  }
+  var base = window.openRecordRoomV1729;
+  if(typeof base === 'function'){
+    window.openRecordRoomV1729 = function(){
+      var r = base.apply(this, arguments);
+      try{
+        var sh = document.getElementById('sheet'); if(!sh) return r;
+        var A = all(); if(!A.length) return r;
+        var segs = [].slice.call(sh.querySelectorAll('.seg'));
+        /* 해마다 칸 */
+        segs.forEach(function(s){ var t = s.querySelector('.sh'), m = t && /^(\d+)년차$/.exec(t.textContent.trim()); if(!m) return;
+          var y = +m[1], list = A.filter(function(x){ return x.year === y; }); if(!list.length) return;
+          var btn = s.querySelector('button'); var html = '<div style="margin-top:6px;border-top:1px solid rgba(255,255,255,.08);padding-top:6px">' + yearBlock(list) + '</div>';
+          if(btn) btn.insertAdjacentHTML('beforebegin', html); else s.insertAdjacentHTML('beforeend', html);
+        });
+        /* 맨 위: 올해(진행 중) + 우리 팀 기간 수상 */
+        var cy = state.year, done = (state.awardHistoryV1729 || []).some(function(x){ return x.year === cy; }), now = A.filter(function(x){ return x.year === cy; });
+        var mineAll = A.filter(function(x){ return x.tid === my(); }), cnt = {}; mineAll.forEach(function(x){ cnt[x.per] = (cnt[x.per] || 0) + 1; });
+        var top = '<div class="seg"><div class="sh">🏅 기간 선수상 · 우리 팀</div><div class="row me"><span>' + esc(tn(my())) + '</span><span>' + (['year', 'half', 'month', 'week'].map(function(p){ return cnt[p] ? LB[p].split(' ')[0] + ' ' + cnt[p] : ''; }).filter(Boolean).join(' · ') || '아직 없음') + '</span></div>'
+          + (!done && now.length ? '<div class="dim" style="margin-top:6px;font-size:12px">' + cy + '년차(진행 중)</div>' + yearBlock(now) : '') + '</div>';
+        var first = segs[0]; if(first) first.insertAdjacentHTML('afterend', top);
+      }catch(e){ console.error(V + ' 기록실 선수상:', e); }
+      return r;
+    };
+  }
+})();
+</script>
+<!-- v1.7.38 END -->
 
 </body>
 </html>
