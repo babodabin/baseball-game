@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.39';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.40';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -39416,9 +39416,12 @@ window.LIVE_UPDATE_V1737 = {"ver":"2026-10-07","season":2026,"moves":[["HH","LG"
   if(String(location.search || '').indexOf('nov1739') >= 0) return;
   var V = window.APP_VERSION;
   var CK = 'ourteam_ghsync_v1', SK = 'ourteam_ghsync_state_v1';
+  /* v1.7.40 · 사용자: "너무 어렵다 · 없애줘" — GitHub 동기화는 끔. 기기에 넣어 둔 토큰 · 상태는 열 때 지움. 아래 코드는 남겨 두되 쓰이지 않음(SYNC_ON=false). 오류 안내 줄은 그대로 */
+  var SYNC_ON = false;
+  if(!SYNC_ON){ try{ localStorage.removeItem(CK); localStorage.removeItem(SK); }catch(_){ } }
   function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(_){ return null; } }
   function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
-  function cfg(){ var c = lsGet(CK); return c && c.owner && c.repo && c.token ? c : null; }
+  function cfg(){ if(!SYNC_ON) return null; var c = lsGet(CK); return c && c.owner && c.repo && c.token ? c : null; }
   function st(){ var s = lsGet(SK) || {}; if(!s.device){ s.device = 'd' + Math.random().toString(36).slice(2, 8); lsSet(SK, s); } return s; }
   function setSt(p){ var s = st(); Object.keys(p).forEach(function(k){ s[k] = p[k]; }); lsSet(SK, s); paintStatus(); return s; }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]; }); }
@@ -39485,9 +39488,16 @@ window.LIVE_UPDATE_V1737 = {"ver":"2026-10-07","season":2026,"moves":[["HH","LG"
       var g = function(id){ var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
       var rp = g('ghRepoV1739').replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').split('/');
       var c = {owner:rp[0] || '', repo:rp[1] || '', branch:g('ghBranchV1739') || 'main', path:g('ghPathV1739') || 'ourteam-save.json', token:g('ghTokenV1739') || ((lsGet(CK) || {}).token || ''), auto:true};
-      if(!c.owner || !c.repo || !c.token){ showAlert('저장소(아이디/이름)와 토큰을 넣어 주세요.'); return; }
-      lsSet(CK, c); setSt({lastErr:'', conflict:false});
-      window.ghSyncNowV1739(false).then(function(r){ window.openGhSyncV1739(); if(r && r.ok) showAlert('연결했습니다. 앞으로 저장할 때마다 GitHub 에도 올립니다.'); });
+      /* v1.7.39 · 누른 뒤 창 안에 바로 결과(사용자: 눌러도 "꺼짐" 그대로로 보였다 — 저장소 칸은 흐린 예시 글씨였음) */
+      var msg = function(t, bad){ var el = document.getElementById('ghMsgV1739'); if(el){ el.textContent = t; el.style.color = bad ? '#F0907A' : '#F4C45E'; } };
+      if(!c.owner || !c.repo){ msg('저장소 칸에 "아이디/저장소이름"을 넣어 주세요(예: babodabin/ourteam-save).', true); return; }
+      if(!c.token){ msg('토큰 칸에 github_pat_… 토큰을 붙여 넣어 주세요.', true); return; }
+      lsSet(CK, c); setSt({lastErr:'', conflict:false}); msg('연결 중…');
+      window.ghSyncNowV1739(false).then(function(r){
+        window.openGhSyncV1739();
+        if(r && r.ok){ msg('✅ 연결했습니다. 앞으로 저장할 때마다 GitHub 에도 올립니다.'); showAlert('연결했습니다. 앞으로 저장할 때마다 GitHub 에도 올립니다.'); }
+        else msg('❌ ' + (r && r.why || '실패') + (/401/.test(r && r.why) ? ' — 토큰을 다시 복사해 붙여 주세요' : /404/.test(r && r.why) ? ' — 저장소 이름 · 토큰의 저장소 선택을 확인' : /403/.test(r && r.why) ? ' — 토큰 권한 Contents: Read and write 확인' : ''), true);
+      });
     }catch(e){ console.error(V + ' 동기화 설정:', e); }
   };
   window.ghSyncOffV1739 = function(){ showConfirm('이 기기에서 GitHub 동기화를 끕니다(토큰도 지움). GitHub 에 올린 파일은 그대로입니다.', function(){ try{ localStorage.removeItem(CK); }catch(_){ } setSt({sha:null, everSynced:false, pending:false, conflict:false, lastErr:''}); window.openGhSyncV1739(); }); };
@@ -39508,10 +39518,10 @@ window.LIVE_UPDATE_V1737 = {"ver":"2026-10-07","season":2026,"moves":[["HH","LG"
       + (s.conflict ? '<div class="hint" style="border-color:#F0907A">다른 기기(또는 예전)에서 올린 저장이 GitHub 에 있습니다. 어느 쪽을 쓸지 고르세요.<br><button type="button" class="btn" style="margin-top:6px" onclick="ghSyncNowV1739(true).then(function(){openGhSyncV1739()})">이 기기 것 올리기(GitHub 것 덮어씀)</button><button type="button" class="btn ghost" onclick="ghSyncPullV1739()">GitHub 것 받기(이 기기 것 덮어씀)</button></div>' : '')
       + '<div class="hint" style="margin-top:8px;line-height:1.6">게임은 이 기기에 먼저 저장되고, 인터넷이 될 때 <b>비공개</b> GitHub 저장소에 올립니다. 실패해도 게임은 그대로이고 나중에 다시 올립니다.<br>'
       + '① GitHub 에서 <b>비공개(Private)</b> 저장소를 새로 만드세요(게임 저장소는 공개라 쓰지 마세요).<br>② Settings → Developer settings → Fine-grained tokens 에서 그 저장소만 고르고 <b>Contents: Read and write</b> 만 켠 토큰을 만드세요.<br>③ 아래에 넣고 연결. 토큰은 이 기기에만 저장됩니다.</div>'
-      + '<label class="dim" style="display:block;margin-top:8px">저장소 (아이디/저장소이름)</label><input id="ghRepoV1739" class="inp" style="width:100%;padding:10px;border-radius:10px" placeholder="babodabin/ourteam-save" value="' + esc(c.owner ? c.owner + '/' + c.repo : '') + '">'
+      + '<label class="dim" style="display:block;margin-top:8px">저장소 (아이디/저장소이름)</label><input id="ghRepoV1739" class="inp" style="width:100%;padding:10px;border-radius:10px" placeholder="아이디/저장소이름" value="' + esc(c.owner ? c.owner + '/' + c.repo : 'babodabin/ourteam-save') + '">'
       + '<label class="dim" style="display:block;margin-top:8px">토큰' + (c.token ? ' (넣어 둠 — 바꿀 때만 입력)' : '') + '</label><input id="ghTokenV1739" type="password" autocomplete="off" class="inp" style="width:100%;padding:10px;border-radius:10px" placeholder="github_pat_…">'
       + '<details style="margin-top:6px"><summary class="dim">자세히(브랜치 · 파일 이름)</summary><input id="ghBranchV1739" class="inp" style="width:100%;padding:8px;margin-top:6px" value="' + esc(c.branch || 'main') + '"><input id="ghPathV1739" class="inp" style="width:100%;padding:8px;margin-top:6px" value="' + esc(c.path || 'ourteam-save.json') + '"></details>'
-      + '<button type="button" class="btn" style="margin-top:10px" onclick="ghSyncSaveCfgV1739()">저장하고 연결</button>'
+      + '<button type="button" class="btn" style="margin-top:10px" onclick="ghSyncSaveCfgV1739()">저장하고 연결</button><div id="ghMsgV1739" style="margin-top:6px;font-size:13px;font-weight:700"></div>'
       + (cfg() ? '<button type="button" class="btn ghost" onclick="ghSyncNowV1739(false).then(function(){openGhSyncV1739()})">지금 올리기</button><button type="button" class="btn ghost" onclick="ghSyncPullV1739()">GitHub 에서 받기</button><button type="button" class="btn ghost" onclick="ghSyncOffV1739()">이 기기에서 끄기</button>' : '')
       + '<div class="hint" style="margin-top:8px">마지막으로 올림 ' + esc(when(s.lastOk)) + (s.size ? ' · ' + Math.round(s.size / 1024) + 'KB' : '') + ' · 이 기기 ' + esc(s.device) + '</div>';
     if(mk) mk.classList.add('on'); sh.scrollTop = 0;
@@ -39527,7 +39537,7 @@ window.LIVE_UPDATE_V1737 = {"ver":"2026-10-07","season":2026,"moves":[["HH","LG"
   try{ if(cfg() && st().pending && !st().conflict) schedule(8e3); }catch(_){ }
   /* 백업 · 복원 창에 버튼 */
   var baseBk = window.openBackupSheetV3437;
-  if(typeof baseBk === 'function'){
+  if(SYNC_ON && typeof baseBk === 'function'){
     window.openBackupSheetV3437 = function(){
       var r = baseBk.apply(this, arguments);
       try{ var sh = document.getElementById('sheet'), top = sh && sh.querySelector('.meta'); if(top && !sh.querySelector('.gh-v1739')) top.insertAdjacentHTML('afterend', '<button type="button" class="btn gh-v1739" style="margin-top:8px" onclick="openGhSyncV1739()">☁️ GitHub 동기화 — ' + esc(statusText()) + '</button>'); }catch(_){ }
