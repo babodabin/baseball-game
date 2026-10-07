@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.29';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.30';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -37237,6 +37237,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   }
   /* 맨 위 띠는 그림(사용자) — 한 장씩 넣은 "맨 위 야구장"만 씀. 묶음의 야구장은 첫 화면으로 */
   function stadiumPhoto(){ return PH.stadium || null; }
+  window.newsAnchorPickV1729 = anchorFor;
+  window.newsStadiumPickV1729 = function(){ var a = pool('stadium'); return a ? rnd(a) : null; };
   var titlePick = null;
   function applyTitle(){
     try{
@@ -37710,6 +37712,285 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.29 END -->
+
+<!-- v1.7.30 · 경기 탭(지난 경기 · 스포츠 뉴스 · 다음 경기 정보) · 여러 경기 총평 · 앵커 옆 색 · FA 단계 이름 · 맨 위 로고 · 시작 화면 팀 고르기 -->
+<script id="game-hub-v1730">
+/* 사용자 2026-10-07:
+   ① 경기 탭 = 지금 화면과 합쳐서 — 위에서부터: ⏮ 지난 경기(팀 · 점수판 · 수훈 선수) + 📺 그 경기 스포츠 뉴스(앵커 사진 · 헤드라인, 누르면 뉴스) ·
+      ⏭ 다음 경기(예전 카드 + 두 팀 순위 · 올 시즌 상대 전적 · 두 선발의 올 시즌 성적) · 🎽 감독 스타일(예전 줄) · 🎮 게임 스타일(결과만 / 중계 보기)
+   ② 경기 끝나고 뜨는 뉴스: 한 경기는 그 경기 뉴스, 여러 경기(10경기 · 한 달 …)는 그 기간 총평 — 성적 · 득실 · 순위 변화 · 팀 타율·홈런·평균자책 · 기간 MVP · 연승/연패
+   ③ 맨 위 속보 띠에 리그 소식(AI 구단 소식)도 섞어 흐름
+   ④ 뉴스 앵커 사진 양옆 빈 곳 = 사진 양쪽 끝의 색으로 채움
+   ⑤ FA 칸 이름 — KBO FA 등급처럼(1단계 A · 2단계 B · 3단계 C: 보상 없음) · 은퇴 발표에 "3단계에서 데려올 수 있음"
+   ⑥ 맨 위 팀 표시는 로고만 작게 · 팀 바꾸기는 시작 화면 아래 작게(경기 탭을 빠르게 3번 누르면 확인 후 시작 화면)
+   ?nov1730 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1730')>=0) return;
+  var V = window.APP_VERSION;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]; }); }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p ? p[0] : ''; } }
+  function my(){ return state.myTeam; }
+  function day(){ return +(state.season && state.season.day) || 0; }
+  function R1(v){ return Math.round((Number(v) || 0) * 10) / 10; }
+  function tn(tid){ try{ return getTeam(tid).name; }catch(_){ return tid; } }
+  function logo(tid, size){ return '<img src="assets/logos/' + esc(tid) + '.png" alt="" onerror="this.style.display=\'none\'" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;vertical-align:middle">'; }
+  function news(){ return state.newsV1729 && Array.isArray(state.newsV1729.items) ? state.newsV1729 : {items:[]}; }
+  function rankOf(tid){ try{ return rankOrder().indexOf(tid) + 1; }catch(_){ return 0; } }
+
+  var CSS = [
+    '.hub-v1730{margin:0 0 10px}',
+    '.hub-v1730 .kk{font-size:10.5px;letter-spacing:.8px;color:#F4C45E;font-weight:800;margin:12px 2px 6px}',
+    '.hub-v1730 .card{background:rgba(255,255,255,.035);border:1px solid rgba(184,211,194,.16);border-radius:12px;padding:10px;cursor:pointer}',
+    '.hub-v1730 .sc{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px}',
+    '.hub-v1730 .sc .t{display:flex;align-items:center;gap:6px;min-width:0}',
+    '.hub-v1730 .sc .n{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:800;color:#F6C04A}',
+    '.hub-v1730 .res{font-size:11px;font-weight:900;border-radius:5px;padding:1px 6px}',
+    '.hub-v1730 .res.W{background:#1f6f45;color:#fff}.hub-v1730 .res.L{background:#8a2430;color:#fff}.hub-v1730 .res.T{background:#555;color:#fff}',
+    '.hub-v1730 .nw{display:flex;gap:10px;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid rgba(184,211,194,.12)}',
+    '.hub-v1730 .nw .ph{flex:none;width:58px;height:58px;border-radius:9px;background:#0B1E2E center top/cover no-repeat;border:1px solid rgba(244,196,94,.3)}',
+    '.hub-v1730 .nw .tx{flex:1;font-size:12.5px;line-height:1.45}',
+    '.hub-v1730 .nw .tx b{color:#F4C45E;font-size:10.5px;letter-spacing:.6px}',
+    '.hub-v1730 .dim{color:#93A79B;font-size:12px}',
+    '.nx-v1730{margin-top:8px;padding-top:8px;border-top:1px solid rgba(184,211,194,.12);font-size:12.5px}',
+    '.nx-v1730 .r{display:flex;justify-content:space-between;gap:8px;padding:3px 0}',
+    '.nx-v1730 .r span:first-child{color:#93A79B}',
+    '.lbl-v1730{font-size:10.5px;letter-spacing:.8px;color:#F4C45E;font-weight:800;margin:12px 2px 6px}',
+    'header #subRight span:not(.custom-team-mark){display:none!important}',
+    'header #subRight{padding:3px!important;min-width:0!important;gap:0!important}',
+    'header #subRight img{width:22px!important;height:22px!important}',
+    '.ts-team-v1730{font-size:12px;color:rgba(230,240,233,.8);text-align:center;line-height:1.6}',
+    '.ts-team-v1730 button{background:none;border:0;color:#F4C45E;text-decoration:underline;font-size:12px;padding:2px 4px;cursor:pointer}',
+    '.sum-v1730 .big{font-size:20px;font-weight:900;color:#F6C04A;font-family:"IBM Plex Mono",monospace}'
+  ].join('\n');
+  try{ var st = document.createElement('style'); st.id = 'game-hub-v1730-css'; st.textContent = CSS; document.head.appendChild(st); }catch(_){ }
+
+  /* ── 상대 전적(올 시즌) — 경기마다 기록 ── */
+  function h2h(){ var s = state.season; if(!s) return {}; if(!s.h2hV1730) s.h2hV1730 = {}; return s.h2hV1730; }
+  /* ── 여러 경기 총평: 진행을 시작할 때 팀 기록을 찍어 둠 ── */
+  function teamSnap(){
+    var S = (state.season.stats && state.season.stats[my()]) || {}, o = {ab:0, h:0, hr:0, bb:0, out:0, er:0, bat:{}, pit:{}};
+    Object.keys(S.bat || {}).forEach(function(i){ var x = S.bat[i] || {}; o.ab += +x.ab || 0; o.h += +x.h || 0; o.hr += +x.hr || 0; o.bb += +x.bb || 0; o.bat[i] = {ab:+x.ab || 0, h:+x.h || 0, hr:+x.hr || 0, rbi:+x.rbi || 0}; });
+    Object.keys(S.pit || {}).forEach(function(n){ var x = S.pit[n] || {}; o.out += +x.out || 0; o.er += +x.er || 0; o.pit[n] = {out:+x.out || 0, er:+x.er || 0, w:+x.w || 0, so:+x.so || 0}; });
+    return o;
+  }
+  var basePlay = window.playMyGame;
+  if(typeof basePlay === 'function'){
+    var pg = function(){
+      var b = state.newsV1729, d0 = day(), opp = null;
+      try{
+        if(state.season && !state.season.post){
+          if(b && !b.autoFrom) b.batchV1730 = {rank:rankOf(my()), snap:teamSnap(), day:d0};   /* 이번 진행의 시작 */
+          var rd = state.season.sched && state.season.sched[d0], m = rd && rd.find(function(x){ return x.home === my() || x.away === my(); }); if(m) opp = m.home === my() ? m.away : m.home;
+        }
+      }catch(_){ }
+      var r = basePlay.apply(this, arguments);
+      try{
+        var it = state.newsV1729 && state.newsV1729.items && state.newsV1729.items[0];
+        if(opp && day() !== d0 && it && it.type === 'game' && it.opp === opp && !it.h2hV1730){ it.h2hV1730 = 1; var H = h2h(), x = H[opp] || (H[opp] = {w:0, l:0, t:0}); x[it.res === 'W' ? 'w' : it.res === 'L' ? 'l' : 't']++; }
+      }catch(e){ console.error(V + ' 상대 전적:', e); }
+      return r;
+    };
+    for(var k1 in basePlay) if(Object.prototype.hasOwnProperty.call(basePlay, k1)) pg[k1] = basePlay[k1];
+    window.playMyGame = pg; try{ playMyGame = pg; }catch(_){ }
+  }
+  /* 총평 칸(뉴스 창이 since 로 열릴 때 v1.7.29 의 ROUNDUP 을 이걸로 바꿈) */
+  function summary(fg){
+    var B = state.newsV1729 && state.newsV1729.batchV1730, n = fg.length, w = 0, l = 0, t = 0, rs = 0, ra = 0;
+    fg.forEach(function(x){ if(x.res === 'W') w++; else if(x.res === 'L') l++; else t++; rs += +x.my || 0; ra += +x.op || 0; });
+    var streak = 0, sk = fg[0] && fg[0].res; for(var i = 0; i < fg.length && fg[i].res === sk && sk !== 'T'; i++) streak++;
+    var now = teamSnap(), r0 = B ? B.rank : 0, r1 = rankOf(my()), a = B ? B.snap : null, avg = '-', hr = 0, era = '-', mvp = null, ace = null;
+    if(a){
+      var ab = now.ab - a.ab, h = now.h - a.h, out = now.out - a.out, er = now.er - a.er; hr = now.hr - a.hr;
+      avg = ab > 0 ? (h / ab).toFixed(3).replace(/^0/, '') : '-'; era = out > 0 ? (er * 27 / out).toFixed(2) : '-';
+      var t0 = getTeam(my());
+      Object.keys(now.bat).forEach(function(i){ var x = now.bat[i], y = a.bat[i] || {ab:0, h:0, hr:0, rbi:0}, d = {ab:x.ab - y.ab, h:x.h - y.h, hr:x.hr - y.hr, rbi:x.rbi - y.rbi}, s = d.h + d.hr * 2 + d.rbi; if(d.ab >= n * 2 && (!mvp || s > mvp.s)) mvp = {s:s, p:t0.bat[+i], d:d}; });
+      Object.keys(now.pit).forEach(function(nn){ var x = now.pit[nn], y = a.pit[nn] || {out:0, er:0, w:0, so:0}, d = {out:x.out - y.out, er:x.er - y.er, w:x.w - y.w, so:x.so - y.so}, s = d.out / 3 - d.er * 1.3 + d.w * 2 + d.so * .2; if(d.out >= 15 && (!ace || s > ace.s)) ace = {s:s, name:nn, d:d}; });
+    }
+    var label = n >= 20 ? '한 달 총평' : n + '경기 총평';
+    var mvpTxt = mvp && mvp.p ? nm(mvp.p) + ' — ' + mvp.d.ab + '타수 ' + mvp.d.h + '안타(.' + String(Math.round(mvp.d.h / Math.max(1, mvp.d.ab) * 1000)).padStart(3, '0') + ') ' + mvp.d.hr + '홈런 ' + mvp.d.rbi + '타점' : '';
+    var aceP = ace ? (getTeam(my()).pit || []).find(function(q){ return q && q[0] === ace.name; }) : null;
+    var aceTxt = ace ? (aceP ? nm(aceP) : ace.name) + ' — ' + Math.floor(ace.d.out / 3) + '이닝 평균자책 ' + (ace.d.out ? (ace.d.er * 27 / ace.d.out).toFixed(2) : '-') + (ace.d.w ? ' · ' + ace.d.w + '승' : '') : '';
+    var rk = r0 && r1 ? (r1 < r0 ? r0 + '위 → ' + r1 + '위 ▲' : r1 > r0 ? r0 + '위 → ' + r1 + '위 ▼' : r1 + '위 그대로') : r1 + '위';
+    var say = '지난 ' + n + '경기 ' + w + '승 ' + l + '패' + (t ? ' ' + t + '무' : '') + ', 순위는 ' + rk.replace(' ▲', '로 올랐습니다').replace(' ▼', '로 내려갔습니다').replace(' 그대로', '를 지켰습니다') + '.'
+      + (mvpTxt ? ' 이 기간 타선에서는 ' + mvpTxt.split(' — ')[0] + ', 마운드에서는 ' + (aceTxt ? aceTxt.split(' — ')[0] : '-') + '이 돋보였습니다.' : '');
+    var html = '<div class="seg sum-v1730"><div class="sh">📋 ' + label + ' · ' + fg[fg.length - 1].day + '~' + fg[0].day + '경기째</div>'
+      + '<div class="row me"><span class="big">' + w + '승 ' + l + '패' + (t ? ' ' + t + '무' : '') + '</span><span>승률 ' + ((w + l) ? (w / (w + l)).toFixed(3).replace(/^0/, '') : '-') + '</span></div>'
+      + '<div class="row"><span>득점 · 실점</span><span>' + rs + ' · ' + ra + ' (경기당 ' + R1(rs / n) + ' · ' + R1(ra / n) + ')</span></div>'
+      + '<div class="row"><span>순위</span><span>' + rk + '</span></div>'
+      + '<div class="row"><span>팀 타율 · 홈런 · 평균자책</span><span>' + avg + ' · ' + hr + ' · ' + era + '</span></div>'
+      + (streak >= 2 ? '<div class="row"><span>지금</span><span>' + streak + (sk === 'W' ? '연승 🔥' : '연패 💧') + '</span></div>' : '')
+      + (mvpTxt ? '<div class="row"><span>기간 MVP(타자)</span><span>' + esc(mvpTxt) + '</span></div>' : '')
+      + (aceTxt ? '<div class="row"><span>기간 MVP(투수)</span><span>' + esc(aceTxt) + '</span></div>' : '')
+      + '<details style="margin-top:6px"><summary class="dim" style="cursor:pointer">경기별 결과 ' + n + '개</summary>' + fg.map(function(x){ return '<div class="row"><span>' + (x.res === 'W' ? '🟢' : x.res === 'L' ? '🔴' : '⚪') + ' ' + x.day + '경기 vs ' + esc(tn(x.opp)) + '</span><span>' + x.my + ':' + x.op + '</span></div>'; }).join('') + '</details></div>';
+    return {html:html, say:say};
+  }
+  var baseNews = window.openNewsV1729;
+  if(typeof baseNews === 'function'){
+    window.openNewsV1729 = function(id, opt){
+      var r = baseNews.apply(this, arguments);
+      try{
+        var sh = document.getElementById('sheet'); if(!sh) return r;
+        /* 앵커 양옆 — 사진 끝 색으로 */
+        var im = sh.querySelector('.studio img.anc'); if(im){ if(im.complete) fill(im); else im.addEventListener('load', function(){ fill(im); }); }
+        if(opt && opt.since != null){
+          var items = news().items.filter(function(x){ return x.id > opt.since; }), fg = items.filter(function(x){ return x.type === 'game'; });
+          if(fg.length > 1){
+            var S = summary(fg), old = [].filter.call(sh.querySelectorAll('.seg'), function(x){ var hh = x.querySelector('.sh'); return hh && /ROUNDUP/.test(hh.textContent); })[0];
+            var tmp = document.createElement('div'); tmp.innerHTML = S.html;
+            if(old) old.parentNode.replaceChild(tmp.firstChild, old); else { var st0 = sh.querySelector('.studio'); if(st0) st0.insertAdjacentElement('afterend', tmp.firstChild); }
+            var say = sh.querySelector('.studio .say'), kk = sh.querySelector('.studio .kk'); if(say) say.textContent = S.say; if(kk) kk.textContent = '📋 ' + (fg.length >= 20 ? '한 달 총평' : fg.length + '경기 총평');
+            var pn = sh.querySelector('.pname'); if(pn) pn.textContent = '📺 스포츠 뉴스 — ' + (fg.length >= 20 ? '한 달 총평' : fg.length + '경기 총평');
+          }
+        }
+      }catch(e){ console.error(V + ' 총평:', e); }
+      return r;
+    };
+  }
+  function fill(im){
+    try{
+      var c = document.createElement('canvas'), w = 8, h = 32; c.width = w * 2; c.height = h;
+      var g = c.getContext('2d'); g.drawImage(im, 0, 0, Math.max(1, im.naturalWidth * .04), im.naturalHeight, 0, 0, w, h); g.drawImage(im, im.naturalWidth * .96, 0, Math.max(1, im.naturalWidth * .04), im.naturalHeight, w, 0, w, h);
+      var d = g.getImageData(0, 0, w * 2, h).data, r = 0, gg = 0, b = 0, n = 0;
+      for(var i = 0; i < d.length; i += 4){ r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; }
+      var col = 'rgb(' + Math.round(r / n) + ',' + Math.round(gg / n) + ',' + Math.round(b / n) + ')', box = im.closest('.studio');
+      if(box){ box.style.background = col; var bg = box.querySelector('svg.bg'); if(bg) bg.style.display = 'none'; }
+    }catch(_){ }
+  }
+  /* 속보 띠: 리그 소식도 섞음 */
+  function tickLeague(){
+    try{
+      var rn = document.querySelector('header .tick-v1729 .rn'); if(!rn || rn.dataset.lg1730 === rn.textContent) return;
+      var A = (state.aiNewsV13 || []).slice(0, 3).map(function(x){ return '🏟 ' + x.title; });
+      if(!A.length) return;
+      var t = rn.textContent + '　　·　　' + A.join('　　·　　');
+      rn.textContent = t; rn.dataset.lg1730 = t; rn.style.setProperty('--dur', Math.max(14, Math.round(t.length * .28)) + 's');
+    }catch(_){ }
+  }
+  try{ var hd = document.querySelector('header'); if(hd && window.MutationObserver) new MutationObserver(function(){ tickLeague(); }).observe(hd, {childList:true, subtree:true, characterData:true}); tickLeague(); }catch(_){ }
+
+  /* ── 경기 탭 ── */
+  function pitStat(tid, p){
+    try{ var x = state.season.stats[tid].pit[p[0]] || {}, out = +x.out || 0; return (+x.w || 0) + '승 ' + (+x.l || 0) + '패 · ' + Math.floor(out / 3) + '이닝 · 평균자책 ' + (out ? ((+x.er || 0) * 27 / out).toFixed(2) : '-'); }catch(_){ return '-'; }
+  }
+  function findPit(tid, label){
+    var t = getTeam(tid), nmTxt = String(label || '').replace(/^(내|상대) 선발\s*/, '').replace(/\s*·\s*\d+\s*$/, '').trim();
+    return (t.pit || []).find(function(q){ return q && (nm(q) === nmTxt || q[0] === nmTxt); }) || null;
+  }
+  function hubHtml(){
+    var it = news().items.find(function(x){ return x.type === 'game'; }), h = '<div class="hub-v1730">';
+    if(it && it.box){
+      var home = it.box.home, away = it.box.away, R = it.box.R;
+      h += '<div class="kk">⏮ 지난 경기 · ' + it.day + '경기째</div><div class="card" onclick="openNewsV1729(' + it.id + ')">'
+        + '<div class="sc"><span class="t">' + logo(away, 22) + ' <span>' + esc(tn(away)) + '</span></span><span class="n">' + R.away + '</span></div>'
+        + '<div class="sc"><span class="t">' + logo(home, 22) + ' <span>' + esc(tn(home)) + '</span></span><span class="n">' + R.home + '</span></div>'
+        + '<div class="dim" style="margin-top:4px">안타 ' + it.box.H.away + ' : ' + it.box.H.home + ' · 실책 ' + it.box.E.away + ' : ' + it.box.E.home + '　<span class="res ' + it.res + '">' + (it.res === 'W' ? '승' : it.res === 'L' ? '패' : '무') + '</span></div>'
+        + (it.hero ? '<div style="font-size:12.5px;margin-top:4px">⭐ ' + esc(it.hero.name) + ' — ' + esc(it.hero.text) + '</div>' : '')
+        + '<div class="nw"><div class="ph" data-anc1730="1"></div><div class="tx"><b>📺 스포츠 뉴스</b><br>' + esc(it.title.replace(/^⚾ /, '')) + '<br><span class="dim">눌러서 점수판 · 순위 · 리그 소식 보기 ›</span></div></div></div>';
+    } else h += '<div class="kk">⏮ 지난 경기</div><div class="card dim" onclick="openNewsV1729()">아직 치른 경기가 없습니다. 📺 스포츠 뉴스 보기 ›</div>';
+    return h + '<div class="kk">⏭ 다음 경기</div></div>';
+  }
+  function nextHtml(glance){
+    try{
+      var s = state.season; if(!s || !s.sched) return '';
+      var rd = s.sched[day()], m = rd && rd.find(function(x){ return x.home === my() || x.away === my(); }); if(!m) return '';
+      var opp = m.home === my() ? m.away : m.home, H = h2h()[opp] || {w:0, l:0, t:0};
+      var sp = glance ? glance.querySelectorAll('.game-starters-v104 span') : [], mine = sp[0] ? findPit(my(), sp[0].textContent) : null, theirs = sp[1] ? findPit(opp, sp[1].textContent) : null;
+      return '<div class="nx-v1730">'
+        + '<div class="r"><span>순위</span><span>' + esc(tn(my())) + ' ' + rankOf(my()) + '위 · ' + esc(tn(opp)) + ' ' + rankOf(opp) + '위</span></div>'
+        + '<div class="r"><span>올 시즌 상대 전적</span><span>' + H.w + '승 ' + H.l + '패' + (H.t ? ' ' + H.t + '무' : '') + '</span></div>'
+        + (mine ? '<div class="r"><span>내 선발 ' + esc(nm(mine)) + '</span><span>' + pitStat(my(), mine) + '</span></div>' : '')
+        + (theirs ? '<div class="r"><span>상대 선발 ' + esc(nm(theirs)) + '</span><span>' + pitStat(opp, theirs) + '</span></div>' : '')
+        + '</div>';
+    }catch(_){ return ''; }
+  }
+  function paintHub(){
+    try{
+      var gs = document.getElementById('gameSetup'); if(!gs || !state.season || state.season.post) return;
+      var si = document.getElementById('seasonInfo'); if(!si) return;
+      var old = gs.querySelector('.hub-v1730'); if(old) old.remove();
+      [].forEach.call(gs.querySelectorAll('.lbl-v1730'), function(x){ x.remove(); });
+      si.insertAdjacentHTML('beforebegin', hubHtml());
+      var ph = gs.querySelector('.hub-v1730 [data-anc1730]');
+      if(ph){ var a = window.newsAnchorPickV1729 ? window.newsAnchorPickV1729('anchor') : null; if(a) ph.style.backgroundImage = 'url(' + a + ')'; else ph.innerHTML = '<div style="display:grid;place-items:center;height:100%;font-size:26px">📺</div>'; }
+      var gl = si.querySelector('.game-glance-v104');
+      if(gl){ var o2 = gl.querySelector('.nx-v1730'); if(o2) o2.remove(); gl.insertAdjacentHTML('beforeend', nextHtml(gl)); }
+      var mg = gs.querySelector('.mgr-mode-v14'); if(mg) mg.insertAdjacentHTML('beforebegin', '<div class="lbl-v1730">🎽 감독 스타일</div>');
+      var sb = gs.querySelector('.speedbar'); if(sb) sb.insertAdjacentHTML('beforebegin', '<div class="lbl-v1730">🎮 게임 스타일</div>');
+    }catch(e){ console.error(V + ' 경기 탭:', e); }
+  }
+  var baseSetup = window.renderGameSetup;
+  if(typeof baseSetup === 'function'){
+    var rgs = function(){ var r = baseSetup.apply(this, arguments); paintHub(); return r; };
+    for(var k2 in baseSetup) if(Object.prototype.hasOwnProperty.call(baseSetup, k2)) rgs[k2] = baseSetup[k2];
+    window.renderGameSetup = rgs; try{ renderGameSetup = rgs; }catch(_){ }
+  }
+
+  /* ── FA 칸 이름(KBO FA 등급처럼) · 은퇴 안내 ── */
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    var ro = function(){
+      var h = baseOff.apply(this, arguments);
+      try{
+        if(typeof h === 'string'){
+          h = h.replace('1단계 · 대형 FA <small>', '1단계 · 대형 FA <small>A등급처럼 · ')
+               .replace('2단계 · 중간 FA <small>', '2단계 · 중간 FA <small>B등급처럼 · ')
+               .replace('🆓 3단계 · 무료 계약 <small>', '🆓 3단계 · 무료 계약 <small>C등급처럼 보상 없음 · 방출 · 미지명 신인 · 은퇴 번복 · 육성 선수 · ');
+        }
+      }catch(_){ }
+      return h;
+    };
+    window.renderOffseason = ro; try{ renderOffseason = ro; }catch(_){ }
+  }
+  var baseAlert = window.showAlert;
+  if(typeof baseAlert === 'function'){
+    var sa = function(msg){
+      try{ if(typeof msg === 'string' && /^은퇴 발표/.test(msg) && state && state.mode === 'sim') msg += '\n\n🆓 은퇴한 선수 중 일부는 오프시즌 3단계 무료 계약(은퇴 번복)에서 데려올 수 있습니다 — FA 1·2단계와 신인 지명을 마친 뒤.'; }catch(_){ }
+      return baseAlert.apply(this, [msg].concat([].slice.call(arguments, 1)));
+    };
+    window.showAlert = sa; try{ showAlert = sa; }catch(_){ }
+  }
+
+  /* ── 시작 화면: 팀 표시 · 다른 팀 고르기 / 경기 탭 3번 → 시작 화면 ── */
+  function teamLine(){
+    if(!state || !state.myTeam) return '';
+    return '<div class="ts-team-v1730">지금 ' + logo(state.myTeam, 16) + ' ' + esc(tn(state.myTeam)) + '<br><button type="button" onclick="pickOtherTeamV1730()">다른 팀 · 다른 슬롯 고르기</button></div>';
+  }
+  function decorateTitle(el){ try{ var bt = el && el.querySelector('.ts-bottom'); if(bt && !bt.querySelector('.ts-team-v1730')) bt.insertAdjacentHTML('beforeend', teamLine()); }catch(_){ } }
+  window.pickOtherTeamV1730 = function(){
+    try{ var el = document.getElementById('titleScreenV1032'); if(el) el.remove(); }catch(_){ }
+    try{ show('select'); if(typeof backToSlots === 'function') backToSlots(); else renderSlots(); }catch(e){ console.error(V + ' 팀 고르기:', e); }
+  };
+  window.showTitleV1730 = function(){
+    try{
+      if(document.getElementById('titleScreenV1032')) return;
+      var el = document.createElement('div'); el.id = 'titleScreenV1032';
+      el.innerHTML = '<div class="ts-bg"></div><div class="ts-veil"></div><div class="ts-body"><div class="ts-top"><div class="ts-eyebrow">Ball Club Management</div><div class="ts-title">우리팀을<br>만들자!</div><div class="ts-sub">KBO 구단 경영 시뮬레이션</div></div>'
+        + '<div class="ts-bottom"><button type="button" class="ts-start" id="tsStartV1032">시 작</button><div class="ts-ver">' + esc(V || '') + '</div></div></div>';
+      document.body.appendChild(el);
+      var bg = el.querySelector('.ts-bg'), pool = window.newsStadiumPickV1729 ? window.newsStadiumPickV1729() : null;
+      if(pool) bg.style.backgroundImage = 'url("' + pool + '")'; else bg.style.backgroundImage = 'url("assets/bg/stadium-' + String(1 + Math.floor(Math.random() * 16)).padStart(2, '0') + '.webp")';
+      bg.style.backgroundSize = 'cover'; bg.style.backgroundPosition = 'center';
+      el.querySelector('#tsStartV1032').addEventListener('click', function(){ el.classList.add('ts-out'); setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 360); });
+      decorateTitle(el);
+    }catch(e){ console.error(V + ' 시작 화면:', e); }
+  };
+  try{ decorateTitle(document.getElementById('titleScreenV1032')); }catch(_){ }
+  var taps = [];
+  window.addEventListener('click', function(e){   /* window 단계 — 다른 겹이 아래로 안 보내는 클릭도 받음 */
+    try{
+      var b = e.target && e.target.closest && e.target.closest('nav button[data-nav="game"]'); if(!b) return;
+      var now = Date.now(); taps = taps.filter(function(t){ return now - t < 900; }); taps.push(now);
+      if(taps.length >= 3){
+        taps = [];
+        if(window.autoRunBusyV16 && window.autoRunBusyV16()) return;
+        showConfirm('시작 화면으로 갈까요?\n\n진행은 저장돼 있습니다. 시작 화면 아래에서 다른 팀 · 다른 슬롯을 고를 수 있습니다.', function(){ try{ save(); }catch(_){ } window.showTitleV1730(); });
+      }
+    }catch(_){ }
+  }, true);
+})();
+</script>
+<!-- v1.7.30 END -->
 
 </body>
 </html>
