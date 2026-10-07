@@ -30962,7 +30962,7 @@ html[data-view-v14="fast"] #gameLive .ratebar-v116{display:none}
     var n = left();
     if(!n){ b.innerHTML = ''; b.style.display = 'none'; return; }
     b.style.display = '';
-    var html2 = [[10, '10경기', '자동 진행'], [MONTH, '한 달', MONTH + '경기'], [n, '시즌 끝까지', '남은 ' + n + '경기']]
+    var html2 = [[6, '한 주', '6경기'], [MONTH, '한 달', MONTH + '경기'], [n, '시즌 끝까지', '남은 ' + n + '경기']]
       .map(function(x){ return '<button type="button" onclick="autoRunV16(' + x[0] + ')"><b>' + x[1] + '</b><small>' + x[2] + '</small></button>'; }).join('');
     if(b.innerHTML !== html2) b.innerHTML = html2;
   }
@@ -33890,7 +33890,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
         var pb = $('playBtn'); if(pb && !pb.disabled) pb.click();
         return;
       }
-      var n = a === 'ten' ? 10 : a === 'month' ? MONTH : left();
+      var n = a === 'ten' ? 6 : a === 'month' ? MONTH : left();   /* v1.7.34 · 사용자: 10경기는 없고 주간(한 주 6경기) */
       if(typeof window.summerCapV179 === 'function') n = window.summerCapV179(n);   /* v1.7.9 · 시즌 2/3(96경기)에서 멈춘다 */
       if(ls === 'playing') return;
       if(ls === 'done'){ try{ renderGameSetup(); }catch(_){ } }
@@ -33918,7 +33918,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       var first = ls === 'playing' ? '<button type="button" class="main" data-act="one">⚡ 바로 끝내기<small>이 경기 결과</small></button>'
         : '<button type="button" class="main" data-act="one">▶ 한 경기<small>' + ((+state.season.day || 0) + 1) + '차전</small></button>';
       html = first
-        + '<button type="button" data-act="ten">10경기<small>자동</small></button>'
+        + '<button type="button" data-act="ten">한 주<small>6경기</small></button>'
         + '<button type="button" data-act="month">한 달<small>' + MONTH + '경기</small></button>'
         + '<button type="button" data-act="all">시즌 끝까지<small>남은 ' + n + '</small></button>';
     }
@@ -37812,7 +37812,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     var B = state.newsV1729 && state.newsV1729.batchV1730, n = fg.length, w = 0, l = 0, t = 0, rs = 0, ra = 0;
     fg.forEach(function(x){ if(x.res === 'W') w++; else if(x.res === 'L') l++; else t++; rs += +x.my || 0; ra += +x.op || 0; });
     var streak = 0, sk = fg[0] && fg[0].res; for(var i = 0; i < fg.length && fg[i].res === sk && sk !== 'T'; i++) streak++;
-    var now = teamSnap(), r0 = B ? B.rank : 0, r1 = rankOf(my()), a = B ? B.snap : null, avg = '-', hr = 0, era = '-', mvp = null, ace = null;
+    var now = teamSnap(), r0 = B && B.day > 0 ? B.rank : 0,   /* 시즌 첫 경기 전엔 모두 0승 0패라 순위가 없음 */ r1 = rankOf(my()), a = B ? B.snap : null, avg = '-', hr = 0, era = '-', mvp = null, ace = null;
     if(a){
       var ab = now.ab - a.ab, h = now.h - a.h, out = now.out - a.out, er = now.er - a.er; hr = now.hr - a.hr;
       avg = ab > 0 ? (h / ab).toFixed(3).replace(/^0/, '') : '-'; era = out > 0 ? (er * 27 / out).toFixed(2) : '-';
@@ -37820,7 +37820,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       Object.keys(now.bat).forEach(function(i){ var x = now.bat[i], y = a.bat[i] || {ab:0, h:0, hr:0, rbi:0}, d = {ab:x.ab - y.ab, h:x.h - y.h, hr:x.hr - y.hr, rbi:x.rbi - y.rbi}, s = d.h + d.hr * 2 + d.rbi; if(d.ab >= n * 2 && (!mvp || s > mvp.s)) mvp = {s:s, p:t0.bat[+i], d:d}; });
       Object.keys(now.pit).forEach(function(nn){ var x = now.pit[nn], y = a.pit[nn] || {out:0, er:0, w:0, so:0}, d = {out:x.out - y.out, er:x.er - y.er, w:x.w - y.w, so:x.so - y.so}, s = d.out / 3 - d.er * 1.3 + d.w * 2 + d.so * .2; if(d.out >= 15 && (!ace || s > ace.s)) ace = {s:s, name:nn, d:d}; });
     }
-    var label = n >= 20 ? '한 달 총평' : n + '경기 총평';
+    var label = n >= 20 ? '한 달 총평' : n === 6 ? '주간 총평' : n + '경기 총평';
     var mvpTxt = mvp && mvp.p ? nm(mvp.p) + ' — ' + mvp.d.ab + '타수 ' + mvp.d.h + '안타(.' + String(Math.round(mvp.d.h / Math.max(1, mvp.d.ab) * 1000)).padStart(3, '0') + ') ' + mvp.d.hr + '홈런 ' + mvp.d.rbi + '타점' : '';
     var aceP = ace ? (getTeam(my()).pit || []).find(function(q){ return q && q[0] === ace.name; }) : null;
     var aceTxt = ace ? (aceP ? nm(aceP) : ace.name) + ' — ' + Math.floor(ace.d.out / 3) + '이닝 평균자책 ' + (ace.d.out ? (ace.d.er * 27 / ace.d.out).toFixed(2) : '-') + (ace.d.w ? ' · ' + ace.d.w + '승' : '') : '';
@@ -37854,8 +37854,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
             var S = summary(fg), old = [].filter.call(sh.querySelectorAll('.seg'), function(x){ var hh = x.querySelector('.sh'); return hh && /ROUNDUP/.test(hh.textContent); })[0];
             var tmp = document.createElement('div'); tmp.innerHTML = S.html;
             if(old) old.parentNode.replaceChild(tmp.firstChild, old); else { var st0 = sh.querySelector('.studio'); if(st0) st0.insertAdjacentElement('afterend', tmp.firstChild); }
-            var say = sh.querySelector('.studio .say'), kk = sh.querySelector('.studio .kk'); if(say) say.textContent = S.say; if(kk) kk.textContent = '📋 ' + (fg.length >= 20 ? '한 달 총평' : fg.length + '경기 총평');
-            var pn = sh.querySelector('.pname'); if(pn) pn.textContent = '📺 스포츠 뉴스 — ' + (fg.length >= 20 ? '한 달 총평' : fg.length + '경기 총평');
+            var say = sh.querySelector('.studio .say'), kk = sh.querySelector('.studio .kk'); if(say) say.textContent = S.say; if(kk) kk.textContent = '📋 ' + (fg.length >= 20 ? '한 달 총평' : fg.length === 6 ? '주간 총평' : fg.length + '경기 총평');
+            var pn = sh.querySelector('.pname'); if(pn) pn.textContent = '📺 스포츠 뉴스 — ' + (fg.length >= 20 ? '한 달 총평' : fg.length === 6 ? '주간 총평' : fg.length + '경기 총평');
           }
         }
       }catch(e){ console.error(V + ' 총평:', e); }
@@ -37977,7 +37977,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       if(!g){ window.openNewsV1729(); return; }
       var inj = items.filter(function(x){ return x.type === 'injury'; }), batch = fg.length > 1, S = batch ? summary(fg) : null;
       var home = g.box.home, away = g.box.away;
-      var h = '<div class="top"><div class="pname">' + (batch ? '🏁 ' + (fg.length >= 20 ? '한 달 총평' : fg.length + '경기 총평') : '🏁 경기 결과') + '</div><button class="close" onclick="closeSheet()">✕</button></div><div class="nw-v1729 hub-v1730">';
+      var h = '<div class="top"><div class="pname">' + (batch ? '🏁 ' + (fg.length >= 20 ? '한 달 총평' : fg.length === 6 ? '주간 총평' : fg.length + '경기 총평') : '🏁 경기 결과') + '</div><button class="close" onclick="closeSheet()">✕</button></div><div class="nw-v1729 hub-v1730">';
       /* ① 이번 경기 팀 */
       h += '<div class="kk">① ' + (batch ? '이번 진행 ' + fg.length + '경기 · ' + fg[fg.length - 1].day + '~' + g.day + '경기째' : '이번 경기 · ' + g.day + '경기째') + '</div>'
         + '<div class="card" style="cursor:default"><div class="sc"><span class="t">' + logo(away, 28) + ' <b>' + esc(tn(away)) + '</b></span><span class="n">' + g.box.R.away + ' : ' + g.box.R.home + '</span><span class="t"><b>' + esc(tn(home)) + '</b> ' + logo(home, 28) + '</span></div>'
@@ -38683,7 +38683,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
         /* 10경기 · 한 달 진행이면 총평(사용자 #49 — v1.7.33 에서 잘못 뺐던 것) */
         if(from != null && window.newsSummaryV1730){
           var fg = B.items.filter(function(x){ return x.type === 'game' && x.id > from; });
-          if(fg.length > 1){ var S = window.newsSummaryV1730(fg), card = sh.querySelector('.sc-v1733'); if(S && S.html && card){ card.insertAdjacentHTML('afterend', S.html); var pn = sh.querySelector('.pname'); if(pn) pn.textContent = '📺 스포츠 뉴스 — ' + (fg.length >= 20 ? '한 달 총평' : fg.length + '경기 총평'); } }
+          if(fg.length > 1){ var S = window.newsSummaryV1730(fg), card = sh.querySelector('.sc-v1733'); if(S && S.html && card){ card.insertAdjacentHTML('afterend', S.html); var pn = sh.querySelector('.pname'); if(pn) pn.textContent = '📺 스포츠 뉴스 — ' + (fg.length >= 20 ? '한 달 총평' : fg.length === 6 ? '주간 총평' : fg.length + '경기 총평'); } }
         }
         var add = '<div class="seg"><div class="sh">STANDINGS · 순위</div>' + standings() + '</div>'
           + '<div class="seg"><div class="sh">NEXT GAME · 다음 경기</div>' + nextGame() + '</div>'
