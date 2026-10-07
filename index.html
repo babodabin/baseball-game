@@ -31817,6 +31817,10 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
     };
     window.applyGrowthWithTraining = grow; try{ applyGrowthWithTraining = grow; }catch(_){ }
   }
+  function farmSeasonV1736(tid, kd, p){
+    try{ var D = state.season && state.season.devV1720, r = D && D[tid + '|' + kd + '|' + p[0]]; if(r && (r.f + r.s) > 0) return r.s > r.f; }catch(_){ }
+    try{ return squadLevelOf(tid, kd, p) === 'second'; }catch(_){ return false; }
+  }
   var baseRetire = window.processRetirements;
   if(typeof baseRetire === 'function'){
     var retire = function(){
@@ -31847,6 +31851,8 @@ window.KBO_AGE_V163 = {"bat:어스틴":33,"bat:이주현":23,"bat:문정빈":23,
               var p = arr[i]; if(isLegend(p)) continue;
               var real = +ages[i] || 28, body = real - shift(durOf(kd, p, real)), o = ovrOf(tid, kd, p);
               if(body < T.skillAge || o >= T.skillOvr) continue;
+              /* v1.7.36 · 사용자: 실력 은퇴는 2군 선수만 — 그 시즌 2군 날이 1군 날보다 많은 선수(성장 표본 devV1720, 없으면 지금 2군인지). 1군에서 뛴 선수는 나이 · 내구성 은퇴만 */
+              if(!farmSeasonV1736(tid, kd, p)) continue;
               var c = (T.skillOvr - o) / 10 * T.skillRate * (body - T.skillAge + 1);
               if(Math.random() < Math.min(.85, c)){
                 state.retired.push({name:p[0], real:p[1], team:tid, kind:kd, age:real, ovr:o, year:state.year, type:'실력', why:'계약 못 함'});
@@ -39057,6 +39063,138 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.36 comp END -->
+<!-- v1.7.36 · 은퇴·방출 선수 찜하기 -->
+<script id="dibs-v1736">
+/* 사용자(2026-10-07): "은퇴 발표 때 은퇴한 선수나 방출된 선수를 모두 보이게 하고 내가 찜할 수 있게 하고, 은퇴 안 시키고 나중에 3단계에서 할 수 있게"
+   ① 은퇴 발표(오프시즌 시작) 글 대신 명단 창: 은퇴 선수 전부(국내 · retiredDataV1713) + 방출 선수(poolV1723 · 3단계 명단의 AI 방출 베테랑) — 🔖 찜
+      방출은 FA 마감 · 드래프트 전에 생기면 같은 창에 더해짐. FA·계약 화면에 "🔖 은퇴·방출 선수" 버튼
+   ② 찜한 은퇴 선수는 OVR 상위 5명에 안 들어도 3단계(방출 계약) 명단에 들어감 · 3단계가 열리면 이 창에서 바로 계약
+   ③ AI 는 찜한 선수를 못 데려감(오프시즌 끝 AI 채우기 때 막음). 끝날 때까지 계약 안 하면 그대로 은퇴 · 떠남
+   기록: state.season.dibsV1736 = {키:1}. ?nov1736d 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search || '').indexOf('nov1736d') >= 0) return;
+  var V = window.APP_VERSION;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]; }); }
+  function my(){ return state.myTeam; }
+  function tn(tid){ try{ return getTeam(tid).name; }catch(_){ return tid || ''; } }
+  function nm(d){ try{ return playerDisplayName(d); }catch(_){ return d ? d[0] : ''; } }
+  function sim(){ try{ return state.mode === 'sim'; }catch(_){ return false; } }
+  function mkt(){ return state.season && state.season.market; }
+  function dibs(){ var s = state.season; if(!s) return {}; if(!s.dibsV1736) s.dibsV1736 = {}; return s.dibsV1736; }
+  function key(src, from, name){ return (src === 'ret' ? 'ret' : 'out') + '|' + (from || '') + '|' + name; }
+  /* 원래 팀 — 게임 시작 때 실제 명단(TEAMS)에 있던 팀. 다르면 "이적" 표시(사용자) */
+  var ORIG = null;
+  function origOf(d){
+    if(!ORIG){ ORIG = {}; try{ (TEAMS || []).forEach(function(t){ ['bat', 'pit'].forEach(function(k){ (t[k] || []).forEach(function(p){ if(!p) return; if(p[0] && !ORIG[p[0]]) ORIG[p[0]] = t.id; if(p[1] && p[1] !== '가상 선수' && p[1] !== '신인' && !ORIG['r|' + p[1]]) ORIG['r|' + p[1]] = t.id; }); }); }); }catch(_){ } }
+    return (d && (ORIG[d[0]] || ORIG['r|' + d[1]])) || null;
+  }
+  function freeList(){ var m = mkt(); return m && m.freeV176 && m.freeV176.year === state.year ? m.freeV176.list : null; }
+  /* 명단 모으기 */
+  function rows(){
+    var s = state.season, m = mkt(), out = [], seen = {};
+    var add = function(src, x, why){
+      var name = x.name || (x.data && x.data[0]); if(!name || !x.data) return;
+      var k = key(src, x.from, name); if(seen[k]) return; seen[k] = 1;
+      out.push({k:k, src:src, why:why, x:x, name:name, from:x.from, ovr:+x.ovr || 0, age:+x.age || 0, pos:x.data[2] || '', kind:x.kind});
+    };
+    ((s && s.retiredDataV1713) || []).forEach(function(x){ add('ret', x, '은퇴'); });
+    /* poolV1723: cut = 돈 모자란 AI 연봉 정리 · vet = 드래프트 전 신인 자리 비우기(v1.7.23) / 3단계 명단 vet = 40명 넘는 AI 의 31세+ 2군 최하위(v1.7.6) */
+    ((m && m.poolV1723) || []).forEach(function(x){ if(x.src !== 'dev') add('out', x, x.src === 'cut' ? '방출 · 연봉 정리' : '방출 · 신인 자리'); });
+    (freeList() || []).forEach(function(x){ if(x.src === 'vet') add('out', x, '방출 · 2군 베테랑'); });
+    out.sort(function(a, b){ return b.ovr - a.ovr; });
+    return out;
+  }
+  /* 3단계 명단에서 이 선수 찾기(없으면 찜한 은퇴 선수는 넣음) */
+  function inFree(r, addIfDib){
+    var L = freeList(); if(!L) return -1;
+    var i = L.findIndex(function(y){ return (y.name || (y.data && y.data[0])) === r.name && (y.from || '') === (r.from || ''); });
+    if(i < 0 && addIfDib && r.src === 'ret'){ L.push({src:'ret', kind:r.x.kind, name:r.name, data:r.x.data, age:r.x.age, ovr:r.ovr, from:r.from}); i = L.length - 1; }
+    return i;
+  }
+  function syncFree(){ var D = dibs(); rows().forEach(function(r){ if(D[r.k]) inFree(r, true); }); }
+  window.dibsToggleV1736 = function(k){ var D = dibs(); if(D[k]) delete D[k]; else D[k] = 1; try{ syncFree(); save(); }catch(_){ } window.openDibsV1736(); };
+  window.dibsSignV1736 = function(k){
+    try{
+      var r = rows().find(function(y){ return y.k === k; }); if(!r) return;
+      var i = inFree(r, true); if(i < 0) return;
+      if(typeof window.freeSignV176 === 'function') window.freeSignV176(i);
+      window.openDibsV1736();
+    }catch(e){ console.error(V + ' 찜 계약:', e); }
+  };
+  window.openDibsV1736 = function(){
+    try{
+      var sh = document.getElementById('sheet'), mk = document.getElementById('mask'); if(!sh || !state.season) return;
+      var R = rows(), D = dibs(), L = freeList(), open = !!L;
+      var row = function(r){
+        var fi = open ? inFree(r, false) : -1, fx = fi >= 0 ? L[fi] : null, signed = fx && fx.signed && fx.signed !== '__dibs';
+        var btn = signed ? '<span class="dim">' + (fx.signed === my() ? '✅ 우리 계약' : esc(tn(fx.signed)) + ' 계약') + '</span>'
+          : (open && D[r.k] ? '<button type="button" class="gold" onclick="dibsSignV1736(\'' + esc(r.k) + '\')">계약</button> ' : '')
+            + '<button type="button" onclick="dibsToggleV1736(\'' + esc(r.k) + '\')">' + (D[r.k] ? '🔖 찜 해제' : '찜') + '</button>';
+        var o = origOf(r.x.data), moved = o && r.from && o !== r.from;
+        var tag = '<span style="font-size:11px;padding:1px 6px;border-radius:8px;margin-left:4px;background:' + (r.src === 'ret' ? 'rgba(147,167,155,.25)' : 'rgba(229,96,96,.25)') + '">' + (r.why || '방출') + '</span>'
+          + (moved ? '<span style="font-size:11px;padding:1px 6px;border-radius:8px;margin-left:4px;background:rgba(244,196,94,.25);color:#F4C45E">이적 ' + esc(String(tn(o)).split(' ')[0]) + ' → ' + esc(String(tn(r.from)).split(' ')[0]) + '</span>' : '');
+        return '<div class="row' + (D[r.k] ? ' me' : '') + '"><span><b>' + esc(nm(r.x.data)) + '</b>' + tag + '<br><span class="dim">' + esc(r.pos) + ' · ' + r.age + '세 · ' + esc(tn(r.from)) + '</span></span><span style="white-space:nowrap">OVR ' + r.ovr + ' ' + btn + '</span></div>';
+      };
+      var ret = R.filter(function(r){ return r.src === 'ret'; }), out = R.filter(function(r){ return r.src !== 'ret'; });
+      var n = Object.keys(D).length;
+      sh.innerHTML = '<div class="top"><div class="pname">🔖 은퇴 · 방출 선수</div><button class="close" onclick="closeSheet()">✕</button></div><div class="nw-v1729 hub-v1730">'
+        + '<div class="hint" style="margin:0 0 8px">찜한 선수는 은퇴 · 떠나지 않고 <b>3단계 방출 계약</b>에서 우리가 데려올 수 있습니다(AI 는 못 데려감). '
+        + (open ? '지금 3단계가 열려 있어 바로 계약할 수 있습니다.' : '3단계는 FA 마감 · 신인 지명 뒤에 열립니다.') + ' 끝까지 계약하지 않으면 은퇴 · 떠납니다. 찜 ' + n + '명</div>'
+        + '<div class="seg" style="margin-top:0"><div class="sh">🎖 은퇴 ' + ret.length + '명 <span class="dim">(이적 ' + ret.filter(function(r){ var o = origOf(r.x.data); return o && r.from && o !== r.from; }).length + '명)</span></div>' + (ret.length ? ret.map(row).join('') : '<div class="dim">없음</div>') + '</div>'
+        + '<div class="seg"><div class="sh">📤 방출 ' + out.length + '명</div>' + (out.length ? out.map(row).join('') : '<div class="dim">아직 없음 — FA 마감 · 드래프트 전에 AI 가 방출하면 여기 나옵니다.</div>') + '</div>'
+        + '<div class="btns"><button type="button" class="gold" onclick="closeSheet()">닫기</button></div></div>';
+      if(mk) mk.classList.add('on'); sh.scrollTop = 0;
+    }catch(e){ console.error(V + ' 찜 창:', e); }
+  };
+  /* ① 은퇴 발표 글 대신 창 */
+  var baseAlert = window.showAlert;
+  if(typeof baseAlert === 'function'){
+    var sa = function(msg){
+      try{ if(typeof msg === 'string' && /^은퇴 발표/.test(msg) && sim() && state.season && (state.season.retiredDataV1713 || []).length){ setTimeout(window.openDibsV1736, 0); return; } }catch(_){ }
+      return baseAlert.apply(this, arguments);
+    };
+    window.showAlert = sa; try{ showAlert = sa; }catch(_){ }
+  }
+  /* FA·계약 화면 버튼 + 3단계 명단에 찜한 은퇴 선수 넣기 */
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    window.renderOffseason = function(){
+      var h = baseOff.apply(this, arguments);
+      try{
+        if(sim() && typeof h === 'string' && state.season){
+          syncFree();
+          if(ending){ var D = dibs(), L = freeList(); if(L) rows().forEach(function(r){ if(!D[r.k]) return; var i = inFree(r, true); if(i >= 0 && !L[i].signed) L[i].signed = '__dibs'; }); }
+          var n = rows().length;
+          if(n) h = '<div style="margin:10px 0"><button type="button" class="btn ghost" onclick="openDibsV1736()">🔖 은퇴 · 방출 선수 ' + n + '명 · 찜 ' + Object.keys(dibs()).length + '명</button></div>' + h;
+        }
+      }catch(_){ }
+      return h;
+    };
+    try{ renderOffseason = window.renderOffseason; }catch(_){ }
+  }
+  /* ③ 오프시즌 끝 AI 채우기 동안 찜한 선수 막기 */
+  var ending = false;
+  var baseEnd = window.doOffseasonEnd;
+  if(typeof baseEnd === 'function'){
+    window.doOffseasonEnd = function(){
+      var held = [];
+      try{
+        if(sim()){
+          ending = true; var D = dibs(), m = mkt();
+          ((m && m.poolV1723) || []).forEach(function(x){ if(D[key('out', x.from, x.name || x.data[0])] && !x.signed){ x.signed = '__dibs'; held.push(x); } });
+          var L = freeList(); if(L) L.forEach(function(x){ var k1 = key(x.src === 'ret' ? 'ret' : 'out', x.from, x.name || (x.data && x.data[0])); if(D[k1] && !x.signed){ x.signed = '__dibs'; held.push(x); } });
+          syncFree();
+        }
+      }catch(_){ }
+      try{ return baseEnd.apply(this, arguments); }
+      finally{ ending = false; held.forEach(function(x){ if(x.signed === '__dibs') delete x.signed; }); }
+    };
+    try{ doOffseasonEnd = window.doOffseasonEnd; }catch(_){ }
+  }
+})();
+</script>
+<!-- v1.7.36 dibs END -->
 
 </body>
 </html>
