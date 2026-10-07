@@ -37228,23 +37228,50 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   }
   /* 사진 묶음(앵커·야구장 여러 장) — 앵커는 뉴스를 열 때마다 무작위, 맨 위 야구장은 앱을 열 때마다 무작위(사용자 "항상 랜덤") */
   function pool(k){ var a = PH['pool:' + k]; return Array.isArray(a) && a.length ? a : null; }
-  function anchorFor(key){ var a = pool('anchor'); if(a) return a[Math.floor(Math.random() * a.length)]; return PH[key] || PH.anchor || null; }
-  var hdrPick = null;
-  function stadiumPhoto(){ if(PH.stadium) return PH.stadium; var a = pool('stadium'); if(!a) return null; if(hdrPick == null || hdrPick >= a.length) hdrPick = Math.floor(Math.random() * a.length); return a[hdrPick]; }
+  function rnd(a){ return a[Math.floor(Math.random() * a.length)]; }
+  /* 앵커 — 긴급뉴스(부상 속보)는 뉴스앵커 묶음, 그 밖(경기 후 · 시즌 중간 · 시즌 특집)은 스포츠앵커 묶음, 매번 무작위(사용자 2026-10-07) */
+  function anchorFor(key){
+    var a = key === 'anchorAlert' ? (pool('urgent') || pool('sports')) : (pool('sports') || pool('anchor') || pool('urgent'));
+    if(a) return rnd(a);
+    return PH[key] || PH.anchor || null;
+  }
+  /* 맨 위 띠는 그림(사용자) — 한 장씩 넣은 "맨 위 야구장"만 씀. 묶음의 야구장은 첫 화면으로 */
+  function stadiumPhoto(){ return PH.stadium || null; }
+  var titlePick = null;
+  function applyTitle(){
+    try{
+      var a = pool('stadium'), bg = document.querySelector('#titleScreenV1032 .ts-bg'); if(!a || !bg) return;
+      if(titlePick == null) titlePick = rnd(a);
+      bg.style.backgroundImage = 'url("' + titlePick + '")';
+      bg.style.backgroundSize = 'cover'; bg.style.backgroundPosition = 'center';
+    }catch(_){ }
+  }
+  var KEYS = {urgent:'anchorUrgent', sports:'anchorSports', stadium:'stadium'};
   window.newsBundleV1729 = function(input){
     var f = input && input.files && input.files[0]; if(!f) return;
     var rd = new FileReader();
     rd.onload = function(){
       var o = null; try{ o = JSON.parse(String(rd.result)); }catch(_){ }
-      if(!o || o.kind !== 'wts-news-photos' || (!Array.isArray(o.anchor) && !Array.isArray(o.stadium))){ try{ showAlert('사진 묶음 파일이 아닙니다.'); }catch(_){ } return; }
+      if(!o || o.kind !== 'wts-news-photos'){ try{ showAlert('사진 묶음 파일이 아닙니다.'); }catch(_){ } return; }
       var ok = function(a){ return (Array.isArray(a) ? a : []).filter(function(u){ return typeof u === 'string' && /^data:image\//.test(u); }); };
-      var A = ok(o.anchor), S2 = ok(o.stadium);
-      idbDo('readwrite', function(s){ s.put(A, 'pool:anchor'); return s.put(S2, 'pool:stadium'); }).then(function(){ PH['pool:anchor'] = A; PH['pool:stadium'] = S2; hdrPick = null; applyHeader(); window.openNewsPhotosV1729(); try{ showAlert('사진 묶음을 넣었습니다.\n앵커 ' + A.length + '장 · 야구장 ' + S2.length + '장 — 뉴스를 열 때마다 무작위로 나옵니다.'); }catch(_){ } })
-        .catch(function(e){ console.error(V + ' 사진 묶음:', e); try{ showAlert('사진 묶음을 넣지 못했습니다(저장 공간이 모자랄 수 있음).'); }catch(_){ } });
+      var P = {urgent:ok(o.anchorUrgent), sports:ok(o.anchorSports || o.anchor), stadium:ok(o.stadium)};
+      idbDo('readwrite', function(s){ s.delete('pool:anchor'); s.put(P.urgent, 'pool:urgent'); s.put(P.sports, 'pool:sports'); return s.put(P.stadium, 'pool:stadium'); }).then(function(){
+        delete PH['pool:anchor']; PH['pool:urgent'] = P.urgent; PH['pool:sports'] = P.sports; PH['pool:stadium'] = P.stadium; titlePick = null;
+        applyHeader(); window.openNewsPhotosV1729();
+        try{ showAlert('사진 묶음을 넣었습니다.\n긴급뉴스 앵커 ' + P.urgent.length + '장 · 스포츠 앵커 ' + P.sports.length + '장 · 첫 화면 야구장 ' + P.stadium.length + '장\n모두 매번 무작위로 나옵니다(첫 화면은 다음에 열 때부터).'); }catch(_){ }
+      }).catch(function(e){ console.error(V + ' 사진 묶음:', e); try{ showAlert('사진 묶음을 넣지 못했습니다(저장 공간이 모자랄 수 있음).'); }catch(_){ } });
     };
     rd.readAsText(f);
   };
-  window.newsBundleDelV1729 = function(){ delete PH['pool:anchor']; delete PH['pool:stadium']; hdrPick = null; idbDo('readwrite', function(s){ s.delete('pool:anchor'); return s.delete('pool:stadium'); }).then(function(){ applyHeader(); window.openNewsPhotosV1729(); }).catch(function(){ }); };
+  window.newsBundleDelV1729 = function(){
+    ['anchor', 'urgent', 'sports', 'stadium'].forEach(function(k){ delete PH['pool:' + k]; });
+    idbDo('readwrite', function(s){ s.delete('pool:anchor'); s.delete('pool:urgent'); s.delete('pool:sports'); return s.delete('pool:stadium'); }).then(function(){ applyHeader(); window.openNewsPhotosV1729(); }).catch(function(){ });
+  };
+  function bundleText(){
+    var u = pool('urgent'), s = pool('sports') || pool('anchor'), st = pool('stadium');
+    if(!u && !s && !st) return '없음 — 묶음 파일(뉴스사진묶음.json)을 고르면 한 번에 들어감';
+    return '긴급 앵커 ' + (u || []).length + ' · 스포츠 앵커 ' + (s || []).length + ' · 첫 화면 야구장 ' + (st || []).length + ' — 매번 무작위';
+  }
   window.newsPhotoPickV1729 = function(slot, input){
     var f = input && input.files && input.files[0]; if(!f) return;
     shrink(f, slot === 'stadium' || slot === 'stage' ? 1400 : 1000).then(function(url){
@@ -37255,8 +37282,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   window.openNewsPhotosV1729 = function(){
     var sh = document.getElementById('sheet'), mk = document.getElementById('mask'); if(!sh) return;
     var h = '<div class="top"><div class="pname">📷 뉴스 사진 넣기</div><button class="close" onclick="closeSheet()">✕</button></div>'
-      + '<div class="ph-v1729"><div class="slot"><div class="pv" style="' + (pool('anchor') ? 'background-image:url(' + pool('anchor')[0] + ')' : '') + '"></div><div class="tx"><b>📦 사진 묶음</b><br><span style="color:#93A79B">' + (pool('anchor') || pool('stadium') ? '앵커 ' + (pool('anchor') || []).length + '장 · 야구장 ' + (pool('stadium') || []).length + '장 — 매번 무작위' : '없음 — 묶음 파일(뉴스사진묶음.json)을 고르면 한 번에 들어감') + '</span><br><label>묶음 불러오기<input type="file" style="display:none" onchange="newsBundleV1729(this)"></label>' + (pool('anchor') || pool('stadium') ? '<button type="button" onclick="newsBundleDelV1729()">묶음 지우기</button>' : '') + '</div></div></div>'
-      + '<div class="hint">아래 칸은 한 장씩 따로 넣을 때(야구장은 넣으면 묶음보다 먼저). 고른 사진은 <b>이 휴대폰(이 브라우저)에만</b> 저장됩니다. 저장소·사이트에는 올라가지 않아 다른 사람에게는 보이지 않습니다. 브라우저 데이터를 지우거나 휴대폰을 바꾸면 다시 넣어야 합니다. 큰 사진은 넣을 때 줄입니다.</div><div class="ph-v1729">';
+      + '<div class="ph-v1729"><div class="slot"><div class="pv" style="' + ((pool('sports') || pool('urgent')) ? 'background-image:url(' + (pool('sports') || pool('urgent'))[0] + ')' : '') + '"></div><div class="tx"><b>📦 사진 묶음</b><br><span style="color:#93A79B">' + bundleText() + '</span><br><label>묶음 불러오기<input type="file" style="display:none" onchange="newsBundleV1729(this)"></label>' + (bundleText().indexOf('없음') ? '<button type="button" onclick="newsBundleDelV1729()">묶음 지우기</button>' : '') + '</div></div></div>'
+      + '<div class="hint">아래 칸은 한 장씩 따로 넣을 때(맨 위 야구장은 여기 넣은 사진만 씀 — 비우면 그림). 고른 사진은 <b>이 휴대폰(이 브라우저)에만</b> 저장됩니다. 저장소·사이트에는 올라가지 않아 다른 사람에게는 보이지 않습니다. 브라우저 데이터를 지우거나 휴대폰을 바꾸면 다시 넣어야 합니다. 큰 사진은 넣을 때 줄입니다.</div><div class="ph-v1729">';
     SLOTS.forEach(function(s){
       var u = PH[s[0]];
       h += '<div class="slot"><div class="pv" style="' + (u ? 'background-image:url(' + u + ')' : '') + '"></div><div class="tx"><b>' + s[1] + '</b><br><span class="dim" style="color:#93A79B">' + (u ? '넣음' : '없음 — 기본 그림') + '</span><br>'
@@ -37592,7 +37619,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     var H = state.awardHistoryV1729 || [], r = H.find(function(x){ return x.year === spYear; }); if(!r) return;
     var pages = spPages(r); spPage = Math.max(0, Math.min(pages.length - 1, spPage));
     var bg = PH.stage ? '<div class="bg"><img src="' + PH.stage + '" alt=""></div>' : '<div class="bg">' + stageSvg() + '</div>';
-    var anc = pool('anchor') ? anchorFor('anchorWin') : (PH.anchorWin || PH.anchor);
+    var anc = anchorFor('anchorWin');
     sh.innerHTML = '<div class="top"><div class="pname">🏆 시즌 결산 특집</div><button class="close" onclick="closeSheet()">✕</button></div>'
       + '<div class="sp-v1729">' + bg + '<div class="in">' + (spPage === 0 && anc ? '<div style="text-align:center"><img src="' + anc + '" alt="" style="height:120px;border-radius:10px;object-fit:cover;-webkit-mask-image:linear-gradient(180deg,#000 75%,transparent);mask-image:linear-gradient(180deg,#000 75%,transparent)"></div>' : '')
       + pages[spPage]
@@ -37625,7 +37652,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   var baseRefresh = window.refreshHeader;
   if(typeof baseRefresh === 'function'){ var rh = function(){ var r = baseRefresh.apply(this, arguments); try{ applyHeader(); }catch(_){ } return r; }; window.refreshHeader = rh; try{ refreshHeader = rh; }catch(_){ } }
   applyHeader();
-  loadPhotos().then(applyHeader);
+  loadPhotos().then(function(){ applyHeader(); applyTitle(); });
 })();
 </script>
 <!-- v1.7.29 END -->
