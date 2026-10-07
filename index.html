@@ -38882,6 +38882,181 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.36 END -->
+<!-- v1.7.36 · FA 보상(보상 선수 + 돈) · 트레이드 등급 한도 -->
+<script id="comp-v1736">
+/* 사용자(2026-10-07) — 팀 전체 스타 한도(balance-v1736 ①) 대신:
+   ① 트레이드 한 번에 받는 선수: A급 최대 2 · A+B 최대 3 · C 무제한(우리 · AI 같음). 등급 = FA 등급(A OVR 78+ · B 68~77 · C 67 이하, FA_TIER_V176)
+   ② FA 보상(우리 · AI 모두): FA 를 데려간 팀이 원래 팀에 — A급 보상 선수 1명 + 그 FA 연봉 3배 · B급 보상 선수 2명 + 연봉 2배 · C급 없음.
+      보호 선수 A급 18명 · B급 22명(이 게임은 한 시즌 팀마다 24~29명이 자주 뜀 — 측정). 외국인 · 그해 데려온 FA 는 못 데려감.
+      원래 팀이 AI 면 남은 선수 중 OVR 최고, 우리면 고르는 창(안 고르면 드래프트 · 오프시즌 끝 때 최고 선수 자동). 예전 "보상 지명권"은 이것으로 바꿈.
+   기록: market.compV1736 = {done, list:[...], pending:[...]}. 값: window.FA_COMP_V1736 · ?nov1736c 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search || '').indexOf('nov1736c') >= 0) return;
+  var V = window.APP_VERSION;
+  var C = window.FA_COMP_V1736 = {A:{players:1, pay:3, protect:18}, B:{players:2, pay:2, protect:22}, trade:{A:2, AB:3}};
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]; }); }
+  function R1(v){ return Math.round((Number(v) || 0) * 10) / 10; }
+  function my(){ return state.myTeam; }
+  function tn(tid){ try{ return getTeam(tid).name; }catch(_){ return tid; } }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p ? p[0] : ''; } }
+  function isF(p, kind){ try{ return !!window.isForeignV1613(p, kind); }catch(_){ return false; } }
+  function ovr(tid, kind, p){ try{ return kind === 'bat' ? batOvr(p, tid) : pitOvr(p, tid); }catch(_){ return 0; } }
+  function eco(){ try{ return typeof ecoOn === 'function' ? ecoOn() : false; }catch(_){ return false; } }
+  function sim(){ try{ return state.mode === 'sim'; }catch(_){ return false; } }
+  function tier(){ return window.FA_TIER_V176 || {t1:78, t2:68}; }
+  function josa(w){ var c = String(w || '').charCodeAt(String(w || '').length - 1) - 0xAC00; return c >= 0 && c < 11172 && c % 28 ? '이' : '가'; }
+  function grade(o){ o = +o || 0; return o >= tier().t1 ? 'A' : o >= tier().t2 ? 'B' : 'C'; }
+  window.faGradeV1736 = grade;
+  function salary(o){ return R1(Math.max(.5, Math.pow(Math.max(0, (+o || 0) - 50) / 10, 2.1) * .9)); }   /* ai-fin-v1722 · 우리 salaryOf 와 같은 식 */
+
+  /* ── ① 트레이드 등급 한도 ── */
+  function over(list){ var a = 0, b = 0; list.forEach(function(g){ if(g === 'A') a++; else if(g === 'B') b++; }); return a > C.trade.A || a + b > C.trade.AB ? {a:a, b:b} : null; }
+  window.tradeGradeOkV1736 = function(grades){ return !over(grades); };
+  var baseTrade = window.proposeTrade;
+  if(typeof baseTrade === 'function'){
+    var pt = function(){
+      try{
+        var me = getTeam(my()), op = getTeam(tradeOppId);
+        var g = function(T, tid, picks){ return (picks || []).map(function(x){ var p = (x.kind === 'bat' ? T.bat : T.pit)[x.idx]; return p ? grade(ovr(tid, x.kind, p)) : 'C'; }); };
+        var inn = over(g(op, tradeOppId, tradeOppPicks)), out = over(g(me, my(), tradeMyPicks));
+        if(inn || out){
+          var x = inn || out;
+          showAlert('🔁 트레이드 등급 한도\n\n한 번 트레이드에 받을 수 있는 선수: A급(OVR ' + tier().t1 + '+) 최대 ' + C.trade.A + '명 · A+B급(OVR ' + tier().t2 + '+) 합쳐 최대 ' + C.trade.AB + '명 · C급은 무제한.\n\n'
+            + (inn ? '우리가 받는 선수' : '상대가 받는 선수') + ': A급 ' + x.a + '명 · B급 ' + x.b + '명');
+          return;
+        }
+      }catch(_){ }
+      return baseTrade.apply(this, arguments);
+    };
+    window.proposeTrade = pt; try{ proposeTrade = pt; }catch(_){ }
+  }
+  /* 팀 전체 스타 4명 한도(balance-v1736 ①)는 끔 — 사용자가 이 규칙으로 바꿈 */
+  window.starCapBlockV1736 = function(){ return false; };
+  try{ if(window.STAR_CAP_V1736) window.STAR_CAP_V1736.max = Infinity; }catch(_){ }   /* balance-v1736 의 우리 트레이드 검사도 끔 */
+  window.starCapTradeOkV1736 = function(d){ try{ return window.tradeGradeOkV1736([grade(d.a.ovr)]) && window.tradeGradeOkV1736([grade(d.b.ovr)]); }catch(_){ return true; } };
+
+  /* ── ② FA 보상 ── */
+  function mkt(){ return state.season && state.season.market; }
+  function box(m){ if(!m.compV1736) m.compV1736 = {done:false, list:[], pending:[]}; return m.compV1736; }
+  function findP(tid, name){
+    var t = state.players[tid]; if(!t) return null;
+    for(var k = 0; k < 2; k++){ var kind = k ? 'pit' : 'bat'; var i = (t[kind] || []).findIndex(function(p){ return p && (nm(p) === name || p[0] === name); }); if(i >= 0) return {kind:kind, i:i, p:t[kind][i]}; }
+    return null;
+  }
+  /* 보호 명단 밖 — 국내 · 그해 데려온 FA 아님 · OVR 높은 순 */
+  function pool(tid, protect, skip){
+    var t = state.players[tid], all = [];
+    ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(p, i){ if(!p || isF(p, kind)) return; all.push({kind:kind, p:p, o:ovr(tid, kind, p), age:+(t.age && t.age[kind] && t.age[kind][i]) || 28}); }); });
+    all.sort(function(a, b){ return b.o - a.o; });
+    return all.slice(protect).filter(function(x){ return skip.indexOf(x.p[0]) < 0; });
+  }
+  function move(fromT, toT, x){
+    var a = state.players[fromT], b = state.players[toT]; if(!a || !b) return false;
+    var i = a[x.kind].indexOf(x.p); if(i < 0) return false;
+    var p = a[x.kind].splice(i, 1)[0], age = a.age[x.kind].splice(i, 1)[0];
+    b[x.kind].push(p); b.age[x.kind].push(age);
+    try{ ensureSquadState(); state.squadLevel[toT][squadKey(x.kind, p)] = 'second'; }catch(_){ }
+    [fromT, toT].forEach(function(tid){ try{ if(state.lineups) state.lineups[tid] = null; if(state.rotOrder) state.rotOrder[tid] = null; if(state.pitchPlan) state.pitchPlan[tid] = null; }catch(_){ } });
+    return true;
+  }
+  function payMoney(fromT, toT, amt){
+    if(!amt) return;
+    var add = function(tid, v){
+      if(tid === my()){ if(eco()) state.money = R1((+state.money || 0) + v); return; }
+      try{ var f = state.aiFinanceV3413.clubs[tid]; if(!f) return; f.cash = R1((+f.cash || 0) + v); if(f.cash < 0){ f.debt = R1((+f.debt || 0) - f.cash); f.cash = 0; } }catch(_){ }
+    };
+    add(fromT, -amt); add(toT, amt);
+  }
+  function news(title, lines){ try{ if(!Array.isArray(state.aiNewsV13)) state.aiNewsV13 = []; state.aiNewsV13.unshift({when:state.year + '년차 오프시즌', title:title, lines:lines}); }catch(_){ } }
+  function process(){
+    var m = mkt(); if(!m || !sim()) return;
+    var s = m.faBidV13; if(!(s && s.closed && Array.isArray(s.results))) return;
+    var B = box(m); if(B.done) return; B.done = true;
+    var signedBy = {}; s.results.forEach(function(r){ if(r.winner) (signedBy[r.winner] = signedBy[r.winner] || []).push(r.name); });
+    var lines = [];
+    s.results.forEach(function(r){
+      if(!r.winner || r.winner === r.from || !r.from) return;
+      var g = grade(r.ovr); if(g === 'C') return;
+      var R = C[g], Y = r.winner, X = r.from;
+      var signed = findP(Y, r.name), skip = (signedBy[Y] || []).map(function(n){ var f = findP(Y, n); return f ? f.p[0] : n; });
+      var amt = R1(salary(r.ovr) * R.pay);
+      payMoney(Y, X, amt);
+      var rec = {fa:r.name, ovr:r.ovr, grade:g, from:X, to:Y, money:amt, players:[], protect:R.protect};
+      if(X === my()){
+        rec.need = R.players; rec.skip = skip; B.pending.push(rec);
+      } else {
+        for(var k = 0; k < R.players; k++){
+          var c = pool(Y, R.protect, skip)[0]; if(!c) break;
+          if(move(Y, X, c)){ rec.players.push(nm(c.p) + '(' + c.o + ')'); skip.push(c.p[0]); }
+        }
+      }
+      B.list.push(rec);
+      lines.push(tn(Y) + ' → ' + tn(X) + ' · ' + r.name + '(' + g + '급) 보상: ' + (rec.players.length ? rec.players.join(', ') : X === my() ? '선수 고르는 중' : '선수 없음') + ' + ' + amt.toFixed(1) + '억');
+    });
+    /* 예전 보상 지명권은 이 규칙으로 바꿈(지명 시작 전이면 지움) */
+    try{ if(!m.draftStartedV3413){ m.compensationClaimsV3413 = []; delete m.draftSlotsV3413; } }catch(_){ }
+    if(lines.length) news('⚖️ FA 보상 (선수 + 돈)', lines);
+    var mine = B.list.filter(function(x){ return x.to === my(); });
+    mine.forEach(function(x){ try{ pushClubNews('⚖️ FA 보상', x.fa + ' 영입 보상으로 ' + tn(x.from) + '에 ' + (x.players.join(', ') || '선수 없음') + ' · ' + x.money.toFixed(1) + '억'); }catch(_){ } });
+    try{ save(); }catch(_){ }
+    if(B.pending.length){ setTimeout(function(){ try{ window.openCompPickV1736(); }catch(_){ } }, 400); }
+  }
+  window.compProcessV1736 = process;
+  /* 우리가 고르기 */
+  window.openCompPickV1736 = function(){
+    var m = mkt(), B = m && m.compV1736, rec = B && B.pending[0]; if(!rec) return;
+    var list = pool(rec.to, rec.protect, rec.skip).slice(0, 15);
+    var sh = document.getElementById('sheet'), mk = document.getElementById('mask'); if(!sh) return;
+    sh.innerHTML = '<div class="top"><div class="pname">⚖️ FA 보상 선수 고르기</div><button class="close" onclick="closeSheet()">✕</button></div>'
+      + '<div class="meta">' + esc(tn(rec.to)) + josa(tn(rec.to)) + ' 우리 ' + esc(rec.fa) + '(' + rec.grade + '급)을 데려갔습니다 — 보상금 ' + rec.money.toFixed(1) + '억은 받았습니다.<br>보호 ' + rec.protect + '명 밖에서 ' + (rec.need - rec.players.length) + '명 고르세요(안 고르면 드래프트 시작 때 최고 선수 자동).</div>'
+      + '<div class="pick-v14">' + list.map(function(x, i){ return '<button type="button" onclick="compPickV1736(' + i + ')"><b>' + esc(nm(x.p)) + '</b><span class="r">OVR ' + x.o + '</span><span>' + esc(x.p[2] || '') + ' · ' + x.age + '세</span></button>'; }).join('') + '</div>';
+    if(mk) mk.classList.add('on');
+  };
+  function pickOne(rec, x){
+    if(move(rec.to, rec.from, x)){ rec.players.push(nm(x.p) + '(' + x.o + ')'); rec.skip.push(x.p[0]); }
+  }
+  function finishRec(B, rec){ if(rec.players.length >= rec.need){ B.pending.shift(); try{ pushClubNews('⚖️ FA 보상', rec.fa + '(' + rec.grade + '급) 보상: ' + rec.players.join(', ') + ' + ' + rec.money.toFixed(1) + '억'); }catch(_){ } } }
+  window.compPickV1736 = function(i){
+    try{
+      var m = mkt(), B = m.compV1736, rec = B.pending[0]; if(!rec) return;
+      var x = pool(rec.to, rec.protect, rec.skip).slice(0, 15)[i]; if(!x) return;
+      pickOne(rec, x); finishRec(B, rec); save();
+      if(B.pending.length) window.openCompPickV1736(); else { closeSheet(); try{ renderFront(); }catch(_){ } }
+    }catch(e){ console.error(V + ' 보상 선수:', e); }
+  };
+  function autoPending(){
+    var m = mkt(), B = m && m.compV1736; if(!B) return;
+    while(B.pending.length){ var rec = B.pending[0]; while(rec.players.length < rec.need){ var c = pool(rec.to, rec.protect, rec.skip)[0]; if(!c) break; pickOne(rec, c); } rec.need = rec.players.length; finishRec(B, rec); }
+  }
+  /* 처리 때: FA 마감 뒤 첫 화면 그리기 · 드래프트 시작 · 오프시즌 끝 (+2.5초마다 확인) */
+  ['startDraftV3413', 'doOffseasonEnd'].forEach(function(fn){
+    var base = window[fn]; if(typeof base !== 'function') return;
+    window[fn] = function(){ try{ process(); autoPending(); }catch(e){ console.error(V + ' FA 보상:', e); } return base.apply(this, arguments); };
+    try{ (0, eval)(fn + '=window.' + fn); }catch(_){ }
+  });
+  var baseOff = window.renderOffseason;
+  if(typeof baseOff === 'function'){
+    window.renderOffseason = function(){
+      try{ process(); }catch(_){ }
+      var h = baseOff.apply(this, arguments);
+      try{
+        var m = mkt(), B = m && m.compV1736;
+        if(typeof h === 'string' && B && B.list.length){
+          var box2 = '<div class="hint" style="margin-top:12px"><b>⚖️ FA 보상</b><br>' + B.list.map(function(x){ return esc(tn(x.to)) + ' → ' + esc(tn(x.from)) + ' · ' + esc(x.fa) + '(' + x.grade + '급): ' + esc(x.players.join(', ') || (x.from === my() && B.pending.indexOf(x) >= 0 ? '고르는 중' : '선수 없음')) + ' + ' + x.money.toFixed(1) + '억'; }).join('<br>')
+            + (B.pending.length ? '<br><button type="button" class="btn" style="margin-top:6px" onclick="openCompPickV1736()">보상 선수 고르기</button>' : '') + '</div>';
+          var at = h.indexOf('<h2 class="sec" style="margin-top:16px">🏅 레전드 영입');
+          h = at >= 0 ? h.slice(0, at) + box2 + h.slice(at) : h + box2;
+        }
+      }catch(_){ }
+      return h;
+    };
+    try{ renderOffseason = window.renderOffseason; }catch(_){ }
+  }
+  setInterval(function(){ try{ process(); }catch(_){ } }, 2500);
+})();
+</script>
+<!-- v1.7.36 comp END -->
 
 </body>
 </html>
