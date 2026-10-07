@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.27';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.28';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -36811,6 +36811,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     if(lines.length) aiNews('🌍 AI 외국인 섞기', lines);
   }
   window.aiForeignMixV1725 = fixMix;
+  window.foreignToolsV1725 = {makeCand:makeCand, candList:candList, doSwap:doSwap, perf:perf, slotProblem:slotProblem, counts:counts, firstPay:firstPay, ourForeign:ourForeign, ftype:ftype, frac:frac, swapBox:swapBox};   /* v1.7.28 스카우트 스타일 겹에서 씀 */
   var baseEnd2 = window.doOffseasonEnd;
   if(typeof baseEnd2 === 'function'){
     var oe2 = function(){ try{ if(sim()) fixMix(); }catch(e){ console.error(V + ' AI 외국인 섞기:', e); } return baseEnd2.apply(this, arguments); };
@@ -36824,6 +36825,250 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
 })();
 </script>
 <!-- v1.7.25 END -->
+
+<!-- v1.7.28 · 외국인 스카우트 스타일 · 시즌 중 교체 2번 -->
+<script id="foreign-style-v1728">
+/* 사용자 2026-10-07 "스카우트 스타일을 고르게 — 타자 · 투수 · 속도. 중간에 외국인이 너무 못하면 바꿀 수 있는데 그때마다 스카우터가 준비. AI 도. 연봉은 빼고 · 후보 실력은 나중에"
+   ① 스타일(시즌 시작 전 고름, 스카우트 창): 타자형 — 오프시즌 새 외국인 일반 5 = 타자 3 · 선발 2, 시즌 중 후보 타자 위주 · 준비 15경기
+                                           투수형 — 타자 1 · 선발 3 · 불펜 1, 시즌 중 투수 위주 · 15경기
+                                           속도형 — 타자 2 · 선발 3, 시즌 중 섞어서 · 준비 5경기
+      아시아쿼터 후보 3명은 스타일과 상관없이. 오프시즌 후보 명단은 오프시즌을 시작할 때의 스타일로(바꾸면 다음 해부터)
+   ② 시즌 중 교체(v1.7.25 의 96~115경기 한 번을 바꿈): 아무 때나 외국인 옆 [교체 후보 찾기] → 스타일 속도만큼 경기가 지나면 후보 3명(같은 종류 — 일반/아시아, 섞기 규칙 지킴) →
+      [바꾸기] 또는 [그대로]. 실제 KBO 처럼 시즌 2번 · 115경기(8월 15일 등록 마감)까지. 돈은 v1.7.25 와 같음(내보낸 선수 뛴 만큼 바로 · 새 선수 남은 비율)
+   ③ AI: 팀마다 스타일(외국인 타자가 약하면 타자형 · 투수가 약하면 투수형 · 아니면 속도형). "교체 검토" 기준에 걸리면 찾기 시작 → 기다린 뒤 OVR 4 이내 후보면 바꿈. 시즌 2번
+   화면: 스카우트 창(스타일) · 🔭 허브 → 🌍 외국인 스카우트(시즌 중에도 교체 칸) · 시즌 2/3 점검 창. 후보가 준비되면 구단 뉴스. ?nov1728 로 끔(v1.7.25 방식으로) */
+(function(){
+  'use strict';
+  if(String(location.search||'').indexOf('nov1728')>=0) return;
+  var X = window.foreignToolsV1725; if(!X) return;
+  var V = window.APP_VERSION;
+  var ST = window.SCOUT_STYLE_V1728 = {styles:{
+      bat:{label:'타자형', icon:'🏏', reg:[['bat'], ['bat'], ['bat'], ['pit', '선발'], ['pit', '선발']], wait:15, mix:['bat', 'bat', 'pit'], desc:'새 외국인 타자 3 · 투수 2 · 시즌 중 후보 타자 위주 · 준비 15경기'},
+      pit:{label:'투수형', icon:'⚾', reg:[['bat'], ['pit', '선발'], ['pit', '선발'], ['pit', '선발'], ['pit']], wait:15, mix:['pit', 'pit', 'bat'], desc:'새 외국인 타자 1 · 투수 4 · 시즌 중 후보 투수 위주 · 준비 15경기'},
+      speed:{label:'속도형', icon:'⚡', reg:[['bat'], ['bat'], ['pit', '선발'], ['pit', '선발'], ['pit', '선발']], wait:5, mix:['bat', 'pit', null], desc:'새 외국인 타자 2 · 투수 3 · 시즌 중 후보 섞어서 · 준비 5경기'}},
+    asia:3, maxSwaps:2, lastDay:115, weakOvr:78};
+  function R1(v){ return Math.round((Number(v) || 0) * 10) / 10; }
+  function sim(){ return !!(state && state.mode === 'sim'); }
+  function my(){ return state.myTeam; }
+  function off(){ try{ return !!isOffseason(); }catch(_){ return false; } }
+  function day(){ return +(state.season && state.season.day) || 0; }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]; }); }
+  function nm(p){ try{ return playerDisplayName(p); }catch(_){ return p ? p[0] : ''; } }
+  function isF(p, kind){ try{ return !!(window.isForeignV1613 && window.isForeignV1613(p, kind)); }catch(_){ return false; } }
+  function ovr(tid, kind, p){ try{ return kind === 'bat' ? batOvr(p, tid) : pitOvr(p, tid); }catch(_){ return 70; } }
+  function aiNews(title, lines){ try{ if(!Array.isArray(state.aiNewsV13)) state.aiNewsV13 = []; state.aiNewsV13.unshift({when:state.year + '년차 ' + day() + '경기째', title:title, lines:lines.slice(0, 30)}); state.aiNewsV13 = state.aiNewsV13.slice(0, 40); }catch(_){ } }
+
+  /* 리그에 이미 있는 이름이면 후보에서 뺌(후보 이름 생성이 겹쳐 두산·키움에 '웨이 스즈키'가 둘) */
+  function taken(name){ var hit = false; Object.keys(state.players || {}).forEach(function(tid){ if(hit) return; ['bat', 'pit'].forEach(function(k){ if(!hit && (state.players[tid][k] || []).some(function(q){ return q && q[0] === name; })) hit = true; }); }); return hit; }
+  /* ── 스타일 ── */
+  function styleOf(tid){
+    if(tid === my()){ var k = state.scoutStyleV1728; return ST.styles[k] ? k : 'speed'; }
+    var s = state.season; if(!s) return 'speed';
+    if(!s.aiStyleV1728) s.aiStyleV1728 = {};
+    if(s.aiStyleV1728[tid]) return s.aiStyleV1728[tid];
+    var t = getTeam(tid), b = [], p = [];
+    ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(q){ if(isF(q, kind) && X.ftype(q, kind) !== 'asia') (kind === 'bat' ? b : p).push(ovr(tid, kind, q)); }); });
+    var avg = function(a){ return a.length ? a.reduce(function(x, y){ return x + y; }, 0) / a.length : 0; };
+    var k2 = (!b.length || avg(b) < ST.weakOvr) ? 'bat' : (!p.length || avg(p) < ST.weakOvr) ? 'pit' : 'speed';
+    s.aiStyleV1728[tid] = k2; return k2;
+  }
+  window.scoutStyleOfV1728 = styleOf;
+  window.setScoutStyleV1728 = function(k){ if(!ST.styles[k]) return; state.scoutStyleV1728 = k; try{ save(); }catch(_){ } try{ window.openScoutV102(); }catch(_){ } };
+
+  /* ── ① 오프시즌 새 외국인 후보: 스타일대로 ── */
+  function styledList(k, seed){
+    var S = ST.styles[k], out = [], used = {};
+    var push = function(f){ if(f && !used[f.data[0]] && !taken(f.data[0])){ used[f.data[0]] = 1; out.push(f); return true; } return false; };
+    S.reg.forEach(function(r, i){ if(!push(X.makeCand(false, seed + i * 101, r[0], r[1] || null))) push(X.makeCand(false, seed + 5000 + i * 37, r[0])); });
+    for(var j = 0; out.length < S.reg.length + ST.asia && j < 30; j++) push(X.makeCand(true, seed + 3000 + j * 19));
+    return out;
+  }
+  var baseBuild = window.buildOffseasonMarket;
+  if(typeof baseBuild === 'function'){
+    var bb = function(){
+      var out = baseBuild.apply(this, arguments);
+      try{
+        var m = state.season && state.season.market;
+        if(sim() && m && m.styleV1728 !== state.year){ m.styleV1728 = state.year; m.styleKeyV1728 = styleOf(my()); m.foreign = styledList(m.styleKeyV1728, 9300 + (+state.year || 1) * 211); try{ save(); }catch(_){ } }
+      }catch(e){ console.error(V + ' 외국인 후보(스타일):', e); }
+      return out;
+    };
+    window.buildOffseasonMarket = bb; try{ buildOffseasonMarket = bb; }catch(_){ }
+  }
+
+  /* ── ② 시즌 중 교체 ── */
+  function box(){ var s = state.season; if(!s) return null; if(!s.fSearchV1728) s.fSearchV1728 = {used:[], req:null, ai:{}}; return s.fSearchV1728; }
+  function open(){ return sim() && !off() && day() <= ST.lastDay; }
+  function findP(tid, kind, name){ var t = getTeam(tid); return (t[kind] || []).find(function(q){ return q && q[0] === name; }) || null; }
+  /* 후보 3명 — 같은 종류(일반/아시아), 섞기 규칙을 지키는 것만, 스타일 섞음 순서대로 */
+  function makeCands(tid, kind, p, k, seed){
+    var asia = X.ftype(p, kind) === 'asia', out = [], used = {};
+    var ok = function(f){ return f && !used[f.data[0]] && !taken(f.data[0]) && !!f.asia === asia && !X.slotProblem(X.counts(tid, [{kind:kind, p:p}], [{kind:f.kind, p:f.data}])); };
+    var add = function(f){ if(ok(f)){ used[f.data[0]] = 1; f.ovr = ovr(tid, f.kind, f.data); out.push(f); return true; } return false; };
+    if(asia){ for(var a = 0; out.length < 3 && a < 20; a++) add(X.makeCand(true, seed + a * 23)); return out; }
+    ST.styles[k].mix.forEach(function(want, i){ if(!add(X.makeCand(false, seed + i * 61, want || null, want === 'pit' ? '선발' : null))) add(X.makeCand(false, seed + 900 + i * 61, kind)); });
+    for(var g = 0; out.length < 3 && g < 20; g++) add(X.makeCand(false, seed + 2000 + g * 31, kind));
+    return out;
+  }
+  window.foreignSearchV1728 = function(oi){
+    try{
+      var b = box(), mine = X.ourForeign()[oi]; if(!b || !mine) return;
+      if(!open()){ showAlert('시즌 중 외국인 교체는 ' + ST.lastDay + '경기(등록 마감)까지입니다.'); return; }
+      if(b.used.length >= ST.maxSwaps){ showAlert('이번 시즌 외국인 교체 ' + ST.maxSwaps + '번을 다 썼습니다.'); return; }
+      if(b.req){ showAlert('이미 ' + b.req.label + ' 대신할 후보를 찾고 있습니다.'); return; }
+      var k = styleOf(my()), w = ST.styles[k].wait;
+      if(day() + w > ST.lastDay){ showAlert('지금 찾기 시작하면 후보가 ' + (day() + w) + '경기에 준비돼 등록 마감(' + ST.lastDay + '경기)을 넘깁니다.'); return; }
+      b.req = {name:mine.p[0], kind:mine.kind, label:nm(mine.p), day:day(), ready:day() + w, style:k, cands:null};
+      try{ pushClubNews('🔭 외국인 교체 후보 찾기', nm(mine.p) + ' 대신할 외국인 — ' + ST.styles[k].label + ' 스카우트, ' + w + '경기 뒤 준비'); }catch(_){ }
+      try{ save(); }catch(_){ }
+      redraw();
+    }catch(e){ console.error(V + ' 외국인 후보 찾기:', e); }
+  };
+  window.foreignSearchCancelV1728 = function(){ var b = box(); if(b){ b.req = null; try{ save(); }catch(_){ } redraw(); } };
+  window.foreignSwapV1728 = function(ci){
+    try{
+      var b = box(), r = b && b.req; if(!r || !r.cands) return;
+      if(!open()){ showAlert('등록 마감(' + ST.lastDay + '경기)이 지났습니다.'); return; }
+      var f = r.cands[ci], p = findP(my(), r.kind, r.name); if(!f || !p){ showAlert('바꿀 선수를 찾지 못했습니다.'); b.req = null; return; }
+      var pb = X.slotProblem(X.counts(my(), [{kind:r.kind, p:p}], [{kind:f.kind, p:f.data}])); if(pb){ showAlert(pb); return; }
+      var owed = 0; try{ owed = R1((+salaryOf(p, r.kind === 'bat') || 0) * X.frac()); }catch(_){ }
+      showConfirm(nm(p) + ' → ' + nm(f.data) + '\n\n' + nm(p) + ' 계약 해지(뛴 만큼 연봉 ' + owed.toFixed(1) + '억 지금 냄)\n' + nm(f.data) + ' 남은 시즌 ' + R1(X.firstPay(f.ovr, f.asia) * (1 - X.frac())).toFixed(1) + '억 · 1군\n\n이번 시즌 ' + (b.used.length + 1) + '/' + ST.maxSwaps + '번째 교체입니다. 바꿀까요?', function(){
+        var res = X.doSwap(my(), r.kind, p, f); if(!res) return;
+        b.used.push({day:day(), out:res.oldName, inn:res.newName}); b.req = null;
+        try{ pushClubNews('🔁 외국인 교체', res.oldName + ' → ' + res.newName + ' (남은 시즌 ' + res.pay.toFixed(1) + '억)'); }catch(_){ }
+        try{ save(); refreshHeader(); }catch(_){ }
+        redraw();
+      });
+    }catch(e){ console.error(V + ' 외국인 교체:', e); }
+  };
+  var lastView = null;
+  function redraw(){ try{ if(lastView === 'summer') window.summerReportV177(); else if(lastView === 'foreign') window.openForeignScoutV1713(); }catch(_){ } }
+  var BTN = 'style="margin:3px 4px 0 0;padding:4px 9px;border-radius:7px;border:1px solid var(--line,rgba(184,211,194,.3));background:transparent;color:inherit;font-size:12px"';
+  function html(){
+    var b = box(); if(!b || !sim()) return '';
+    var k = styleOf(my()), S = ST.styles[k];
+    var h = '<div class="sec" style="margin-top:12px;font-weight:900">🔁 시즌 중 외국인 교체 <small style="font-weight:600">시즌 ' + ST.maxSwaps + '번 · ' + ST.lastDay + '경기까지 · ' + S.icon + ' ' + S.label + ' 스카우트(후보 준비 ' + S.wait + '경기)</small></div>';
+    var row = function(inner){ return '<div class="row" style="padding:7px 2px;border-top:1px solid var(--line,rgba(184,211,194,.12));font-size:13px">' + inner + '</div>'; };
+    if(off()) return h + row('<span class="dim">오프시즌엔 새 외국인 계약으로 — 시즌이 시작되면 여기서 교체</span>');
+    b.used.forEach(function(u, i){ h += row((i + 1) + '번째 교체 · ' + u.day + '경기 — ' + esc(u.out) + ' → ' + esc(u.inn)); });
+    if(b.req){
+      if(!b.req.cands) return h + row('🔭 <b>' + esc(b.req.label) + '</b> 대신할 후보를 찾는 중 — ' + Math.max(0, b.req.ready - day()) + '경기 뒤 준비 <button type="button" ' + BTN + ' onclick="foreignSearchCancelV1728()">그만 찾기</button>');
+      h += row('🔭 <b>' + esc(b.req.label) + '</b> 대신할 후보 ' + b.req.cands.length + '명 — 고르거나 그대로 두기 <button type="button" ' + BTN + ' onclick="foreignSearchCancelV1728()">그대로 두기</button>');
+      b.req.cands.forEach(function(f, ci){
+        var pos = f.kind === 'bat' ? esc(f.data[2]) : (f.data[2] === '선발' ? 'SP' : 'RP');
+        h += row('<b>' + pos + '</b> ' + esc(nm(f.data)) + ' · ' + (f.asia ? '아시아쿼터 · ' : '') + f.age + '세 · OVR ' + f.ovr + ' · 남은 시즌 ' + R1(X.firstPay(f.ovr, f.asia) * (1 - X.frac())).toFixed(1) + '억 <button type="button" ' + BTN + ' onclick="foreignSwapV1728(' + ci + ')">↔ 바꾸기</button>');
+      });
+      return h;
+    }
+    if(b.used.length >= ST.maxSwaps) return h + row('<span class="dim">이번 시즌 교체 ' + ST.maxSwaps + '번을 다 썼습니다.</span>');
+    if(!open()) return h + row('<span class="dim">등록 마감(' + ST.lastDay + '경기)이 지났습니다.</span>');
+    X.ourForeign().forEach(function(x, oi){
+      var q = X.perf(my(), x.kind, x.p), pos = x.kind === 'bat' ? esc(x.p[2]) : (x.p[2] === '선발' ? 'SP' : 'RP');
+      h += row('<b>' + pos + '</b> ' + esc(nm(x.p)) + ' — ' + q.text + (q.bad ? ' <span class="bad" style="color:#E5675B">교체 검토</span>' : '') + ' <button type="button" ' + BTN + ' onclick="foreignSearchV1728(' + oi + ')">교체 후보 찾기</button>');
+    });
+    return h;
+  }
+  /* 시즌 2/3 점검 창 — v1.7.25 칸을 이걸로 */
+  var baseShow = window.summerReportV177;
+  if(typeof baseShow === 'function'){
+    window.summerReportV177 = function(){
+      var r = baseShow.apply(this, arguments);
+      try{ lastView = 'summer'; var sh = document.getElementById('sheet'), el = sh && sh.querySelector('.fswap-v1725'); if(el) el.innerHTML = html(); }catch(e){ console.error(V + ' 교체 칸:', e); }
+      return r;
+    };
+  }
+  /* 외국인 스카우트 창 — 맨 위에 교체 칸 */
+  var baseFS = window.openForeignScoutV1713;
+  if(typeof baseFS === 'function'){
+    window.openForeignScoutV1713 = function(){
+      var r = baseFS.apply(this, arguments);
+      try{
+        lastView = 'foreign';
+        var sh = document.getElementById('sheet'); if(!sh || off()) return r;
+        var top = sh.querySelector('.status-v1712') || sh.querySelector('.top'); if(!top || sh.querySelector('.fsearch-v1728')) return r;
+        var d = document.createElement('div'); d.className = 'fsearch-v1728'; d.innerHTML = html(); top.parentNode.insertBefore(d, top.nextSibling);
+      }catch(e){ console.error(V + ' 외국인 스카우트 교체 칸:', e); }
+      return r;
+    };
+  }
+  var baseClose = window.closeSheet; if(typeof baseClose === 'function'){ var cs = function(){ lastView = null; return baseClose.apply(this, arguments); }; window.closeSheet = cs; try{ closeSheet = cs; }catch(_){ } }
+  /* 허브 버튼 글 */
+  var baseHub = window.openScoutTradeHubV1712;
+  if(typeof baseHub === 'function'){
+    window.openScoutTradeHubV1712 = function(){
+      var r = baseHub.apply(this, arguments);
+      try{ if(!off()){ var b = document.querySelector('#sheet .hub-v1712 button'), sm = b && b.querySelector('small'); if(sm) sm.textContent = '시즌 중 외국인 교체(' + ST.maxSwaps + '번 · ' + ST.lastDay + '경기까지) · 우리·다른 구단 외국인'; } }catch(_){ }
+      return r;
+    };
+  }
+  /* 스카우트 창 — 스타일 고르기 */
+  var baseScout = window.openScoutV102;
+  if(typeof baseScout === 'function'){
+    window.openScoutV102 = function(){
+      var r = baseScout.apply(this, arguments);
+      try{
+        var sh = document.getElementById('sheet'), meta = sh && sh.querySelector('.meta'); if(!meta || sh.querySelector('.style-v1728')) return r;
+        var k = styleOf(my()), h = '<div class="style-v1728" style="margin:10px 0"><div style="font-weight:900;margin-bottom:6px">🔭 스카우트 스타일</div>';
+        Object.keys(ST.styles).forEach(function(key){ var S = ST.styles[key], on = key === k;
+          h += '<button class="scout-card-v102 ' + (on ? 'on' : '') + '" onclick="setScoutStyleV1728(\'' + key + '\')"><span class="top"><span class="name">' + S.icon + ' ' + S.label + '</span><span class="pick">' + (on ? '선택 중' : '선택') + '</span></span><span class="desc">' + S.desc + '</span></button>'; });
+        var m = state.season && state.season.market;
+        if(off() && m && m.styleKeyV1728 && m.styleKeyV1728 !== k) h += '<div class="hint">올해 새 외국인 후보는 ' + ST.styles[m.styleKeyV1728].label + '으로 이미 찾아왔습니다 — 바꾼 스타일은 시즌 중 교체와 다음 해 후보부터.</div>';
+        h += '</div>';
+        meta.insertAdjacentHTML('afterend', h);
+        var md = sh.querySelector('.meta'); if(md) md.textContent = '🌍 외국인 스카우트 · 해마다 새 외국인 일반 5 · 아시아쿼터 3명 · 시즌 중 교체 후보도 찾아옴';
+      }catch(e){ console.error(V + ' 스카우트 스타일:', e); }
+      return r;
+    };
+  }
+
+  /* 매일: 우리 후보 준비 · AI 찾기·교체 */
+  function tick(){
+    var b = box(); if(!b) return;
+    if(day() > ST.lastDay){ if(b.req){ b.req = null; } return; }
+    if(b.req && !b.req.cands && day() >= b.req.ready){
+      var p = findP(my(), b.req.kind, b.req.name);
+      if(!p){ b.req = null; }
+      else {
+        b.req.cands = makeCands(my(), b.req.kind, p, b.req.style, 4400 + (+state.year || 1) * 53 + day() * 7);
+        try{ pushClubNews('🔭 외국인 교체 후보 준비', b.req.label + ' 대신할 후보 ' + b.req.cands.length + '명 — 🔭 스카우트/트레이드 → 🌍 외국인 스카우트에서 고르기'); }catch(_){ }
+      }
+    }
+    var lines = [];
+    (TEAMS || []).forEach(function(tm, ti){
+      var tid = tm.id; if(tid === my()) return;
+      var A = b.ai[tid] || (b.ai[tid] = {used:0, req:null});
+      if(A.req && day() >= A.req.ready){
+        var q = findP(tid, A.req.kind, A.req.name); var req = A.req; A.req = null;
+        if(!q) return;
+        var cs = makeCands(tid, req.kind, q, req.style, 5500 + (+state.year || 1) * 59 + ti * 7 + day());
+        var f = cs.sort(function(a, c){ return c.ovr - a.ovr; })[0], o = ovr(tid, req.kind, q);
+        if(!f || f.ovr < o - 4) return;
+        var res = X.doSwap(tid, req.kind, q, f);
+        if(res){ A.used++; lines.push(tm.name + ' ' + res.oldName + '(' + req.why + ') → ' + res.newName + '(OVR ' + f.ovr + ' · ' + ST.styles[req.style].label + ' ' + ST.styles[req.style].wait + '경기)'); }
+        return;
+      }
+      if(A.req || A.used >= ST.maxSwaps || day() % 4) return;
+      var k = styleOf(tid), w = ST.styles[k].wait; if(day() + w > ST.lastDay) return;
+      var t = getTeam(tid), worst = null;
+      ['bat', 'pit'].forEach(function(kind){ (t[kind] || []).forEach(function(p){ if(!isF(p, kind)) return; var pf = X.perf(tid, kind, p); if(pf.bad && (!worst || ovr(tid, kind, p) < worst.o)) worst = {kind:kind, p:p, o:ovr(tid, kind, p), why:pf.text}; }); });
+      if(worst) A.req = {name:worst.p[0], kind:worst.kind, why:worst.why, ready:day() + w, style:k};
+    });
+    if(lines.length) aiNews('🔁 AI 외국인 교체', lines);
+  }
+  var baseFinish = window.finishDay;
+  if(typeof baseFinish === 'function'){
+    var fd = function(){
+      try{ var ob = state.season && X.swapBox && state.season.fSwapV1725; if(ob) ob.ai = true; else if(state.season) state.season.fSwapV1725 = {cands:[], used:null, ai:true}; }catch(_){ }   /* v1.7.25 의 96경기 AI 교체는 끔 */
+      var out = baseFinish.apply(this, arguments);
+      try{ if(sim() && state.season && !off()) tick(); }catch(e){ console.error(V + ' 외국인 교체(매일):', e); }
+      return out;
+    };
+    window.finishDay = fd; try{ finishDay = fd; }catch(_){ }
+  }
+  window.foreignStyleTickV1728 = tick;
+})();
+</script>
+<!-- v1.7.28 END -->
 
 </body>
 </html>
