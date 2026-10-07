@@ -37899,7 +37899,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
         + '<div class="sc"><span class="t">' + logo(away, 24) + ' <b>' + esc(tn(away)) + '</b></span><span class="n mid">' + R.away + ' : ' + R.home + '</span><span class="t"><b>' + esc(tn(home)) + '</b> ' + logo(home, 24) + '</span></div>'
         + '<div class="dim" style="margin-top:4px">안타 ' + it.box.H.away + ' : ' + it.box.H.home + ' · 실책 ' + it.box.E.away + ' : ' + it.box.E.home + '　<span class="res ' + it.res + '">' + (it.res === 'W' ? '승' : it.res === 'L' ? '패' : '무') + '</span></div>'
         + (it.hero ? '<div style="font-size:12.5px;margin-top:4px">⭐ ' + esc(it.hero.name) + ' — ' + esc(it.hero.text) + '</div>' : '')
-        + '<div class="nw"><div class="ph" data-anc1730="1"></div><div class="tx"><b>📺 스포츠 뉴스</b><br>' + esc(it.title.replace(/^⚾ /, '')) + '<br><span class="dim">눌러서 점수판 · 순위 · 리그 소식 보기 ›</span></div></div></div>';
+        + '<div class="nw"><div class="ph" data-anc1730="1"></div><div class="tx"><b>📺 스포츠 뉴스</b><br>' + esc(it.title.replace(/^⚾ /, '')) + '<br><span class="dim">눌러서 스포츠 뉴스 보기 ›</span></div></div></div>';
     } else h += '<div class="kk">⏮ 지난 경기</div><div class="card dim" onclick="openNewsV1729()">아직 치른 경기가 없습니다. 📺 스포츠 뉴스 보기 ›</div>';
     return h + '<div class="kk">⏭ 다음 경기</div></div>';
   }
@@ -38060,7 +38060,7 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
     try{
       var b = e.target && e.target.closest && e.target.closest('nav button[data-nav="game"]'); if(!b) return;
       var now = Date.now(); taps = taps.filter(function(t){ return now - t < 900; }); taps.push(now);
-      if(taps.length >= 3){
+      if(false && taps.length >= 3){   /* v1.7.34 · 사용자: 경기 탭 여러 번 누르기는 없앰 → 맨 위 왼쪽 "우리팀을 만들자!" 제목을 누르면 시작 화면(detail-v1734) */
         taps = [];
         if(window.autoRunBusyV16 && window.autoRunBusyV16()) return;
         showConfirm('시작 화면으로 갈까요?\n\n진행은 저장돼 있습니다. 시작 화면 아래에서 다른 팀 · 다른 슬롯을 고를 수 있습니다.', function(){ try{ save(); }catch(_){ } window.showTitleV1730(); });
@@ -38370,6 +38370,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       try{
         if(g && g.home && g.away && (g.home.id === my() || g.away.id === my()) && !(state.season && state.season.post)){
           lastEv = (g.ev || []).filter(function(e){ return e && e.text && (/— \d+점!/.test(e.text) || /^🔁/.test(e.text)); }).slice(0, 40).map(function(e){ return [e.inn, e.half, String(e.text).slice(0, 120)]; });
+          /* 1회~9회 중계 기록(공 하나하나 · 응원가는 뺌) — 최근 5경기만 남김 */
+          lastEv.log = (g.ev || []).filter(function(e){ return e && e.text && e.cls !== 'pitch' && e.cls !== 'chant'; }).slice(0, 260).map(function(e){ return [e.inn, e.half, String(e.text).slice(0, 110), e.cls === 'scoreev' ? 1 : e.cls === 'inn' ? 2 : 0]; });
           lastEv.order = {};
           (g.ev || []).forEach(function(e, k){ var m = e && e.text && /^([^,(—]+?), /.exec(e.text); if(m && lastEv.order[m[1]] == null) lastEv.order[m[1]] = k; });
         }
@@ -38427,7 +38429,9 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
           if(it && !it.detV1734){
             var ev = lastEv || [], ord = (lastEv && lastEv.order) || {}, D = {ev:ev, bat:{}, pit:{}};
             [it.box.home, it.box.away].forEach(function(tid){ if(!snap[tid]) return; var o2 = {lu:snap.lu[tid] || [], pos:(snap.lu[tid] && snap.lu[tid].pos) || []}; Object.keys(ord).forEach(function(k){ o2[k] = ord[k]; }); var L = teamLines(tid, snap[tid], snapT(tid), o2); D.bat[tid] = L.bat; D.pit[tid] = pitOrder(L.pit, ev); });
+            D.log = (lastEv && lastEv.log) || [];
             it.detV1734 = D;
+            var gn = 0; B.items.forEach(function(x){ if(x.type === 'game' && x.detV1734 && x.detV1734.log && ++gn > 5) delete x.detV1734.log; });
           }
         }
         if(state.season && day() > d0 && dayGames.length){ state.season.tickV1734 = {day:day(), g:dayGames.slice(0, 8)}; paintTick(); }
@@ -38464,6 +38468,15 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
         + '<div class="card" style="cursor:default"><div class="sc"><span class="t">' + logo(away, 28) + ' <b>' + esc(tn(away)) + '</b></span><span class="n">' + bx.R.away + ' : ' + bx.R.home + '</span><span class="t"><b>' + esc(tn(home)) + '</b> ' + logo(home, 28) + '</span></div>'
         + '<div class="dim" style="text-align:center;margin-top:3px">' + esc(tn(my())) + ' <span class="res ' + g.res + '">' + (g.res === 'W' ? '승' : g.res === 'L' ? '패' : '무') + '</span></div></div>'
         + '<div class="seg"><div class="sh">SCOREBOARD · 점수판</div>' + (window.newsScoreboardV1729 ? window.newsScoreboardV1729(bx) : '') + '</div>';
+      if(D && D.log && D.log.length){
+        var cur = '', blk = '';
+        D.log.forEach(function(e){
+          if(e[3] === 2){ if(blk) blk += '</div>'; blk += '<div style="margin-top:8px"><div style="font-weight:800;color:#F4C45E;font-size:13px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.1)">' + esc(String(e[2]).replace(/^─+\s*/, '')) + '</div>'; return; }
+          if(/경기 종료/.test(e[2])){ blk += '</div><div style="margin-top:10px;font-weight:800">' + esc(e[2]) + '</div><div>'; return; }
+          blk += '<div style="font-size:12.5px;line-height:1.55;padding:2px 0;' + (e[3] === 1 ? 'color:#F4C45E;font-weight:700' : '') + '">' + esc(e[2]) + '</div>';
+        });
+        h += '<div class="seg"><div class="sh">📺 1회 ~ 9회 경기 내용</div>' + blk + '</div></div>';
+      }
       if(D){
         var dec = []; [away, home].forEach(function(tid){ (D.pit[tid] || []).forEach(function(r){ if(r[6]) dec.push(r[6] + ' ' + r[0] + '(' + tn(tid) + ')'); }); });
         dec.sort(function(a, b){ return '승패세'.indexOf(a[0]) - '승패세'.indexOf(b[0]); });
@@ -38580,10 +38593,20 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
   }
   try{
     var css = document.createElement('style'); css.id = 'detail-v1734-css';
-    css.textContent = '.tick-v1729 .rn{display:none!important}.tick-v1729 .rn2{position:absolute;left:0;top:0;white-space:nowrap;padding-left:100%;color:#F7F4EC;animation:tick-v1729 var(--dur,12s) linear infinite}@media (prefers-reduced-motion:reduce){.tick-v1729 .rn2{animation:none;padding-left:8px}}';
+    css.textContent = 'header h1{cursor:pointer}#titleScreenV1032 .ts-veil{display:none!important}#titleScreenV1032 .ts-title,#titleScreenV1032 .ts-eyebrow,#titleScreenV1032 .ts-sub,#titleScreenV1032 .ts-ver,#titleScreenV1032 .ts-team-v1730{text-shadow:0 2px 6px rgba(0,0,0,.75),0 0 2px rgba(0,0,0,.9)}.tick-v1729 .rn{display:none!important}.tick-v1729 .rn2{position:absolute;left:0;top:0;white-space:nowrap;padding-left:100%;color:#F7F4EC;animation:tick-v1729 var(--dur,12s) linear infinite}@media (prefers-reduced-motion:reduce){.tick-v1729 .rn2{animation:none;padding-left:8px}}';
     document.head.appendChild(css);
   }catch(_){ }
   setInterval(paintTick, 3000); paintTick();
+
+  /* 맨 위 왼쪽 "우리팀을 만들자!" 제목 → 시작 화면(사용자 — 경기 탭 여러 번 누르기 대신) */
+  window.addEventListener('click', function(e){
+    try{
+      var t = e.target && e.target.closest && e.target.closest('header h1'); if(!t || !window.showTitleV1730) return;
+      if(window.autoRunBusyV16 && window.autoRunBusyV16()) return;
+      e.stopPropagation(); e.preventDefault();
+      showConfirm('시작 화면으로 갈까요?\n\n진행은 저장돼 있습니다. 시작 화면 아래에서 다른 팀 · 다른 슬롯을 고를 수 있습니다.', function(){ try{ save(); }catch(_){ } window.showTitleV1730(); });
+    }catch(_){ }
+  }, true);
 
   /* 경기 탭 맨 위 지난 경기 카드 → 상세 경기 내용(v1.7.30 은 뉴스 창을 열었다) */
   window.addEventListener('click', function(e){
@@ -38591,7 +38614,8 @@ html.progbar-v175 #autoRunV16,html.progbar-v175 #playBtn,html.progbar-v175 #newG
       var c = e.target && e.target.closest && e.target.closest('.card[onclick^="openNewsV1729("]'); if(!c) return;
       var kk = c.previousElementSibling; if(!kk || !/지난 경기/.test(kk.textContent || '')) return;
       var m = /openNewsV1729\((\d+)\)/.exec(c.getAttribute('onclick') || ''); if(!m) return;
-      e.stopPropagation(); e.preventDefault(); window.openGameDetailV1734(+m[1]);
+      e.stopPropagation(); e.preventDefault();
+      if(e.target.closest('.nw') && window.openSportsV1733) window.openSportsV1733(+m[1] - 1); else window.openGameDetailV1734(+m[1]);
     }catch(_){ }
   }, true);
 })();
