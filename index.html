@@ -83,7 +83,7 @@
      여기를 고쳐도 반영되지 않습니다. 화살표가 가리키는 블록을 고치세요.
    ────────────────────────────────────────────────────────────── */
 /* v0.94 · 터치 영역·접근성·파일 지도 재생성 */
-window.APP_VERSION='v1.7.40';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
+window.APP_VERSION='v1.7.41';   /* ★ 게임 전체 버전 단일 기준 — 여기만 고치면 된다 */
 window.GAME_VERSION=window.APP_VERSION;
 window.applyGameVersion=function(){
   const v=window.APP_VERSION;
@@ -28916,8 +28916,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
   function supportFor(year){
     var P = ensureParent(), r = rule();
     if(P.cut > 0) return 0;
-    if(year <= r.guaranteeYears) return r.support;
-    return R1(r.support * Math.max(0, Math.min(1, P.health / 80)));   /* 경영 상태 80 이상이면 전액 */
+    var base = year <= r.guaranteeYears ? r.support : r.support * Math.max(0, Math.min(1, P.health / 80));   /* 경영 상태 80 이상이면 전액 */
+    /* v1.7.41 · 구단주 신뢰도에 따라 ±10%(owner-v1741) */
+    var m = 1; try{ if(typeof window.ownerTrustMulV1741 === 'function') m = window.ownerTrustMulV1741(); }catch(_){ }
+    return R1(base * m);
   }
   function healthWord(h){ return h >= 80 ? '탄탄함' : h >= 60 ? '안정' : h >= 40 ? '주춤' : h >= 20 ? '어려움' : '위기'; }
   function healthColor(h){ return h >= 60 ? '#4CC38A' : h >= 40 ? '#F4C45E' : '#E5675B'; }
@@ -29237,11 +29239,12 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
       var paid = off && state.season.econV14 ? state.season.econV14.support : null;
       var target = y + (off ? 2 : 1), nextAmt = supportFor(target);
       out += '<div class="card"><div class="t">🏢 모기업 <small>' + y + '년차' + (off ? ' 종료' : '') + '</small></div>'
-        + '<div class="b">' + (target <= r.guaranteeYears ? '창단 초기 전폭 지원 — ' + r.guaranteeYears + '년차까지 해마다 <b>' + r.support + '억</b>'
+        + '<div class="b">' + (target <= r.guaranteeYears ? '창단 초기 전폭 지원 — ' + r.guaranteeYears + '년차까지 해마다 기본 <b>' + r.support + '억</b>'
           : '경영 상태 <b>' + healthWord(P.health) + '</b> (' + Math.round(P.health) + ')')
         + '<div class="meter"><i style="width:' + Math.round(P.health) + '%;background:' + healthColor(P.health) + '"></i></div>'
         + '<span class="dim">' + (paid != null ? (y + 1) + '년차 지원금 ' + paid.toFixed(1) + '억 받음 · ' : '')
-        + target + '년차 지원금(시즌 종료 때) 예상 ' + nextAmt.toFixed(1) + '억' + (P.cut > 0 ? ' · 구조조정으로 중단' : '') + '</span></div></div>';
+        + target + '년차 지원금(시즌 종료 때) 예상 ' + nextAmt.toFixed(1) + '억' + (P.cut > 0 ? ' · 구조조정으로 중단' : '')
+        + (typeof window.ownerTrustNoteV1741 === 'function' ? window.ownerTrustNoteV1741() : '') + '</span></div></div>';
       var sp = state.sponsorV14, has = hasSponsor();
       out += '<div class="card"><div class="t">🤝 스폰서 <small>' + (offseason() ? '다음 시즌' : '이번 시즌') + '</small></div><div class="b">'
         + (has ? '<b>' + esc(sp.brand) + '</b> · ' + SP_LABEL[sp.type] + '<br><span class="dim">' + offerText(sp) + '</span>'
@@ -29522,7 +29525,10 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
         s.soloPts[key] = (+s.soloPts[key] || 0) + rate;
         while(s.soloPts[key] >= 1){
           s.soloPts[key] -= 1;
-          if(raise(sl.kind, p, sl.stat)) note('🏋️ 개인 훈련 — ' + nameOf(p) + ' ' + (sl.kind === 'bat' ? BAT_STAT : PIT_STAT)[sl.stat] + ' +1');
+          if(raise(sl.kind, p, sl.stat)){
+            note('🏋️ 개인 훈련 — ' + nameOf(p) + ' ' + (sl.kind === 'bat' ? BAT_STAT : PIT_STAT)[sl.stat] + ' +1');
+            try{ if(typeof window.tokgiTrainV1741 === 'function') window.tokgiTrainV1741(sl.kind, p, sl.stat); }catch(_){ }   /* v1.7.41 · 특기 */
+          }
           else { note('🏋️ ' + nameOf(p) + ' — 잠재력 한계에 닿아 더 오르지 않습니다'); s.soloPts[key] = 0; break; }
         }
         return true;
@@ -29600,6 +29606,7 @@ header{padding:calc(13px + env(safe-area-inset-top)) 18px 13px;background:#06120
     sh.innerHTML = '<div class="top"><div class="pname">🏋️ ' + esc(nameOf(p)) + ' 개인 훈련</div><button class="close" onclick="closeSheet()">✕</button></div>'
       + '<div class="meta">' + ageAt(kind, idx) + '세 · OVR ' + ovr + ' · 잠재력 ' + cap + (isFarm(kind, p) ? ' · 2군(훈련장 ×1.5)' : '') + '</div>'
       + '<div class="trn-v14"><div class="sub">어떤 능력치를 키울까요? 막대가 다 차면 그 능력치가 +1 오릅니다. 어릴수록 빨리 찹니다.'
+      + (typeof window.tokgiHintV1741 === 'function' ? window.tokgiHintV1741(kind, p) : '')
       + (ovr >= cap ? '<br><b style="color:#E5675B">이미 잠재력 한계라 더 오르지 않습니다.</b>' : '') + '</div>'
       + '<div class="seg' + (kind === 'bat' ? '' : ' three') + '" style="grid-template-columns:repeat(' + Object.keys(labels).length + ',1fr)">'
       + Object.keys(labels).map(function(k){
@@ -39630,6 +39637,201 @@ window.LIVE_UPDATE_V1737 = {"ver":"2026-10-07","season":2026,"moves":[["HH","LG"
 })();
 </script>
 <!-- v1.7.39 swipe END -->
+<!-- v1.7.41 · 특기(훈련) · 구단주 평가 → 모기업 지원금 -->
+<script id="tokgi-owner-v1741">
+/* 사용자(2026-10-26, 야구부 이야기 참고 ①⑥):
+   ① 특기 — 개인 훈련으로 능력치가 +1 오를 때마다 10% 확률로 특기 하나. 선수당 최대 4개.
+      직접 키우기(시뮬)에서 우리 팀 선수만 생김 — 실황 실제 선수는 안 생김. 원래 있던 "특수 능력"(선수당 1개)은 그대로 두고 따로.
+      효과 = 그 상황에서만 능력치 +5(타석 계산 직전에 잠깐 올렸다가 되돌림). 상황은 GAME_CONTEXT_V3413(주자 · 이닝).
+      팀 훈련 방침(+1 이 팀 전체에 생김)은 넣지 않음 — 한 시즌에 특기가 너무 많이 생김.
+   ⑥ 구단주 — 신뢰도가 다음 시즌 모기업 지원금을 바꿈: 80 이상 +10% · 60~79 그대로 · 40~59 −5% · 40 미만 −10%(club-economy-v14 supportFor).
+      전반기(72경기)가 끝나면 중간 평가 — 목표 진행이 좋으면 신뢰도 +2, 나쁘면 −2.
+   ?nov1741 로 끔 */
+(function(){
+  'use strict';
+  if(String(location.search || '').indexOf('nov1741') >= 0) return;
+  var V = 'v1.7.41';
+  var TK = {chance:.10, max:4, plus:5};
+  window.TOKGI_V1741 = TK;
+  /* s: 능력치 칸 · sk: 세부 능력치 이름 · when(ctx, bat, pit) */
+  var LIST = {
+    risp:   {kind:'bat', icon:'🎯', name:'찬스에 강함', desc:'득점권(2·3루 주자)에서 정확 +5', s:4, sk:['contact'], when:function(c){ return c.bases && (c.bases[1] || c.bases[2]); }},
+    lefty:  {kind:'bat', icon:'🧲', name:'좌투 킬러', desc:'왼손 투수 상대로 정확 +5', s:4, sk:['contact'], when:function(c, b, p){ return String(p && p[3]) === '좌'; }},
+    late:   {kind:'bat', icon:'💣', name:'승부처 장타', desc:'7회 이후 파워 +5', s:5, sk:['power'], when:function(c){ return +c.inn >= 7; }},
+    onbase: {kind:'bat', icon:'👀', name:'출루 머신', desc:'주자 없을 때 선구 +5', s:8, sk:['eye', 'patience'], when:function(c){ return c.bases && !c.bases[0] && !c.bases[1] && !c.bases[2]; }},
+    escape: {kind:'pit', icon:'🧊', name:'위기 관리', desc:'득점권(2·3루 주자)에서 변화 +5', s:6, sk:['breaking'], when:function(c){ return c.bases && (c.bases[1] || c.bases[2]); }},
+    lkill:  {kind:'pit', icon:'🦾', name:'좌타 킬러', desc:'왼손 타자 상대로 변화 +5', s:6, sk:['breaking'], when:function(c, b){ return String(b && b[3]) === '좌'; }},
+    lateC:  {kind:'pit', icon:'🎯', name:'승부처 제구', desc:'7회 이후 제구 +5', s:5, sk:['control'], when:function(c){ return +c.inn >= 7; }},
+    iron:   {kind:'pit', icon:'🔋', name:'강철 체력', desc:'6회 이후 변화 +5', s:6, sk:['breaking'], when:function(c){ return +c.inn >= 6; }}
+  };
+  window.TOKGI_LIST_V1741 = LIST;
+  /* 훈련한 능력치 → 생길 수 있는 특기(없으면 같은 종류 아무거나) */
+  var FROM = {bat:{4:['risp', 'lefty'], 5:['late'], 8:['onbase'], 6:[], 7:[]}, pit:{4:['iron'], 5:['lateC'], 6:['escape', 'lkill'], 7:['iron']}};
+  var BAT_STAT = {4:'정확', 5:'파워', 6:'주루', 7:'수비', 8:'선구'}, PIT_STAT = {4:'구속', 5:'제구', 6:'변화', 7:'체력'};
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function box(){ if(!state.tokgiV1741 || typeof state.tokgiV1741 !== 'object') state.tokgiV1741 = {}; return state.tokgiV1741; }
+  function key(kind, p){ return kind + ':' + (p && p[0]); }
+  function own(kind, p){ try{ var a = state && state.tokgiV1741 && state.tokgiV1741[key(kind, p)]; return Array.isArray(a) ? a.filter(function(id){ return LIST[id]; }) : []; }catch(_){ return []; } }
+  window.tokgiOfV1741 = own;
+  function nameOf(p){ try{ return playerDisplayName(p); }catch(_){ return p && p[0]; } }
+  function sim(){ return state && state.mode === 'sim'; }
+
+  /* ── 특기 생김: v1.4.0 개인 훈련 +1 에서 부름 ── */
+  window.tokgiTrainV1741 = function(kind, p, stat){
+    try{
+      if(!sim() || !p || Math.random() >= TK.chance) return null;
+      var have = own(kind, p); if(have.length >= TK.max) return null;
+      var pool = (FROM[kind][stat] || []).filter(function(id){ return have.indexOf(id) < 0; });
+      if(!pool.length) pool = Object.keys(LIST).filter(function(id){ return LIST[id].kind === kind && have.indexOf(id) < 0; });
+      if(!pool.length) return null;
+      var id = pool[Math.floor(Math.random() * pool.length)], a = LIST[id];
+      box()[key(kind, p)] = have.concat([id]);
+      var msg = a.icon + ' ' + nameOf(p) + ' 특기 「' + a.name + '」 — ' + (kind === 'bat' ? BAT_STAT : PIT_STAT)[stat] + ' 훈련 중에 몸에 익혔습니다';
+      try{ if(state.season) state.season.healthNews = (state.season.healthNews || []).concat([msg]); }catch(_){ }
+      try{ if(typeof pushClubNews === 'function') pushClubNews(a.icon + ' ' + nameOf(p) + ' 특기 「' + a.name + '」', a.desc + ' · 개인 훈련에서 익힘 (' + (have.length + 1) + '/' + TK.max + ')'); }catch(_){ }
+      return id;
+    }catch(e){ console.error(V + ' 특기 생김:', e); return null; }
+  };
+  /* 개인 훈련 창 안내 한 줄 */
+  window.tokgiHintV1741 = function(kind, p){
+    try{
+      if(!sim()) return '';
+      var have = own(kind, p), lab = kind === 'bat' ? BAT_STAT : PIT_STAT;
+      var map = Object.keys(FROM[kind]).filter(function(k){ return FROM[kind][k].length; }).map(function(k){ return lab[k] + '→' + FROM[kind][k].map(function(id){ return LIST[id].name; }).join('·'); }).join(' / ');
+      return '<br>🎖️ 오를 때마다 10% 확률로 특기(최대 ' + TK.max + '개, 지금 ' + have.length + '개) — ' + esc(map);
+    }catch(_){ return ''; }
+  };
+
+  /* ── 특기 효과: 타석 계산 직전에 +5, 끝나면 되돌림 ── */
+  function bump(p, list, isBat){
+    /* list = [{s, sk}] — 같은 칸이 겹치면 더함. 되돌릴 값을 돌려줌 */
+    var undo = [];
+    list.forEach(function(x){
+      var cap = 99;
+      undo.push(['a', x.s, p[x.s]]); p[x.s] = Math.min(cap, (+p[x.s] || 0) + TK.plus);
+      var sk = p.skills && typeof p.skills === 'object' ? p.skills : null;
+      if(sk) x.sk.forEach(function(n){ if(Number.isFinite(+sk[n])){ undo.push(['k', n, sk[n]]); sk[n] = Math.min(cap, +sk[n] + TK.plus); } });
+    });
+    return undo;
+  }
+  function restore(p, undo){
+    for(var i = undo.length - 1; i >= 0; i--){ var u = undo[i]; if(u[0] === 'a') p[u[1]] = u[2]; else if(p.skills) p.skills[u[1]] = u[2]; }
+  }
+  function active(kind, p, ctx, bat, pit){
+    var have = own(kind, p); if(!have.length || !ctx) return [];
+    return have.filter(function(id){ try{ return !!LIST[id].when(ctx, bat, pit); }catch(_){ return false; } });
+  }
+  var basePA = window.paResult;
+  if(typeof basePA === 'function'){
+    var pa = function(bat, batTid, pit, pitTid, tactic){
+      var ctx = window.GAME_CONTEXT_V3413, ub = null, up = null, on = [];
+      try{
+        if(ctx && state && state.tokgiV1741){
+          var ab = active('bat', bat, ctx, bat, pit), ap = active('pit', pit, ctx, bat, pit);
+          if(ab.length){ ub = bump(bat, ab.map(function(id){ return LIST[id]; }), true); on = on.concat(ab); }
+          if(ap.length){ up = bump(pit, ap.map(function(id){ return LIST[id]; }), false); on = on.concat(ap); }
+          if(on.length){ var st = window.TOKGI_STAT_V1741 = window.TOKGI_STAT_V1741 || {}; on.forEach(function(id){ st[id] = (st[id] || 0) + 1; }); }
+        }
+      }catch(e){ console.error(V + ' 특기 효과:', e); }
+      try{ return basePA.apply(this, arguments); }
+      finally{ try{ if(ub) restore(bat, ub); if(up) restore(pit, up); }catch(_){ } }
+    };
+    window.paResult = pa; try{ paResult = pa; }catch(_){ }
+  }
+
+  /* ── 선수 창에 특기 칸 ── */
+  var baseSheet = window.openSheet;
+  if(typeof baseSheet === 'function'){
+    var os = function(team, tab, idx){
+      var r = baseSheet.apply(this, arguments);
+      try{
+        if((tab === 'bat' || tab === 'pit') && team && Number.isInteger(idx)){
+          var p = (tab === 'bat' ? team.bat : team.pit || [])[idx], have = own(tab, p), sh = document.getElementById('sheet');
+          if(sh && p && (have.length || (sim() && team.id === state.myTeam)) && !sh.querySelector('.tokgi-v1741')){
+            var card = document.createElement('div');
+            card.className = 'special-card tokgi-v1741';
+            card.innerHTML = '<div class="special-name">🎖️ 특기 ' + have.length + '/' + TK.max + '</div><div class="special-desc">'
+              + (have.length ? have.map(function(id){ var a = LIST[id]; return a.icon + ' <b>' + esc(a.name) + '</b> — ' + esc(a.desc); }).join('<br>')
+                : '아직 없음 — 개인 훈련으로 능력치가 오를 때 10% 확률로 생깁니다.') + '</div>';
+            var sp = sh.querySelector('.special-card:not(.tokgi-v1741)'), rv = sh.querySelector('.reveal');
+            if(sp) sp.insertAdjacentElement('afterend', card); else if(rv) rv.insertAdjacentElement('beforebegin', card); else sh.appendChild(card);
+          }
+        }
+      }catch(e){ console.error(V + ' 특기 표시:', e); }
+      return r;
+    };
+    window.openSheet = os; try{ openSheet = os; }catch(_){ }
+  }
+
+  /* ── ⑥ 구단주 신뢰도 → 다음 시즌 모기업 지원금 ── */
+  function trust(){ try{ return Math.round(+state.owner.trust || 70); }catch(_){ return 70; } }
+  function trustStep(t){ return t >= 80 ? .10 : t >= 60 ? 0 : t >= 40 ? -.05 : -.10; }
+  window.OWNER_TRUST_V1741 = {steps:'80+ +10% · 60~79 0 · 40~59 −5% · 40− −10%', mid:2};
+  window.ownerTrustMulV1741 = function(){ return 1 + trustStep(trust()); };
+  window.ownerTrustNoteV1741 = function(){
+    var t = trust(), s = trustStep(t);
+    return '<br>구단주 신뢰도 ' + t + ' → 지원금 ' + (s > 0 ? '+' : s < 0 ? '−' : '±') + Math.round(Math.abs(s) * 100) + '% (80 이상 +10% · 60~79 그대로 · 40~59 −5% · 40 미만 −10%)';
+  };
+
+  /* ── ⑥ 전반기 중간 평가 ── */
+  function pace(){
+    try{
+      ensureLongTermState();
+      var g = state.owner.goal, pr = ownerGoalProgress(), s = state.season;
+      if(!g || pr.pending) return null;
+      var day = +s.day || 0, total = Array.isArray(s.sched) ? s.sched.length : 144, rec = s.rec[state.myTeam] || {w:0};
+      if(g.type === 'wins'){ var proj = Math.round((+rec.w || 0) / Math.max(1, day) * total); return {good:proj >= g.target, text:'지금 ' + (+rec.w || 0) + '승 · 이 속도면 ' + proj + '승(목표 ' + g.target + '승)'}; }
+      if(g.type === 'attendance'){ var att = +s.attendanceTotal || 0, pj = Math.round(att / Math.max(1, day) * total); return {good:pj >= g.target, text:'지금 ' + att.toLocaleString() + '명 · 이 속도면 ' + pj.toLocaleString() + '명'}; }
+      return {good:!!pr.done, text:'지금 ' + pr.text};
+    }catch(e){ console.error(V + ' 중간 평가 계산:', e); return null; }
+  }
+  function midEval(){
+    try{
+      var s = state && state.season; if(!s || !s.halfV1734 || !state.owner) return null;
+      var y = +state.year || 1, M = state.owner.midV1741;
+      if(M && M.year === y) return M;
+      if(state.owner.lastEvaluatedYear === y) return null;          /* 시즌 결산이 이미 끝났으면 안 함 */
+      var p = pace(); if(!p) return null;
+      var d = p.good ? 2 : -2;
+      state.owner.trust = Math.max(0, Math.min(100, (+state.owner.trust || 70) + d));
+      M = state.owner.midV1741 = {year:y, good:p.good, delta:d, label:state.owner.goal.label, text:p.text};
+      try{ pushClubNews('🏢 구단주 중간 평가 ' + (p.good ? '— 순조롭다' : '— 걱정된다'), M.label + ' · ' + p.text + ' · 신뢰도 ' + (d > 0 ? '+' : '') + d); }catch(_){ }
+      try{ save(); }catch(_){ }
+      return M;
+    }catch(e){ console.error(V + ' 중간 평가:', e); return null; }
+  }
+  window.ownerMidEvalV1741 = midEval;
+  function midHtml(){
+    var M = state.owner && state.owner.midV1741;
+    if(!M || M.year !== (+state.year || 1)) return '';
+    return '<div class="seg"><div class="sh">🏢 구단주 중간 평가</div><div class="row"><span>' + esc(M.label) + '</span><span>' + (M.good ? '✅ 순조롭다' : '⚠ 걱정된다') + '</span></div>'
+      + '<div class="dim">' + esc(M.text) + ' · 신뢰도 ' + (M.delta > 0 ? '+' : '') + M.delta + ' → ' + trust() + '<br>시즌이 끝나면 목표를 평가하고, 신뢰도에 따라 다음 시즌 모기업 지원금이 ±10%까지 바뀝니다.</div></div>';
+  }
+  var baseFin = window.finishDay;
+  if(typeof baseFin === 'function'){
+    var fd = function(){ var r = baseFin.apply(this, arguments); midEval(); return r; };
+    window.finishDay = fd; try{ finishDay = fd; }catch(_){ }
+  }
+  ['openHalfV1734', 'openSportsV1733'].forEach(function(fn){
+    var base = window[fn]; if(typeof base !== 'function') return;
+    window[fn] = function(){
+      midEval();
+      var r = base.apply(this, arguments);
+      try{
+        var sh = document.getElementById('sheet'), H = state.season && state.season.halfV1734;
+        if(sh && H && !sh.querySelector('.mid-v1741')){
+          var seg = sh.querySelector('.seg .sh') && [].slice.call(sh.querySelectorAll('.seg')).filter(function(x){ return /전반기 결산/.test((x.querySelector('.sh') || {}).textContent || ''); })[0];
+          var html = midHtml();
+          if(seg && html){ seg.insertAdjacentHTML('afterend', html.replace('<div class="seg">', '<div class="seg mid-v1741">')); }
+        }
+      }catch(e){ console.error(V + ' 중간 평가 표시:', e); }
+      return r;
+    };
+  });
+})();
+</script>
+<!-- v1.7.41 END -->
 
 </body>
 </html>
